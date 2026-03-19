@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Founder Registrierung</title>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  <style>
+    :root {
+      --brand: #a54a7b;
+      --brand-dark: #8a3d66;
+      --bg: #f6efe8;
+      --card: #ffffff;
+      --text: #2a1e27;
+      --muted: #71646d;
+      --border: #e4d6df;
+      --ok: #0f766e;
+      --error: #b91c1c;
+      --warn: #a16207;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, #f2dbe7 0%, transparent 55%),
+        radial-gradient(800px 420px at 100% 0%, #f6d9cd 0%, transparent 55%),
+        var(--bg);
+      min-height: 100%;
+    }
+
+    .shell {
+      width: 100%;
+      padding: 20px 14px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 560px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      box-shadow: 0 22px 40px rgba(67, 33, 55, 0.1);
+      padding: 24px;
+      overflow: hidden;
+    }
+
+    .eyebrow {
+      margin: 0;
+      font-size: 12px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--brand);
+      font-weight: 700;
+    }
+
+    h1 {
+      margin: 8px 0 8px;
+      font-size: 28px;
+      line-height: 1.15;
+      color: var(--text);
+    }
+
+    .intro {
+      margin: 0 0 16px;
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 14px;
+    }
+
+    .steps {
+      display: flex;
+      gap: 8px;
+      margin: 0 0 18px;
+    }
+
+    .step-dot {
+      flex: 1;
+      height: 6px;
+      border-radius: 999px;
+      background: #e8d9e2;
+      transition: background 0.2s ease;
+    }
+
+    .step-dot.active {
+      background: var(--brand);
+    }
+
+    .message {
+      margin: 0 0 14px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 13px;
+      line-height: 1.4;
+      display: none;
+    }
+
+    .message.show {
+      display: block;
+    }
+
+    .message.info {
+      background: #f3e8ef;
+      color: #6f2852;
+    }
+
+    .message.success {
+      background: #dff7f4;
+      color: var(--ok);
+    }
+
+    .message.error {
+      background: #fde8e8;
+      color: var(--error);
+    }
+
+    .message.warn {
+      background: #fef3c7;
+      color: var(--warn);
+    }
+
+    .step-panel {
+      display: none;
+    }
+
+    .step-panel.active {
+      display: block;
+    }
+
+    .field {
+      margin-bottom: 12px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+
+    input[type="text"],
+    input[type="tel"],
+    input[type="number"] {
+      width: 100%;
+      border: 1px solid #d8c8d2;
+      border-radius: 10px;
+      padding: 12px 13px;
+      font-size: 15px;
+      color: var(--text);
+      background: #fff;
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    input:focus {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px rgba(165, 74, 123, 0.14);
+    }
+
+    .hp {
+      position: absolute;
+      left: -9999px;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .consent {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+      align-items: flex-start;
+      font-size: 13px;
+      line-height: 1.45;
+      color: #544a52;
+    }
+
+    .consent input {
+      margin-top: 3px;
+    }
+
+    .consent a {
+      color: var(--brand-dark);
+      font-weight: 600;
+    }
+
+    .turnstile-wrap {
+      display: flex;
+      justify-content: center;
+      margin: 12px 0 14px;
+      min-height: 66px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 10px;
+      padding: 11px 14px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.12s ease, opacity 0.12s ease, background 0.2s ease;
+    }
+
+    .btn:active {
+      transform: translateY(1px);
+    }
+
+    .btn[disabled] {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-primary {
+      flex: 1;
+      min-width: 160px;
+      background: var(--brand);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: var(--brand-dark);
+    }
+
+    .btn-secondary {
+      background: #f2e6ec;
+      color: #6a3152;
+    }
+
+    .otp-lead {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .otp-phone {
+      font-weight: 700;
+      color: #5a2746;
+    }
+
+    .success-box {
+      background: #eefaf8;
+      border: 1px solid #bee9e3;
+      color: #155f58;
+      border-radius: 12px;
+      padding: 13px;
+      margin-bottom: 12px;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .cooldown {
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--muted);
+      min-height: 18px;
+    }
+
+    @media (max-width: 640px) {
+      .shell {
+        padding: 0;
+      }
+
+      .card {
+        border-radius: 0;
+        border-left: 0;
+        border-right: 0;
+        max-width: none;
+        min-height: 100vh;
+        box-shadow: none;
+        padding: 20px 14px 24px;
+      }
+
+      h1 {
+        font-size: 25px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="card" aria-live="polite">
+      <p class="eyebrow">KANTON Founder</p>
+      <h1 id="form-title">Founder Zugang aktivieren</h1>
+      <p id="form-intro" class="intro">Registrieren Sie sich mit Ihrer Mobilnummer. Danach bestaetigen Sie den 6-stelligen OTP-Code.</p>
+
+      <div class="steps" aria-hidden="true">
+        <span id="dot-register" class="step-dot active"></span>
+        <span id="dot-verify" class="step-dot"></span>
+        <span id="dot-success" class="step-dot"></span>
+      </div>
+
+      <p id="global-message" class="message"></p>
+
+      <section id="step-register" class="step-panel active">
+        <form id="register-form" novalidate>
+          <input type="hidden" name="x_studio_founder_status" value="Pending Verification">
+          <input type="hidden" name="x_studio_founder_level" value="Trial">
+            <input id="membership-type-hidden" type="hidden" name="x_studio_membership_type" value="Founder">
+            <input id="kc-terms-hidden" type="hidden" name="x_studio_kc_terms_accepted" value="no">
+            <input id="founder-terms-hidden" type="hidden" name="x_studio_founder_terms_accepted" value="yes">
+          <input type="hidden" name="x_studio_sms_opt_in_1" value="yes">
+          <input id="opt-in-text-hidden" type="hidden" name="x_studio_opt_in_text" value="Ich stimme der Verifizierung sowie dem Erhalt von Info, Updates und Rewards per SMS/WhatsApp zu.">
+            <input id="notes-hidden" type="hidden" name="x_studio_notes" value="Founder Form Registration">
+            <input id="email-hidden" type="hidden" name="email" value="">
+
+          <input class="hp" type="text" name="hp_confirm_data" tabindex="-1" autocomplete="off" aria-hidden="true">
+
+          <div class="field">
+            <label id="label-name" for="name">Name</label>
+            <input id="name" name="name" type="text" required maxlength="80" placeholder="Ihr Name">
+          </div>
+
+          <div class="field">
+            <label id="label-phone" for="phone">Mobiltelefon</label>
+            <input id="phone" name="phone" type="tel" required placeholder="+49 176.......">
+          </div>
+
+          <div class="consent">
+            <input id="consent-sms" type="checkbox" required>
+            <label id="label-consent-sms" for="consent-sms">Ich stimme der Verifizierung und dem Erhalt von Info, Updates und Rewards per SMS/WhatsApp zu. *</label>
+          </div>
+
+          <div class="consent">
+            <input id="consent-terms" type="checkbox" required>
+            <label id="label-consent-terms" for="consent-terms">Ich akzeptiere die <a href="/founderpass-terms-conditions" target="_blank" rel="noopener noreferrer">Teilnahmebedingungen</a> und die <a href="/privacy" target="_blank" rel="noopener noreferrer">Datenschutzerklaerung</a>. *</label>
+          </div>
+
+          <div class="turnstile-wrap">
+            <div class="cf-turnstile" data-sitekey="__TURNSTILE_SITE_KEY__"></div>
+          </div>
+
+          <div class="actions">
+            <button id="register-btn" class="btn btn-primary" type="submit">OTP senden</button>
+          </div>
+        </form>
+      </section>
+
+      <section id="step-verify" class="step-panel">
+        <p id="otp-lead" class="otp-lead">Wir haben den OTP-Code an <span id="otp-phone" class="otp-phone">-</span> gesendet.</p>
+
+        <form id="verify-form" novalidate>
+          <div class="field">
+            <label id="label-otp" for="otp">OTP Code (6 Ziffern)</label>
+            <input id="otp" name="otp" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" required placeholder="123456">
+          </div>
+
+          <div class="actions">
+            <button id="verify-btn" class="btn btn-primary" type="submit">OTP pruefen</button>
+            <button id="back-btn" class="btn btn-secondary" type="button">Zurueck</button>
+          </div>
+        </form>
+
+        <div class="actions" style="margin-top:12px;">
+          <button id="resend-btn" class="btn btn-secondary" type="button">OTP erneut senden</button>
+        </div>
+        <p id="resend-cooldown" class="cooldown"></p>
+      </section>
+
+      <section id="step-success" class="step-panel">
+        <div id="success-box" class="success-box">
+          Ihr OTP wurde verifiziert. Ihre Founder Registrierung ist jetzt aktiv.
+        </div>
+        <p id="success-intro" class="intro" style="margin-bottom:14px;">Sie werden in wenigen Sekunden weitergeleitet.</p>
+        <div class="actions">
+          <a id="continue-link" class="btn btn-primary" href="https://www.quan-esskultur.de/welcome-founder" style="text-decoration:none;text-align:center;">Weiter</a>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      var registerForm = document.getElementById('register-form');
+      var verifyForm = document.getElementById('verify-form');
+      var registerBtn = document.getElementById('register-btn');
+      var verifyBtn = document.getElementById('verify-btn');
+      var resendBtn = document.getElementById('resend-btn');
+      var backBtn = document.getElementById('back-btn');
+      var otpInput = document.getElementById('otp');
+      var otpPhone = document.getElementById('otp-phone');
+      var globalMessage = document.getElementById('global-message');
+      var cooldownEl = document.getElementById('resend-cooldown');
+      var continueLink = document.getElementById('continue-link');
+      var formTitle = document.getElementById('form-title');
+      var formIntro = document.getElementById('form-intro');
+      var nameLabel = document.getElementById('label-name');
+      var phoneLabel = document.getElementById('label-phone');
+      var consentSmsLabel = document.getElementById('label-consent-sms');
+      var consentTermsLabel = document.getElementById('label-consent-terms');
+      var otpLead = document.getElementById('otp-lead');
+      var otpLabel = document.getElementById('label-otp');
+      var successBox = document.getElementById('success-box');
+      var successIntro = document.getElementById('success-intro');
+      var hiddenOptInText = document.getElementById('opt-in-text-hidden');
+      var hiddenMembershipType = document.getElementById('membership-type-hidden');
+      var hiddenKcTerms = document.getElementById('kc-terms-hidden');
+      var hiddenFounderTerms = document.getElementById('founder-terms-hidden');
+      var hiddenNotes = document.getElementById('notes-hidden');
+      var hiddenEmail = document.getElementById('email-hidden');
+      var nameInput = document.getElementById('name');
+      var phoneInput = document.getElementById('phone');
+
+      var stepRegister = document.getElementById('step-register');
+      var stepVerify = document.getElementById('step-verify');
+      var stepSuccess = document.getElementById('step-success');
+      var dotRegister = document.getElementById('dot-register');
+      var dotVerify = document.getElementById('dot-verify');
+      var dotSuccess = document.getElementById('dot-success');
+
+      var state = {
+        name: '',
+        phone: '',
+        resendCooldownSeconds: 0,
+        cooldownTimer: null
+      };
+
+      var params = null;
+      try {
+        params = new URLSearchParams(window.location.search);
+      } catch (error) {
+        params = null;
+      }
+
+      function readQueryParam(key) {
+        var ownValue = String(params && params.get(key) || '').trim();
+        if (ownValue) return ownValue;
+
+        try {
+          var parentSearch = window.parent && window.parent.location
+            ? String(window.parent.location.search || '')
+            : '';
+          if (parentSearch) {
+            var parentParams = new URLSearchParams(parentSearch);
+            var parentValue = String(parentParams.get(key) || '').trim();
+            if (parentValue) return parentValue;
+          }
+        } catch (error) {
+          // Ignore cross-frame query access errors.
+        }
+
+        try {
+          var grandParentSearch = window.parent && window.parent.parent && window.parent.parent.location
+            ? String(window.parent.parent.location.search || '')
+            : '';
+          if (grandParentSearch) {
+            var grandParams = new URLSearchParams(grandParentSearch);
+            var grandValue = String(grandParams.get(key) || '').trim();
+            if (grandValue) return grandValue;
+          }
+        } catch (error) {
+          // Ignore cross-frame query access errors.
+        }
+
+        return '';
+      }
+
+      var programKey = String(readQueryParam('program') || '').toLowerCase() === 'kc' ? 'kc' : 'founder';
+      var customProgramLabel = readQueryParam('program_label');
+      var customMembershipType = readQueryParam('membership_type');
+      var termsUrlOverrideRaw = readQueryParam('terms_url');
+      var privacyUrlOverrideRaw = readQueryParam('privacy_url');
+      var emailPrefill = readQueryParam('email');
+      var websiteUrlOverride = readQueryParam('website_url');
+
+      function toAbsoluteUrl(rawUrl) {
+        var value = String(rawUrl || '').trim();
+        if (!value) return '';
+
+        try {
+          if (/^https?:\/\//i.test(value)) {
+            return new URL(value).toString();
+          }
+          return new URL(value, window.location.origin).toString();
+        } catch (error) {
+          return '';
+        }
+      }
+
+      function detectWebsiteBaseUrl() {
+        var explicitWebsiteUrl = toAbsoluteUrl(websiteUrlOverride);
+        if (explicitWebsiteUrl) {
+          return explicitWebsiteUrl;
+        }
+
+        var explicitRedirectUrl = toAbsoluteUrl(readQueryParam('redirect'));
+        if (explicitRedirectUrl) {
+          try {
+            return new URL(explicitRedirectUrl).origin;
+          } catch (error) {
+            // Ignore redirect parse failures.
+          }
+        }
+
+        var referrer = String(document.referrer || '').trim();
+        if (referrer) {
+          try {
+            return new URL(referrer).origin;
+          } catch (error) {
+            // Ignore referrer parse failures.
+          }
+        }
+
+        try {
+          return window.location.origin;
+        } catch (error) {
+          return '';
+        }
+      }
+
+      function buildWebsiteUrl(baseUrl, pathname) {
+        if (!baseUrl) return pathname;
+
+        try {
+          return new URL(pathname, baseUrl).toString();
+        } catch (error) {
+          return pathname;
+        }
+      }
+
+      var termsUrlOverride = toAbsoluteUrl(termsUrlOverrideRaw);
+      var privacyUrlOverride = toAbsoluteUrl(privacyUrlOverrideRaw);
+      var websiteBaseUrl = detectWebsiteBaseUrl();
+      var defaultTermsPath = '/founderpass-terms-conditions';
+      var defaultPrivacyPath = '/privacy';
+      var defaultRedirectPath = programKey === 'kc' ? '/colleague-club' : '/welcome-founder';
+      var defaultTermsUrl = buildWebsiteUrl(websiteBaseUrl, defaultTermsPath);
+      var defaultPrivacyUrl = buildWebsiteUrl(websiteBaseUrl, defaultPrivacyPath);
+      var defaultRedirectUrl = buildWebsiteUrl(websiteBaseUrl, defaultRedirectPath);
+
+      function getProgramLabelForLocale() {
+        if (customProgramLabel) return customProgramLabel;
+        if (programKey === 'kc') return 'Kollegensclub';
+        return 'Founder';
+      }
+
+      function applyProgramLabel(text) {
+        return String(text || '').replace(/Founder/g, getProgramLabelForLocale());
+      }
+
+      function getProgramDefaults() {
+        if (programKey === 'kc') {
+          return {
+            membershipType: customMembershipType || 'KC',
+            founderTerms: 'no',
+            kcTerms: 'yes',
+            notes: 'KC Form Registration'
+          };
+        }
+
+        return {
+          membershipType: customMembershipType || 'Founder',
+          founderTerms: 'yes',
+          kcTerms: 'no',
+          notes: 'Founder Form Registration'
+        };
+      }
+
+      var programDefaults = getProgramDefaults();
+
+      var I18N = {
+        de: {
+          pageTitle: 'Founder Registrierung',
+          heading: 'Founder Zugang aktivieren',
+          intro: 'Registrieren Sie sich mit Ihrer Mobilnummer. Danach bestaetigen Sie den 6-stelligen OTP-Code.',
+          nameLabel: 'Name',
+          namePlaceholder: 'Ihr Name',
+          phoneLabel: 'Mobiltelefon',
+          phonePlaceholder: '+49 176.......',
+          consentSms: 'Ich stimme der Verifizierung und dem Erhalt von Info, Updates und Rewards per SMS/WhatsApp zu. *',
+          consentTermsHtml: 'Ich akzeptiere die <a href="/founderpass-terms-conditions" target="_blank" rel="noopener noreferrer">Teilnahmebedingungen</a> und die <a href="/privacy" target="_blank" rel="noopener noreferrer">Datenschutzerklaerung</a>. *',
+          optInText: 'Ich stimme der Verifizierung sowie dem Erhalt von Info, Updates und Rewards per SMS/WhatsApp zu.',
+          otpSend: 'OTP senden',
+          otpLeadPrefix: 'Wir haben den OTP-Code an',
+          otpLeadSuffix: 'gesendet.',
+          otpLabel: 'OTP Code (6 Ziffern)',
+          otpVerify: 'OTP pruefen',
+          back: 'Zurueck',
+          resend: 'OTP erneut senden',
+          successBox: 'Ihr OTP wurde verifiziert. Ihre Founder Registrierung ist jetzt aktiv.',
+          successIntro: 'Sie werden in wenigen Sekunden weitergeleitet.',
+          continue: 'Weiter',
+          wait: 'Bitte warten...',
+          verifying: 'Pruefung...',
+          sending: 'Sende...',
+          cooldownIn: 'Erneutes Senden moeglich in {seconds}s.',
+          securityCheckRequired: 'Bitte fuehren Sie die Sicherheitspruefung durch.',
+          requiredFields: 'Bitte fuellen Sie alle Pflichtfelder korrekt aus.',
+          registerFailed: 'Registrierung fehlgeschlagen. Bitte versuchen Sie es erneut.',
+          otpSent: 'OTP wurde gesendet. Bitte pruefen Sie Ihre Nachrichten.',
+          networkError: 'Netzwerkfehler. Bitte versuchen Sie es erneut.',
+          registerFirst: 'Bitte zuerst registrieren.',
+          invalidOtp: 'Bitte geben Sie einen gueltigen 6-stelligen OTP-Code ein.',
+          verifyFailed: 'OTP Verifizierung fehlgeschlagen.',
+          verified: 'OTP verifiziert.',
+          resendFailed: 'OTP konnte nicht erneut gesendet werden.',
+          resent: 'OTP wurde erneut gesendet.'
+        },
+        en: {
+          pageTitle: 'Founder Registration',
+          heading: 'Activate Founder Access',
+          intro: 'Register with your mobile number, then verify the 6-digit OTP code.',
+          nameLabel: 'Name',
+          namePlaceholder: 'Your name',
+          phoneLabel: 'Mobile phone',
+          phonePlaceholder: '+49 176.......',
+          consentSms: 'I agree to verification and to receiving info, updates, and rewards via SMS/WhatsApp. *',
+          consentTermsHtml: 'I accept the <a href="/founderpass-terms-conditions" target="_blank" rel="noopener noreferrer">Terms and Conditions</a> and the <a href="/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>. *',
+          optInText: 'I agree to verification and receiving info, updates, and rewards via SMS/WhatsApp.',
+          otpSend: 'Send OTP',
+          otpLeadPrefix: 'We sent the OTP code to',
+          otpLeadSuffix: '.',
+          otpLabel: 'OTP code (6 digits)',
+          otpVerify: 'Verify OTP',
+          back: 'Back',
+          resend: 'Resend OTP',
+          successBox: 'Your OTP has been verified. Your Founder registration is now active.',
+          successIntro: 'You will be redirected in a few seconds.',
+          continue: 'Continue',
+          wait: 'Please wait...',
+          verifying: 'Verifying...',
+          sending: 'Sending...',
+          cooldownIn: 'Resend available in {seconds}s.',
+          securityCheckRequired: 'Please complete the security check.',
+          requiredFields: 'Please fill in all required fields correctly.',
+          registerFailed: 'Registration failed. Please try again.',
+          otpSent: 'OTP sent. Please check your messages.',
+          networkError: 'Network error. Please try again.',
+          registerFirst: 'Please register first.',
+          invalidOtp: 'Please enter a valid 6-digit OTP code.',
+          verifyFailed: 'OTP verification failed.',
+          verified: 'OTP verified.',
+          resendFailed: 'OTP could not be resent.',
+          resent: 'OTP sent again.'
+        }
+      };
+
+      var API_MESSAGE_MAP_EN = {
+        'Bitte fuehren Sie die Sicherheitspruefung durch.': 'Please complete the security check.',
+        'Bitte fuellen Sie alle Pflichtfelder korrekt aus.': 'Please fill in all required fields correctly.',
+        'Registrierung fehlgeschlagen. Bitte versuchen Sie es erneut.': 'Registration failed. Please try again.',
+        'OTP wurde gesendet. Bitte pruefen Sie Ihre Nachrichten.': 'OTP sent. Please check your messages.',
+        'Netzwerkfehler. Bitte versuchen Sie es erneut.': 'Network error. Please try again.',
+        'Bitte zuerst registrieren.': 'Please register first.',
+        'Bitte geben Sie einen gueltigen 6-stelligen OTP-Code ein.': 'Please enter a valid 6-digit OTP code.',
+        'OTP Verifizierung fehlgeschlagen.': 'OTP verification failed.',
+        'OTP verifiziert.': 'OTP verified.',
+        'OTP verifiziert. Ihre Founder-Registrierung ist jetzt aktiv.': 'OTP verified. Your Founder registration is now active.',
+        'OTP verifiziert. Ihre KC-Registrierung ist jetzt aktiv.': 'OTP verified. Your KC registration is now active.',
+        'OTP konnte nicht erneut gesendet werden.': 'OTP could not be resent.',
+        'OTP wurde erneut gesendet.': 'OTP sent again.',
+        'Bitte geben Sie eine gueltige E-Mail-Adresse ein.': 'Please enter a valid email address.',
+        'OTP Versand derzeit nicht moeglich. Twilio Zugangsdaten sind ungueltig.': 'OTP delivery is currently unavailable. Twilio credentials are invalid.',
+        'OTP Versand fehlgeschlagen. Die konfigurierte Twilio Absendernummer ist fuer diesen Account nicht gueltig.': 'OTP delivery failed. The configured Twilio sender is not valid for this account.',
+        'OTP Versand fehlgeschlagen. Diese Telefonnummer ist im Twilio Trial Account nicht verifiziert.': 'OTP delivery failed. This phone number is not verified in your Twilio trial account.',
+        'Bitte geben Sie eine gueltige Mobiltelefonnummer ein.': 'Please enter a valid mobile phone number.',
+        'OTP Versand fehlgeschlagen. Die Zielregion/Nummer ist fuer diesen Twilio Account nicht freigeschaltet.': 'OTP delivery failed. This destination region/number is not enabled for this Twilio account.',
+        'WhatsApp OTP konnte nicht zugestellt werden. Bitte zuerst dem Twilio WhatsApp Sandbox beitreten oder SMS nutzen.': 'WhatsApp OTP could not be delivered. Please join the Twilio WhatsApp sandbox first, or use SMS.',
+        'OTP Versand ist derzeit nicht verfuegbar. Bitte spaeter erneut versuchen.': 'OTP delivery is currently unavailable. Please try again later.',
+        'OTP konnte nicht gesendet werden. Bitte erneut versuchen.': 'OTP could not be sent. Please try again.',
+        'OTP muss genau 6 Ziffern enthalten.': 'OTP must contain exactly 6 digits.',
+        'Kein gueltiger OTP-Eintrag gefunden.': 'No valid OTP record found.',
+        'Dieser OTP-Code wurde bereits verwendet. Bitte neuen OTP anfordern.': 'This OTP code was already used. Please request a new OTP.',
+        'Der OTP-Code ist abgelaufen.': 'The OTP code has expired.',
+        'Zu viele Fehlversuche. Bitte neuen OTP anfordern.': 'Too many failed attempts. Please request a new OTP.',
+        'Interner Fehler bei OTP-Verifizierung.': 'Internal error during OTP verification.'
+      };
+
+      function detectLocale() {
+        var fromQuery = String(readQueryParam('lang') || '').trim().toLowerCase();
+        if (fromQuery.indexOf('de') === 0) return 'de';
+        if (fromQuery.indexOf('en') === 0) return 'en';
+
+        var browserLang = '';
+        if (Array.isArray(navigator.languages) && navigator.languages.length) {
+          browserLang = String(navigator.languages[0] || '').toLowerCase();
+        }
+        if (!browserLang) {
+          browserLang = String(navigator.language || '').toLowerCase();
+        }
+
+        if (browserLang.indexOf('de') === 0) return 'de';
+        return 'en';
+      }
+
+      var locale = detectLocale();
+      var messages = I18N[locale] || I18N.de;
+
+      function t(key) {
+        return messages[key] || I18N.de[key] || '';
+      }
+
+      function localizeApiMessage(message, fallbackKey) {
+        var raw = String(message || '').trim();
+        if (!raw) return t(fallbackKey);
+        if (locale === 'de') return raw;
+
+        var activationMatch = raw.match(/^OTP verifiziert\. Ihre\s+(.+)-Registrierung ist jetzt aktiv\.$/);
+        if (activationMatch) {
+          return 'OTP verified. Your ' + activationMatch[1] + ' registration is now active.';
+        }
+
+        if (Object.prototype.hasOwnProperty.call(API_MESSAGE_MAP_EN, raw)) {
+          return API_MESSAGE_MAP_EN[raw];
+        }
+
+        return t(fallbackKey);
+      }
+
+      function formatText(template, vars) {
+        return String(template || '').replace(/\{(\w+)\}/g, function (_, name) {
+          return Object.prototype.hasOwnProperty.call(vars, name) ? String(vars[name]) : '';
+        });
+      }
+
+      function updateOtpLead(phone) {
+        otpLead.innerHTML = t('otpLeadPrefix') + ' <span id="otp-phone" class="otp-phone">-</span> ' + t('otpLeadSuffix');
+        otpPhone = document.getElementById('otp-phone');
+        otpPhone.textContent = phone || '-';
+      }
+
+      var redirectTarget = defaultRedirectUrl || 'https://www.quan-esskultur.de/welcome-founder';
+      try {
+        var redirectParam = toAbsoluteUrl(readQueryParam('redirect'));
+        if (redirectParam) {
+          redirectTarget = redirectParam;
+        }
+      } catch (error) {
+        // Keep default redirect target.
+      }
+
+      function applyTranslations() {
+        document.documentElement.lang = locale;
+        document.title = applyProgramLabel(t('pageTitle'));
+        formTitle.textContent = applyProgramLabel(t('heading'));
+        formIntro.textContent = applyProgramLabel(t('intro'));
+        nameLabel.textContent = t('nameLabel');
+        nameInput.placeholder = t('namePlaceholder');
+        phoneLabel.textContent = t('phoneLabel');
+        phoneInput.placeholder = t('phonePlaceholder');
+        consentSmsLabel.textContent = t('consentSms');
+        consentTermsLabel.innerHTML = t('consentTermsHtml');
+
+        var consentLinks = consentTermsLabel.querySelectorAll('a');
+        if (consentLinks.length >= 2) {
+          consentLinks[0].setAttribute('href', termsUrlOverride || defaultTermsUrl);
+          consentLinks[1].setAttribute('href', privacyUrlOverride || defaultPrivacyUrl);
+        }
+
+        hiddenOptInText.value = t('optInText');
+        hiddenMembershipType.value = programDefaults.membershipType;
+        hiddenFounderTerms.value = programDefaults.founderTerms;
+        hiddenKcTerms.value = programDefaults.kcTerms;
+        hiddenNotes.value = programDefaults.notes;
+        hiddenEmail.value = emailPrefill;
+        registerBtn.textContent = t('otpSend');
+        otpLabel.textContent = t('otpLabel');
+        verifyBtn.textContent = t('otpVerify');
+        backBtn.textContent = t('back');
+        resendBtn.textContent = t('resend');
+        successBox.textContent = applyProgramLabel(t('successBox'));
+        successIntro.textContent = t('successIntro');
+        continueLink.textContent = t('continue');
+        updateOtpLead(state.phone || '-');
+      }
+
+      continueLink.href = redirectTarget;
+      applyTranslations();
+
+      function postHeight() {
+        try {
+          var height = Math.max(
+            document.body.scrollHeight,
+            document.documentElement.scrollHeight,
+            document.body.offsetHeight,
+            document.documentElement.offsetHeight,
+            document.body.clientHeight,
+            document.documentElement.clientHeight
+          );
+          window.parent.postMessage({ type: 'ESS_FOUNDER_HEIGHT', height: height }, '*');
+        } catch (error) {
+          // Ignore postMessage failures.
+        }
+      }
+
+      if (typeof ResizeObserver !== 'undefined') {
+        var observer = new ResizeObserver(postHeight);
+        observer.observe(document.body);
+      }
+
+      window.addEventListener('load', postHeight);
+      window.addEventListener('resize', postHeight);
+      setInterval(postHeight, 900);
+
+      function setMessage(type, text) {
+        globalMessage.className = 'message';
+        if (!text) {
+          globalMessage.textContent = '';
+          postHeight();
+          return;
+        }
+
+        globalMessage.textContent = text;
+        globalMessage.classList.add('show');
+        globalMessage.classList.add(type || 'info');
+        postHeight();
+      }
+
+      function clearMessage() {
+        setMessage('', '');
+      }
+
+      function setActiveStep(step) {
+        stepRegister.classList.toggle('active', step === 'register');
+        stepVerify.classList.toggle('active', step === 'verify');
+        stepSuccess.classList.toggle('active', step === 'success');
+
+        dotRegister.classList.toggle('active', step === 'register');
+        dotVerify.classList.toggle('active', step === 'verify');
+        dotSuccess.classList.toggle('active', step === 'success');
+
+        postHeight();
+      }
+
+      function setButtonBusy(button, busy, busyLabel, defaultLabel) {
+        button.disabled = !!busy;
+        button.textContent = busy ? busyLabel : defaultLabel;
+      }
+
+      function getOtpCodeInput() {
+        var value = String(otpInput.value || '').replace(/\D/g, '');
+        return value.slice(0, 6);
+      }
+
+      function beginResendCooldown(seconds) {
+        state.resendCooldownSeconds = Math.max(0, Number(seconds || 0));
+        resendBtn.disabled = state.resendCooldownSeconds > 0;
+
+        if (state.cooldownTimer) {
+          clearInterval(state.cooldownTimer);
+          state.cooldownTimer = null;
+        }
+
+        if (state.resendCooldownSeconds <= 0) {
+          cooldownEl.textContent = '';
+          return;
+        }
+
+        cooldownEl.textContent = formatText(t('cooldownIn'), { seconds: state.resendCooldownSeconds });
+        state.cooldownTimer = setInterval(function () {
+          state.resendCooldownSeconds -= 1;
+          if (state.resendCooldownSeconds <= 0) {
+            clearInterval(state.cooldownTimer);
+            state.cooldownTimer = null;
+            resendBtn.disabled = false;
+            cooldownEl.textContent = '';
+            return;
+          }
+          cooldownEl.textContent = formatText(t('cooldownIn'), { seconds: state.resendCooldownSeconds });
+        }, 1000);
+      }
+
+      registerForm.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        clearMessage();
+
+        var turnstileToken = '';
+        var turnstileField = document.querySelector('input[name="cf-turnstile-response"]');
+        if (turnstileField) {
+          turnstileToken = String(turnstileField.value || '').trim();
+        }
+
+        if (!turnstileToken) {
+          setMessage('error', t('securityCheckRequired'));
+          return;
+        }
+
+        if (!registerForm.reportValidity()) {
+          setMessage('error', t('requiredFields'));
+          return;
+        }
+
+        setButtonBusy(registerBtn, true, t('wait'), t('otpSend'));
+
+        try {
+          var formData = new FormData(registerForm);
+          formData.set('cf_token', turnstileToken);
+          formData.set('consent_sms', document.getElementById('consent-sms').checked ? 'yes' : 'no');
+          formData.set('consent_terms', document.getElementById('consent-terms').checked ? 'yes' : 'no');
+
+          var registerResponse = await fetch('/api/founder/register', {
+            method: 'POST',
+            body: formData
+          });
+
+          var registerData = {};
+          try {
+            registerData = await registerResponse.json();
+          } catch (parseError) {
+            registerData = {};
+          }
+
+          if (!registerResponse.ok || registerData.status === 'error') {
+            setMessage('error', localizeApiMessage(registerData.message, 'registerFailed'));
+            if (typeof window.turnstile !== 'undefined' && window.turnstile.reset) {
+              window.turnstile.reset();
+            }
+            return;
+          }
+
+          state.name = String(formData.get('name') || '').trim();
+          state.phone = String(registerData.phone || formData.get('phone') || '').trim();
+
+          updateOtpLead(state.phone || '-');
+          otpInput.value = '';
+          setMessage('success', localizeApiMessage(registerData.message, 'otpSent'));
+          setActiveStep('verify');
+          beginResendCooldown(180);
+        } catch (error) {
+          setMessage('error', t('networkError'));
+        } finally {
+          setButtonBusy(registerBtn, false, t('wait'), t('otpSend'));
+        }
+      });
+
+      verifyForm.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        clearMessage();
+
+        var otpCode = getOtpCodeInput();
+        if (!state.phone) {
+          setMessage('error', t('registerFirst'));
+          setActiveStep('register');
+          return;
+        }
+
+        if (!/^\d{6}$/.test(otpCode)) {
+          setMessage('error', t('invalidOtp'));
+          return;
+        }
+
+        setButtonBusy(verifyBtn, true, t('verifying'), t('otpVerify'));
+
+        try {
+          var verifyResponse = await fetch('/api/founder/verify', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              phone: state.phone,
+              otp: otpCode
+            })
+          });
+
+          var verifyData = {};
+          try {
+            verifyData = await verifyResponse.json();
+          } catch (parseError) {
+            verifyData = {};
+          }
+
+          if (!verifyResponse.ok || verifyData.status === 'error') {
+            setMessage('error', localizeApiMessage(verifyData.message, 'verifyFailed'));
+            return;
+          }
+
+          setMessage('success', localizeApiMessage(verifyData.message, 'verified'));
+          setActiveStep('success');
+
+          setTimeout(function () {
+            window.location.href = redirectTarget;
+          }, 2800);
+        } catch (error) {
+          setMessage('error', t('networkError'));
+        } finally {
+          setButtonBusy(verifyBtn, false, t('verifying'), t('otpVerify'));
+        }
+      });
+
+      resendBtn.addEventListener('click', async function () {
+        clearMessage();
+
+        if (!state.phone) {
+          setMessage('error', t('registerFirst'));
+          setActiveStep('register');
+          return;
+        }
+
+        setButtonBusy(resendBtn, true, t('sending'), t('resend'));
+
+        try {
+          var resendResponse = await fetch('/api/founder/resend-otp', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              phone: state.phone,
+              name: state.name
+            })
+          });
+
+          var resendData = {};
+          try {
+            resendData = await resendResponse.json();
+          } catch (parseError) {
+            resendData = {};
+          }
+
+          if (!resendResponse.ok || resendData.status === 'error') {
+            setMessage('warn', localizeApiMessage(resendData.message, 'resendFailed'));
+            return;
+          }
+
+          setMessage('success', localizeApiMessage(resendData.message, 'resent'));
+          beginResendCooldown(180);
+        } catch (error) {
+          setMessage('error', t('networkError'));
+        } finally {
+          if (state.resendCooldownSeconds <= 0) {
+            setButtonBusy(resendBtn, false, t('sending'), t('resend'));
+          } else {
+            resendBtn.textContent = t('resend');
+          }
+        }
+      });
+
+      backBtn.addEventListener('click', function () {
+        clearMessage();
+        setActiveStep('register');
+      });
+
+      otpInput.addEventListener('input', function () {
+        otpInput.value = getOtpCodeInput();
+      });
+
+      setActiveStep('register');
+      postHeight();
+    })();
+  </script>
+</body>
+</html>

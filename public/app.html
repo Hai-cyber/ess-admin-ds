@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>ESSKULTUR Staff App</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #0f172a;
+      color: #f8fafc;
+      overflow: hidden;
+    }
+
+    :root {
+      --brand: #A54A7B;
+      --bg-dark: #0f172a;
+      --bg-card: #1e293b;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --border: #334155;
+      
+      --s-pending: #f59e0b;
+      --s-confirmed: #3b82f6;
+      --s-arrived: #8b5cf6;
+      --s-noshow: #ef4444;
+      --s-done: #10b981;
+      --s-cancelled: #6b7280;
+    }
+
+    /* LOGIN SCREEN */
+    .login-screen {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, var(--brand) 0%, #6b2c5f 100%);
+    }
+
+    .login-card {
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 2rem;
+      width: 90%;
+      max-width: 400px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .login-card h1 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+      text-align: center;
+    }
+
+    .login-card p {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+
+    .login-form input {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 1rem;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 1rem;
+    }
+
+    .login-form input::placeholder {
+      color: var(--muted);
+    }
+
+    .login-form input:focus {
+      outline: none;
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px rgba(165, 74, 123, 0.1);
+    }
+
+    .login-btn {
+      width: 100%;
+      padding: 12px;
+      background: var(--brand);
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .login-btn:hover {
+      background: #9a3c6d;
+    }
+
+    .login-btn:active {
+      transform: scale(0.98);
+    }
+
+    .login-error {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid #ef4444;
+      color: #fecaca;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+      display: none;
+    }
+
+    /* APP SCREEN */
+    .app-screen {
+      display: none;
+      flex-direction: column;
+      width: 100%;
+      height: 100%;
+    }
+
+    .app-header {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .app-header h2 {
+      font-size: 1.1rem;
+      flex: 1;
+    }
+
+    .app-header small {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .settings-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1.2rem;
+    }
+
+    .logout-btn {
+      background: transparent;
+      border: 1px solid var(--muted);
+      color: var(--muted);
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+
+    .logout-btn:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: var(--text);
+      color: var(--text);
+    }
+
+    /* FEED */
+    .app-feed {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem;
+      gap: 1rem;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .booking-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--s-pending);
+      border-radius: 8px;
+      padding: 1rem;
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+      animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .booking-item.confirmed {
+      border-left-color: var(--s-confirmed);
+    }
+
+    .booking-item.arrived {
+      border-left-color: var(--s-arrived);
+    }
+
+    .booking-item.cancelled {
+      border-left-color: var(--s-cancelled);
+      opacity: 0.6;
+    }
+
+    .booking-item.noshow {
+      border-left-color: var(--s-noshow);
+      opacity: 0.6;
+    }
+
+    .booking-item.done {
+      border-left-color: var(--s-done);
+      opacity: 0.6;
+    }
+
+    .booking-time {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--brand);
+      min-width: 70px;
+      text-align: center;
+    }
+
+    .booking-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .booking-name {
+      font-weight: 600;
+      font-size: 1rem;
+      margin-bottom: 0.3rem;
+      word-break: break-word;
+    }
+
+    .booking-details {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .booking-stage {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      background: rgba(165, 74, 123, 0.2);
+      color: var(--brand);
+    }
+
+    .booking-stage.confirmed {
+      background: rgba(59, 130, 246, 0.2);
+      color: #60a5fa;
+    }
+
+    .booking-stage.arrived {
+      background: rgba(139, 92, 246, 0.2);
+      color: #a78bfa;
+    }
+
+    .booking-buttons {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-top: 0.8rem;
+    }
+
+    .btn-stage {
+      padding: 8px 12px;
+      border: none;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+      color: white;
+    }
+
+    .btn-confirm {
+      background: var(--s-confirmed);
+    }
+
+    .btn-confirm:hover {
+      background: #2563eb;
+    }
+
+    .btn-arrived {
+      background: var(--s-arrived);
+    }
+
+    .btn-arrived:hover {
+      background: #7c3aed;
+    }
+
+    .btn-noshow {
+      background: var(--s-noshow);
+    }
+
+    .btn-noshow:hover {
+      background: #dc2626;
+    }
+
+    .btn-done {
+      background: var(--s-done);
+    }
+
+    .btn-done:hover {
+      background: #059669;
+    }
+
+    .btn-cancel {
+      background: var(--s-cancelled);
+    }
+
+    .btn-cancel:hover {
+      background: #4b5563;
+    }
+
+    .btn-stage:active {
+      transform: scale(0.95);
+    }
+
+    .btn-stage:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .empty-state {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      text-align: center;
+      padding: 2rem;
+    }
+
+    /* SETTINGS MODAL */
+    .settings-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .settings-content {
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 1.5rem;
+      width: 90%;
+      max-width: 400px;
+    }
+
+    .settings-content h3 {
+      margin-bottom: 1rem;
+      font-size: 1.2rem;
+    }
+
+    .setting-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .setting-item:last-child {
+      border-bottom: none;
+    }
+
+    .setting-label {
+      font-size: 0.95rem;
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 50px;
+      height: 28px;
+      background: var(--border);
+      border-radius: 14px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .toggle-switch.on {
+      background: var(--brand);
+    }
+
+    .toggle-switch::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 24px;
+      height: 24px;
+      background: white;
+      border-radius: 12px;
+      transition: left 0.3s;
+    }
+
+    .toggle-switch.on::after {
+      left: 24px;
+    }
+
+    .close-settings {
+      width: 100%;
+      padding: 10px;
+      background: var(--border);
+      border: none;
+      border-radius: 6px;
+      color: var(--text);
+      cursor: pointer;
+      margin-top: 1rem;
+    }
+
+    .close-settings:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* STATUS INDICATOR */
+    .status-indicator {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 6px;
+      background: #ef4444;
+      margin-right: 0.5rem;
+      animation: pulse 2s infinite;
+    }
+
+    .status-indicator.connected {
+      background: #10b981;
+      animation: none;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* TOAST NOTIFICATIONS */
+    .toast {
+      position: fixed;
+      bottom: 1rem;
+      right: 1rem;
+      background: var(--bg-card);
+      border-left: 4px solid var(--brand);
+      padding: 1rem;
+      border-radius: 6px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+      animation: slideUp 0.3s ease-out;
+      z-index: 2000;
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 480px) {
+      .booking-item {
+        padding: 0.8rem;
+      }
+
+      .booking-buttons {
+        gap: 0.3rem;
+      }
+
+      .btn-stage {
+        padding: 6px 10px;
+        font-size: 0.75rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- LOGIN SCREEN -->
+  <div class="login-screen" id="loginScreen">
+    <div class="login-card">
+      <h1>ESSKULTUR</h1>
+      <p>Staff App</p>
+      <form class="login-form" id="loginForm">
+        <div class="login-error" id="loginError"></div>
+        <input
+          type="tel"
+          id="pinInput"
+          placeholder="Enter PIN"
+          inputmode="numeric"
+          maxlength="4"
+          required
+        />
+        <button type="submit" class="login-btn">Login</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- APP SCREEN -->
+  <div class="app-screen" id="appScreen">
+    <div class="app-header">
+      <div>
+        <h2>📋 Bookings</h2>
+        <small><span class="status-indicator" id="statusIndicator"></span><span id="statusText">Connecting...</span></small>
+      </div>
+      <button class="settings-btn" id="settingsBtn">⚙️</button>
+      <button class="logout-btn" id="logoutBtn">Logout</button>
+    </div>
+
+    <div class="app-feed" id="appFeed">
+      <div class="empty-state">No bookings yet</div>
+    </div>
+  </div>
+
+  <!-- SETTINGS MODAL -->
+  <div class="settings-modal" id="settingsModal">
+    <div class="settings-content">
+      <h3>Settings</h3>
+      <div class="setting-item">
+        <label class="setting-label">Sound Notifications</label>
+        <div class="toggle-switch" id="soundToggle" role="switch" aria-checked="true"></div>
+      </div>
+      <button class="close-settings" id="closeSettings">Close</button>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      // State
+      let state = {
+        companyId: null,
+        staffId: null,
+        staffName: null,
+        soundEnabled: localStorage.getItem('soundEnabled') !== 'false',
+        bookings: [],
+        eventSource: null,
+        bookingUpdate: null
+      };
+
+      const STAGE_COLORS = {
+        pending: '#f59e0b',
+        confirmed: '#3b82f6',
+        arrived: '#8b5cf6',
+        noshow: '#ef4444',
+        done: '#10b981',
+        cancelled: '#6b7280'
+      };
+
+      const STAGE_LABELS = {
+        pending: 'Pending',
+        confirmed: 'Confirmed',
+        arrived: 'Arrived',
+        noshow: 'No-Show',
+        done: 'Done',
+        cancelled: 'Cancelled'
+      };
+
+      // DOM Elements
+      const loginScreen = document.getElementById('loginScreen');
+      const appScreen = document.getElementById('appScreen');
+      const loginForm = document.getElementById('loginForm');
+      const pinInput = document.getElementById('pinInput');
+      const loginError = document.getElementById('loginError');
+      const appFeed = document.getElementById('appFeed');
+      const settingsBtn = document.getElementById('settingsBtn');
+      const logoutBtn = document.getElementById('logoutBtn');
+      const settingsModal = document.getElementById('settingsModal');
+      const soundToggle = document.getElementById('soundToggle');
+      const closeSettings = document.getElementById('closeSettings');
+      const statusIndicator = document.getElementById('statusIndicator');
+      const statusText = document.getElementById('statusText');
+
+      // Initialize
+      function init() {
+        loginForm.addEventListener('submit', handleLogin);
+        logoutBtn.addEventListener('click', handleLogout);
+        settingsBtn.addEventListener('click', () => settingsModal.style.display = 'flex');
+        closeSettings.addEventListener('click', () => settingsModal.style.display = 'none');
+        soundToggle.addEventListener('click', toggleSound);
+        settingsModal.addEventListener('click', (e) => {
+          if (e.target === settingsModal) settingsModal.style.display = 'none';
+        });
+
+        // Update sound toggle UI
+        updateSoundToggleUI();
+      }
+
+      // Login
+      async function handleLogin(e) {
+        e.preventDefault();
+        const pin = pinInput.value.trim();
+
+        if (!pin) {
+          showLoginError('Please enter PIN');
+          return;
+        }
+
+        loginError.style.display = 'none';
+
+        try {
+          const res = await fetch(`/api/staff/auth?pin=${encodeURIComponent(pin)}`);
+          const data = await res.json();
+
+          if (data.success) {
+            state.companyId = data.companyId;
+            state.staffId = data.staffId;
+            state.staffName = data.staffName;
+            showApp();
+            startSSEStream();
+          } else {
+            showLoginError('Invalid PIN');
+            pinInput.value = '';
+            pinInput.focus();
+          }
+        } catch (err) {
+          console.error('Login error:', err);
+          showLoginError('Network error. Try again.');
+        }
+      }
+
+      function showLoginError(msg) {
+        loginError.textContent = msg;
+        loginError.style.display = 'block';
+      }
+
+      function handleLogout() {
+        if (state.eventSource) {
+          state.eventSource.close();
+          state.eventSource = null;
+        }
+        state = {
+          companyId: null,
+          staffId: null,
+          staffName: null,
+          soundEnabled: state.soundEnabled,
+          bookings: [],
+          eventSource: null
+        };
+        appFeed.innerHTML = '<div class="empty-state">No bookings yet</div>';
+        loginScreen.style.display = 'flex';
+        appScreen.style.display = 'none';
+        pinInput.value = '';
+      }
+
+      // Show/Hide Screens
+      function showApp() {
+        loginScreen.style.display = 'none';
+        appScreen.style.display = 'flex';
+      }
+
+      // SSE Stream for Notifications
+      function startSSEStream() {
+        if (state.eventSource) {
+          state.eventSource.close();
+        }
+
+        const url = `/api/notifications/stream?company_id=${state.companyId}`;
+        state.eventSource = new EventSource(url);
+
+        state.eventSource.addEventListener('booking', (e) => {
+          try {
+            const booking = JSON.parse(e.data);
+            addOrUpdateBooking(booking);
+            playNotification(booking);
+          } catch (err) {
+            console.error('Error parsing booking:', err);
+          }
+        });
+
+        state.eventSource.addEventListener('stage-update', (e) => {
+          try {
+            const data = JSON.parse(e.data);
+            updateBookingStage(data.bookingId, data.newStage);
+          } catch (err) {
+            console.error('Error parsing stage update:', err);
+          }
+        });
+
+        state.eventSource.addEventListener('error', () => {
+          updateConnectionStatus(false);
+          setTimeout(startSSEStream, 3000);
+        });
+
+        state.eventSource.addEventListener('open', () => {
+          updateConnectionStatus(true);
+        });
+      }
+
+      function updateConnectionStatus(connected) {
+        if (connected) {
+          statusIndicator.classList.add('connected');
+          statusText.textContent = 'Connected';
+        } else {
+          statusIndicator.classList.remove('connected');
+          statusText.textContent = 'Reconnecting...';
+        }
+      }
+
+      // Add or Update Booking
+      function addOrUpdateBooking(booking) {
+        const existing = state.bookings.findIndex(b => b.id === booking.id);
+        if (existing >= 0) {
+          state.bookings[existing] = booking;
+        } else {
+          state.bookings.unshift(booking);
+        }
+        renderFeed();
+      }
+
+      function updateBookingStage(bookingId, newStage) {
+        const booking = state.bookings.find(b => b.id === bookingId);
+        if (booking) {
+          booking.stage = newStage;
+          renderFeed();
+        }
+      }
+
+      // Play Notification
+      function playNotification(booking) {
+        // Vibration (mandatory)
+        if (navigator.vibrate) {
+          navigator.vibrate([200, 100, 200]);
+        }
+
+        // Sound (optional)
+        if (state.soundEnabled) {
+          playSound();
+        }
+      }
+
+      function playSound() {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+        oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.2);
+
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.5);
+      }
+
+      // Render Feed
+      function renderFeed() {
+        if (state.bookings.length === 0) {
+          appFeed.innerHTML = '<div class="empty-state">No bookings yet</div>';
+          return;
+        }
+
+        appFeed.innerHTML = state.bookings.map(booking => `
+          <div class="booking-item ${booking.stage}">
+            <div class="booking-time">${booking.booking_time}</div>
+            <div class="booking-info">
+              <div class="booking-name">👤 ${booking.contact_name}</div>
+              <div class="booking-details">
+                <span>👥 ${booking.guests_pax} pax</span>
+                <span>🏘️ ${booking.area}</span>
+                <span class="booking-stage ${booking.stage}">${STAGE_LABELS[booking.stage] || booking.stage}</span>
+              </div>
+              <div class="booking-buttons">
+                ${getActionButtons(booking)}
+              </div>
+            </div>
+          </div>
+        `).join('');
+
+        // Attach event listeners
+        document.querySelectorAll('.btn-stage').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            const bookingId = btn.dataset.bookingId;
+            const newStage = btn.dataset.stage;
+            await updateStage(bookingId, newStage, btn);
+          });
+        });
+      }
+
+      function getActionButtons(booking) {
+        const btns = [];
+
+        // Stage: pending → Show: Confirm, Cancel
+        if (booking.stage === 'pending') {
+          btns.push(`<button class="btn-stage btn-confirm" data-booking-id="${booking.id}" data-stage="confirmed">✓ Confirm</button>`);
+          btns.push(`<button class="btn-stage btn-cancel" data-booking-id="${booking.id}" data-stage="cancelled">✕ Cancel</button>`);
+        }
+
+        // Stage: confirmed → Show: Arrived, No-Show, Cancel
+        if (booking.stage === 'confirmed') {
+          btns.push(`<button class="btn-stage btn-arrived" data-booking-id="${booking.id}" data-stage="arrived">🚪 Arrived</button>`);
+          btns.push(`<button class="btn-stage btn-noshow" data-booking-id="${booking.id}" data-stage="noshow">∅ No-Show</button>`);
+          btns.push(`<button class="btn-stage btn-cancel" data-booking-id="${booking.id}" data-stage="cancelled">✕ Cancel</button>`);
+        }
+
+        // Stage: arrived → Show: Done, Cancel (NOT No-Show - they already arrived)
+        if (booking.stage === 'arrived') {
+          btns.push(`<button class="btn-stage btn-done" data-booking-id="${booking.id}" data-stage="done">✓ Done</button>`);
+          btns.push(`<button class="btn-stage btn-cancel" data-booking-id="${booking.id}" data-stage="cancelled">✕ Cancel</button>`);
+        }
+
+        return btns.join('');
+      }
+
+      // Update Stage
+      async function updateStage(bookingId, newStage, btn) {
+        btn.disabled = true;
+
+        try {
+          const res = await fetch(`/api/bookings/${bookingId}/stage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              stage: newStage,
+              staffId: state.staffId,
+              companyId: state.companyId
+            })
+          });
+
+          const data = await res.json();
+
+          if (data.success) {
+            updateBookingStage(bookingId, newStage);
+            showToast(`Booking updated to ${STAGE_LABELS[newStage]}`);
+          } else {
+            showToast('Error updating booking', 'error');
+          }
+        } catch (err) {
+          console.error('Update error:', err);
+          showToast('Network error', 'error');
+        }
+
+        btn.disabled = false;
+      }
+
+      // Sound Toggle
+      function toggleSound() {
+        state.soundEnabled = !state.soundEnabled;
+        localStorage.setItem('soundEnabled', state.soundEnabled);
+        updateSoundToggleUI();
+      }
+
+      function updateSoundToggleUI() {
+        if (state.soundEnabled) {
+          soundToggle.classList.add('on');
+          soundToggle.setAttribute('aria-checked', 'true');
+        } else {
+          soundToggle.classList.remove('on');
+          soundToggle.setAttribute('aria-checked', 'false');
+        }
+      }
+
+      // Toast
+      function showToast(msg, type = 'success') {
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.textContent = msg;
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+          toast.style.animation = 'slideUp 0.3s ease-out reverse';
+          setTimeout(() => toast.remove(), 300);
+        }, 3000);
+      }
+
+      // Start
+      init();
+      pinInput.focus();
+    })();
+  </script>
+</body>
+</html>

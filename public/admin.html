@@ -1,0 +1,2359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESSKULTUR Staff Admin</title>
+  <style>
+    :root {
+      --brand: #A54A7B;
+      --brand-dark: #8a3d66;
+      --bg-primary: #0f172a;
+      --bg-secondary: #1e293b;
+      --bg-tertiary: #334155;
+      --text-primary: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #475569;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --pending: #f59e0b;
+      --confirmed: #3b82f6;
+      --arrived: #8b5cf6;
+      --done: #10b981;
+      --cancelled: #6b7280;
+      --noshow: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      overflow: hidden;
+      height: 100vh;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    /* ==================== HEADER ==================== */
+    .header {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .header-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--brand);
+    }
+
+    .header-nav {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .nav-btn {
+      padding: 8px 16px;
+      border: 1px solid var(--border);
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.9rem;
+      transition: all 0.2s ease;
+    }
+
+    .nav-btn:hover {
+      background: var(--border);
+      color: var(--brand);
+    }
+
+    .nav-btn.active {
+      background: var(--brand);
+      border-color: var(--brand);
+      color: #fff;
+    }
+
+    .user-info {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logout-btn {
+      padding: 6px 12px;
+      background: var(--danger);
+      border: none;
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+
+    /* ==================== MAIN CONTENT ==================== */
+    .main {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+    }
+
+    .page {
+      flex: 1;
+      display: none;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 20px;
+    }
+
+    .page.active {
+      display: block;
+    }
+
+    .page-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 20px;
+      color: var(--brand);
+    }
+
+    .page-search {
+      margin-bottom: 14px;
+      max-width: 460px;
+    }
+
+    .page-search-input {
+      width: 100%;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 0.9rem;
+    }
+
+    .page-search-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .page-search-input:focus {
+      outline: none;
+      border-color: var(--brand);
+      box-shadow: 0 0 0 2px rgba(165, 74, 123, 0.22);
+    }
+
+    /* ==================== PAGE 1: CONTACTS ==================== */
+    .contact-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .contact-card:hover {
+      border-color: var(--brand);
+      box-shadow: 0 4px 12px rgba(165, 74, 123, 0.2);
+    }
+
+    .contact-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 8px;
+    }
+
+    .contact-name {
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    .contact-time {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .contact-subject {
+      font-weight: 600;
+      color: var(--brand);
+      margin-bottom: 6px;
+    }
+
+    .contact-summary {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .contact-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .btn-small {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+      background: var(--brand);
+      color: white;
+    }
+
+    .btn-secondary {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: var(--border);
+    }
+
+    /* ==================== PAGE 2: BOOKINGS ==================== */
+    .booking-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .booking-row {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .booking-row:hover {
+      border-color: var(--brand);
+      box-shadow: 0 4px 12px rgba(165, 74, 123, 0.2);
+    }
+
+    .booking-row.expanded {
+      border-color: var(--brand);
+      background: var(--bg-tertiary);
+    }
+
+    .booking-summary {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr auto;
+      gap: 12px;
+      align-items: center;
+      font-size: 0.95rem;
+    }
+
+    .booking-info {
+      min-width: 0;
+    }
+
+    .booking-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+
+    .booking-value {
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .stage-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .stage-badge.pending { background: var(--pending); }
+    .stage-badge.confirmed { background: var(--confirmed); color: white; }
+    .stage-badge.arrived { background: var(--arrived); color: white; }
+    .stage-badge.done { background: var(--done); color: white; }
+    .stage-badge.cancelled { background: var(--cancelled); }
+    .stage-badge.noshow { background: var(--noshow); color: white; }
+
+    .booking-expanded {
+      display: none;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    .booking-row.expanded .booking-expanded {
+      display: block;
+    }
+
+    .booking-details {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .detail-item {
+      background: var(--bg-secondary);
+      padding: 10px;
+      border-radius: 6px;
+    }
+
+    .detail-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .detail-value {
+      font-weight: 600;
+      word-break: break-word;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .stage-btn {
+      flex: 1;
+      min-width: 100px;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+
+    .stage-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .stage-btn.confirm { border-color: var(--confirmed); color: var(--confirmed); }
+    .stage-btn.arrived { border-color: var(--arrived); color: var(--arrived); }
+    .stage-btn.done { border-color: var(--done); color: var(--done); }
+    .stage-btn.cancelled { border-color: var(--cancelled); color: var(--cancelled); }
+    .stage-btn.noshow { border-color: var(--noshow); color: var(--noshow); }
+
+    .stage-btn:active {
+      transform: translateY(0);
+      background: var(--border);
+    }
+
+    /* ==================== PAGE 3: CUSTOMERS ==================== */
+    .customer-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .customer-card:hover {
+      border-color: var(--brand);
+      box-shadow: 0 4px 12px rgba(165, 74, 123, 0.2);
+    }
+
+    .customer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .customer-name {
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    .customer-badges {
+      display: flex;
+      gap: 6px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .badge.vip { background: #fbbf24; color: #000; }
+    .badge.founder { background: #22d3ee; color: #000; }
+    .badge.kc { background: #db2777; color: white; }
+
+    .customer-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .stat {
+      background: var(--bg-tertiary);
+      padding: 8px;
+      border-radius: 6px;
+      text-align: center;
+    }
+
+    .stat-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .stat-value {
+      font-weight: 700;
+      color: var(--brand);
+    }
+
+    /* ==================== PAGE 4: SETTINGS ==================== */
+    .settings-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+
+    .settings-section {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+    }
+
+    .settings-section-title {
+      font-weight: 700;
+      font-size: 1rem;
+      margin-bottom: 12px;
+      color: var(--brand);
+    }
+
+    .setting-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+      align-items: center;
+    }
+
+    .setting-label {
+      font-weight: 600;
+    }
+
+    .setting-value {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      border-radius: 6px;
+      color: var(--text-primary);
+    }
+
+    .secret-status {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
+    .secret-status.set {
+      background: rgba(16, 185, 129, 0.2);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.5);
+    }
+
+    .secret-status.missing {
+      background: rgba(239, 68, 68, 0.2);
+      color: #fca5a5;
+      border: 1px solid rgba(239, 68, 68, 0.5);
+    }
+
+    .integration-note {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.45;
+      margin-top: 8px;
+    }
+
+    .staff-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .staff-item {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .staff-info h4 {
+      margin-bottom: 2px;
+    }
+
+    .staff-role {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .staff-status {
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .staff-status.active {
+      background: var(--success);
+      color: white;
+    }
+
+    .media-upload-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .media-upload-grid .full-width {
+      grid-column: 1 / -1;
+    }
+
+    .media-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .media-card {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .media-preview {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-secondary);
+    }
+
+    .media-meta {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      line-height: 1.35;
+    }
+
+    .media-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+
+    /* ==================== MOBILE RESPONSIVE ==================== */
+    @media (max-width: 768px) {
+      .booking-summary {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+
+      .booking-details {
+        grid-template-columns: 1fr;
+      }
+
+      .header-nav {
+        font-size: 0.85rem;
+      }
+
+      .nav-btn {
+        padding: 6px 12px;
+      }
+
+      .customer-stats {
+        grid-template-columns: 1fr;
+      }
+
+      .setting-row {
+        grid-template-columns: 1fr;
+      }
+
+      .media-upload-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ==================== MODAL ==================== */
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      max-width: 500px;
+      width: 90vw;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    .modal-close {
+      float: right;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--text-muted);
+      border: none;
+      background: none;
+    }
+
+    /* ==================== UTILITY ==================== */
+    .full-width {
+      grid-column: 1 / -1;
+    }
+
+    .text-center {
+      text-align: center;
+    }
+
+    .mt-2 { margin-top: 16px; }
+    .mb-2 { margin-bottom: 16px; }
+    .gap-2 { gap: 16px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- HEADER -->
+    <div class="header">
+      <div class="header-title">🍽️ ESSKULTUR Staff Admin</div>
+      <div class="header-nav">
+        <button class="nav-btn active" data-page="contacts">💬 Messages Board</button>
+        <button class="nav-btn" data-page="bookings">📅 Bookings</button>
+        <button class="nav-btn" data-page="customers">👥 Customers</button>
+        <button class="nav-btn" data-page="settings">⚙️ Settings</button>
+      </div>
+      <div class="user-info">
+        <span>👤 <span id="userName">Admin</span></span>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+      </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main">
+      <!-- PAGE 1: CONTACTS -->
+      <div class="page active" data-page="contacts">
+        <h2 class="page-title">💬 Messages Board</h2>
+        <div class="page-search">
+          <input
+            type="search"
+            id="contactsSearchInput"
+            class="page-search-input"
+            placeholder="Search messages by name, phone, subject, or message"
+            oninput="updateContactsSearch(this.value)"
+          >
+        </div>
+        <div id="contactsList"></div>
+      </div>
+
+      <!-- PAGE 2: BOOKINGS -->
+      <div class="page" data-page="bookings">
+        <h2 class="page-title">📅 Booking Management</h2>
+        <div class="page-search">
+          <input
+            type="search"
+            id="bookingsSearchInput"
+            class="page-search-input"
+            placeholder="Search bookings by guest, phone, date, area, or stage"
+            oninput="updateBookingsSearch(this.value)"
+          >
+        </div>
+        <div id="bookingsList"></div>
+      </div>
+
+      <!-- PAGE 3: CUSTOMERS -->
+      <div class="page" data-page="customers">
+        <h2 class="page-title">👥 Customer Book</h2>
+        <div class="page-search">
+          <input
+            type="search"
+            id="customersSearchInput"
+            class="page-search-input"
+            placeholder="Search customers by name, phone, status, or tags"
+            oninput="updateCustomersSearch(this.value)"
+          >
+        </div>
+        <div id="customersList"></div>
+      </div>
+
+      <!-- PAGE 4: SETTINGS -->
+      <div class="page" data-page="settings">
+        <h2 class="page-title">⚙️ Settings & Admin</h2>
+        <div class="settings-grid">
+          <div class="settings-section">
+            <div class="settings-section-title">Restaurant Profile</div>
+            <div id="companyProfileList"></div>
+          </div>
+          <div class="settings-section">
+            <div class="settings-section-title">Operations & Capacity</div>
+            <div id="operationalSettingsList"></div>
+          </div>
+          <div class="settings-section">
+            <div class="settings-section-title">Social Profiles & Public IDs</div>
+            <div id="socialSettingsList"></div>
+          </div>
+          <div class="settings-section">
+            <div class="settings-section-title">Extra Service Modules</div>
+            <div id="moduleToggleList"></div>
+          </div>
+          <div class="settings-section">
+            <div class="settings-section-title">Integrations (Founder OTP / Odoo)</div>
+            <div id="integrationConfigList"></div>
+          </div>
+          <div class="settings-section">
+            <div class="settings-section-title">Marketing Media Library</div>
+            <div id="mediaAssetsList"></div>
+          </div>
+          <div class="settings-section">
+            <div class="settings-section-title">Staff Management</div>
+            <div class="staff-list" id="staffList"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ==================== STATE & AUTH ====================
+    let currentUser = null;
+    let currentPage = 'contacts';
+    let contacts = [];
+    let bookings = [];
+    let customers = [];
+    let settings = {};
+    let staff = [];
+    let companyProfile = null;
+    let operationalSettings = {};
+    let moduleSettings = {};
+    let integrationConfig = {};
+    let mediaAssets = [];
+    let platformConfigError = '';
+    let staffError = '';
+    let mediaAssetsError = '';
+    let contactsError = '';
+    let bookingsError = '';
+    let customersError = '';
+    let contactsSearchTerm = '';
+    let bookingsSearchTerm = '';
+    let customersSearchTerm = '';
+
+    const OPERATIONAL_SETTING_KEYS = [
+      'website_url',
+      'standard_contact_link',
+      'booking_email',
+      'social_instagram_url',
+      'social_facebook_url',
+      'social_tiktok_url',
+      'social_google_business_url',
+      'business_hours_open',
+      'business_hours_close',
+      'closed_weekday',
+      'min_booking_advance_min',
+      'default_booking_duration',
+      'area_capacity_indoor',
+      'area_capacity_outdoor',
+      'area_capacity_garden',
+      'area_capacity_bar',
+      'founder_program_label',
+      'kc_program_label',
+      'founder_membership_type',
+      'kc_membership_type',
+      'founder_redirect_link',
+      'kc_redirect_link',
+      'founder_terms_link',
+      'kc_terms_link',
+      'privacy_link'
+    ];
+
+    const OPERATIONAL_LABELS = {
+      website_url: 'Website URL',
+      standard_contact_link: 'Standard Contact Link',
+      booking_email: 'Booking Email',
+      social_instagram_url: 'Instagram URL',
+      social_facebook_url: 'Facebook URL',
+      social_tiktok_url: 'TikTok URL',
+      social_google_business_url: 'Google Business URL',
+      business_hours_open: 'Open Time',
+      business_hours_close: 'Close Time',
+      closed_weekday: 'Closed Weekday',
+      min_booking_advance_min: 'Min Booking Advance (min)',
+      default_booking_duration: 'Default Booking Duration (min)',
+      area_capacity_indoor: 'Indoor Capacity',
+      area_capacity_outdoor: 'Outdoor Capacity',
+      area_capacity_garden: 'Garden Capacity',
+      area_capacity_bar: 'Bar Capacity',
+      founder_program_label: 'Founder Program Label',
+      kc_program_label: 'KC Program Label',
+      founder_membership_type: 'Founder Membership Type',
+      kc_membership_type: 'KC Membership Type',
+      founder_redirect_link: 'Founder Redirect Link (path or URL)',
+      kc_redirect_link: 'KC Redirect Link (path or URL)',
+      founder_terms_link: 'Founder Terms Link (path or URL)',
+      kc_terms_link: 'KC Terms Link (path or URL)',
+      privacy_link: 'Privacy Link (path or URL)'
+    };
+
+    const SOCIAL_SETTING_KEYS = [
+      'social_instagram_url',
+      'social_facebook_url',
+      'social_tiktok_url',
+      'social_google_business_url'
+    ];
+
+    const MODULE_KEYS = [
+      'module_membership_management',
+      'module_marketing_management',
+      'module_contact_crm',
+      'module_loyalty_rewards',
+      'module_booking_management',
+      'module_digital_management',
+      'module_telegram_notifications'
+    ];
+
+    const MODULE_LABELS = {
+      module_membership_management: 'Community & Membership',
+      module_marketing_management: 'Marketing Management',
+      module_booking_management: 'Booking Management',
+      module_contact_crm: 'CRM & Odoo Operations',
+      module_loyalty_rewards: 'Loyalty & Rewards (Advanced)',
+      module_digital_management: 'SEO, Hosting & Domain Management',
+      module_telegram_notifications: 'Booking Board Notifications (Telegram)'
+    };
+
+    const MODULE_DESCRIPTIONS = {
+      module_membership_management: 'Founder/KC opt-in, OTP automation, membership lifecycle, and member behavior tracking.',
+      module_marketing_management: 'Social media workflows, SMS/email campaigns, retention loops, and campaign content operations.',
+      module_booking_management: 'Booking form, stage automation, booking board synchronization, and staff booking operations.',
+      module_contact_crm: 'Contact inbox and CRM/Odoo operational workflows for customer and product/menu data operations.',
+      module_loyalty_rewards: 'Advanced loyalty mechanics, benefit tiers, and reward automation on top of CRM/Odoo operations.',
+      module_digital_management: 'SEO, hosting, domain, and overall digital presence operations.',
+      module_telegram_notifications: 'Telegram notifications for booking board and staff alert workflows.'
+    };
+
+    const NON_SECRET_INTEGRATION_KEYS = [
+      'FOUNDER_OTP_CHANNELS',
+      'FOUNDER_TEST_EXCEPTION_PHONES',
+      'TWILIO_WHATSAPP_FROM',
+      'TWILIO_SMS_FROM',
+      'TWILIO_MESSAGING_SERVICE_SID',
+      'ODOO_FOUNDER_CREATE_WEBHOOK',
+      'ODOO_FOUNDER_VERIFY_WEBHOOK',
+      'ODOO_STAFF_SYNC_WEBHOOK'
+    ];
+
+    const SECRET_INTEGRATION_KEYS = [
+      'TURNSTILE_SECRET',
+      'TWILIO_ACCOUNT_SID',
+      'TWILIO_AUTH_TOKEN'
+    ];
+
+    const INTEGRATION_LABELS = {
+      FOUNDER_OTP_CHANNELS: 'Founder OTP Channels',
+      FOUNDER_TEST_EXCEPTION_PHONES: 'Founder Test Exception Phones',
+      TWILIO_WHATSAPP_FROM: 'Twilio WhatsApp From',
+      TWILIO_SMS_FROM: 'Twilio SMS From',
+      TWILIO_MESSAGING_SERVICE_SID: 'Twilio Messaging Service SID',
+      ODOO_FOUNDER_CREATE_WEBHOOK: 'Odoo Founder Create Webhook',
+      ODOO_FOUNDER_VERIFY_WEBHOOK: 'Odoo Founder Verify Webhook',
+      ODOO_STAFF_SYNC_WEBHOOK: 'Odoo Staff Sync Webhook',
+      TURNSTILE_SECRET: 'Turnstile Secret',
+      TWILIO_ACCOUNT_SID: 'Twilio Account SID',
+      TWILIO_AUTH_TOKEN: 'Twilio Auth Token'
+    };
+
+    // ==================== INITIALIZATION ====================
+    async function init() {
+      try {
+        // Check if authenticated
+        const user = localStorage.getItem('esskultur_user');
+        if (!user) {
+          // Show PIN login
+          await showPINGate();
+          return;
+        }
+
+        currentUser = JSON.parse(user);
+        if (!currentUser?.pin) {
+          localStorage.removeItem('esskultur_user');
+          await showPINGate();
+          return;
+        }
+        document.getElementById('userName').textContent = currentUser.name;
+
+        // Load all data
+        await loadAllData();
+
+        // Setup page navigation
+        setupPageNavigation();
+
+        // Initial render
+        renderContactsPage();
+      } catch (error) {
+        console.error('Init error:', error);
+      }
+    }
+
+    async function showPINGate() {
+      const pin = prompt('🔐 Enter Staff PIN:');
+      if (!pin) {
+        alert('PIN required to access');
+        await showPINGate();
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/staff/auth?pin=${encodeURIComponent(pin.trim())}`);
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok || !data.success) {
+          alert(data.error || 'Invalid PIN');
+          await showPINGate();
+          return;
+        }
+
+        currentUser = {
+          id: data.staffId,
+          name: data.staffName || 'Staff',
+          role: data.role || 'staff',
+          companyId: data.companyId || 1,
+          pin: pin.trim()
+        };
+
+        localStorage.setItem('esskultur_user', JSON.stringify(currentUser));
+        document.getElementById('userName').textContent = currentUser.name;
+        await init();
+      } catch (error) {
+        alert(error.message || 'Unable to authenticate right now.');
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem('esskultur_user');
+      location.reload();
+    }
+
+    function getCurrentRole() {
+      return String(currentUser?.role || '').toLowerCase();
+    }
+
+    function isAdminUser() {
+      return getCurrentRole() === 'admin';
+    }
+
+    function isManagerUser() {
+      return getCurrentRole() === 'manager';
+    }
+
+    function isManagerOrAdminUser() {
+      const role = getCurrentRole();
+      return role === 'admin' || role === 'manager';
+    }
+
+    // ==================== DATA LOADING ====================
+    async function loadAllData() {
+      try {
+        await Promise.all([
+          loadContactsData(),
+          loadBookingsData(),
+          loadCustomersData()
+        ]);
+
+        if (isManagerOrAdminUser()) {
+          const tasks = [
+            loadPlatformConfig(),
+            loadMediaAssets()
+          ];
+
+          if (isAdminUser()) {
+            tasks.push(loadStaffData(), loadIntegrationConfig());
+          }
+
+          await Promise.all(tasks);
+        } else {
+          platformConfigError = '';
+          staffError = '';
+          mediaAssetsError = '';
+          mediaAssets = [];
+        }
+      } catch (error) {
+        console.error('Data loading error:', error);
+      }
+    }
+
+    async function loadContactsData() {
+      if (!currentUser?.pin) return;
+
+      try {
+        const res = await fetch(`/api/contacts?pin=${encodeURIComponent(currentUser.pin)}`);
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok || !data.ok) {
+          contactsError = data.error || 'Unable to load messages.';
+          contacts = [];
+          return;
+        }
+
+        contacts = Array.isArray(data.data) ? data.data : [];
+        contactsError = '';
+      } catch (error) {
+        contactsError = error.message || 'Network error while loading messages.';
+        contacts = [];
+      }
+    }
+
+    async function loadBookingsData() {
+      try {
+        const res = await fetch('/api/bookings');
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok || !data.ok) {
+          bookingsError = data.error || 'Unable to load bookings.';
+          bookings = [];
+          return;
+        }
+
+        bookings = Array.isArray(data.data) ? data.data : [];
+        bookingsError = '';
+      } catch (error) {
+        bookingsError = error.message || 'Network error while loading bookings.';
+        bookings = [];
+      }
+    }
+
+    async function loadCustomersData() {
+      try {
+        const res = await fetch('/api/customers');
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok || !data.ok) {
+          customersError = data.error || 'Unable to load customers.';
+          customers = [];
+          return;
+        }
+
+        customers = Array.isArray(data.data) ? data.data : [];
+        customersError = '';
+      } catch (error) {
+        customersError = error.message || 'Network error while loading customers.';
+        customers = [];
+      }
+    }
+
+    function normalizeSearchTerm(value) {
+      return String(value || '').trim().toLowerCase();
+    }
+
+    function matchesSearch(recordValues, query) {
+      if (!query) return true;
+      return recordValues.some(value => String(value || '').toLowerCase().includes(query));
+    }
+
+    function updateContactsSearch(value) {
+      contactsSearchTerm = String(value || '');
+      renderContactsPage();
+    }
+
+    function updateBookingsSearch(value) {
+      bookingsSearchTerm = String(value || '');
+      renderBookingsPage();
+    }
+
+    function updateCustomersSearch(value) {
+      customersSearchTerm = String(value || '');
+      renderCustomersPage();
+    }
+
+    function parseCustomerFlags(rawFlags) {
+      if (Array.isArray(rawFlags)) return rawFlags;
+      if (typeof rawFlags !== 'string') return [];
+
+      try {
+        const parsed = JSON.parse(rawFlags);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+
+    // ==================== PAGE NAVIGATION ====================
+    function setupPageNavigation() {
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const page = e.target.dataset.page;
+          switchPage(page);
+        });
+      });
+    }
+
+    function switchPage(page) {
+      currentPage = page;
+      
+      // Update nav buttons
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.page === page);
+      });
+      
+      // Update pages
+      document.querySelectorAll('.page').forEach(p => {
+        p.classList.toggle('active', p.dataset.page === page);
+      });
+      
+      // Render page
+      switch (page) {
+        case 'contacts':
+          renderContactsPage();
+          loadContactsData().then(() => {
+            renderContactsPage();
+          });
+          break;
+        case 'bookings':
+          renderBookingsPage();
+          loadBookingsData().then(() => {
+            renderBookingsPage();
+          });
+          break;
+        case 'customers':
+          renderCustomersPage();
+          loadCustomersData().then(() => {
+            renderCustomersPage();
+          });
+          break;
+        case 'settings':
+          renderSettingsPage();
+          if (isManagerOrAdminUser()) {
+            const tasks = [
+              loadPlatformConfig(),
+              loadMediaAssets()
+            ];
+
+            if (isAdminUser()) {
+              tasks.push(loadStaffData(), loadIntegrationConfig());
+            }
+
+            Promise.all(tasks).then(() => {
+              renderSettingsPage();
+            });
+          }
+          break;
+      }
+    }
+
+    // ==================== PAGE 1: CONTACTS ====================
+    function renderContactsPage() {
+      const container = document.getElementById('contactsList');
+      const query = normalizeSearchTerm(contactsSearchTerm);
+
+      if (contactsError) {
+        container.innerHTML = `<p style="color: var(--danger); text-align: center;">${escapeHtml(contactsError)}</p>`;
+        return;
+      }
+      
+      if (contacts.length === 0) {
+        container.innerHTML = '<p style="color: var(--text-muted); text-align: center;">No new messages</p>';
+        return;
+      }
+
+      const filteredContacts = contacts.filter((contact) => {
+        return matchesSearch([
+          contact.name,
+          contact.email,
+          contact.phone,
+          contact.subject,
+          contact.summary,
+          contact.message
+        ], query);
+      });
+
+      if (!filteredContacts.length) {
+        container.innerHTML = '<p style="color: var(--text-muted); text-align: center;">No messages match your search</p>';
+        return;
+      }
+      
+      container.innerHTML = filteredContacts.map(contact => `
+        <div class="contact-card">
+          <div class="contact-header">
+            <div class="contact-name">${escapeHtml(contact.name || 'Unknown')}</div>
+            <div class="contact-time">${contact.submitted_at ? new Date(contact.submitted_at).toLocaleTimeString() : ''}</div>
+          </div>
+          <div class="contact-subject">${escapeHtml(contact.subject || 'No subject')}</div>
+          <div class="contact-summary">${escapeHtml(contact.summary || contact.message || '')}</div>
+          <div class="contact-actions">
+            <button class="btn-small btn-primary" onclick="readContact('${escapeHtml(contact.id)}')">View Full</button>
+            <button class="btn-small btn-secondary" onclick="pushToGmail('${escapeHtml(contact.id)}')">→ Gmail</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function readContact(id) {
+      const contact = contacts.find(c => c.id === id);
+      if (!contact) {
+        alert('Contact not found.');
+        return;
+      }
+
+      alert(`Full Message:\n\nSubject: ${contact.subject || 'No subject'}\n\n${contact.message || contact.summary || ''}`);
+    }
+
+    async function pushToGmail(id) {
+      if (!currentUser?.pin) {
+        alert('Please login again.');
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/contacts/${encodeURIComponent(id)}/push`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin: currentUser.pin })
+        });
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok || !data.ok) {
+          alert(data.error || 'Failed to process contact.');
+          return;
+        }
+
+        await loadContactsData();
+        renderContactsPage();
+        alert('Contact marked as pushed.');
+      } catch (error) {
+        alert(error.message || 'Network error while processing contact.');
+      }
+    }
+
+    // ==================== STAGE-AWARE ACTION BUTTONS ====================
+    function getActionButtons(stage, bookingId) {
+      const btn = (label, action, className) => 
+        `<button class="stage-btn ${className}" onclick="event.stopPropagation(); updateStage('${bookingId}', '${action}')">${label}</button>`;
+
+      switch(stage) {
+        case 'pending':
+          return btn('✓ Confirm', 'confirmed', 'confirm') + 
+                 btn('✗ Cancel', 'cancelled', 'cancelled');
+        
+        case 'confirmed':
+          return btn('→ Arrived', 'arrived', 'arrived') + 
+                 btn('✗ Cancel', 'cancelled', 'cancelled') + 
+                 btn('⊘ No-Show', 'noshow', 'noshow');
+        
+        case 'arrived':
+          return btn('✓ Done', 'done', 'done') + 
+                 btn('✗ Cancel', 'cancelled', 'cancelled');
+        
+        case 'done':
+        case 'cancelled':
+        case 'noshow':
+          return '<div style="color: var(--text-muted); font-size: 0.9rem; padding: 8px;">Terminal status - no actions available</div>';
+        
+        default:
+          return '<div style="color: var(--danger); font-size: 0.9rem;">Unknown stage</div>';
+      }
+    }
+
+    // ==================== PAGE 2: BOOKINGS ====================
+    function renderBookingsPage() {
+      const container = document.getElementById('bookingsList');
+      const query = normalizeSearchTerm(bookingsSearchTerm);
+
+      if (bookingsError) {
+        container.innerHTML = `<p style="color: var(--danger); text-align: center;">${escapeHtml(bookingsError)}</p>`;
+        return;
+      }
+
+      if (!bookings.length) {
+        container.innerHTML = '<p style="color: var(--text-muted); text-align: center;">No bookings found</p>';
+        return;
+      }
+
+      const filteredBookings = bookings.filter((booking) => {
+        return matchesSearch([
+          booking.contact_name,
+          booking.phone,
+          booking.booking_date,
+          booking.booking_time,
+          booking.area,
+          booking.stage,
+          booking.flag,
+          booking.notes
+        ], query);
+      });
+
+      if (!filteredBookings.length) {
+        container.innerHTML = '<p style="color: var(--text-muted); text-align: center;">No bookings match your search</p>';
+        return;
+      }
+      
+      container.innerHTML = filteredBookings.map((booking, idx) => {
+        const stageValue = String(booking.stage || 'pending').toLowerCase();
+        const allowedStages = ['pending', 'confirmed', 'arrived', 'done', 'cancelled', 'noshow'];
+        const normalizedStage = allowedStages.includes(stageValue) ? stageValue : 'pending';
+        const stageClass = `stage-badge ${normalizedStage}`;
+        return `
+          <div class="booking-row" id="booking-${idx}" onclick="toggleBooking(${idx})">
+            <div class="booking-summary">
+              <div class="booking-info">
+                <div class="booking-label">Name</div>
+                <div class="booking-value">${escapeHtml(booking.contact_name || '-')}</div>
+              </div>
+              <div class="booking-info">
+                <div class="booking-label">Phone</div>
+                <div class="booking-value">${escapeHtml(booking.phone || '-')}</div>
+              </div>
+              <div class="booking-info">
+                <div class="booking-label">Pax</div>
+                <div class="booking-value">${Number(booking.guests_pax || 0)} 👥</div>
+              </div>
+              <div class="booking-info">
+                <div class="booking-label">Time</div>
+                <div class="booking-value">${escapeHtml(booking.booking_date || '')} ${escapeHtml(booking.booking_time || '')}</div>
+              </div>
+              <div class="${stageClass}">${escapeHtml(normalizedStage)}</div>
+            </div>
+            
+            <div class="booking-expanded">
+              <div class="booking-details">
+                <div class="detail-item">
+                  <div class="detail-label">Area</div>
+                  <div class="detail-value">${escapeHtml(booking.area || 'indoor')}</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">Duration</div>
+                  <div class="detail-value">${Number(booking.duration_minutes || 120)} min</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">Flag</div>
+                  <div class="detail-value">${escapeHtml(booking.flag || 'None')}</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">Notes</div>
+                  <div class="detail-value">${escapeHtml(booking.notes || 'No notes')}</div>
+                </div>
+              </div>
+              
+              <div class="action-buttons">
+                ${getActionButtons(normalizedStage, booking.id)}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function toggleBooking(idx) {
+      const element = document.getElementById(`booking-${idx}`);
+      element.classList.toggle('expanded');
+    }
+
+    async function updateStage(bookingId, newStage) {
+      if (!currentUser?.id) {
+        alert('Please login again.');
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/bookings/${encodeURIComponent(bookingId)}/stage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            stage: newStage,
+            staffId: currentUser.id,
+            companyId: currentUser.companyId || 1
+          })
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) {
+          alert(data.error || 'Failed to update booking stage.');
+          return;
+        }
+
+        await loadBookingsData();
+        renderBookingsPage();
+        alert(`Booking ${bookingId} updated to ${newStage}`);
+      } catch (error) {
+        alert(error.message || 'Network error while updating booking stage.');
+      }
+    }
+
+    // ==================== PAGE 3: CUSTOMERS ====================
+    function renderCustomersPage() {
+      const container = document.getElementById('customersList');
+      const query = normalizeSearchTerm(customersSearchTerm);
+
+      if (customersError) {
+        container.innerHTML = `<p style="color: var(--danger); text-align: center;">${escapeHtml(customersError)}</p>`;
+        return;
+      }
+
+      if (!customers.length) {
+        container.innerHTML = '<p style="color: var(--text-muted); text-align: center;">No customers found</p>';
+        return;
+      }
+
+      const filteredCustomers = customers.filter((customer) => {
+        const flags = parseCustomerFlags(customer.flags);
+        return matchesSearch([
+          customer.name,
+          customer.phone,
+          customer.email,
+          customer.founder_status,
+          customer.founder_level,
+          flags.join(' '),
+          customer.number_of_visits,
+          customer.total_spent
+        ], query);
+      });
+
+      if (!filteredCustomers.length) {
+        container.innerHTML = '<p style="color: var(--text-muted); text-align: center;">No customers match your search</p>';
+        return;
+      }
+      
+      container.innerHTML = filteredCustomers.map(customer => {
+        const flags = parseCustomerFlags(customer.flags);
+        const totalSpent = Number(customer.total_spent || 0);
+
+        return `
+        <div class="customer-card">
+          <div class="customer-header">
+            <div class="customer-name">${escapeHtml(customer.name || 'Unknown')}</div>
+            <div class="customer-badges">
+              ${flags.map(flag => `<span class="badge ${escapeHtml(flag)}">${escapeHtml(flag)}</span>`).join('')}
+              ${customer.founder_status === 'live' ? '<span class="badge founder">Founder</span>' : ''}
+            </div>
+          </div>
+          <div style="font-size: 0.9rem; color: var(--text-muted);">${escapeHtml(customer.phone || '-')}</div>
+          <div class="customer-stats">
+            <div class="stat">
+              <div class="stat-label">Visits</div>
+              <div class="stat-value">${Number(customer.number_of_visits || 0)}</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Total Spent</div>
+              <div class="stat-value">€${totalSpent.toFixed(2)}</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Status</div>
+              <div class="stat-value">${customer.founder_status === 'live' ? '✓ Active' : '⊘ Inactive'}</div>
+            </div>
+          </div>
+        </div>
+      `;
+      }).join('');
+    }
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    async function loadIntegrationConfig() {
+      if (!currentUser?.pin) {
+        integrationConfig = { __error: 'Please login again to manage integration settings.' };
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/admin/integration-config?pin=${encodeURIComponent(currentUser.pin)}`);
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok || !data.success) {
+          integrationConfig = { __error: data.error || 'Unable to load integration configuration.' };
+          return;
+        }
+
+        integrationConfig = data.config || {};
+      } catch (error) {
+        integrationConfig = { __error: error.message || 'Network error while loading integration configuration.' };
+      }
+    }
+
+    async function loadPlatformConfig() {
+      if (!currentUser?.pin) {
+        platformConfigError = 'Please login again to manage platform settings.';
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/admin/platform-config?pin=${encodeURIComponent(currentUser.pin)}`);
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok || !data.success) {
+          platformConfigError = data.error || 'Unable to load restaurant platform settings.';
+          return;
+        }
+
+        companyProfile = data.company || null;
+        operationalSettings = data.operationalSettings || {};
+        moduleSettings = data.modules || {};
+        platformConfigError = '';
+      } catch (error) {
+        platformConfigError = error.message || 'Network error while loading platform settings.';
+      }
+    }
+
+    async function loadStaffData() {
+      if (!currentUser?.pin) {
+        staffError = 'Please login again to manage staff.';
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/admin/staff?pin=${encodeURIComponent(currentUser.pin)}`);
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok || !data.success) {
+          staffError = data.error || 'Unable to load staff.';
+          return;
+        }
+
+        staff = data.staff || [];
+        staffError = '';
+      } catch (error) {
+        staffError = error.message || 'Network error while loading staff.';
+      }
+    }
+
+    async function loadMediaAssets() {
+      if (!currentUser?.pin) {
+        mediaAssetsError = 'Please login again to manage media assets.';
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/admin/media-assets?pin=${encodeURIComponent(currentUser.pin)}`);
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok || !data.success) {
+          mediaAssetsError = data.error || 'Unable to load media assets.';
+          mediaAssets = [];
+          return;
+        }
+
+        mediaAssets = Array.isArray(data.assets) ? data.assets : [];
+        mediaAssetsError = '';
+      } catch (error) {
+        mediaAssetsError = error.message || 'Network error while loading media assets.';
+        mediaAssets = [];
+      }
+    }
+
+    function getOperationalValue(key) {
+      return operationalSettings[key] ?? '';
+    }
+
+    function weekdayLabel(value) {
+      const labels = {
+        '0': 'Sunday',
+        '1': 'Monday',
+        '2': 'Tuesday',
+        '3': 'Wednesday',
+        '4': 'Thursday',
+        '5': 'Friday',
+        '6': 'Saturday'
+      };
+      return labels[String(value)] || String(value || '');
+    }
+
+    function renderCompanyProfileSection() {
+      const container = document.getElementById('companyProfileList');
+      if (!container) return;
+
+      if (!isAdminUser()) {
+        container.innerHTML = '<div class="integration-note">Admin only.</div>';
+        return;
+      }
+
+      if (platformConfigError) {
+        container.innerHTML = `<div class="integration-note" style="color: var(--danger);">${escapeHtml(platformConfigError)}</div>`;
+        return;
+      }
+
+      const company = companyProfile || {};
+
+      container.innerHTML = `
+        <div class="setting-row">
+          <div class="setting-label">Restaurant Name</div>
+          <input type="text" class="setting-value" id="company_name" value="${escapeHtml(company.name || '')}">
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Contact Email</div>
+          <input type="text" class="setting-value" id="company_email" value="${escapeHtml(company.email || '')}">
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Contact Phone</div>
+          <input type="text" class="setting-value" id="company_phone" value="${escapeHtml(company.phone || '')}">
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Timezone</div>
+          <input type="text" class="setting-value" id="company_timezone" value="${escapeHtml(company.timezone || 'UTC')}">
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Website URL</div>
+          <input type="text" class="setting-value" id="op_website_url" value="${escapeHtml(getOperationalValue('website_url'))}">
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Booking Email</div>
+          <input type="text" class="setting-value" id="op_booking_email" value="${escapeHtml(getOperationalValue('booking_email'))}">
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Standard Contact Link</div>
+          <input type="text" class="setting-value" id="op_standard_contact_link" value="${escapeHtml(getOperationalValue('standard_contact_link'))}" placeholder="/contact or https://yourdomain/contact">
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Odoo URL</div>
+          <input type="text" class="setting-value" id="company_odoo_url" value="${escapeHtml(company.odoo_url || '')}">
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Odoo Company ID</div>
+          <input type="number" class="setting-value" id="company_odoo_company_id" value="${escapeHtml(company.odoo_company_id ?? '')}">
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Tenant Subdomain</div>
+          <input type="text" class="setting-value" id="company_subdomain" value="${escapeHtml(company.subdomain || '')}" placeholder="e.g. esskultur-main">
+        </div>
+        <div class="integration-note">Leave this blank for single-domain mode. Set a slug only when you want subdomain-based tenant routing.</div>
+        <div class="setting-row">
+          <div></div>
+          <div style="display:flex;justify-content:flex-end;gap:8px;">
+            <button class="btn-small btn-secondary" onclick="reloadPlatformConfig()">Reload</button>
+            <button class="btn-small btn-primary" onclick="savePlatformConfig()">Save Profile / Ops / Social / Modules</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderOperationalSettingsSection() {
+      const container = document.getElementById('operationalSettingsList');
+      if (!container) return;
+
+      if (!isAdminUser()) {
+        container.innerHTML = '<div class="integration-note">Admin only.</div>';
+        return;
+      }
+
+      if (platformConfigError) {
+        container.innerHTML = `<div class="integration-note" style="color: var(--danger);">${escapeHtml(platformConfigError)}</div>`;
+        return;
+      }
+
+      const keys = OPERATIONAL_SETTING_KEYS.filter(key => !['website_url', 'standard_contact_link', 'booking_email', ...SOCIAL_SETTING_KEYS].includes(key));
+      container.innerHTML = keys.map((key) => {
+        const value = getOperationalValue(key);
+
+        if (key === 'closed_weekday') {
+          return `
+            <div class="setting-row">
+              <div class="setting-label">${escapeHtml(OPERATIONAL_LABELS[key] || key)}</div>
+              <select class="setting-value" id="op_${key}">
+                ${['0','1','2','3','4','5','6'].map(day => `<option value="${day}" ${String(value) === day ? 'selected' : ''}>${weekdayLabel(day)}</option>`).join('')}
+              </select>
+            </div>
+          `;
+        }
+
+        const inputType = key.includes('hours') ? 'time' : (key.includes('capacity') || key.includes('duration') || key.includes('advance') ? 'number' : 'text');
+        return `
+          <div class="setting-row">
+            <div class="setting-label">${escapeHtml(OPERATIONAL_LABELS[key] || key)}</div>
+            <input type="${inputType}" class="setting-value" id="op_${key}" value="${escapeHtml(value)}">
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderSocialSettingsSection() {
+      const container = document.getElementById('socialSettingsList');
+      if (!container) return;
+
+      if (!isManagerOrAdminUser()) {
+        container.innerHTML = '<div class="integration-note">Manager or admin only.</div>';
+        return;
+      }
+
+      if (platformConfigError) {
+        container.innerHTML = `<div class="integration-note" style="color: var(--danger);">${escapeHtml(platformConfigError)}</div>`;
+        return;
+      }
+
+      container.innerHTML = `
+        ${SOCIAL_SETTING_KEYS.map((key) => `
+          <div class="setting-row">
+            <div class="setting-label">${escapeHtml(OPERATIONAL_LABELS[key] || key)}</div>
+            <input type="url" class="setting-value" id="op_${key}" value="${escapeHtml(getOperationalValue(key))}" placeholder="https://...">
+          </div>
+        `).join('')}
+        <div class="integration-note">These public URLs are used in outbound messages and social CTA links.</div>
+        <div class="setting-row">
+          <div></div>
+          <div style="display:flex;justify-content:flex-end;gap:8px;">
+            <button class="btn-small btn-secondary" onclick="reloadPlatformConfig()">Reload</button>
+            <button class="btn-small btn-primary" onclick="savePlatformConfig()">Save Profile / Ops / Social / Modules</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderModuleSettingsSection() {
+      const container = document.getElementById('moduleToggleList');
+      if (!container) return;
+
+      if (!isAdminUser()) {
+        container.innerHTML = '<div class="integration-note">Admin only.</div>';
+        return;
+      }
+
+      if (platformConfigError) {
+        container.innerHTML = `<div class="integration-note" style="color: var(--danger);">${escapeHtml(platformConfigError)}</div>`;
+        return;
+      }
+
+      container.innerHTML = `
+        ${MODULE_KEYS.map((key) => `
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">${escapeHtml(MODULE_LABELS[key] || key)}</div>
+              <div class="integration-note" style="margin-top:4px;">${escapeHtml(MODULE_DESCRIPTIONS[key] || '')}</div>
+            </div>
+            <div>
+              <label style="position:static !important;width:auto !important;height:auto !important;margin:0 !important;clip:auto !important;white-space:normal !important;overflow:visible !important;">
+                <input type="checkbox" id="mod_${key}" ${moduleSettings[key] ? 'checked' : ''}>
+                Enabled
+              </label>
+            </div>
+          </div>
+        `).join('')}
+        <div class="integration-note">Community & Membership controls Founder/KC opt-in + OTP + member lifecycle. If disabled, founder/kc routes fall back to the standard contact link.</div>
+        <div class="setting-row">
+          <div></div>
+          <div style="display:flex;justify-content:flex-end;gap:8px;">
+            <button class="btn-small btn-secondary" onclick="reloadPlatformConfig()">Reload</button>
+            <button class="btn-small btn-primary" onclick="savePlatformConfig()">Save Profile / Ops / Social / Modules</button>
+          </div>
+        </div>
+      `;
+    }
+
+    async function reloadPlatformConfig() {
+      await loadPlatformConfig();
+      renderCompanyProfileSection();
+      renderOperationalSettingsSection();
+      renderSocialSettingsSection();
+      renderModuleSettingsSection();
+    }
+
+    async function savePlatformConfig() {
+      if (!currentUser?.pin) {
+        alert('Please login again.');
+        return;
+      }
+
+      if (!isManagerOrAdminUser()) {
+        alert('Only manager or admin role can save settings.');
+        return;
+      }
+
+      const canManageFullPlatform = isAdminUser();
+
+      const company = canManageFullPlatform ? {
+        name: document.getElementById('company_name')?.value.trim() || '',
+        email: document.getElementById('company_email')?.value.trim() || '',
+        phone: document.getElementById('company_phone')?.value.trim() || '',
+        subdomain: document.getElementById('company_subdomain')?.value.trim() || '',
+        timezone: document.getElementById('company_timezone')?.value.trim() || 'UTC',
+        odoo_url: document.getElementById('company_odoo_url')?.value.trim() || '',
+        odoo_company_id: document.getElementById('company_odoo_company_id')?.value.trim() || ''
+      } : null;
+
+      const nextOperationalSettings = {};
+      const operationalKeysToSave = canManageFullPlatform ? OPERATIONAL_SETTING_KEYS : SOCIAL_SETTING_KEYS;
+      operationalKeysToSave.forEach((key) => {
+        const input = document.getElementById(`op_${key}`);
+        nextOperationalSettings[key] = input ? input.value.trim() : '';
+      });
+
+      const nextModules = {};
+      if (canManageFullPlatform) {
+        MODULE_KEYS.forEach((key) => {
+          nextModules[key] = !!document.getElementById(`mod_${key}`)?.checked;
+        });
+      }
+
+      try {
+        const res = await fetch('/api/admin/platform-config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pin: currentUser.pin,
+            company,
+            operationalSettings: nextOperationalSettings,
+            modules: nextModules
+          })
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+          alert(data.error || 'Failed to save platform config.');
+          return;
+        }
+
+        companyProfile = data.company || null;
+        operationalSettings = data.operationalSettings || {};
+        moduleSettings = data.modules || {};
+        renderSettingsPage();
+        alert(canManageFullPlatform ? 'Platform config saved.' : 'Social profiles saved.');
+      } catch (error) {
+        alert(error.message || 'Network error while saving platform config.');
+      }
+    }
+
+    function renderStaffSection() {
+      const staffContainer = document.getElementById('staffList');
+      if (!staffContainer) return;
+
+      if (!isAdminUser()) {
+        staffContainer.innerHTML = '<div class="integration-note">Admin only.</div>';
+        return;
+      }
+
+      if (staffError) {
+        staffContainer.innerHTML = `<div class="integration-note" style="color: var(--danger);">${escapeHtml(staffError)}</div>`;
+        return;
+      }
+
+      staffContainer.innerHTML = `
+        ${staff.map((s, idx) => `
+          <div class="staff-item" style="align-items:flex-start;gap:12px;">
+            <div class="staff-info" style="flex:1;display:grid;gap:8px;">
+              <input type="text" class="setting-value" id="staff_name_${idx}" value="${escapeHtml(s.name || '')}" placeholder="Staff name">
+              <input type="text" class="setting-value" id="staff_pin_${idx}" value="${escapeHtml(s.pin || '')}" placeholder="PIN">
+              <label style="position:static !important;width:auto !important;height:auto !important;margin:0 !important;clip:auto !important;white-space:normal !important;overflow:visible !important;color:var(--text-muted);font-size:0.85rem;">
+                <input type="checkbox" id="staff_active_${idx}" ${Number(s.is_active) === 0 ? '' : 'checked'}>
+                Active
+              </label>
+            </div>
+            <div style="display:grid;gap:8px;min-width:140px;">
+              <select class="setting-value" id="staff_role_${idx}">
+                ${['hostess', 'manager', 'admin', 'staff', 'supervisor'].map(role => `<option value="${role}" ${String(s.role || '').toLowerCase() === role ? 'selected' : ''}>${role}</option>`).join('')}
+              </select>
+              <button class="btn-small btn-primary" onclick="saveStaffRow(${idx})">Save Staff</button>
+            </div>
+          </div>
+        `).join('')}
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px;">
+          <button class="btn-small btn-secondary" onclick="reloadStaffData()">Reload Staff</button>
+          <button class="btn-small btn-primary" onclick="addStaffDraft()">Add Staff</button>
+        </div>
+      `;
+    }
+
+    async function reloadStaffData() {
+      await loadStaffData();
+      renderStaffSection();
+    }
+
+    function addStaffDraft() {
+      if (!isAdminUser()) return;
+      staff = [...staff, {
+        id: '',
+        name: '',
+        pin: '',
+        role: 'staff',
+        is_active: 1,
+        permissions: '[]'
+      }];
+      renderStaffSection();
+    }
+
+    async function saveStaffRow(index) {
+      if (!currentUser?.pin) {
+        alert('Please login again.');
+        return;
+      }
+
+      if (!isAdminUser()) {
+        alert('Only admin role can manage staff.');
+        return;
+      }
+
+      const current = staff[index] || {};
+      const payload = {
+        id: current.id || '',
+        name: document.getElementById(`staff_name_${index}`)?.value.trim() || '',
+        pin: document.getElementById(`staff_pin_${index}`)?.value.trim() || '',
+        role: document.getElementById(`staff_role_${index}`)?.value.trim() || 'staff',
+        is_active: document.getElementById(`staff_active_${index}`)?.checked ? 1 : 0,
+        permissions: current.permissions || '[]'
+      };
+
+      try {
+        const res = await fetch('/api/admin/staff', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin: currentUser.pin, staff: payload })
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+          alert(data.error || 'Failed to save staff member.');
+          return;
+        }
+
+        const savedStaffId = String(current.id || data.staffId || '');
+        if (savedStaffId && String(currentUser?.id || '') === savedStaffId) {
+          currentUser.pin = payload.pin;
+          currentUser.role = payload.role;
+          localStorage.setItem('esskultur_user', JSON.stringify(currentUser));
+        }
+
+        await loadStaffData();
+        renderStaffSection();
+        alert('Staff saved.');
+      } catch (error) {
+        alert(error.message || 'Network error while saving staff.');
+      }
+    }
+
+    function renderIntegrationConfigSection() {
+      const container = document.getElementById('integrationConfigList');
+      if (!container) return;
+
+      if (!isAdminUser()) {
+        container.innerHTML = '<div class="integration-note">Admin only.</div>';
+        return;
+      }
+
+      if (integrationConfig.__error) {
+        container.innerHTML = `<div class="integration-note" style="color: var(--danger);">${escapeHtml(integrationConfig.__error)}</div>`;
+        return;
+      }
+
+      const nonSecretRows = NON_SECRET_INTEGRATION_KEYS.map((key) => {
+        const value = integrationConfig[key] || '';
+        return `
+          <div class="setting-row">
+            <div class="setting-label">${escapeHtml(INTEGRATION_LABELS[key] || key)}</div>
+            <input type="text" class="setting-value" id="cfg_${key}" value="${escapeHtml(value)}">
+          </div>
+        `;
+      }).join('');
+
+      const twilioWebhookUrl = `${window.location.origin}/webhooks/twilio/founder-otp`;
+
+      const secretRows = SECRET_INTEGRATION_KEYS.map((key) => {
+        const isSet = !!(integrationConfig[key] && integrationConfig[key].isSet);
+        return `
+          <div class="setting-row">
+            <div class="setting-label">${escapeHtml(INTEGRATION_LABELS[key] || key)}</div>
+            <div>
+              <span class="secret-status ${isSet ? 'set' : 'missing'}">${isSet ? 'Configured' : 'Missing'}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      container.innerHTML = `
+        ${nonSecretRows}
+        <div class="setting-row">
+          <div class="setting-label">Twilio Incoming Webhook</div>
+          <input type="text" class="setting-value" value="${escapeHtml(twilioWebhookUrl)}" readonly>
+        </div>
+        <div class="integration-note">Secrets are write-protected in this panel and must be managed with Wrangler secrets.</div>
+        <div class="integration-note">Secret status:</div>
+        ${secretRows}
+        <div class="setting-row">
+          <div></div>
+          <div style="display:flex;justify-content:flex-end;gap:8px;">
+            <button class="btn-small btn-secondary" onclick="reloadIntegrationConfig()">Reload</button>
+            <button class="btn-small btn-primary" onclick="saveIntegrationConfig()">Save Integration Config</button>
+          </div>
+        </div>
+      `;
+    }
+
+    async function reloadIntegrationConfig() {
+      await loadIntegrationConfig();
+      renderIntegrationConfigSection();
+    }
+
+    async function saveIntegrationConfig() {
+      if (!currentUser?.pin) {
+        alert('Please login again.');
+        return;
+      }
+
+      if (String(currentUser.role || '').toLowerCase() !== 'admin') {
+        alert('Only admin role can save integration config.');
+        return;
+      }
+
+      const values = {};
+      NON_SECRET_INTEGRATION_KEYS.forEach((key) => {
+        const input = document.getElementById(`cfg_${key}`);
+        values[key] = input ? input.value.trim() : '';
+      });
+
+      try {
+        const res = await fetch('/api/admin/integration-config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pin: currentUser.pin,
+            values
+          })
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+          alert(data.error || 'Failed to save integration config.');
+          return;
+        }
+
+        await loadIntegrationConfig();
+        renderIntegrationConfigSection();
+
+        if (Array.isArray(data.rejected) && data.rejected.length) {
+          alert('Saved with warnings: ' + data.rejected.map(x => `${x.key}: ${x.reason}`).join('; '));
+          return;
+        }
+
+        alert('Integration config saved.');
+      } catch (error) {
+        alert(error.message || 'Network error while saving integration config.');
+      }
+    }
+
+    function parseMediaTagsInput(rawValue) {
+      return String(rawValue || '')
+        .split(',')
+        .map((tag) => tag.trim().toLowerCase())
+        .filter(Boolean)
+        .filter((tag, index, arr) => arr.indexOf(tag) === index)
+        .slice(0, 10);
+    }
+
+    function formatDateTime(value) {
+      if (!value) return '-';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '-';
+      return date.toLocaleString();
+    }
+
+    function readFileAsDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(new Error('Unable to read file.'));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function renderMediaAssetsSection() {
+      const container = document.getElementById('mediaAssetsList');
+      if (!container) return;
+
+      if (!isManagerOrAdminUser()) {
+        container.innerHTML = '<div class="integration-note">Manager or admin only.</div>';
+        return;
+      }
+
+      if (mediaAssetsError) {
+        container.innerHTML = `<div class="integration-note" style="color: var(--danger);">${escapeHtml(mediaAssetsError)}</div>`;
+        return;
+      }
+
+      const moduleEnabled = !!moduleSettings.module_marketing_management;
+
+      container.innerHTML = `
+        <div class="integration-note">Upload restaurant images to power social posts and campaign creatives.</div>
+        ${moduleEnabled ? '' : '<div class="integration-note" style="color: var(--warning);">Marketing module is currently disabled. You can prepare assets now and enable the module later.</div>'}
+
+        <div class="media-upload-grid">
+          <input type="text" class="setting-value" id="media_title_new" placeholder="Asset title (required)">
+          <input type="text" class="setting-value" id="media_alt_new" placeholder="Alt text">
+          <input type="text" class="setting-value" id="media_tags_new" placeholder="Tags (comma separated)">
+          <input type="file" class="setting-value" id="media_file_new" accept="image/png,image/jpeg,image/webp,image/gif,image/avif">
+          <div class="full-width" style="display:flex;justify-content:flex-end;gap:8px;">
+            <button class="btn-small btn-secondary" onclick="reloadMediaAssets()">Reload</button>
+            <button class="btn-small btn-primary" onclick="uploadMediaAsset()">Upload Asset</button>
+          </div>
+        </div>
+
+        ${mediaAssets.length ? `
+          <div class="media-grid">
+            ${mediaAssets.map((asset, idx) => `
+              <div class="media-card">
+                <img class="media-preview" src="${escapeHtml(asset.dataUrl || '')}" alt="${escapeHtml(asset.altText || asset.title || 'Asset')}" loading="lazy">
+                <input type="text" class="setting-value" id="media_title_${idx}" value="${escapeHtml(asset.title || '')}" placeholder="Asset title">
+                <input type="text" class="setting-value" id="media_alt_${idx}" value="${escapeHtml(asset.altText || '')}" placeholder="Alt text">
+                <input type="text" class="setting-value" id="media_tags_${idx}" value="${escapeHtml(Array.isArray(asset.tags) ? asset.tags.join(', ') : '')}" placeholder="Tags (comma separated)">
+                <label style="position:static !important;width:auto !important;height:auto !important;margin:0 !important;clip:auto !important;white-space:normal !important;overflow:visible !important;color:var(--text-muted);font-size:0.85rem;">
+                  <input type="checkbox" id="media_active_${idx}" ${Number(asset.isActive) === 0 ? '' : 'checked'}>
+                  Active
+                </label>
+                <div class="media-meta">
+                  Type: ${escapeHtml(asset.mimeType || '-')}
+                  <br>
+                  Updated: ${escapeHtml(formatDateTime(asset.updatedAt))}
+                </div>
+                <div class="media-actions">
+                  <button class="btn-small btn-primary" onclick="saveMediaAssetRow(${idx})">Save</button>
+                  <button class="btn-small btn-secondary" onclick="deleteMediaAssetRow(${idx})">Delete</button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        ` : '<div class="integration-note">No media assets uploaded yet.</div>'}
+      `;
+    }
+
+    async function reloadMediaAssets() {
+      await loadMediaAssets();
+      renderMediaAssetsSection();
+    }
+
+    async function uploadMediaAsset() {
+      if (!currentUser?.pin) {
+        alert('Please login again.');
+        return;
+      }
+
+      const title = document.getElementById('media_title_new')?.value.trim() || '';
+      const altText = document.getElementById('media_alt_new')?.value.trim() || '';
+      const tags = parseMediaTagsInput(document.getElementById('media_tags_new')?.value || '');
+      const fileInput = document.getElementById('media_file_new');
+      const file = fileInput?.files?.[0];
+
+      if (!title) {
+        alert('Asset title is required.');
+        return;
+      }
+
+      if (!file) {
+        alert('Please choose an image file.');
+        return;
+      }
+
+      if (file.size > 850000) {
+        alert('File is too large. Please upload an image under 850 KB.');
+        return;
+      }
+
+      try {
+        const dataUrl = await readFileAsDataUrl(file);
+        const res = await fetch('/api/admin/media-assets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pin: currentUser.pin,
+            action: 'upsert',
+            asset: {
+              title,
+              altText,
+              tags,
+              mimeType: file.type || '',
+              dataUrl,
+              isActive: 1
+            }
+          })
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+          alert(data.error || 'Failed to upload media asset.');
+          return;
+        }
+
+        document.getElementById('media_title_new').value = '';
+        document.getElementById('media_alt_new').value = '';
+        document.getElementById('media_tags_new').value = '';
+        document.getElementById('media_file_new').value = '';
+
+        await loadMediaAssets();
+        renderMediaAssetsSection();
+        alert('Media asset uploaded.');
+      } catch (error) {
+        alert(error.message || 'Network error while uploading asset.');
+      }
+    }
+
+    async function saveMediaAssetRow(index) {
+      if (!currentUser?.pin) {
+        alert('Please login again.');
+        return;
+      }
+
+      const current = mediaAssets[index];
+      if (!current?.id) {
+        alert('Invalid asset row.');
+        return;
+      }
+
+      const title = document.getElementById(`media_title_${index}`)?.value.trim() || '';
+      const altText = document.getElementById(`media_alt_${index}`)?.value.trim() || '';
+      const tags = parseMediaTagsInput(document.getElementById(`media_tags_${index}`)?.value || '');
+      const isActive = document.getElementById(`media_active_${index}`)?.checked ? 1 : 0;
+
+      try {
+        const res = await fetch('/api/admin/media-assets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pin: currentUser.pin,
+            action: 'upsert',
+            asset: {
+              id: current.id,
+              title,
+              altText,
+              tags,
+              mimeType: current.mimeType,
+              dataUrl: current.dataUrl,
+              isActive
+            }
+          })
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+          alert(data.error || 'Failed to save media asset.');
+          return;
+        }
+
+        await loadMediaAssets();
+        renderMediaAssetsSection();
+        alert('Media asset saved.');
+      } catch (error) {
+        alert(error.message || 'Network error while saving media asset.');
+      }
+    }
+
+    async function deleteMediaAssetRow(index) {
+      if (!currentUser?.pin) {
+        alert('Please login again.');
+        return;
+      }
+
+      const current = mediaAssets[index];
+      if (!current?.id) {
+        alert('Invalid asset row.');
+        return;
+      }
+
+      const confirmed = confirm('Delete this media asset? This action cannot be undone.');
+      if (!confirmed) return;
+
+      try {
+        const res = await fetch('/api/admin/media-assets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pin: currentUser.pin,
+            action: 'delete',
+            id: current.id
+          })
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+          alert(data.error || 'Failed to delete media asset.');
+          return;
+        }
+
+        await loadMediaAssets();
+        renderMediaAssetsSection();
+        alert('Media asset deleted.');
+      } catch (error) {
+        alert(error.message || 'Network error while deleting media asset.');
+      }
+    }
+
+    // ==================== PAGE 4: SETTINGS ====================
+    function renderSettingsPage() {
+      renderCompanyProfileSection();
+      renderOperationalSettingsSection();
+      renderSocialSettingsSection();
+      renderModuleSettingsSection();
+      renderStaffSection();
+      renderIntegrationConfigSection();
+      renderMediaAssetsSection();
+    }
+
+    // ==================== STARTUP ====================
+    window.addEventListener('load', init);
+  </script>
+</body>
+</html>
