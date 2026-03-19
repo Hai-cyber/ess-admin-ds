@@ -474,55 +474,84 @@ function canOverrideCompanyIdForHost(tenant, url = null) {
 }
 
 async function resolveActiveCompanyId(env, tenant, url) {
-  const fallbackCompanyId = 1;
-  if (!env?.DB) return fallbackCompanyId;
+  if (!env?.DB) {
+    return { ok: false, reason: 'db_unavailable' };
+  }
+
+  const queryCompanyById = async (companyId) => {
+    try {
+      return await env.DB.prepare(
+        `SELECT id FROM companies WHERE id = ? AND is_active = 1 LIMIT 1`
+      ).bind(companyId).first();
+    } catch (error) {
+      const message = String(error?.message || error || '').toLowerCase();
+      if (message.includes('no such table: companies')) {
+        return { __error: 'companies_table_missing' };
+      }
+      throw error;
+    }
+  };
+
+  const queryCompanyBySubdomain = async (subdomain) => {
+    try {
+      return await env.DB.prepare(
+        `SELECT id FROM companies WHERE lower(subdomain) = ? AND is_active = 1 LIMIT 1`
+      ).bind(subdomain).first();
+    } catch (error) {
+      const message = String(error?.message || error || '').toLowerCase();
+      if (message.includes('no such table: companies')) {
+        return { __error: 'companies_table_missing' };
+      }
+      throw error;
+    }
+  };
 
   const allowQueryOverride = canOverrideCompanyIdForHost(tenant, url);
+  const queryCompanyId = Number(url.searchParams.get('company_id') || 0);
 
-  if (allowQueryOverride) {
-    const queryCompanyId = Number(url.searchParams.get('company_id') || 0);
-    if (Number.isInteger(queryCompanyId) && queryCompanyId > 0) {
-      let row = null;
-      try {
-        row = await env.DB.prepare(
-          `SELECT id FROM companies WHERE id = ? AND is_active = 1 LIMIT 1`
-        ).bind(queryCompanyId).first();
-      } catch (error) {
-        const message = String(error?.message || error || '');
-        if (message.toLowerCase().includes('no such table: companies')) {
-          return queryCompanyId;
-        }
-        throw error;
-      }
-
-      if (row?.id) return Number(row.id);
+  if (Number.isInteger(queryCompanyId) && queryCompanyId > 0) {
+    if (!allowQueryOverride) {
+      return { ok: false, reason: 'override_not_allowed' };
     }
+
+    const overrideCompany = await queryCompanyById(queryCompanyId);
+    if (overrideCompany?.__error) {
+      return { ok: false, reason: overrideCompany.__error };
+    }
+    if (overrideCompany?.id) {
+      return { ok: true, companyId: Number(overrideCompany.id) };
+    }
+
+    return { ok: false, reason: 'override_company_not_found' };
   }
 
   const tenantCompanyId = Number(tenant?.companyId || 0);
   if (Number.isInteger(tenantCompanyId) && tenantCompanyId > 0) {
-    return tenantCompanyId;
+    const tenantCompany = await queryCompanyById(tenantCompanyId);
+    if (tenantCompany?.__error) {
+      return { ok: false, reason: tenantCompany.__error };
+    }
+    if (tenantCompany?.id) {
+      return { ok: true, companyId: Number(tenantCompany.id) };
+    }
+
+    return { ok: false, reason: 'tenant_company_not_found' };
   }
 
   const subdomain = String(tenant?.subdomain || '').trim().toLowerCase();
   if (subdomain && subdomain !== 'www') {
-    let row = null;
-    try {
-      row = await env.DB.prepare(
-        `SELECT id FROM companies WHERE lower(subdomain) = ? AND is_active = 1 LIMIT 1`
-      ).bind(subdomain).first();
-    } catch (error) {
-      const message = String(error?.message || error || '');
-      if (message.toLowerCase().includes('no such table: companies')) {
-        return fallbackCompanyId;
-      }
-      throw error;
+    const subdomainCompany = await queryCompanyBySubdomain(subdomain);
+    if (subdomainCompany?.__error) {
+      return { ok: false, reason: subdomainCompany.__error };
+    }
+    if (subdomainCompany?.id) {
+      return { ok: true, companyId: Number(subdomainCompany.id) };
     }
 
-    if (row?.id) return Number(row.id);
+    return { ok: false, reason: 'tenant_subdomain_not_found' };
   }
 
-  return fallbackCompanyId;
+  return { ok: false, reason: 'no_tenant_context' };
 }
 
 function getTurnstileSiteKey(env) {
@@ -1507,11 +1536,19 @@ export default {
       }
     }
 
-    let activeCompanyId = 1;
+    let activeCompanyId = null;
+    let activeCompanyResolution = { ok: false, reason: 'unresolved' };
     try {
-      activeCompanyId = await resolveActiveCompanyId(env, tenant, url);
+      activeCompanyResolution = await resolveActiveCompanyId(env, tenant, url);
     } catch (e) {
-      console.warn('Company resolution fallback to default company_id=1:', e?.message || e);
+      console.warn('Company resolution error:', e?.message || e);
+      activeCompanyResolution = { ok: false, reason: 'resolution_error' };
+    }
+
+    if (activeCompanyResolution.ok) {
+      activeCompanyId = activeCompanyResolution.companyId;
+    } else {
+      console.warn('Tenant resolution failed:', activeCompanyResolution.reason);
     }
 
     // ==================== HEALTH CHECK ====================
