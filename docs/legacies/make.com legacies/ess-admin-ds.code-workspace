@@ -1,0 +1,15 @@
+{
+	"folders": [
+		{
+			"path": "../../ess-admin-ds"
+		},
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"wrangler.json": "jsonc"
+		}
+	}
+}

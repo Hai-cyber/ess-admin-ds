@@ -1,0 +1,36 @@
+# ------------------------------------------------------------
+# Local development secrets for Wrangler
+# Copy to .dev.vars and replace placeholder values
+# ------------------------------------------------------------
+
+# Cloudflare Turnstile
+TURNSTILE_SECRET=1x0000000000000000000000000000000AA
+
+# Tenant secret vault master key (32 bytes, base64-encoded)
+TENANT_SECRETS_MASTER_KEY=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+
+# Twilio (OTP delivery)
+TWILIO_ACCOUNT_SID=ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+TWILIO_AUTH_TOKEN=your_twilio_auth_token
+TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
+TWILIO_SMS_FROM=+15177014808
+TWILIO_MESSAGING_SERVICE_SID=MGXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+# Founder OTP channel order (comma-separated: whatsapp,sms)
+FOUNDER_OTP_CHANNELS=whatsapp,sms
+
+# Founder OTP test exception phones (comma-separated E.164 values)
+FOUNDER_TEST_EXCEPTION_PHONES=+491723855711
+
+# Odoo API fallback values (tenant-specific values should be set via integration config)
+ODOO_BASE_URL=https://hais-lab.odoo.com
+ODOO_DB_NAME=
+ODOO_LOGIN=
+ODOO_API_TOKEN=
+ODOO_PASSWORD=
+
+# Optional Odoo tag label fallback values
+ODOO_TAG_FOUNDER=Founder
+ODOO_TAG_FOUNDER_TRIAL=Founder Trial
+ODOO_TAG_KC_CLUB=KC Club
+ODOO_TAG_KOLLEGENSCLUB=Kollegensclub

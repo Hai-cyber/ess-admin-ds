@@ -71,26 +71,50 @@ Code anchor:
 - [x] Schema updated with `company_id` and tenant indexes.
 - [x] `companies` seeding and tenant metadata utilities are in place.
 - [x] Structured tenant resolver introduced (Step-1).
-- [ ] Route tenantization guard refactor completed across all tenant-required route blocks (Step-2 wiring).
+- [x] Route tenantization guard refactor completed across all tenant-required route blocks (Step-2 wiring).
 - [x] Tenant-scoped booking/staff/SSE isolation behaviors implemented.
 - [x] Staff login validates tenant access.
 - [x] Odoo sync uses company-scoped webhook settings.
 - [x] Tests cover booking/staff/SSE tenant isolation.
-- [ ] Add explicit Step-3 tests for tenant-resolution failure modes and guard ordering.
+- [x] Add explicit Step-3 tests for tenant-resolution failure modes and guard ordering.
+- [x] Error responses normalized to guard-consistent codes.
+- [x] Documentation (contracts + checkpoint) finalized.
 
-## Test Coverage Added So Far
+## Test Coverage (Complete)
 
-- Tenant booking + staff PIN isolation by subdomain:
+### Tenant Isolation Tests
+- ✅ Tenant booking + staff PIN isolation by subdomain:
   - #codebase test/index.spec.js:383-466
-- Cross-tenant stage update override rejection:
+- ✅ Cross-tenant stage update override rejection:
   - #codebase test/index.spec.js:467-514
-- SSE booking/stage event routing by company:
+- ✅ SSE booking/stage event routing by company:
   - #codebase test/index.spec.js:515-609
-- Booking module gate rejection:
+- ✅ Booking module gate rejection:
   - #codebase test/index.spec.js:715-750
 
-## Next Migration Step
+### Tenant Resolution Tests (Step-3)
+- ✅ Main-domain routes return 400 `tenant_required`
+- ✅ Unknown-subdomain routes return 404 `tenant_subdomain_not_found`
+- ✅ Main-domain SSE returns 400 (no stream opens)
+- ✅ localhost/workers.dev override succeeds (company_id=2)
+- ✅ Tenant host + mismatched ?company_id returns 403 `company_id_override_not_allowed`
+  - #codebase test/index.spec.js:610-695
 
-Complete Step-2 wiring:
-- Apply `requireTenant` (or equivalent fail-closed guard) consistently to every tenant-required route block.
-- Enforce guard-before-module-check and guard-before-DB-call ordering.
+## Migration Complete ✅
+
+All steps implemented:
+1. ✅ **Step-1**: Structured resolver contract
+2. ✅ **Step-2**: Guard helper + route wiring
+3. ✅ **Step-3**: Tenant resolution tests + error normalization
+
+**Documentation:**
+- #codebase docs/contracts/tenant.md (resolver contract)
+- #codebase docs/contracts/routes.md (route split + guard ordering)
+- #codebase docs/contracts/errors.md (error mapping table)
+- #codebase docs/contracts/sse.md (SSE architecture)
+- #codebase docs/contracts/tests.md (test summary)
+- #codebase docs/contracts/db-schema.md (DB schema + queries)
+- #codebase docs/contracts/modules.md (module descriptions)
+- #codebase docs/checkpoints/tenant-checkpoint.md (quick primer)
+
+**Next Steps:** Maintenance & optional enhancements (performance tuning, advanced audit logging).

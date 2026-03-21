@@ -1,0 +1,1818 @@
+{
+    "name": "Hear Back from Telegram",
+    "flow": [
+        {
+            "id": 1,
+            "module": "telegram:WatchUpdates",
+            "version": 1,
+            "parameters": {
+                "__IMTHOOK__": 2623806
+            },
+            "mapper": {},
+            "metadata": {
+                "designer": {
+                    "x": -455,
+                    "y": 897
+                },
+                "restore": {
+                    "parameters": {
+                        "__IMTHOOK__": {
+                            "data": {
+                                "editable": "false"
+                            },
+                            "label": "Back from Telegram"
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "__IMTHOOK__",
+                        "type": "hook:telegramapi",
+                        "label": "Webhook",
+                        "required": true
+                    }
+                ]
+            }
+        },
+        {
+            "id": 19,
+            "module": "util:SetVariables",
+            "version": 1,
+            "parameters": {},
+            "mapper": {
+                "scope": "roundtrip",
+                "variables": [
+                    {
+                        "name": "booking_id",
+                        "value": "{{get(split(1.callback_query.data; \"|\"); 2)}}"
+                    },
+                    {
+                        "name": "stage",
+                        "value": "{{get(split(1.callback_query.data; \"|\"); 3)}}"
+                    },
+                    {
+                        "name": "stage_id",
+                        "value": "{{switch(get(split(1.callback_query.data; \"|\"); 3); \"pending\"; 1; \"confirmed\"; 2; \"arrived\"; 3; \"done\"; 4; \"cancelled\"; 5; \"noshow\"; 6)}}"
+                    }
+                ]
+            },
+            "metadata": {
+                "designer": {
+                    "x": -118,
+                    "y": 508
+                },
+                "restore": {
+                    "expect": {
+                        "scope": {
+                            "label": "One cycle"
+                        },
+                        "variables": {
+                            "items": [
+                                null,
+                                null,
+                                null
+                            ]
+                        }
+                    }
+                },
+                "expect": [
+                    {
+                        "name": "variables",
+                        "spec": [
+                            {
+                                "name": "name",
+                                "type": "text",
+                                "label": "Variable name",
+                                "required": true
+                            },
+                            {
+                                "name": "value",
+                                "type": "any",
+                                "label": "Variable value"
+                            }
+                        ],
+                        "type": "array",
+                        "label": "Variables"
+                    },
+                    {
+                        "name": "scope",
+                        "type": "select",
+                        "label": "Variable lifetime",
+                        "required": true,
+                        "validate": {
+                            "enum": [
+                                "roundtrip",
+                                "execution"
+                            ]
+                        }
+                    }
+                ],
+                "interface": [
+                    {
+                        "name": "booking_id",
+                        "type": "any",
+                        "label": "booking_id"
+                    },
+                    {
+                        "name": "stage",
+                        "type": "any",
+                        "label": "stage"
+                    },
+                    {
+                        "name": "stage_id",
+                        "type": "any",
+                        "label": "stage_id"
+                    }
+                ]
+            }
+        },
+        {
+            "id": 11,
+            "module": "datastore:UpdateRecord",
+            "version": 1,
+            "parameters": {
+                "datastore": 102092
+            },
+            "mapper": {
+                "key": "{{19.booking_id}}",
+                "data": {
+                    "pax": "",
+                    "area": "",
+                    "date": "",
+                    "flag": "",
+                    "phone": "",
+                    "staff": "",
+                    "stage": "{{19.stage}}",
+                    "source": "",
+                    "chat_id": "{{1.callback_query.message.chat.id}}",
+                    "duration": "",
+                    "stage_id": "{{19.stage_id}}",
+                    "start_at": "",
+                    "booking_id": "",
+                    "created_by": "",
+                    "message_id": "{{1.callback_query.message.message_id}}",
+                    "updated_at": "{{formatDate(now; \"YYYY-MM-DD HH:mm:ss\"; \"Europe/Berlin\")}}",
+                    "updated_by": "{{1.callback_query.from.first_name}} {{1.callback_query.from.last_name}}",
+                    "contact_name": "",
+                    "submitted_at": "",
+                    "x_studio_booking_datetime": ""
+                },
+                "upsert": true,
+                "overwriteArrays": false
+            },
+            "metadata": {
+                "designer": {
+                    "x": -40,
+                    "y": 945
+                },
+                "restore": {
+                    "expect": {
+                        "upsert": {
+                            "mode": "chose"
+                        },
+                        "overwriteArrays": {
+                            "mode": "chose"
+                        }
+                    },
+                    "parameters": {
+                        "datastore": {
+                            "label": "Reservation datastore"
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "datastore",
+                        "type": "datastore",
+                        "label": "Data store",
+                        "required": true
+                    }
+                ],
+                "expect": [
+                    {
+                        "name": "key",
+                        "type": "text",
+                        "label": "Key",
+                        "required": true
+                    },
+                    {
+                        "name": "upsert",
+                        "type": "boolean",
+                        "label": "Insert missing record",
+                        "required": true
+                    },
+                    {
+                        "name": "overwriteArrays",
+                        "type": "boolean",
+                        "label": "Overwrite an existing array in the record",
+                        "required": true
+                    },
+                    {
+                        "name": "data",
+                        "spec": [
+                            {
+                                "name": "booking_id",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "chat_id",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "message_id",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "contact_name",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "phone",
+                                "type": "number",
+                                "label": null
+                            },
+                            {
+                                "name": "pax",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "x_studio_booking_datetime",
+                                "type": "date",
+                                "label": null
+                            },
+                            {
+                                "name": "date",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "start_at",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "duration",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "staff",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "area",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "flag",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "submitted_at",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "created_by",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "updated_at",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "stage_id",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "stage",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "updated_by",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "source",
+                                "type": "text",
+                                "label": null
+                            }
+                        ],
+                        "type": "collection",
+                        "label": "Record"
+                    }
+                ]
+            }
+        },
+        {
+            "id": 31,
+            "module": "datastore:GetRecord",
+            "version": 1,
+            "parameters": {
+                "datastore": 102092
+            },
+            "mapper": {
+                "key": "{{11.key}}",
+                "returnWrapped": false
+            },
+            "metadata": {
+                "designer": {
+                    "x": 225,
+                    "y": 553
+                },
+                "restore": {
+                    "parameters": {
+                        "datastore": {
+                            "label": "Reservation datastore"
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "datastore",
+                        "type": "datastore",
+                        "label": "Data store",
+                        "required": true
+                    }
+                ],
+                "expect": [
+                    {
+                        "name": "key",
+                        "type": "text",
+                        "label": "Key",
+                        "required": true
+                    },
+                    {
+                        "name": "returnWrapped",
+                        "type": "boolean",
+                        "label": "Return Wrapped Output",
+                        "required": true
+                    }
+                ],
+                "interface": [
+                    {
+                        "help": "",
+                        "name": "booking_id",
+                        "type": "text",
+                        "label": null,
+                        "default": null,
+                        "required": false,
+                        "multiline": false
+                    },
+                    {
+                        "help": "",
+                        "name": "chat_id",
+                        "type": "text",
+                        "label": null,
+                        "default": null,
+                        "required": false,
+                        "multiline": false
+                    },
+                    {
+                        "help": "",
+                        "name": "message_id",
+                        "type": "text",
+                        "label": null,
+                        "default": null,
+                        "required": false,
+                        "multiline": false
+                    },
+                    {
+                        "help": "",
+                        "name": "contact_name",
+                        "type": "text",
+                        "label": null,
+                        "default": null,
+                        "required": false,
+                        "multiline": false
+                    },
+                    {
+                        "help": "",
+                        "name": "phone",
+                        "type": "number",
+                        "label": null,
+                        "default": null,
+                        "required": false
+                    },
+                    {
+                        "help": "",
+                        "name": "pax",
+                        "type": "text",
+                        "label": null,
+                        "default": null,
+                        "required": false,
+                        "multiline": false
+                    },
+                    {
+                        "help": "",
+                        "name": "x_studio_booking_datetime",
+                        "type": "date",
+                        "label": null,
+                        "required": false
+                    },
+                    {
+                        "help": "",
+                        "name": "date",
+                        "type": "text",
+                        "label": null,
+                        "default": null,
+                        "required": false,
+                        "multiline": false
+                    },
+                    {
+                        "help": "",
+                        "name": "start_at",
+                        "type": "text",
+                        "label": null,
+                        "default": null,
+                        "required": false,
+                        "multiline": false
+                    },
+                    {
+                        "help": "",
+                        "name": "duration",
+                        "type": "text",
+                        "label": null,
+                        "default": null,
+                        "required": false,
+                        "multiline": false
+                    },
+                    {
+                        "help": "",
+                        "name": "staff",
+                        "type": "text",
+                        "label": null,
+                        "default": null,
+                        "required": false,
+                        "multiline": false
+                    },
+                    {
+                        "help": "",
+                        "name": "area",
+                        "type": "text",
+                        "label": null,
+                        "default": null,
+                        "required": false,
+                        "multiline": false
+                    },
+                    {
+                        "help": "",
+                        "name": "flag",
+                        "type": "text",
+                        "label": null,
+                        "default": null,
+                        "required": false,
+                        "multiline": false
+                    },
+                    {
+                        "help": "",
+                        "name": "submitted_at",
+                        "type": "text",
+                        "label": null,
+                        "default": null,
+                        "required": false,
+                        "multiline": false
+                    },
+                    {
+                        "help": "",
+                        "name": "created_by",
+                        "type": "text",
+                        "label": null,
+                        "default": null,
+                        "required": false,
+                        "multiline": false
+                    },
+                    {
+                        "help": "",
+                        "name": "updated_at",
+                        "type": "text",
+                        "label": null,
+                        "default": null,
+                        "required": false,
+                        "multiline": false
+                    },
+                    {
+                        "help": "",
+                        "name": "stage_id",
+                        "type": "text",
+                        "label": null,
+                        "default": null,
+                        "required": false,
+                        "multiline": false
+                    },
+                    {
+                        "help": "",
+                        "name": "stage",
+                        "type": "text",
+                        "label": null,
+                        "default": null,
+                        "required": false,
+                        "multiline": false
+                    },
+                    {
+                        "help": "",
+                        "name": "updated_by",
+                        "type": "text",
+                        "label": null,
+                        "default": null,
+                        "required": false,
+                        "multiline": false
+                    },
+                    {
+                        "help": "",
+                        "name": "source",
+                        "type": "text",
+                        "label": null,
+                        "default": null,
+                        "required": false,
+                        "multiline": false
+                    }
+                ]
+            }
+        },
+        {
+            "id": 25,
+            "module": "builtin:BasicRouter",
+            "version": 1,
+            "mapper": null,
+            "metadata": {
+                "designer": {
+                    "x": 777,
+                    "y": 882
+                }
+            },
+            "routes": [
+                {
+                    "flow": [
+                        {
+                            "id": 2,
+                            "module": "telegram:EditMessage",
+                            "version": 1,
+                            "parameters": {
+                                "__IMTCONN__": 5791499
+                            },
+                            "filter": {
+                                "name": "Confirmed",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{19.stage}}",
+                                            "b": "confirmed",
+                                            "o": "text:equal"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "edit": "message",
+                                "text": "🍽 Booking #{{19.booking_id}}\n\n{{31.contact_name}} • {{31.pax}}pax\n🕒 {{31.submitted_at}} - {{31.start_at}} - {{31.duration}}min\n📍 {{31.area}}\n✅ Status: CONFIRMED.",
+                                "chatId": "{{31.chat_id}}",
+                                "messageId": "{{31.message_id}}",
+                                "parseMode": "",
+                                "replyMarkup": "{\n  \"inline_keyboard\": [\n    [\n      { \"text\": \"Arrived\", \"callback_data\": \"stage|{{31.booking_id}}|arrived\" }\n    ],\n    [\n      { \"text\": \"Cancelled\", \"callback_data\": \"stage|{{31.booking_id}}|cancelled\" },\n      { \"text\": \"No-show\", \"callback_data\": \"stage|{{31.booking_id}}|noshow\" }\n    ]\n  ]\n}",
+                                "replyMarkupAssembleType": "reply_markup_enter"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 548,
+                                    "y": 414
+                                },
+                                "restore": {
+                                    "expect": {
+                                        "edit": {
+                                            "label": "Chat Message"
+                                        },
+                                        "parseMode": {
+                                            "label": "Empty"
+                                        },
+                                        "replyMarkupAssembleType": {
+                                            "label": "Enter the Reply Markup"
+                                        }
+                                    },
+                                    "parameters": {
+                                        "__IMTCONN__": {
+                                            "data": {
+                                                "scoped": "true",
+                                                "connection": "telegram"
+                                            },
+                                            "label": "Back from Telegram"
+                                        }
+                                    }
+                                },
+                                "parameters": [
+                                    {
+                                        "name": "__IMTCONN__",
+                                        "type": "account:telegram",
+                                        "label": "Connection",
+                                        "required": true
+                                    }
+                                ],
+                                "expect": [
+                                    {
+                                        "name": "edit",
+                                        "type": "select",
+                                        "label": "Edit",
+                                        "validate": {
+                                            "enum": [
+                                                "message",
+                                                "inline"
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "name": "text",
+                                        "type": "text",
+                                        "label": "Text",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "parseMode",
+                                        "type": "select",
+                                        "label": "Parse Mode",
+                                        "validate": {
+                                            "enum": [
+                                                "Markdown",
+                                                "HTML"
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "name": "disableWebPagePreview",
+                                        "type": "boolean",
+                                        "label": "Disable Link Previews"
+                                    },
+                                    {
+                                        "name": "replyMarkupAssembleType",
+                                        "type": "select",
+                                        "label": "Enter/Assemble the Reply Markup Field",
+                                        "validate": {
+                                            "enum": [
+                                                "reply_markup_enter",
+                                                "reply_markup_assemble"
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "name": "chatId",
+                                        "type": "text",
+                                        "label": "Chat ID",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "messageId",
+                                        "type": "number",
+                                        "label": "Message ID",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "replyMarkup",
+                                        "type": "text",
+                                        "label": "Reply Markup"
+                                    }
+                                ],
+                                "advanced": true
+                            }
+                        }
+                    ]
+                },
+                {
+                    "flow": [
+                        {
+                            "id": 4,
+                            "module": "telegram:EditMessage",
+                            "version": 1,
+                            "parameters": {
+                                "__IMTCONN__": 5791499
+                            },
+                            "filter": {
+                                "name": "cancelled",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{19.stage}}",
+                                            "b": "cancelled",
+                                            "o": "text:equal"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "edit": "message",
+                                "text": "🍽 Booking #{{19.booking_id}}\n\n{{31.contact_name}} • {{31.pax}}pax\n🕒 {{31.submitted_at}} - {{31.start_at}} - {{31.duration}}min\n📍 {{31.area}}\n\n❌ Status: CANCELLED!",
+                                "chatId": "{{31.chat_id}}",
+                                "messageId": "{{31.message_id}}",
+                                "parseMode": "",
+                                "replyMarkup": "",
+                                "replyMarkupAssembleType": "reply_markup_enter"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 840,
+                                    "y": 470
+                                },
+                                "restore": {
+                                    "expect": {
+                                        "edit": {
+                                            "label": "Chat Message"
+                                        },
+                                        "parseMode": {
+                                            "label": "Empty"
+                                        },
+                                        "replyMarkupAssembleType": {
+                                            "label": "Enter the Reply Markup"
+                                        }
+                                    },
+                                    "parameters": {
+                                        "__IMTCONN__": {
+                                            "data": {
+                                                "scoped": "true",
+                                                "connection": "telegram"
+                                            },
+                                            "label": "Back from Telegram"
+                                        }
+                                    }
+                                },
+                                "parameters": [
+                                    {
+                                        "name": "__IMTCONN__",
+                                        "type": "account:telegram",
+                                        "label": "Connection",
+                                        "required": true
+                                    }
+                                ],
+                                "expect": [
+                                    {
+                                        "name": "edit",
+                                        "type": "select",
+                                        "label": "Edit",
+                                        "validate": {
+                                            "enum": [
+                                                "message",
+                                                "inline"
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "name": "text",
+                                        "type": "text",
+                                        "label": "Text",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "parseMode",
+                                        "type": "select",
+                                        "label": "Parse Mode",
+                                        "validate": {
+                                            "enum": [
+                                                "Markdown",
+                                                "HTML"
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "name": "disableWebPagePreview",
+                                        "type": "boolean",
+                                        "label": "Disable Link Previews"
+                                    },
+                                    {
+                                        "name": "replyMarkupAssembleType",
+                                        "type": "select",
+                                        "label": "Enter/Assemble the Reply Markup Field",
+                                        "validate": {
+                                            "enum": [
+                                                "reply_markup_enter",
+                                                "reply_markup_assemble"
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "name": "chatId",
+                                        "type": "text",
+                                        "label": "Chat ID",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "messageId",
+                                        "type": "number",
+                                        "label": "Message ID",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "replyMarkup",
+                                        "type": "text",
+                                        "label": "Reply Markup"
+                                    }
+                                ],
+                                "advanced": true
+                            }
+                        }
+                    ]
+                },
+                {
+                    "flow": [
+                        {
+                            "id": 22,
+                            "module": "telegram:EditMessage",
+                            "version": 1,
+                            "parameters": {
+                                "__IMTCONN__": 5791499
+                            },
+                            "filter": {
+                                "name": "done",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{19.stage}}",
+                                            "b": "done",
+                                            "o": "text:equal"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "edit": "message",
+                                "text": "🍽 Booking #{{19.booking_id}}\n\n{{31.contact_name}} • {{31.pax}}pax\n🕒 {{31.submitted_at}} - {{31.start_at}} - {{31.duration}}min\n📍 {{31.area}}\n\n🏁 Status: DONE :)",
+                                "chatId": "{{31.chat_id}}",
+                                "messageId": "{{31.message_id}}",
+                                "parseMode": "",
+                                "replyMarkup": "",
+                                "replyMarkupAssembleType": "reply_markup_enter"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 1165,
+                                    "y": 570
+                                },
+                                "restore": {
+                                    "expect": {
+                                        "edit": {
+                                            "label": "Chat Message"
+                                        },
+                                        "parseMode": {
+                                            "label": "Empty"
+                                        },
+                                        "replyMarkupAssembleType": {
+                                            "label": "Enter the Reply Markup"
+                                        }
+                                    },
+                                    "parameters": {
+                                        "__IMTCONN__": {
+                                            "data": {
+                                                "scoped": "true",
+                                                "connection": "telegram"
+                                            },
+                                            "label": "Back from Telegram"
+                                        }
+                                    }
+                                },
+                                "parameters": [
+                                    {
+                                        "name": "__IMTCONN__",
+                                        "type": "account:telegram",
+                                        "label": "Connection",
+                                        "required": true
+                                    }
+                                ],
+                                "expect": [
+                                    {
+                                        "name": "edit",
+                                        "type": "select",
+                                        "label": "Edit",
+                                        "validate": {
+                                            "enum": [
+                                                "message",
+                                                "inline"
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "name": "text",
+                                        "type": "text",
+                                        "label": "Text",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "parseMode",
+                                        "type": "select",
+                                        "label": "Parse Mode",
+                                        "validate": {
+                                            "enum": [
+                                                "Markdown",
+                                                "HTML"
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "name": "disableWebPagePreview",
+                                        "type": "boolean",
+                                        "label": "Disable Link Previews"
+                                    },
+                                    {
+                                        "name": "replyMarkupAssembleType",
+                                        "type": "select",
+                                        "label": "Enter/Assemble the Reply Markup Field",
+                                        "validate": {
+                                            "enum": [
+                                                "reply_markup_enter",
+                                                "reply_markup_assemble"
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "name": "chatId",
+                                        "type": "text",
+                                        "label": "Chat ID",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "messageId",
+                                        "type": "number",
+                                        "label": "Message ID",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "replyMarkup",
+                                        "type": "text",
+                                        "label": "Reply Markup"
+                                    }
+                                ],
+                                "advanced": true
+                            }
+                        }
+                    ]
+                },
+                {
+                    "flow": [
+                        {
+                            "id": 24,
+                            "module": "telegram:EditMessage",
+                            "version": 1,
+                            "parameters": {
+                                "__IMTCONN__": 5791499
+                            },
+                            "filter": {
+                                "name": "arrived",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{19.stage}}",
+                                            "b": "arrived",
+                                            "o": "text:equal"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "edit": "message",
+                                "text": "🍽 Booking #{{19.booking_id}}\n{{31.contact_name}} • {{31.pax}}pax\n🕒 {{31.submitted_at}} - {{31.start_at}} - {{31.duration}}min\n📍 {{31.area}}\n\n🟣 Status: ARRIVED*",
+                                "chatId": "{{31.chat_id}}",
+                                "messageId": "{{31.message_id}}",
+                                "parseMode": "",
+                                "replyMarkup": "{\n \"inline_keyboard\":[\n  [\n   {\"text\":\"Done\",\"callback_data\":\"stage|{{31.booking_id}}|done\"}\n  ]\n ]\n}",
+                                "replyMarkupAssembleType": "reply_markup_enter"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 1266,
+                                    "y": 887
+                                },
+                                "restore": {
+                                    "expect": {
+                                        "edit": {
+                                            "label": "Chat Message"
+                                        },
+                                        "parseMode": {
+                                            "label": "Empty"
+                                        },
+                                        "replyMarkupAssembleType": {
+                                            "label": "Enter the Reply Markup"
+                                        }
+                                    },
+                                    "parameters": {
+                                        "__IMTCONN__": {
+                                            "data": {
+                                                "scoped": "true",
+                                                "connection": "telegram"
+                                            },
+                                            "label": "Back from Telegram"
+                                        }
+                                    }
+                                },
+                                "parameters": [
+                                    {
+                                        "name": "__IMTCONN__",
+                                        "type": "account:telegram",
+                                        "label": "Connection",
+                                        "required": true
+                                    }
+                                ],
+                                "expect": [
+                                    {
+                                        "name": "edit",
+                                        "type": "select",
+                                        "label": "Edit",
+                                        "validate": {
+                                            "enum": [
+                                                "message",
+                                                "inline"
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "name": "text",
+                                        "type": "text",
+                                        "label": "Text",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "parseMode",
+                                        "type": "select",
+                                        "label": "Parse Mode",
+                                        "validate": {
+                                            "enum": [
+                                                "Markdown",
+                                                "HTML"
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "name": "disableWebPagePreview",
+                                        "type": "boolean",
+                                        "label": "Disable Link Previews"
+                                    },
+                                    {
+                                        "name": "replyMarkupAssembleType",
+                                        "type": "select",
+                                        "label": "Enter/Assemble the Reply Markup Field",
+                                        "validate": {
+                                            "enum": [
+                                                "reply_markup_enter",
+                                                "reply_markup_assemble"
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "name": "chatId",
+                                        "type": "text",
+                                        "label": "Chat ID",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "messageId",
+                                        "type": "number",
+                                        "label": "Message ID",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "replyMarkup",
+                                        "type": "text",
+                                        "label": "Reply Markup"
+                                    }
+                                ],
+                                "advanced": true
+                            }
+                        }
+                    ]
+                },
+                {
+                    "flow": [
+                        {
+                            "id": 23,
+                            "module": "telegram:EditMessage",
+                            "version": 1,
+                            "parameters": {
+                                "__IMTCONN__": 5791499
+                            },
+                            "filter": {
+                                "name": "no-show",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{19.stage}}",
+                                            "b": "noshow",
+                                            "o": "text:equal"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "edit": "message",
+                                "text": "🍽 Booking #{{19.booking_id}}\n\n{{31.contact_name}} • {{31.pax}}pax\n🕒 {{31.submitted_at}} - {{31.start_at}} - {{31.duration}}min\n📍 {{31.area}}\n\n🚫 Status: NO-SHOW!!!",
+                                "chatId": "{{31.chat_id}}",
+                                "messageId": "{{31.message_id}}",
+                                "parseMode": "",
+                                "replyMarkup": "",
+                                "replyMarkupAssembleType": "reply_markup_enter"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 1216,
+                                    "y": 1122
+                                },
+                                "restore": {
+                                    "expect": {
+                                        "edit": {
+                                            "label": "Chat Message"
+                                        },
+                                        "parseMode": {
+                                            "label": "Empty"
+                                        },
+                                        "replyMarkupAssembleType": {
+                                            "label": "Enter the Reply Markup"
+                                        }
+                                    },
+                                    "parameters": {
+                                        "__IMTCONN__": {
+                                            "data": {
+                                                "scoped": "true",
+                                                "connection": "telegram"
+                                            },
+                                            "label": "Back from Telegram"
+                                        }
+                                    }
+                                },
+                                "parameters": [
+                                    {
+                                        "name": "__IMTCONN__",
+                                        "type": "account:telegram",
+                                        "label": "Connection",
+                                        "required": true
+                                    }
+                                ],
+                                "expect": [
+                                    {
+                                        "name": "edit",
+                                        "type": "select",
+                                        "label": "Edit",
+                                        "validate": {
+                                            "enum": [
+                                                "message",
+                                                "inline"
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "name": "text",
+                                        "type": "text",
+                                        "label": "Text",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "parseMode",
+                                        "type": "select",
+                                        "label": "Parse Mode",
+                                        "validate": {
+                                            "enum": [
+                                                "Markdown",
+                                                "HTML"
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "name": "disableWebPagePreview",
+                                        "type": "boolean",
+                                        "label": "Disable Link Previews"
+                                    },
+                                    {
+                                        "name": "replyMarkupAssembleType",
+                                        "type": "select",
+                                        "label": "Enter/Assemble the Reply Markup Field",
+                                        "validate": {
+                                            "enum": [
+                                                "reply_markup_enter",
+                                                "reply_markup_assemble"
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "name": "chatId",
+                                        "type": "text",
+                                        "label": "Chat ID",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "messageId",
+                                        "type": "number",
+                                        "label": "Message ID",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "replyMarkup",
+                                        "type": "text",
+                                        "label": "Reply Markup"
+                                    }
+                                ],
+                                "advanced": true
+                            }
+                        }
+                    ]
+                },
+                {
+                    "flow": [
+                        {
+                            "id": 21,
+                            "module": "odoo:makeApiCall",
+                            "version": 1,
+                            "parameters": {
+                                "__IMTCONN__": 5613607
+                            },
+                            "mapper": {
+                                "action": "write",
+                                "entity": "crm.lead",
+                                "headers": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "text/xml; charset=utf-8"
+                                    }
+                                ],
+                                "parameters": "[\n  [{{19.booking_id}}],\n  {\n    \"name\": \"Reservation\",\n    \"team_id\": 5,\n    \"stage_id\": {{19.stage_id}},\n    \"x_studio_source\": \"{{31.source}}\",\n    \"x_studio_updated_at\": \"{{formatDate(now; \"YYYY-MM-DD HH:mm:ss\"; \"Europe/Berlin\")}}\"\n  }\n]"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 834,
+                                    "y": 1220
+                                },
+                                "restore": {
+                                    "expect": {
+                                        "action": {
+                                            "mode": "chose",
+                                            "label": "Update Records"
+                                        },
+                                        "headers": {
+                                            "mode": "chose",
+                                            "items": [
+                                                null
+                                            ]
+                                        }
+                                    },
+                                    "parameters": {
+                                        "__IMTCONN__": {
+                                            "data": {
+                                                "scoped": "true",
+                                                "connection": "odoo"
+                                            },
+                                            "label": "My Odoo connection"
+                                        }
+                                    }
+                                },
+                                "parameters": [
+                                    {
+                                        "name": "__IMTCONN__",
+                                        "type": "account:odoo",
+                                        "label": "Connection",
+                                        "required": true
+                                    }
+                                ],
+                                "expect": [
+                                    {
+                                        "name": "entity",
+                                        "type": "text",
+                                        "label": "Entity",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "action",
+                                        "type": "select",
+                                        "label": "Action",
+                                        "required": true,
+                                        "validate": {
+                                            "enum": [
+                                                "search",
+                                                "search_count",
+                                                "read",
+                                                "fields_get",
+                                                "search_read",
+                                                "create",
+                                                "write",
+                                                "unlink"
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "name": "parameters",
+                                        "type": "text",
+                                        "label": "Parameters"
+                                    },
+                                    {
+                                        "name": "headers",
+                                        "spec": [
+                                            {
+                                                "name": "key",
+                                                "type": "text",
+                                                "label": "Key"
+                                            },
+                                            {
+                                                "name": "value",
+                                                "type": "text",
+                                                "label": "Value"
+                                            }
+                                        ],
+                                        "type": "array",
+                                        "label": "Headers"
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "flow": [
+                        {
+                            "id": 32,
+                            "module": "http:MakeRequest",
+                            "version": 4,
+                            "parameters": {
+                                "tlsType": "",
+                                "proxyKeychain": "",
+                                "authenticationType": "noAuth"
+                            },
+                            "mapper": {
+                                "url": "https://quan-esskultur.divine-shape-9f0a.workers.dev/api/board-sync",
+                                "method": "post",
+                                "headers": [
+                                    {
+                                        "name": "CF-Access-Client-Id",
+                                        "value": "886e4bc8155e30f24c7414af7ccf1966.access"
+                                    },
+                                    {
+                                        "name": "CF-Access-Client-Secret",
+                                        "value": "8298d543d3f652217274895be93162c6c596c21944ddc4393729aae75900fdea"
+                                    }
+                                ],
+                                "contentType": "json",
+                                "inputMethod": "dataStructure",
+                                "shareCookies": false,
+                                "parseResponse": true,
+                                "allowRedirects": true,
+                                "stopOnHttpError": true,
+                                "bodyDataStructure": 330074,
+                                "dataStructureBodyContent": {
+                                    "pax": "{{31.pax}}",
+                                    "area": "{{31.area}}",
+                                    "date": "{{31.date}}",
+                                    "flag": "{{31.flag}}",
+                                    "phone": "{{31.phone}}",
+                                    "staff": "{{31.staff}}",
+                                    "stage": "{{31.stage}}",
+                                    "source": "{{31.source}}",
+                                    "duration": "{{31.duration}}",
+                                    "stage_id": "{{31.stage_id}}",
+                                    "start_at": "{{31.start_at}}",
+                                    "booking_id": "{{31.booking_id}}",
+                                    "updated_at": "{{31.updated_at}}",
+                                    "updated_by": "{{31.updated_by}}",
+                                    "contact_name": "{{31.contact_name}}"
+                                },
+                                "requestCompressedContent": true
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 261,
+                                    "y": 882
+                                },
+                                "restore": {
+                                    "expect": {
+                                        "method": {
+                                            "mode": "chose",
+                                            "label": "POST"
+                                        },
+                                        "headers": {
+                                            "mode": "chose",
+                                            "items": [
+                                                null,
+                                                null
+                                            ]
+                                        },
+                                        "contentType": {
+                                            "label": "application/jsonEnter data in the JSON format, as a string or using a data structure."
+                                        },
+                                        "inputMethod": {
+                                            "label": "Data structureDefine the JSON body with a data structure to map or enter values for each key. JSON reserved characters are escaped automatically."
+                                        },
+                                        "shareCookies": {
+                                            "mode": "chose"
+                                        },
+                                        "parseResponse": {
+                                            "mode": "chose"
+                                        },
+                                        "allowRedirects": {
+                                            "mode": "chose"
+                                        },
+                                        "paginationType": {
+                                            "label": "Empty"
+                                        },
+                                        "queryParameters": {
+                                            "mode": "chose"
+                                        },
+                                        "stopOnHttpError": {
+                                            "mode": "chose"
+                                        },
+                                        "bodyDataStructure": {
+                                            "label": "Reservation Store"
+                                        },
+                                        "requestCompressedContent": {
+                                            "mode": "chose"
+                                        }
+                                    },
+                                    "parameters": {
+                                        "tlsType": {
+                                            "label": "Empty"
+                                        },
+                                        "proxyKeychain": {
+                                            "label": "Choose a key"
+                                        },
+                                        "authenticationType": {
+                                            "label": "No authenticationUse when no credentials are required for the request."
+                                        }
+                                    }
+                                },
+                                "parameters": [
+                                    {
+                                        "name": "authenticationType",
+                                        "type": "select",
+                                        "label": "Authentication type",
+                                        "required": true,
+                                        "validate": {
+                                            "enum": [
+                                                "noAuth",
+                                                "apiKey",
+                                                "basicAuth",
+                                                "oAuth"
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "name": "tlsType",
+                                        "type": "select",
+                                        "label": "Transport layer security (TLS)",
+                                        "validate": {
+                                            "enum": [
+                                                "mTls",
+                                                "tls"
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "name": "proxyKeychain",
+                                        "type": "keychain:proxy",
+                                        "label": "Proxy"
+                                    }
+                                ],
+                                "expect": [
+                                    {
+                                        "name": "url",
+                                        "type": "url",
+                                        "label": "URL",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "method",
+                                        "type": "select",
+                                        "label": "Method",
+                                        "required": true,
+                                        "validate": {
+                                            "enum": [
+                                                "get",
+                                                "head",
+                                                "post",
+                                                "put",
+                                                "patch",
+                                                "delete",
+                                                "options"
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "name": "headers",
+                                        "spec": {
+                                            "name": "value",
+                                            "spec": [
+                                                {
+                                                    "name": "name",
+                                                    "type": "text",
+                                                    "label": "Name",
+                                                    "required": true,
+                                                    "validate": {
+                                                        "pattern": "^[-!#$%&'*+.^_`|~0-9A-Za-z]+$"
+                                                    }
+                                                },
+                                                {
+                                                    "name": "value",
+                                                    "type": "text",
+                                                    "label": "Value"
+                                                }
+                                            ],
+                                            "type": "collection",
+                                            "label": "Header"
+                                        },
+                                        "type": "array",
+                                        "label": "Headers"
+                                    },
+                                    {
+                                        "name": "queryParameters",
+                                        "spec": {
+                                            "name": "value",
+                                            "spec": [
+                                                {
+                                                    "name": "name",
+                                                    "type": "text",
+                                                    "label": "Name",
+                                                    "required": true
+                                                },
+                                                {
+                                                    "name": "value",
+                                                    "type": "text",
+                                                    "label": "Value"
+                                                }
+                                            ],
+                                            "type": "collection",
+                                            "label": "Parameter"
+                                        },
+                                        "type": "array",
+                                        "label": "Query parameters"
+                                    },
+                                    {
+                                        "name": "contentType",
+                                        "type": "select",
+                                        "label": "Body content type",
+                                        "validate": {
+                                            "enum": [
+                                                "json",
+                                                "multipart",
+                                                "urlEncoded",
+                                                "custom"
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "name": "parseResponse",
+                                        "type": "boolean",
+                                        "label": "Parse response",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "stopOnHttpError",
+                                        "type": "boolean",
+                                        "label": "Return error if HTTP request fails",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "timeout",
+                                        "type": "uinteger",
+                                        "label": "Timeout",
+                                        "validate": {
+                                            "max": 300,
+                                            "min": 1
+                                        }
+                                    },
+                                    {
+                                        "name": "allowRedirects",
+                                        "type": "boolean",
+                                        "label": "Allow redirects",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "shareCookies",
+                                        "type": "boolean",
+                                        "label": "Share cookies with other HTTP modules",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "requestCompressedContent",
+                                        "type": "boolean",
+                                        "label": "Request compressed content",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "inputMethod",
+                                        "type": "select",
+                                        "label": "Body input method",
+                                        "required": true,
+                                        "validate": {
+                                            "enum": [
+                                                "dataStructure",
+                                                "jsonString"
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "name": "bodyDataStructure",
+                                        "type": "udt",
+                                        "label": "Body structure",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "dataStructureBodyContent",
+                                        "spec": [
+                                            {
+                                                "name": "booking_id",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "chat_id",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "message_id",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "contact_name",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "phone",
+                                                "type": "number",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "pax",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "x_studio_booking_datetime",
+                                                "type": "date",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "date",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "start_at",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "duration",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "staff",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "area",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "flag",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "submitted_at",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "created_by",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "updated_at",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "stage_id",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "stage",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "updated_by",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "source",
+                                                "type": "text",
+                                                "label": null
+                                            }
+                                        ],
+                                        "type": "collection",
+                                        "label": "Body content"
+                                    },
+                                    {
+                                        "name": "paginationType",
+                                        "type": "select",
+                                        "label": "Pagination type",
+                                        "validate": {
+                                            "enum": [
+                                                "offsetBased",
+                                                "pageBased",
+                                                "urlBased",
+                                                "tokenBased"
+                                            ]
+                                        }
+                                    }
+                                ],
+                                "interface": [
+                                    {
+                                        "name": "data",
+                                        "type": "any",
+                                        "label": "Data"
+                                    },
+                                    {
+                                        "name": "statusCode",
+                                        "type": "number",
+                                        "label": "Status Code"
+                                    },
+                                    {
+                                        "name": "headers",
+                                        "spec": [
+                                            {
+                                                "name": "content-length",
+                                                "type": "text",
+                                                "label": "Content-Length"
+                                            },
+                                            {
+                                                "name": "content-encoding",
+                                                "type": "text",
+                                                "label": "Content-Encoding"
+                                            },
+                                            {
+                                                "name": "content-type",
+                                                "type": "text",
+                                                "label": "Content-Type"
+                                            },
+                                            {
+                                                "name": "server",
+                                                "type": "text",
+                                                "label": "Server"
+                                            },
+                                            {
+                                                "name": "cache-control",
+                                                "type": "text",
+                                                "label": "Cache-Control"
+                                            },
+                                            {
+                                                "name": "set-cookie",
+                                                "spec": {
+                                                    "type": "text"
+                                                },
+                                                "type": "array",
+                                                "label": "Set-Cookie"
+                                            }
+                                        ],
+                                        "type": "collection",
+                                        "label": "Headers"
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "metadata": {
+        "instant": true,
+        "version": 1,
+        "scenario": {
+            "roundtrips": 1,
+            "maxErrors": 10,
+            "autoCommit": true,
+            "autoCommitTriggerLast": true,
+            "sequential": false,
+            "slots": null,
+            "confidential": false,
+            "dataloss": true,
+            "dlq": true,
+            "freshVariables": false
+        },
+        "designer": {
+            "orphans": []
+        },
+        "zone": "eu1.make.com",
+        "notes": []
+    }
+}

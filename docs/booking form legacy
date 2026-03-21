@@ -1,0 +1,583 @@
+<div id="odoo_booking_container" style="position:relative; width:100%; display:flex; justify-content:center;">
+  <iframe id="booking_iframe" srcdoc="
+  &lt;!DOCTYPE html&gt;
+  &lt;html lang=&quot;de&quot;&gt;
+  &lt;head&gt;
+    &lt;meta charset=&quot;UTF-8&quot; /&gt;
+    &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no&quot; /&gt;
+    &lt;script src=&quot;https://challenges.cloudflare.com/turnstile/v0/api.js&quot; async defer&gt;&lt;/script&gt;
+
+ &lt;style&gt;
+:root { --brand:#A54A7B; --brand-dark:#8a3d66; --muted:#666; --red:#b3261e; }
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body { background: transparent; overflow-x: hidden; -webkit-text-size-adjust: 100%; }
+html { font-size: 16px; }
+@media (max-width: 576px) { html { font-size: 15.5px; } }
+
+body {
+    font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    padding: 6px;
+    overflow-y: hidden;
+}
+
+/* Đậm hơn cho Placeholder để dễ đọc */
+::placeholder { color: #555 !important; opacity: 1 !important; }
+:-ms-input-placeholder { color: #555 !important; }
+::-ms-input-placeholder { color: #555 !important; }
+
+.card {
+    width: 100%;
+    max-width: 520px;
+    margin: 4px auto;
+    background: #fff;
+    border: 1px solid #eee;
+    border-radius: 12px;
+    padding: 10px 6px 12px;
+    box-shadow: 0 4px 14px rgba(0,0,0,.05);
+}
+
+.title {
+    color: var(--brand);
+    font-weight: 800;
+    text-align: center;
+    margin: 0 0 6px;
+    text-transform: uppercase;
+    letter-spacing: .3px;
+    font-size: 1.06rem;
+    line-height: 1.2;
+}
+
+label {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0,0,0,0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
+.row2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 4px;
+}
+
+.group { display: flex; flex-direction: column; }
+.field-wrap { position: relative; width: 100%; }
+
+.field-icon {
+    position: absolute;
+    left: 11px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1rem;
+    line-height: 1;
+    opacity: .72;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.input, .select {
+    width: 100%;
+    margin-bottom: 6px;
+    padding: 8px 9px;
+    border-radius: 10px;
+    border: 1px solid #ced4da;
+    font-size: .95rem;
+    background: #fff;
+    line-height: 1.28;
+}
+
+.with-icon { padding-left: 34px !important; }
+select.with-icon { padding-left: 38px !important; }
+
+/* Căn giữa chữ Choose time */
+.time-select {
+    text-align: center;
+    text-align-last: center; 
+    padding-left: 12px !important;
+}
+
+.btn {
+    background: var(--brand); color: #fff;
+    border: none; width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    font-weight: 700; font-size: 1rem; line-height: 1.1;
+    margin: 8px 0 4px; cursor: pointer;
+}
+.btn:hover { background: var(--brand-dark); }
+
+.muted { color: #777; font-size: .78rem; text-align: center; margin-top: 2px; }
+.hp { display: none !important; visibility: hidden; }
+.captcha { display: flex; justify-content: center; margin: 6px 0 2px; }
+
+/* TỐI ƯU MOBILE */
+@media (max-width: 600px) {
+    body { padding: 2px; } /* Tràn sát viền hơn */
+
+    .card {
+        padding: 10px 8px;
+        border-radius: 8px;
+        margin: 2px auto;
+        border: none; /* Bỏ border để cảm giác rộng hơn */
+        box-shadow: none; /* Bỏ shadow để phẳng với nền mobile */
+    }
+
+    .row2 {
+        grid-template-columns: 1fr !important;
+        gap: 0 !important;
+    }
+
+    .input, .select {
+        font-size: 1rem !important; /* Chữ to hơn chút trên mobile */
+        padding: 12px 12px !important;
+        margin-bottom: 8px !important;
+    }
+    
+    .with-icon { padding-left: 40px !important; }
+    
+    .time-select {
+        text-align: center;
+        text-align-last: center;
+        padding-left: 12px !important;
+    }
+
+    .sticky-cta {
+        position: sticky;
+        bottom: 0;
+        background: #ffffff;
+        padding: 8px 0;
+        z-index: 999;
+        border-top: 1px solid #eee;
+    }
+
+    .sticky-cta .btn {
+        width: 100% !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        border-radius: 0; /* Nút bấm tràn viền hoàn toàn ở đáy */
+    }
+}
+&lt;/style&gt;
+
+ 
+ &lt;/head&gt;
+
+  &lt;body&gt;
+    &lt;div class=&quot;card&quot;&gt;
+      &lt;h2 class=&quot;title&quot; id=&quot;form-title&quot;&gt;Tisch reservieren&lt;/h2&gt;
+
+      &lt;form id=&quot;booking-form&quot; autocomplete=&quot;on&quot;&gt;
+
+        &lt;input type=&quot;hidden&quot; name=&quot;source&quot; value=&quot;booking_form&quot; /&gt;
+        &lt;input type=&quot;hidden&quot; name=&quot;lead_type&quot; value=&quot;table_booking&quot; /&gt;
+        &lt;input type=&quot;text&quot; name=&quot;hp_confirm_data&quot; value=&quot;&quot; class=&quot;hp&quot; tabindex=&quot;-1&quot; autocomplete=&quot;off&quot; aria-hidden=&quot;true&quot; /&gt;
+        &lt;input type=&quot;hidden&quot; name=&quot;area&quot; value=&quot;indoor&quot; /&gt;
+
+        &lt;div class=&quot;row2&quot;&gt;
+          &lt;div class=&quot;group&quot;&gt;
+            &lt;label for=&quot;name&quot;&gt;Name *&lt;/label&gt;
+            &lt;div class=&quot;field-wrap&quot;&gt;
+              &lt;span class=&quot;field-icon&quot;&gt;👤&lt;/span&gt;
+              &lt;input
+                class=&quot;input with-icon&quot;
+                type=&quot;text&quot;
+                id=&quot;name&quot;
+                name=&quot;name&quot;
+                aria-label=&quot;Name&quot;
+                required
+              /&gt;
+            &lt;/div&gt;
+          &lt;/div&gt;
+
+          &lt;div class=&quot;group&quot;&gt;
+            &lt;label for=&quot;phone&quot;&gt;Mobiltelefon *&lt;/label&gt;
+            &lt;div class=&quot;field-wrap&quot;&gt;
+              &lt;span class=&quot;field-icon&quot;&gt;📱&lt;/span&gt;
+              &lt;input
+                class=&quot;input with-icon&quot;
+                type=&quot;tel&quot;
+                id=&quot;phone&quot;
+                name=&quot;phone&quot;
+                aria-label=&quot;Mobiltelefon&quot;
+                required
+              /&gt;
+            &lt;/div&gt;
+          &lt;/div&gt;
+        &lt;/div&gt;
+
+        &lt;div class=&quot;row2&quot;&gt;
+          &lt;div class=&quot;group&quot;&gt;
+            &lt;label for=&quot;date&quot;&gt;Datum *&lt;/label&gt;
+            &lt;div class=&quot;field-wrap&quot;&gt;
+              &lt;span class=&quot;field-icon&quot;&gt;📅&lt;/span&gt;
+              &lt;input
+                class=&quot;input with-icon&quot;
+                type=&quot;text&quot;
+                id=&quot;date&quot;
+                name=&quot;date&quot;
+                aria-label=&quot;Datum&quot;
+                required
+              /&gt;
+            &lt;/div&gt;
+          &lt;/div&gt;
+
+          &lt;div class=&quot;group&quot;&gt;
+            &lt;label for=&quot;time&quot;&gt;Zeit *&lt;/label&gt;
+            &lt;div class=&quot;field-wrap&quot;&gt;
+              &lt;select class=&quot;select time-select&quot; id=&quot;time&quot; name=&quot;time&quot; aria-label=&quot;Zeit&quot; required&gt;
+                &lt;option value=&quot;&quot; disabled selected&gt;Choose time&lt;/option&gt;
+              &lt;/select&gt;
+            &lt;/div&gt;
+          &lt;/div&gt;
+        &lt;/div&gt;
+
+        &lt;label for=&quot;guests&quot;&gt;Anzahl Personen *&lt;/label&gt;
+        &lt;div class=&quot;field-wrap&quot;&gt;
+          &lt;span class=&quot;field-icon&quot;&gt;👥&lt;/span&gt;
+          &lt;input
+            class=&quot;input with-icon&quot;
+            type=&quot;number&quot;
+            id=&quot;guests&quot;
+            name=&quot;guests&quot;
+            min=&quot;1&quot;
+            max=&quot;12&quot;
+            step=&quot;1&quot;
+            aria-label=&quot;Anzahl Personen&quot;
+            required
+          /&gt;
+        &lt;/div&gt;
+
+        &lt;div class=&quot;captcha&quot;&gt;
+          &lt;div class=&quot;cf-turnstile&quot; data-sitekey=&quot;0x4AAAAAACmwktNVObyT3tQ7&quot;&gt;&lt;/div&gt;
+        &lt;/div&gt;
+
+        &lt;div class=&quot;sticky-cta&quot;&gt;
+          &lt;button class=&quot;btn&quot; id=&quot;submit-btn&quot; type=&quot;submit&quot; aria-label=&quot;Reservation&quot;&gt;Reservation&lt;/button&gt;
+        &lt;/div&gt;
+
+        &lt;div class=&quot;muted&quot; id=&quot;privacy-text&quot;&gt;Mit dem Absenden akzeptieren Sie die Verarbeitung Ihrer Daten für die Buchung.&lt;/div&gt;
+      &lt;/form&gt;
+    &lt;/div&gt;
+
+    &lt;script&gt;
+      (function() {
+        const OPEN_FROM_HOUR = 10;
+        const OPEN_TO_HOUR   = 22;
+        const CLOSED_WEEKDAY = 1;
+        const THANKYOU_URL = '/danke-reservierung';
+        const WEBHOOK_URL = 'https://hook.eu1.make.com/gcoko692urf9c98smmdda5at37n1kdet';
+        const SLOT_MINUTES = 15;
+
+        const form = document.getElementById('booking-form');
+        const btn  = document.getElementById('submit-btn');
+        const selectTime = document.getElementById('time');
+        const inputDate = document.getElementById('date');
+        const inputName = document.getElementById('name');
+        const inputPhone = document.getElementById('phone');
+        const inputGuests = document.getElementById('guests');
+        const title = document.getElementById('form-title');
+        const privacy = document.getElementById('privacy-text');
+        const htmlEl = document.documentElement;
+
+        const isMobile = window.matchMedia('(max-width: 600px)').matches;
+        let isSubmitting = false;
+
+        function detectLanguage() {
+          const lang = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
+          if (lang.startsWith('de')) return 'de';
+          return 'en';
+        }
+
+        const currentLang = detectLanguage();
+
+        const i18n = {
+          de: {
+            title: 'Tisch reservieren',
+            namePh: 'Ihr Name',
+            phonePh: 'Ihre Mobilnummer',
+            datePh: 'Datum wählen',
+            timePh: 'Zeit wählen',
+            guestsPh: 'Wie viele Personen?',
+            button: 'Reservieren',
+            privacy: 'Mit dem Absenden akzeptieren Sie die Verarbeitung Ihrer Daten für die Buchung.',
+            security: 'Bitte führen Sie die Sicherheitsprüfung durch.',
+            required: 'Bitte füllen Sie alle Pflichtfelder aus.',
+            guestsRange: 'Anzahl Personen muss zwischen 1 und 12 liegen.',
+            closed: 'Wir haben montags geschlossen. Bitte wählen Sie einen anderen Tag (Di–So).',
+            hours: 'Reservierungen sind nur zwischen 10:00 und 22:00 Uhr möglich.',
+            lead: 'Die gewählte Zeit ist zu kurzfristig oder liegt in der Vergangenheit. Bitte wählen Sie eine spätere Zeit (mind. 15 Min).',
+            wait: 'Bitte warten …',
+            error: 'Es gab ein Problem mit Ihrer Reservierung (möglicherweise bereits vorhanden). Bitte prüfen Sie Ihre Angaben oder versuchen Sie es erneut.',
+            network: 'Netzwerkfehler oder Server nicht erreichbar. Bitte versuchen Sie es erneut.'
+          },
+          en: {
+            title: 'Reserve a table',
+            namePh: 'Enter your name',
+            phonePh: 'Your mobile number',
+            datePh: 'Choose the date',
+            timePh: 'Choose time',
+            guestsPh: 'How many people?',
+            button: 'Reservation',
+            privacy: 'By submitting, you agree to the processing of your data for this booking.',
+            security: 'Please complete the security check.',
+            required: 'Please fill in all required fields.',
+            guestsRange: 'Number of guests must be between 1 and 12.',
+            closed: 'We are closed on Mondays. Please choose another day (Tue–Sun).',
+            hours: 'Reservations are only possible between 10:00 and 22:00.',
+            lead: 'The selected time is too soon or already in the past. Please choose a later time (at least 15 minutes).',
+            wait: 'Please wait …',
+            error: 'There was a problem with your reservation (possibly already existing). Please check your details or try again.',
+            network: 'Network error or server unreachable. Please try again.'
+          }
+        };
+
+        const t = i18n[currentLang];
+
+        function applyLanguage() {
+          htmlEl.setAttribute('lang', currentLang);
+          title.textContent = t.title;
+          btn.textContent = t.button;
+          btn.setAttribute('aria-label', t.button);
+          privacy.textContent = t.privacy;
+
+          inputName.setAttribute('placeholder', t.namePh);
+          inputPhone.setAttribute('placeholder', t.phonePh);
+          inputDate.setAttribute('placeholder', t.datePh);
+          inputGuests.setAttribute('placeholder', t.guestsPh);
+        }
+
+        function setMinDateToday(){
+          const tt = new Date();
+          const yyyy = tt.getFullYear();
+          const mm = String(tt.getMonth()+1).padStart(2,'0');
+          const dd = String(tt.getDate()).padStart(2,'0');
+          inputDate.setAttribute('min', yyyy + '-' + mm + '-' + dd);
+        }
+
+        function setupDateField(){
+          if (isMobile) {
+            inputDate.setAttribute('type', 'text');
+            inputDate.addEventListener('focus', function(){
+              this.setAttribute('type', 'date');
+              setMinDateToday();
+            });
+            inputDate.addEventListener('blur', function(){
+              if(!this.value) this.setAttribute('type', 'text');
+            });
+          } else {
+            inputDate.setAttribute('type', 'date');
+            setMinDateToday();
+          }
+        }
+
+        function pad(n){ return String(n).padStart(2,'0'); }
+
+        function generateTimeSlots(){
+          selectTime.innerHTML = '';
+
+          const ph = document.createElement('option');
+          ph.value = '';
+          ph.textContent = t.timePh;
+          ph.disabled = true;
+          ph.selected = true;
+          selectTime.appendChild(ph);
+
+          for (let h=OPEN_FROM_HOUR; h&lt;=OPEN_TO_HOUR; h++){
+            for (let m=0; m&lt;60; m+=SLOT_MINUTES){
+              if (h===OPEN_TO_HOUR &amp;&amp; m&gt;0) break;
+              const label = pad(h)+':'+pad(m);
+              const opt = document.createElement('option');
+              opt.value = label;
+              opt.textContent = label;
+              selectTime.appendChild(opt);
+            }
+          }
+        }
+
+        function toISO(dateStr, timeStr){
+          const parts = (timeStr || '00:00').split(':').map(function(x){ return parseInt(x,10); });
+          const h = parts[0], m = parts[1];
+          const d = new Date(dateStr + 'T00:00:00');
+          d.setHours(h,m,0,0);
+          return d.toISOString();
+        }
+
+        function isClosedDay(dateStr){
+          return new Date(dateStr + 'T00:00:00').getDay() === CLOSED_WEEKDAY;
+        }
+
+        function isWithinOpeningHours(timeStr){
+          if(!timeStr) return false;
+          const parts = timeStr.split(':').map(function(x){ return parseInt(x,10); });
+          const hh = parts[0], mm = parts[1];
+          if(hh &lt; OPEN_FROM_HOUR) return false;
+          if(hh &gt; OPEN_TO_HOUR) return false;
+          if(hh === OPEN_TO_HOUR &amp;&amp; mm &gt; 0) return false;
+          return true;
+        }
+
+        function validateLeadTime(dateStr,timeStr,minM){
+          try{
+            const now = new Date();
+            const dt = new Date(dateStr + 'T' + timeStr);
+            return dt.getTime() &gt;= now.getTime() + minM*60*1000;
+          }catch(e){
+            return false;
+          }
+        }
+
+        function sendHeight(){
+          const h = Math.ceil(document.documentElement.scrollHeight);
+          try { parent.postMessage({type:'IFRAME_BOOKING_HEIGHT',height:h}, '*'); } catch(e){}
+        }
+
+        if (typeof ResizeObserver !== 'undefined') {
+          const ro = new ResizeObserver(sendHeight);
+          ro.observe(document.body);
+        }
+        window.addEventListener('load', sendHeight);
+        window.addEventListener('resize', sendHeight);
+        setInterval(sendHeight, 800);
+
+        applyLanguage();
+        setupDateField();
+        generateTimeSlots();
+
+        function filterTodaySlots(){
+          const dStr = inputDate.value;
+          if(!dStr) return;
+
+          generateTimeSlots();
+
+          const today = new Date();
+          const chosen = new Date(dStr + 'T00:00:00');
+
+          if (today.toDateString() === chosen.toDateString()){
+            const cutoff = new Date(today.getTime() + 15*60*1000);
+
+            for (const opt of Array.from(selectTime.options)){
+              if (!opt.value) continue;
+              const parts = opt.value.split(':').map(function(x){ return parseInt(x,10); });
+              const hh = parts[0], mm = parts[1];
+              const tt = new Date(chosen);
+              tt.setHours(hh, mm, 0, 0);
+
+              if (tt.getTime() &lt; cutoff.getTime()){
+                opt.disabled = true;
+                opt.hidden = true;
+              }
+            }
+
+            const firstEnabled = Array.from(selectTime.options).find(function(o){
+              return o.value &amp;&amp; !o.disabled;
+            });
+
+            if (firstEnabled) selectTime.value = firstEnabled.value;
+          } else {
+            selectTime.value = '';
+          }
+        }
+
+        inputDate.addEventListener('change', filterTodaySlots);
+
+        form.addEventListener('submit', async function(e){
+          e.preventDefault();
+          if(isSubmitting) return false;
+          isSubmitting = true;
+
+          const turnstileRes = document.getElementsByName('cf-turnstile-response')[0]?.value || '';
+          if(!turnstileRes){
+            alert(t.security);
+            isSubmitting = false;
+            return false;
+          }
+
+          const hp = form.querySelector('[name=&quot;hp_confirm_data&quot;]')?.value || '';
+          if(hp !== ''){
+            isSubmitting = false;
+            return false;
+          }
+
+          const name = form.name.value.trim();
+          const phone = form.phone.value.trim();
+          const guests = parseInt(form.guests.value,10);
+          const date = form.date.value;
+          const time = form.time.value;
+
+          if(!name || !phone || !guests || !date || !time){
+            alert(t.required);
+            isSubmitting = false;
+            return false;
+          }
+          if(guests &lt; 1 || guests &gt; 12){
+            alert(t.guestsRange);
+            isSubmitting = false;
+            return false;
+          }
+          if(isClosedDay(date)){
+            alert(t.closed);
+            isSubmitting = false;
+            return false;
+          }
+          if(!isWithinOpeningHours(time)){
+            alert(t.hours);
+            isSubmitting = false;
+            return false;
+          }
+          if(!validateLeadTime(date,time,15)){
+            alert(t.lead);
+            isSubmitting = false;
+            return false;
+          }
+
+          btn.disabled = true;
+          btn.innerText = t.wait;
+
+          const fd = new FormData(form);
+          fd.append('cf_token', turnstileRes);
+          fd.append('booking_datetime', toISO(date,time));
+          fd.append('tz_offset_minutes', String(-new Date().getTimezoneOffset()));
+          fd.append('page_url', window.location.href);
+          fd.append('user_agent', navigator.userAgent);
+          fd.append('language', currentLang);
+
+          const url = WEBHOOK_URL + '?_t=' + Date.now();
+
+          try{
+            const resp = await fetch(url,{method:'POST',body:fd});
+            let data = {};
+            try { data = await resp.json(); } catch(_){}
+
+            if(data &amp;&amp; data.status === 'error'){
+              alert(data.message || t.error);
+              isSubmitting = false;
+              btn.disabled = false;
+              btn.innerText = t.button;
+              if(typeof turnstile !== 'undefined') turnstile.reset();
+            } else {
+              window.parent.location.href = THANKYOU_URL;
+            }
+          }catch(err){
+            console.error(err);
+            alert(t.network);
+            isSubmitting = false;
+            btn.disabled = false;
+            btn.innerText = t.button;
+            if(typeof turnstile !== 'undefined') turnstile.reset();
+          }
+          return false;
+        });
+      })();
+    &lt;/script&gt;
+
+  &lt;/body&gt;
+  &lt;/html&gt;
+  " style="width: 100%; height: 520px; border: none; overflow: hidden; background: transparent;"></iframe>
+</div>

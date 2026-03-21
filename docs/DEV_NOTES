@@ -1,0 +1,331 @@
+# Esskultur Cloudflare Platform — Development Notes
+
+Last update: 2026-03-16
+
+This document describes the **current development state of the Esskultur platform**.
+
+The platform is designed as a **serverless restaurant operating system** built on Cloudflare.
+
+---
+
+# 1. Project Goal
+
+Build a **Restaurant Operating Platform** supporting:
+
+* multi-restaurant
+* franchise model
+* automated booking management
+* ERP integration
+
+Main components:
+
+Cloudflare Workers → platform logic
+Cloudflare D1 → source of truth
+Odoo Online → ERP mirror
+Staff mobile web app → operational interface
+
+---
+
+# 2. Core Architecture
+
+Customer
+↓
+Website booking form
+↓
+Cloudflare Worker
+↓
+D1 database (source of truth)
+↓
+Staff mobile web app
+↓
+Odoo CRM / ERP mirror
+
+Key rule:
+
+Cloudflare D1 = MASTER
+Odoo = MIRROR
+
+---
+
+# 3. Cloudflare Platform Components
+
+The platform runs on:
+
+* Cloudflare Workers
+* Cloudflare D1
+* Cloudflare KV (future)
+* Cloudflare R2 (future)
+
+Worker responsibilities:
+
+* booking API
+* stage engine
+* contact management
+* admin UI
+* staff mobile UI
+* automation
+* Odoo sync
+
+---
+
+# 4. Repository
+
+GitHub:
+
+github.com/Hai-cyber/ess-admin-ds
+
+Project structure:
+
+ess-admin-ds
+├── migrations
+├── public
+│   ├── index.html
+│   ├── app.js
+│   └── style.css
+├── src
+│   └── index.js
+├── test
+├── package.json
+└── wrangler.jsonc
+
+Important:
+
+admin.html
+admin.js
+
+are currently **missing from the repository**.
+
+They existed on another machine but were not committed.
+
+---
+
+# 5. Database
+
+Cloudflare D1 database.
+
+Source of truth for:
+
+* contacts
+* bookings
+* memberships
+* stage history
+* restaurants
+
+---
+
+# 6. Stage System
+
+Runtime stages:
+
+pending
+confirmed
+arrived
+done
+cancelled
+noshow
+
+Mapping to Odoo:
+
+pending → 1
+confirmed → 2
+arrived → 3
+done → 4
+cancelled → 5
+noshow → 6
+
+Cloudflare manages:
+
+stage_runtime
+stage_id
+
+Odoo mirrors stage_id only.
+
+---
+
+# 7. Implemented APIs
+
+List bookings:
+
+GET /api/admin/bookings
+
+Returns:
+
+items[]
+
+Important fields:
+
+booking_time
+contact_name
+phone
+x_studio_guests
+x_studio_required_blocks
+x_studio_stage_runtime
+x_studio_source
+updated_at
+
+---
+
+Change stage:
+
+POST /api/admin/stage
+
+Payload:
+
+{
+booking_id,
+stage
+}
+
+Worker updates:
+
+stage_runtime
+stage_id
+updated_at
+
+and logs to:
+
+booking_stage_log
+
+---
+
+# 8. Admin UI (Development)
+
+Served by Worker.
+
+Purpose:
+
+* inspect bookings
+* change stage
+* debug system
+
+Features:
+
+* table view
+* search
+* stage buttons
+* reload
+* booking detail JSON
+
+Status:
+
+admin.html and admin.js currently missing.
+
+---
+
+# 9. Staff Interface (Planned)
+
+Telegram will be removed.
+
+Mobile web interface:
+
+/staff
+
+/staff/day?date=YYYY-MM-DD
+
+/staff/booking?id=bk_xxx
+
+Actions:
+
+confirm
+arrived
+done
+cancel
+noshow
+
+---
+
+# 10. Odoo Integration
+
+Odoo acts as ERP mirror.
+
+Cloudflare sends:
+
+* create contact
+* create lead
+* update stage
+* membership sync
+
+Rule:
+
+D1 = source of truth
+
+---
+
+# 11. Development Environment
+
+Run locally:
+
+npx wrangler dev
+
+Local server:
+
+http://localhost:8787
+
+Admin UI expected:
+
+/admin.html
+
+---
+
+# 12. Current Issue
+
+Mac clone missing:
+
+public/admin.html
+public/admin.js
+
+Likely not committed previously.
+
+---
+
+# 13. Next Development Steps
+
+1 restore admin UI
+
+2 implement:
+
+GET /api/admin/booking
+
+3 implement:
+
+stage history API
+
+4 build:
+
+staff mobile interface
+
+5 implement:
+
+Odoo sync worker
+
+---
+
+# 14. Design Principles
+
+Platform must be:
+
+* stable
+* deterministic
+* simple
+* serverless
+
+Avoid:
+
+* business logic in Odoo
+* manual workflows
+* Make.com dependency
+
+Cloudflare must control:
+
+* booking logic
+* capacity logic
+* stage engine
+
+---
+
+# 15. Core Architectural Rule
+
+Cloudflare = platform
+D1 = source of truth
+Odoo = ERP mirror
+

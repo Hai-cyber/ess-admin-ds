@@ -1,0 +1,91 @@
+{
+  "contract": "odoo_fields",
+  "version": "2026-03-19",
+  "status": "active",
+  "tenant_semantics": {
+    "tenant_key": "company_id",
+    "rule": "All keys and writes are scoped by company_id; cross-tenant writes are invalid."
+  },
+  "last_modified_semantics": {
+    "field": "write_date",
+    "timezone": "UTC",
+    "rule": "Use Odoo write_date as last_modified when comparing to D1 updated_at.",
+    "tie_breaker": "WorkersDB"
+  },
+  "models": [
+    {
+      "name": "res.partner",
+      "used_now": true,
+      "notes": "Worker sends founder register/verify payloads with _model=res.partner.",
+      "fields": [
+        { "name": "id", "type": "integer", "required": true, "semantics": "Odoo primary key." },
+        { "name": "name", "type": "char", "required": true, "semantics": "Customer display name." },
+        { "name": "email", "type": "char", "required": false, "semantics": "Optional contact email." },
+        { "name": "phone", "type": "char", "required": true, "semantics": "Primary phone for founder flow." },
+        { "name": "x_external_ref", "type": "char", "required": true, "semantics": "Cross-system immutable key; unique per tenant." },
+        { "name": "write_date", "type": "datetime", "required": true, "semantics": "Last server-side Odoo update timestamp." },
+        { "name": "company_id", "type": "many2one(res.company)", "required": true, "semantics": "Tenant scoping field." },
+        { "name": "x_studio_membership_type", "type": "char", "required": true, "semantics": "Founder or KC lifecycle segment." },
+        { "name": "x_studio_founder_status", "type": "char", "required": true, "semantics": "Pending Verification or live." },
+        { "name": "x_studio_otp_verified", "type": "selection", "required": true, "semantics": "yes or no OTP state." }
+      ]
+    },
+    {
+      "name": "booking.booking",
+      "used_now": true,
+      "notes": "Canonical booking model contract. Current Worker stage sync is routed through crm.lead IDs.",
+      "fields": [
+        { "name": "id", "type": "integer", "required": true, "semantics": "Odoo booking identifier." },
+        { "name": "partner_id", "type": "many2one(res.partner)", "required": true, "semantics": "Booking owner relation." },
+        { "name": "x_external_ref", "type": "char", "required": true, "semantics": "Cross-system immutable key; unique per tenant." },
+        { "name": "state", "type": "selection", "required": true, "enum": ["draft", "confirmed", "cancelled"], "semantics": "Contracted booking lifecycle state." },
+        { "name": "write_date", "type": "datetime", "required": true, "semantics": "Last server-side Odoo update timestamp." },
+        { "name": "company_id", "type": "many2one(res.company)", "required": true, "semantics": "Tenant scoping field." }
+      ]
+    },
+    {
+      "name": "crm.lead",
+      "used_now": true,
+      "notes": "Stage sync payload currently carries odoo_lead_id and stage_id semantics.",
+      "fields": [
+        { "name": "id", "type": "integer", "required": true, "semantics": "Referenced by bookings.odoo_lead_id." },
+        { "name": "stage_id", "type": "many2one(crm.stage)", "required": true, "semantics": "Mapped from Worker booking stage runtime." },
+        { "name": "partner_id", "type": "many2one(res.partner)", "required": false, "semantics": "Lead contact relation when linked." },
+        { "name": "x_external_ref", "type": "char", "required": false, "semantics": "Optional cross-system key in current implementation." },
+        { "name": "write_date", "type": "datetime", "required": true, "semantics": "Last server-side Odoo update timestamp." },
+        { "name": "company_id", "type": "many2one(res.company)", "required": false, "semantics": "Tenant scoping field when available." }
+      ]
+    },
+    {
+      "name": "hr.employee",
+      "used_now": true,
+      "notes": "Staff create/update sync payload emitted by POST /api/admin/staff via ODOO_STAFF_SYNC_WEBHOOK.",
+      "fields": [
+        { "name": "staff_id", "type": "char", "required": true, "semantics": "Workers staff.id external reference for idempotent upsert." },
+        { "name": "name", "type": "char", "required": true, "semantics": "Staff display name." },
+        { "name": "role", "type": "char", "required": true, "semantics": "Worker role value (hostess, manager, admin, staff, supervisor)." },
+        { "name": "is_active", "type": "boolean", "required": true, "semantics": "Active status mapped from staff.is_active." },
+        { "name": "permissions", "type": "json_array", "required": false, "semantics": "Permission list emitted from workers staff payload." },
+        { "name": "company_id", "type": "many2one(res.company)", "required": true, "semantics": "Tenant scoping field." },
+        { "name": "updated_by", "type": "char", "required": false, "semantics": "Actor name or id from admin action." },
+        { "name": "updated_at", "type": "datetime", "required": true, "semantics": "Worker-side update timestamp in ISO-8601 format." }
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "name": "booking_partner_relation",
+      "from": "booking.booking.partner_id",
+      "to": "res.partner.id",
+      "type": "many2one",
+      "required": true
+    },
+    {
+      "name": "lead_partner_relation",
+      "from": "crm.lead.partner_id",
+      "to": "res.partner.id",
+      "type": "many2one",
+      "required": false
+    }
+  ]
+}

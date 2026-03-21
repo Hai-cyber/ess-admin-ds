@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "module-catalog.schema.json",
+  "title": "Module Catalog",
+  "type": "object",
+  "required": ["modules"],
+  "properties": {
+    "modules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["key", "name", "category", "default_enabled", "tenant_visible"],
+        "properties": {
+          "key": { "type": "string", "pattern": "^module_[a-z0-9_]+$" },
+          "name": { "type": "string" },
+          "category": { "type": "string" },
+          "default_enabled": { "type": "boolean" },
+          "tenant_visible": { "type": "boolean" },
+          "billing_plan_codes": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

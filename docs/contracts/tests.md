@@ -1,36 +1,107 @@
-# Tenant Isolation Test Contract
+# Test Coverage Summary
 
-## Source Anchors
-- Tenant tests suite region: #codebase test/index.spec.js:383-609
-- Additional module/subdomain regression tests: #codebase test/index.spec.js:715-789
+## Tenant Isolation Tests (Implemented)
 
-## Implemented Isolation Tests
+### Booking & Staff PIN Isolation
 
-### 1) Staff PIN + Booking Read Isolation by Subdomain
-- Test: `enforces tenant isolation for same staff PIN and booking reads by subdomain`
-- Verifies:
-  - company 1 booking list excludes company 2 bookings
-  - company 2 booking list excludes company 1 bookings
-  - same PIN (`1111`) authenticates to tenant-specific staff by host
-- Anchor: #codebase test/index.spec.js:383-466
+**Location:** [test/index.spec.js:383-466](../../test/index.spec.js#L383)
 
-### 2) Cross-Tenant Stage Update Override Block
-- Test: `blocks cross-tenant booking stage updates via body companyId override`
-- Verifies host-scoped route rejects `companyId` body override with 403 and booking stage remains unchanged.
-- Anchor: #codebase test/index.spec.js:467-514
+Tests:
+- ✅ Different subdomains create separate bookings
+- ✅ Company1 read sees only Company1 bookings
+- ✅ Company2 read sees only Company2 bookings
+- ✅ Same PIN in different companies returns different staff
 
-### 3) SSE Event Isolation by Company
-- Test: `routes booking creation and stage-update SSE notifications per company`
-- Verifies each stream receives only tenant-matching booking + stage events.
-- Anchor: #codebase test/index.spec.js:515-609
+### Cross-Tenant Stage Update Blocking
 
-### 4) Related Regression Coverage
-- Booking module gate rejection: #codebase test/index.spec.js:715-750
-- Empty subdomain allowed (single-domain mode): #codebase test/index.spec.js:751-789
+**Location:** [test/index.spec.js:467-514](../../test/index.spec.js#L467)
 
-## Step-3 Placeholder Tests (Pending)
-- [ ] Main-domain tenant-required route fails with `tenant_required`.
-- [ ] Unknown subdomain fails with tenant-not-found response.
-- [ ] Resolver `override_not_allowed` path is asserted through unified guard path.
-- [ ] Allowed localhost/workers override succeeds only when company exists.
-- [ ] Guard ordering test: tenant guard executes before module/auth/DB logic.
+Tests:
+- ✅ Body `companyId` override on tenant host returns 403
+- ✅ Booking stage remains unchanged after reject
+
+### SSE Event Routing Per Company
+
+**Location:** [test/index.spec.js:515-609](../../test/index.spec.js#L515)
+
+Tests:
+- ✅ SSE stream opens on `/api/notifications/stream`
+- ✅ Connected event received
+- ✅ Company1 booking create sends event to Company1 stream only
+- ✅ Company1 stage update sends event to Company1 stream only
+- ✅ Company2 events do not leak to Company1 stream
+
+### Module Gating
+
+**Location:** [test/index.spec.js:715-750](../../test/index.spec.js#L715)
+
+Tests:
+- ✅ Booking create rejected when `module_booking_management` disabled
+- ✅ Returns 403 with appropriate error message
+
+---
+
+## Tenant Resolution Tests (Implemented)
+
+**Location:** [test/index.spec.js:610-695](../../test/index.spec.js#L610)
+
+### Main Domain Blocking
+
+Tests:
+- ✅ `/api/bookings` on main domain returns 400 `tenant_required`
+- ✅ `/api/staff/auth?pin=1111` on main domain returns 400 `tenant_required`
+
+### Unknown Subdomain Blocking
+
+Tests:
+- ✅ `/booking-form` on unknown subdomain returns 404 `tenant_subdomain_not_found`
+- ✅ `/founder` on unknown subdomain returns 404 `tenant_subdomain_not_found`
+
+### SSE Tenant Guard
+
+Tests:
+- ✅ `/api/notifications/stream` on main domain returns 400 `tenant_required` (no SSE opens)
+
+### Query Override Authorization
+
+Tests:
+- ✅ `localhost:8787?company_id=2` succeeds (returns company2 data)
+- ✅ `tenant-preview.workers.dev?company_id=2` succeeds
+- ✅ `restaurant1.quan-esskultur.de?company_id=2` returns 403 `company_id_override_not_allowed`
+
+---
+
+## Test Implementation Status
+
+| Category | Covered | Missing | Priority |
+|----------|---------|---------|----------|
+| Tenant resolution (Step-3) | ✅ All core cases | — | N/A |
+| Booking isolation | ✅ Read/create/update | — | — |
+| SSE isolation | ✅ Event routing | Timeout edge cases | Low |
+| Staff PIN isolation | ✅ Subdomain routing | — | — |
+| Module gating | ✅ Enable/disable | — | — |
+| Override authorization | ✅ Allowed/blocked hosts | Invalid company_id | Low |
+
+---
+
+## Running Tests
+
+```bash
+# Run all tenant tests
+npm run test
+
+# Run specific suite
+npm run test -- --grep "tenant isolation"
+npm run test -- --grep "SSE"
+npm run test -- --grep "Override"
+```
+
+## Fixture Data
+
+All tests use database initialization via `initializeDatabase(env.DB)`:
+- **Organization 1** & **Organization 2**: Pre-seeded
+- **Company 1** (`restaurant1`) & **Company 2** (`restaurant2`)
+- **Staff pins**: `1111` (hostess), `1234` (admin), `8888` (manager)
+- **Booking module**: Enabled by default on all companies
+
+See [src/db/init.js](../../src/db/init.js) for seeding details.

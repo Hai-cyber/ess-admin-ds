@@ -1,0 +1,161 @@
+<div id="odoo_form_container" style="position: relative; width: 100%; display: flex; justify-content: center; min-height: 720px;">
+  <div id="edit_mode_overlay" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(165, 74, 123, 0.05); border: 2px dashed #A54A7B; z-index: 10000; pointer-events: all; cursor: pointer; text-align: center; padding-top: 150px; border-radius: 16px;">
+    <div style="background: white; display: inline-block; padding: 15px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); border: 1px solid #A54A7B;">
+      <strong style="color: #A54A7B;">[ Odoo Bearbeitungsmodus ]</strong><br>
+      <small style="color: #666;">Klicken Sie hier, um den Code zu bearbeiten.</small>
+    </div>
+  </div>
+
+  <iframe id="founder_iframe" srcdoc="
+  <!DOCTYPE html>
+  <html lang=&quot;de&quot;>
+  <head>
+    <meta charset=&quot;UTF-8&quot;>
+    <meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no&quot;>
+    <link rel=&quot;stylesheet&quot; href=&quot;https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css&quot;>
+    <script src=&quot;https://challenges.cloudflare.com/turnstile/v0/api.js&quot; async defer></script>
+    <style>
+      /* Giữ nguyên desktop */
+      body { font-family: 'Inter', sans-serif; padding: 10px; background: transparent; overflow: hidden; }
+      .card-container {
+        width: 100%;
+        max-width: 480px;
+        margin: auto;
+        background: #ffffff;
+        padding: 25px;
+        border-radius: 16px;
+        border: 1px solid #eee;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+      }
+      .club-title { color: #A54A7B; font-weight: 800; text-align: center; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
+      .club-subtitle { color: #666; font-size: 0.9rem; text-align: center; margin-bottom: 25px; line-height: 1.4; }
+      .btn-purple { background-color: #A54A7B; color: white; border: none; padding: 16px; font-weight: bold; width: 100%; border-radius: 10px; font-size: 1.1rem; transition: 0.3s; }
+      .btn-purple:hover { background-color: #8a3d66; }
+      label { font-weight: 600; color: #333; margin-bottom: 6px; font-size: 0.95rem; }
+      .form-control { margin-bottom: 15px; padding: 14px; border-radius: 10px; border: 1px solid #ced4da; }
+      .form-control::placeholder { color: #bbb !important; opacity: 0.7; font-weight: 400; font-size: 0.9rem; }
+      .form-check-label { font-size: 0.85rem; color: #555; line-height: 1.5; cursor: pointer; }
+      .hp-field { display:none !important; visibility:hidden; }
+      .cf-turnstile { display: flex; justify-content: center; margin-bottom: 15px; }
+      a { color: #A54A7B; text-decoration: none; font-weight: 700; }
+
+      /* 🔧 Mobile full-bleed: bỏ padding 2 bên, bỏ bóng mờ + bo góc, ẩn viền trái/phải */
+      @media (max-width: 576px) {
+        html, body { padding: 0; overflow-x: hidden; background: #fff; }
+        .card-container {
+          max-width: none;
+          width: 100%;
+          margin: 0;
+          border-radius: 0;
+          border-left: none; border-right: none;
+          box-shadow: none;
+          /* Bỏ padding ngang, chỉ giữ rất mỏng để không dính mép tuyệt đối */
+          padding-left: calc(6px + env(safe-area-inset-left));
+          padding-right: calc(6px + env(safe-area-inset-right));
+          padding-top: 14px; padding-bottom: 16px;
+        }
+        /* Giảm nhẹ chiều cao input trên mobile nếu muốn gọn hơn */
+        .form-control { padding: 12px; margin-bottom: 12px; }
+        .club-subtitle { margin-bottom: 16px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class=&quot;card-container&quot;>
+      <h2 class=&quot;club-title&quot;>Werde KANTON Founder</h2>
+      <p class=&quot;club-subtitle&quot;>Tritt unserem exklusiven Club bei und sichere dir exklusive Vorteile.</p>
+      
+      <form id=&quot;f-form&quot; onsubmit=&quot;return validateAndSend(event)&quot;>
+        <input type=&quot;hidden&quot; name=&quot;x_studio_founder_status&quot; value=&quot;Pending Verification&quot;>
+        <input type=&quot;hidden&quot; name=&quot;x_studio_founder_level&quot; value=&quot;Trial&quot;>
+        <input type=&quot;hidden&quot; name=&quot;x_studio_kc_terms_accepted&quot; value=&quot;no&quot;>
+        <input type=&quot;hidden&quot; name=&quot;x_studio_founder_terms_accepted&quot; value=&quot;yes&quot;>
+        <input type=&quot;hidden&quot; name=&quot;x_studio_sms_opt_in_1&quot; value=&quot;yes&quot;>
+        <input type=&quot;hidden&quot; name=&quot;x_studio_opt_in_text&quot; value=&quot;Ich stimme der Verifizierung sowie dem Erhalt von Info, Updates und Rewards per SMS/WhatsApp zu.&quot;>
+
+        <div class=&quot;hp-field&quot;><input type=&quot;text&quot; name=&quot;hp_confirm_data&quot; tabindex=&quot;-1&quot; autocomplete=&quot;off&quot;></div>
+
+        <label>Name</label>
+        <input type=&quot;text&quot; id=&quot;name&quot; name=&quot;name&quot; class=&quot;form-control&quot; required placeholder=&quot;Ihr Name&quot;>
+
+        <label>Mobiltelefon</label>
+        <input type=&quot;tel&quot; id=&quot;phone&quot; name=&quot;phone&quot; class=&quot;form-control&quot; required placeholder=&quot;+49 176.......&quot;>
+
+        <div class=&quot;cf-turnstile&quot; data-sitekey=&quot;0x4AAAAAACmwktNVObyT3tQ7&quot;></div>
+
+        <div class=&quot;form-check mb-3 mt-1&quot;>
+          <input type=&quot;checkbox&quot; id=&quot;c1&quot; class=&quot;form-check-input&quot; required>
+          <label for=&quot;c1&quot; class=&quot;form-check-label&quot;>
+            Ich stimme der Verifizierung sowie dem Erhalt von Info, Updates und Rewards per SMS/WhatsApp zu. *
+          </label>
+        </div>
+
+        <div class=&quot;form-check mb-4&quot;>
+          <input type=&quot;checkbox&quot; id=&quot;c2&quot; class=&quot;form-check-input&quot; required>
+          <label for=&quot;c2&quot; class=&quot;form-check-label&quot;>
+            Ich akzeptiere die <a href=&quot;/founderpass-terms-conditions&quot; target=&quot;_parent&quot;>Teilnahmebedingungen</a> und die <a href=&quot;/privacy &quot; target=&quot;_parent&quot;>Datenschutzerklärung</a>.. *
+          </label>
+        </div>
+
+        <button type=&quot;submit&quot; id=&quot;s-btn&quot; class=&quot;btn-purple&quot;>JETZT AKTIVIEREN</button>
+      </form>
+    </div>
+    <script>
+      let isSubmitting = false;
+
+      function validateAndSend(e) {
+        e.preventDefault();
+        if (isSubmitting) return false;
+        isSubmitting = true;
+
+        const btn = document.getElementById('s-btn');
+        const turnstileRes = document.getElementsByName('cf-turnstile-response')[0]?.value || '';
+
+        if (!turnstileRes) {
+          alert('Bitte führen Sie die Sicherheitsprüfung durch.');
+          isSubmitting = false;
+          return false;
+        }
+
+        const hp = document.getElementsByName('hp_confirm_data')[0]?.value || '';
+        if (hp !== '') {
+          isSubmitting = false;
+          return false;
+        }
+
+        btn.disabled = true;
+        btn.innerText = 'Bitte warten...';
+
+        const formData = new FormData(document.getElementById('f-form'));
+        formData.append('cf_token', turnstileRes);
+
+        const webhookUrl = 'https://hook.eu1.make.com/9ek1uvagd3ffdtsnpbguh9oaacivgt4j?_t=' + Date.now();
+
+        fetch(webhookUrl, { method: 'POST', body: formData })
+          .then(response => response.json())
+          .then(data => {
+            if (data &amp;&amp; data.status === 'error') {
+              alert('Diese Mobiltelefonnummer ist möglicherweise bereits in unserem System registriert. Bitte überprüfen Sie Ihre Eingabe hoặc kontaktieren Sie unser Team trực tiếp vor Ort, falls Sie Hilfe bei der Aktivierung benötigen.');
+              isSubmitting = false;
+              btn.disabled = false;
+              btn.innerText = 'JETZT AKTIVIEREN';
+              if (typeof turnstile !== 'undefined') turnstile.reset();
+            } else {
+              window.parent.location.href = 'https://www.quan-esskultur.de/welcome-founder';
+            }
+          })
+          .catch((error) => {
+            console.error('Error:', error);
+            alert('Diese Mobiltelefonnummer ist möglicherweise bereits registriert. Bitte überprüfen Sie Ihre Eingabe hoặc kontaktieren Sie unser Team vor Ort. Wir freuen uns Sie begrüßen zu dürfen!');
+            isSubmitting = false;
+            btn.disabled = false;
+            btn.innerText = 'JETZT AKTIVIEREN';
+            if (typeof turnstile !== 'undefined') turnstile.reset();
+          });
+        return false;
+      }
+    </script>
+  </body>
+  </html>
+  " style="width: 100%; height: 720px; border: none; overflow: hidden; background: transparent; pointer-events: all;"></iframe>
+</div>

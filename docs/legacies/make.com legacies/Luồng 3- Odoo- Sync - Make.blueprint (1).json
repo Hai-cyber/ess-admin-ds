@@ -1,0 +1,534 @@
+{
+    "name": "Luồng 3: Odoo- Sync - Make",
+    "flow": [
+        {
+            "id": 1,
+            "module": "gateway:CustomWebHook",
+            "version": 1,
+            "parameters": {
+                "hook": 2594688,
+                "maxResults": 1
+            },
+            "mapper": {},
+            "metadata": {
+                "designer": {
+                    "x": -5692,
+                    "y": -1145
+                },
+                "restore": {
+                    "parameters": {
+                        "hook": {
+                            "data": {
+                                "editable": "true"
+                            },
+                            "label": "Odoo syncs Make"
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "hook",
+                        "type": "hook:gateway-webhook",
+                        "label": "Webhook",
+                        "required": true
+                    },
+                    {
+                        "name": "maxResults",
+                        "type": "number",
+                        "label": "Maximum number of results"
+                    }
+                ],
+                "advanced": true
+            }
+        },
+        {
+            "id": 17,
+            "module": "phonenumber:TransformerParseNumber",
+            "version": 1,
+            "parameters": {},
+            "mapper": {
+                "number": "{{1.phone}}",
+                "defaultCountry": "DE"
+            },
+            "metadata": {
+                "designer": {
+                    "x": -5335,
+                    "y": -1041
+                },
+                "restore": {
+                    "expect": {
+                        "defaultCountry": {
+                            "mode": "chose",
+                            "label": "Germany (DE)"
+                        }
+                    }
+                },
+                "expect": [
+                    {
+                        "name": "number",
+                        "type": "text",
+                        "label": "Phone number",
+                        "required": true
+                    },
+                    {
+                        "name": "defaultCountry",
+                        "type": "select",
+                        "label": "Default country for parsing",
+                        "required": true,
+                        "validate": {
+                            "enum": [
+                                "AC",
+                                "AD",
+                                "AE",
+                                "AF",
+                                "AG",
+                                "AI",
+                                "AL",
+                                "AM",
+                                "AO",
+                                "AQ",
+                                "AR",
+                                "AS",
+                                "AT",
+                                "AU",
+                                "AW",
+                                "AX",
+                                "AZ",
+                                "BA",
+                                "BB",
+                                "BD",
+                                "BE",
+                                "BF",
+                                "BG",
+                                "BH",
+                                "BI",
+                                "BJ",
+                                "BL",
+                                "BM",
+                                "BN",
+                                "BO",
+                                "BQ",
+                                "BR",
+                                "BS",
+                                "BT",
+                                "BV",
+                                "BW",
+                                "BY",
+                                "BZ",
+                                "CA",
+                                "CC",
+                                "CD",
+                                "CF",
+                                "CG",
+                                "CH",
+                                "CI",
+                                "CK",
+                                "CL",
+                                "CM",
+                                "CN",
+                                "CO",
+                                "CP",
+                                "CR",
+                                "CU",
+                                "CV",
+                                "CW",
+                                "CX",
+                                "CY",
+                                "CZ",
+                                "DE",
+                                "DG",
+                                "DJ",
+                                "DK",
+                                "DM",
+                                "DO",
+                                "DZ",
+                                "EA",
+                                "EC",
+                                "EE",
+                                "EG",
+                                "EH",
+                                "ER",
+                                "ES",
+                                "ET",
+                                "EU",
+                                "FI",
+                                "FJ",
+                                "FK",
+                                "FM",
+                                "FO",
+                                "FR",
+                                "FX",
+                                "GA",
+                                "GB",
+                                "GD",
+                                "GE",
+                                "GF",
+                                "GG",
+                                "GH",
+                                "GI",
+                                "GL",
+                                "GM",
+                                "GN",
+                                "GP",
+                                "GQ",
+                                "GR",
+                                "GS",
+                                "GT",
+                                "GU",
+                                "GW",
+                                "GY",
+                                "HK",
+                                "HM",
+                                "HN",
+                                "HR",
+                                "HT",
+                                "HU",
+                                "IC",
+                                "ID",
+                                "IE",
+                                "IL",
+                                "IM",
+                                "IN",
+                                "IO",
+                                "IQ",
+                                "IR",
+                                "IS",
+                                "IT",
+                                "JE",
+                                "JM",
+                                "JO",
+                                "JP",
+                                "KE",
+                                "KG",
+                                "KH",
+                                "KI",
+                                "KM",
+                                "KN",
+                                "KP",
+                                "KR",
+                                "KW",
+                                "KY",
+                                "KZ",
+                                "LA",
+                                "LB",
+                                "LC",
+                                "LI",
+                                "LK",
+                                "LR",
+                                "LS",
+                                "LT",
+                                "LU",
+                                "LV",
+                                "LY",
+                                "MA",
+                                "MC",
+                                "MD",
+                                "ME",
+                                "MF",
+                                "MG",
+                                "MH",
+                                "MK",
+                                "ML",
+                                "MM",
+                                "MN",
+                                "MO",
+                                "MP",
+                                "MQ",
+                                "MR",
+                                "MS",
+                                "MT",
+                                "MU",
+                                "MV",
+                                "MW",
+                                "MX",
+                                "MY",
+                                "MZ",
+                                "NA",
+                                "NC",
+                                "NE",
+                                "NF",
+                                "NG",
+                                "NI",
+                                "NL",
+                                "NO",
+                                "NP",
+                                "NR",
+                                "NU",
+                                "NZ",
+                                "OM",
+                                "PA",
+                                "PE",
+                                "PF",
+                                "PG",
+                                "PH",
+                                "PK",
+                                "PL",
+                                "PM",
+                                "PN",
+                                "PR",
+                                "PS",
+                                "PT",
+                                "PW",
+                                "PY",
+                                "QA",
+                                "RE",
+                                "RO",
+                                "RS",
+                                "RU",
+                                "RW",
+                                "SA",
+                                "SB",
+                                "SC",
+                                "SD",
+                                "SE",
+                                "SG",
+                                "SH",
+                                "SI",
+                                "SJ",
+                                "SK",
+                                "SL",
+                                "SM",
+                                "SN",
+                                "SO",
+                                "SR",
+                                "SS",
+                                "ST",
+                                "SU",
+                                "SV",
+                                "SX",
+                                "SY",
+                                "SZ",
+                                "TA",
+                                "TC",
+                                "TD",
+                                "TF",
+                                "TG",
+                                "TH",
+                                "TJ",
+                                "TK",
+                                "TL",
+                                "TM",
+                                "TN",
+                                "TO",
+                                "TR",
+                                "TT",
+                                "TV",
+                                "TW",
+                                "TZ",
+                                "UA",
+                                "UG",
+                                "UM",
+                                "US",
+                                "UY",
+                                "UZ",
+                                "VA",
+                                "VC",
+                                "VE",
+                                "VG",
+                                "VI",
+                                "VN",
+                                "VU",
+                                "WF",
+                                "WS",
+                                "YE",
+                                "YT",
+                                "ZA",
+                                "ZM",
+                                "ZW"
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "id": 16,
+            "module": "datastore:AddRecord",
+            "version": 1,
+            "parameters": {
+                "datastore": 101330
+            },
+            "mapper": {
+                "key": "{{1.phone}}",
+                "data": {
+                    "ID": "{{1.id}}",
+                    "name": "{{1.name}}",
+                    "email": "{{1.email}}",
+                    "phone": "{{1.phone}}",
+                    "opt text": "{{1.x_studio_opt_in_text}}",
+                    "last visit": "{{1.x_studio_last_visit}}",
+                    "sms opt-in": "{{1.x_studio_sms_opt_in_1}}",
+                    "total spent": "{{1.x_studio_total_spent}}",
+                    "opt verified": "{{1.x_studio_otp_verified}}",
+                    "founder level": "{{1.x_studio_founder_level}}",
+                    "last reminder": "{{1.x_studio_last_reminder_date}}",
+                    "founder status": "{{1.x_studio_founder_status}}",
+                    "number of visit": "{{1.x_number_of_visits}}",
+                    "optin timestamp": "{{1.x_studio_opt_in_timestamp}}",
+                    "founder end date": "{{1.x_studio_membership_ends}}",
+                    "founder start date": "{{1.x_studio_membership_starts}}",
+                    "x_KC_terms_accepted": "{{1.x_studio_kc_terms_accepted}}",
+                    "founder term accepted": "{{1.x_studio_founder_terms_accepted}}"
+                },
+                "overwrite": true
+            },
+            "metadata": {
+                "designer": {
+                    "x": -5088,
+                    "y": -1119
+                },
+                "restore": {
+                    "expect": {
+                        "overwrite": {
+                            "mode": "chose"
+                        }
+                    },
+                    "parameters": {
+                        "datastore": {
+                            "label": "ODOO PROFILES"
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "datastore",
+                        "type": "datastore",
+                        "label": "Data store",
+                        "required": true
+                    }
+                ],
+                "expect": [
+                    {
+                        "name": "key",
+                        "type": "text",
+                        "label": "Key"
+                    },
+                    {
+                        "name": "overwrite",
+                        "type": "boolean",
+                        "label": "Overwrite an existing record",
+                        "required": true
+                    },
+                    {
+                        "name": "data",
+                        "spec": [
+                            {
+                                "name": "name",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "email",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "phone",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "x_KC_terms_accepted",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "founder term accepted",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "sms opt-in",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "opt text",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "optin timestamp",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "founder status",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "opt verified",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "founder level",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "founder start date",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "founder end date",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "number of visit",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "last visit",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "last reminder",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "total spent",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "ID",
+                                "type": "text",
+                                "label": null
+                            }
+                        ],
+                        "type": "collection",
+                        "label": "Record"
+                    }
+                ]
+            }
+        }
+    ],
+    "metadata": {
+        "instant": true,
+        "version": 1,
+        "scenario": {
+            "roundtrips": 1,
+            "maxErrors": 10,
+            "autoCommit": true,
+            "autoCommitTriggerLast": true,
+            "sequential": false,
+            "slots": null,
+            "confidential": false,
+            "dataloss": false,
+            "dlq": true,
+            "freshVariables": false
+        },
+        "designer": {
+            "orphans": []
+        },
+        "zone": "eu1.make.com",
+        "notes": []
+    }
+}

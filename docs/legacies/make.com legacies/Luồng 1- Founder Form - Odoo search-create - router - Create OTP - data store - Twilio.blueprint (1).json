@@ -1,0 +1,1881 @@
+{
+    "name": "Luồng 1: Founder Form - Odoo search/create - router - Create OTP - data store - Twilio",
+    "flow": [
+        {
+            "id": 1,
+            "module": "gateway:CustomWebHook",
+            "version": 1,
+            "parameters": {
+                "hook": 2584304,
+                "maxResults": 1
+            },
+            "mapper": {},
+            "metadata": {
+                "designer": {
+                    "x": -6030,
+                    "y": -1768
+                },
+                "restore": {
+                    "parameters": {
+                        "hook": {
+                            "data": {
+                                "editable": "true"
+                            },
+                            "label": "TEST FORM WEBHOOK"
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "hook",
+                        "type": "hook:gateway-webhook",
+                        "label": "Webhook",
+                        "required": true
+                    },
+                    {
+                        "name": "maxResults",
+                        "type": "number",
+                        "label": "Maximum number of results"
+                    }
+                ]
+            }
+        },
+        {
+            "id": 26,
+            "module": "http:MakeRequest",
+            "version": 4,
+            "parameters": {
+                "tlsType": "",
+                "proxyKeychain": "",
+                "authenticationType": "noAuth"
+            },
+            "mapper": {
+                "url": "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+                "method": "post",
+                "contentType": "urlEncoded",
+                "shareCookies": false,
+                "parseResponse": true,
+                "allowRedirects": true,
+                "stopOnHttpError": true,
+                "urlEncodedBodyContent": [
+                    {
+                        "name": "secret",
+                        "value": "0x4AAAAAACmwkmhvbsWRW-ArRyqyg-UhxkQ"
+                    },
+                    {
+                        "name": "response",
+                        "value": "{{1.`cf-turnstile-response`}}"
+                    }
+                ],
+                "requestCompressedContent": true
+            },
+            "metadata": {
+                "designer": {
+                    "x": -6094,
+                    "y": -1467
+                },
+                "restore": {
+                    "expect": {
+                        "method": {
+                            "mode": "chose",
+                            "label": "POST"
+                        },
+                        "headers": {
+                            "mode": "chose"
+                        },
+                        "contentType": {
+                            "label": "application/x-www-form-urlencodedEnter form data as key-value pairs encoded in the URL style."
+                        },
+                        "shareCookies": {
+                            "mode": "chose"
+                        },
+                        "parseResponse": {
+                            "mode": "chose"
+                        },
+                        "allowRedirects": {
+                            "mode": "chose"
+                        },
+                        "paginationType": {
+                            "label": "Empty"
+                        },
+                        "queryParameters": {
+                            "mode": "chose"
+                        },
+                        "stopOnHttpError": {
+                            "mode": "chose"
+                        },
+                        "urlEncodedBodyContent": {
+                            "mode": "chose",
+                            "items": [
+                                null,
+                                null
+                            ]
+                        },
+                        "requestCompressedContent": {
+                            "mode": "chose"
+                        }
+                    },
+                    "parameters": {
+                        "tlsType": {
+                            "label": "Empty"
+                        },
+                        "proxyKeychain": {
+                            "label": "Choose a key"
+                        },
+                        "authenticationType": {
+                            "label": "No authenticationUse when no credentials are required for the request."
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "authenticationType",
+                        "type": "select",
+                        "label": "Authentication type",
+                        "required": true,
+                        "validate": {
+                            "enum": [
+                                "noAuth",
+                                "apiKey",
+                                "basicAuth",
+                                "oAuth"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "tlsType",
+                        "type": "select",
+                        "label": "Transport layer security (TLS)",
+                        "validate": {
+                            "enum": [
+                                "mTls",
+                                "tls"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "proxyKeychain",
+                        "type": "keychain:proxy",
+                        "label": "Proxy"
+                    }
+                ],
+                "expect": [
+                    {
+                        "name": "url",
+                        "type": "url",
+                        "label": "URL",
+                        "required": true
+                    },
+                    {
+                        "name": "method",
+                        "type": "select",
+                        "label": "Method",
+                        "required": true,
+                        "validate": {
+                            "enum": [
+                                "get",
+                                "head",
+                                "post",
+                                "put",
+                                "patch",
+                                "delete",
+                                "options"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "headers",
+                        "spec": {
+                            "name": "value",
+                            "spec": [
+                                {
+                                    "name": "name",
+                                    "type": "text",
+                                    "label": "Name",
+                                    "required": true,
+                                    "validate": {
+                                        "pattern": "^[-!#$%&'*+.^_`|~0-9A-Za-z]+$"
+                                    }
+                                },
+                                {
+                                    "name": "value",
+                                    "type": "text",
+                                    "label": "Value"
+                                }
+                            ],
+                            "type": "collection",
+                            "label": "Header"
+                        },
+                        "type": "array",
+                        "label": "Headers"
+                    },
+                    {
+                        "name": "queryParameters",
+                        "spec": {
+                            "name": "value",
+                            "spec": [
+                                {
+                                    "name": "name",
+                                    "type": "text",
+                                    "label": "Name",
+                                    "required": true
+                                },
+                                {
+                                    "name": "value",
+                                    "type": "text",
+                                    "label": "Value"
+                                }
+                            ],
+                            "type": "collection",
+                            "label": "Parameter"
+                        },
+                        "type": "array",
+                        "label": "Query parameters"
+                    },
+                    {
+                        "name": "contentType",
+                        "type": "select",
+                        "label": "Body content type",
+                        "validate": {
+                            "enum": [
+                                "json",
+                                "multipart",
+                                "urlEncoded",
+                                "custom"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "parseResponse",
+                        "type": "boolean",
+                        "label": "Parse response",
+                        "required": true
+                    },
+                    {
+                        "name": "stopOnHttpError",
+                        "type": "boolean",
+                        "label": "Return error if HTTP request fails",
+                        "required": true
+                    },
+                    {
+                        "name": "timeout",
+                        "type": "uinteger",
+                        "label": "Timeout",
+                        "validate": {
+                            "max": 300,
+                            "min": 1
+                        }
+                    },
+                    {
+                        "name": "allowRedirects",
+                        "type": "boolean",
+                        "label": "Allow redirects",
+                        "required": true
+                    },
+                    {
+                        "name": "shareCookies",
+                        "type": "boolean",
+                        "label": "Share cookies with other HTTP modules",
+                        "required": true
+                    },
+                    {
+                        "name": "requestCompressedContent",
+                        "type": "boolean",
+                        "label": "Request compressed content",
+                        "required": true
+                    },
+                    {
+                        "name": "urlEncodedBodyContent",
+                        "spec": {
+                            "name": "value",
+                            "spec": [
+                                {
+                                    "name": "name",
+                                    "type": "text",
+                                    "label": "Name",
+                                    "required": true
+                                },
+                                {
+                                    "name": "value",
+                                    "type": "text",
+                                    "label": "Value"
+                                }
+                            ],
+                            "type": "collection",
+                            "label": "Field"
+                        },
+                        "type": "array",
+                        "label": "Body content",
+                        "required": true
+                    },
+                    {
+                        "name": "paginationType",
+                        "type": "select",
+                        "label": "Pagination type",
+                        "validate": {
+                            "enum": [
+                                "offsetBased",
+                                "pageBased",
+                                "urlBased",
+                                "tokenBased"
+                            ]
+                        }
+                    }
+                ],
+                "interface": [
+                    {
+                        "name": "data",
+                        "type": "any",
+                        "label": "Data"
+                    },
+                    {
+                        "name": "statusCode",
+                        "type": "number",
+                        "label": "Status Code"
+                    },
+                    {
+                        "name": "headers",
+                        "spec": [
+                            {
+                                "name": "content-length",
+                                "type": "text",
+                                "label": "Content-Length"
+                            },
+                            {
+                                "name": "content-encoding",
+                                "type": "text",
+                                "label": "Content-Encoding"
+                            },
+                            {
+                                "name": "content-type",
+                                "type": "text",
+                                "label": "Content-Type"
+                            },
+                            {
+                                "name": "server",
+                                "type": "text",
+                                "label": "Server"
+                            },
+                            {
+                                "name": "cache-control",
+                                "type": "text",
+                                "label": "Cache-Control"
+                            },
+                            {
+                                "name": "set-cookie",
+                                "spec": {
+                                    "type": "text"
+                                },
+                                "type": "array",
+                                "label": "Set-Cookie"
+                            }
+                        ],
+                        "type": "collection",
+                        "label": "Headers"
+                    }
+                ]
+            }
+        },
+        {
+            "id": 3,
+            "module": "phonenumber:TransformerParseNumber",
+            "version": 1,
+            "parameters": {},
+            "filter": {
+                "name": "Spam Filter",
+                "conditions": [
+                    [
+                        {
+                            "a": "{{26.data.success}}",
+                            "b": "true",
+                            "o": "boolean:equal"
+                        },
+                        {
+                            "a": "{{1.hp_confirm_data}}",
+                            "o": "exist"
+                        },
+                        {
+                            "a": "{{1.phone}}",
+                            "b": "^\\+?[0-9]{10,15}$",
+                            "o": "text:pattern"
+                        },
+                        {
+                            "a": "{{1.phone}}",
+                            "b": "+49",
+                            "o": "text:startwith"
+                        },
+                        {
+                            "a": "trim( {{1.hp_confirm_data}} )",
+                            "b": "\"\"",
+                            "o": "text:equal"
+                        }
+                    ],
+                    [
+                        {
+                            "a": "{{1.phone}}",
+                            "b": "0049",
+                            "o": "text:startwith"
+                        }
+                    ],
+                    [
+                        {
+                            "a": "{{1.phone}}",
+                            "b": "1",
+                            "o": "text:startwith"
+                        }
+                    ],
+                    [
+                        {
+                            "a": "{{1.phone}}",
+                            "b": "49",
+                            "o": "text:startwith"
+                        }
+                    ],
+                    [
+                        {
+                            "a": "{{1.phone}}",
+                            "b": "01",
+                            "o": "text:startwith"
+                        },
+                        {
+                            "a": "{{1.name}}",
+                            "b": "http",
+                            "o": "text:notcontain"
+                        }
+                    ],
+                    [
+                        {
+                            "a": "{{1.name}}",
+                            "b": ".com",
+                            "o": "text:notcontain"
+                        }
+                    ],
+                    [
+                        {
+                            "a": "{{1.name}}",
+                            "b": ".net",
+                            "o": "text:notcontain"
+                        }
+                    ]
+                ]
+            },
+            "mapper": {
+                "number": "{{1.phone}}",
+                "defaultCountry": "DE"
+            },
+            "metadata": {
+                "designer": {
+                    "x": -6029,
+                    "y": -1133
+                },
+                "restore": {
+                    "expect": {
+                        "defaultCountry": {
+                            "mode": "chose",
+                            "label": "Germany (DE)"
+                        }
+                    }
+                },
+                "expect": [
+                    {
+                        "name": "number",
+                        "type": "text",
+                        "label": "Phone number",
+                        "required": true
+                    },
+                    {
+                        "name": "defaultCountry",
+                        "type": "select",
+                        "label": "Default country for parsing",
+                        "required": true,
+                        "validate": {
+                            "enum": [
+                                "AC",
+                                "AD",
+                                "AE",
+                                "AF",
+                                "AG",
+                                "AI",
+                                "AL",
+                                "AM",
+                                "AO",
+                                "AQ",
+                                "AR",
+                                "AS",
+                                "AT",
+                                "AU",
+                                "AW",
+                                "AX",
+                                "AZ",
+                                "BA",
+                                "BB",
+                                "BD",
+                                "BE",
+                                "BF",
+                                "BG",
+                                "BH",
+                                "BI",
+                                "BJ",
+                                "BL",
+                                "BM",
+                                "BN",
+                                "BO",
+                                "BQ",
+                                "BR",
+                                "BS",
+                                "BT",
+                                "BV",
+                                "BW",
+                                "BY",
+                                "BZ",
+                                "CA",
+                                "CC",
+                                "CD",
+                                "CF",
+                                "CG",
+                                "CH",
+                                "CI",
+                                "CK",
+                                "CL",
+                                "CM",
+                                "CN",
+                                "CO",
+                                "CP",
+                                "CR",
+                                "CU",
+                                "CV",
+                                "CW",
+                                "CX",
+                                "CY",
+                                "CZ",
+                                "DE",
+                                "DG",
+                                "DJ",
+                                "DK",
+                                "DM",
+                                "DO",
+                                "DZ",
+                                "EA",
+                                "EC",
+                                "EE",
+                                "EG",
+                                "EH",
+                                "ER",
+                                "ES",
+                                "ET",
+                                "EU",
+                                "FI",
+                                "FJ",
+                                "FK",
+                                "FM",
+                                "FO",
+                                "FR",
+                                "FX",
+                                "GA",
+                                "GB",
+                                "GD",
+                                "GE",
+                                "GF",
+                                "GG",
+                                "GH",
+                                "GI",
+                                "GL",
+                                "GM",
+                                "GN",
+                                "GP",
+                                "GQ",
+                                "GR",
+                                "GS",
+                                "GT",
+                                "GU",
+                                "GW",
+                                "GY",
+                                "HK",
+                                "HM",
+                                "HN",
+                                "HR",
+                                "HT",
+                                "HU",
+                                "IC",
+                                "ID",
+                                "IE",
+                                "IL",
+                                "IM",
+                                "IN",
+                                "IO",
+                                "IQ",
+                                "IR",
+                                "IS",
+                                "IT",
+                                "JE",
+                                "JM",
+                                "JO",
+                                "JP",
+                                "KE",
+                                "KG",
+                                "KH",
+                                "KI",
+                                "KM",
+                                "KN",
+                                "KP",
+                                "KR",
+                                "KW",
+                                "KY",
+                                "KZ",
+                                "LA",
+                                "LB",
+                                "LC",
+                                "LI",
+                                "LK",
+                                "LR",
+                                "LS",
+                                "LT",
+                                "LU",
+                                "LV",
+                                "LY",
+                                "MA",
+                                "MC",
+                                "MD",
+                                "ME",
+                                "MF",
+                                "MG",
+                                "MH",
+                                "MK",
+                                "ML",
+                                "MM",
+                                "MN",
+                                "MO",
+                                "MP",
+                                "MQ",
+                                "MR",
+                                "MS",
+                                "MT",
+                                "MU",
+                                "MV",
+                                "MW",
+                                "MX",
+                                "MY",
+                                "MZ",
+                                "NA",
+                                "NC",
+                                "NE",
+                                "NF",
+                                "NG",
+                                "NI",
+                                "NL",
+                                "NO",
+                                "NP",
+                                "NR",
+                                "NU",
+                                "NZ",
+                                "OM",
+                                "PA",
+                                "PE",
+                                "PF",
+                                "PG",
+                                "PH",
+                                "PK",
+                                "PL",
+                                "PM",
+                                "PN",
+                                "PR",
+                                "PS",
+                                "PT",
+                                "PW",
+                                "PY",
+                                "QA",
+                                "RE",
+                                "RO",
+                                "RS",
+                                "RU",
+                                "RW",
+                                "SA",
+                                "SB",
+                                "SC",
+                                "SD",
+                                "SE",
+                                "SG",
+                                "SH",
+                                "SI",
+                                "SJ",
+                                "SK",
+                                "SL",
+                                "SM",
+                                "SN",
+                                "SO",
+                                "SR",
+                                "SS",
+                                "ST",
+                                "SU",
+                                "SV",
+                                "SX",
+                                "SY",
+                                "SZ",
+                                "TA",
+                                "TC",
+                                "TD",
+                                "TF",
+                                "TG",
+                                "TH",
+                                "TJ",
+                                "TK",
+                                "TL",
+                                "TM",
+                                "TN",
+                                "TO",
+                                "TR",
+                                "TT",
+                                "TV",
+                                "TW",
+                                "TZ",
+                                "UA",
+                                "UG",
+                                "UM",
+                                "US",
+                                "UY",
+                                "UZ",
+                                "VA",
+                                "VC",
+                                "VE",
+                                "VG",
+                                "VI",
+                                "VN",
+                                "VU",
+                                "WF",
+                                "WS",
+                                "YE",
+                                "YT",
+                                "ZA",
+                                "ZM",
+                                "ZW"
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "id": 34,
+            "module": "datastore:GetRecord",
+            "version": 1,
+            "parameters": {
+                "datastore": 101330
+            },
+            "mapper": {
+                "key": "{{3.e164}}",
+                "returnWrapped": true
+            },
+            "metadata": {
+                "designer": {
+                    "x": -5768,
+                    "y": -1107
+                },
+                "restore": {
+                    "parameters": {
+                        "datastore": {
+                            "label": "ODOO PROFILES"
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "datastore",
+                        "type": "datastore",
+                        "label": "Data store",
+                        "required": true
+                    }
+                ],
+                "expect": [
+                    {
+                        "name": "key",
+                        "type": "text",
+                        "label": "Key",
+                        "required": true
+                    },
+                    {
+                        "name": "returnWrapped",
+                        "type": "boolean",
+                        "label": "Return Wrapped Output",
+                        "required": true
+                    }
+                ],
+                "interface": [
+                    {
+                        "name": "key",
+                        "type": "text",
+                        "label": "Key"
+                    },
+                    {
+                        "name": "data",
+                        "spec": [
+                            {
+                                "help": "name",
+                                "name": "name",
+                                "type": "text",
+                                "label": null,
+                                "default": null,
+                                "required": false,
+                                "multiline": false
+                            },
+                            {
+                                "help": "email",
+                                "name": "email",
+                                "type": "text",
+                                "label": null,
+                                "default": null,
+                                "required": false,
+                                "multiline": false
+                            },
+                            {
+                                "help": "",
+                                "name": "phone",
+                                "type": "text",
+                                "label": null,
+                                "default": null,
+                                "required": false,
+                                "multiline": false
+                            },
+                            {
+                                "help": "",
+                                "name": "x_KC_terms_accepted",
+                                "type": "text",
+                                "label": null,
+                                "default": null,
+                                "required": false,
+                                "multiline": false
+                            },
+                            {
+                                "help": "",
+                                "name": "founder term accepted",
+                                "type": "text",
+                                "label": null,
+                                "default": null,
+                                "required": false,
+                                "multiline": false
+                            },
+                            {
+                                "help": "",
+                                "name": "sms opt-in",
+                                "type": "text",
+                                "label": null,
+                                "default": null,
+                                "required": false,
+                                "multiline": false
+                            },
+                            {
+                                "help": "",
+                                "name": "opt text",
+                                "type": "text",
+                                "label": null,
+                                "default": null,
+                                "required": false,
+                                "multiline": false
+                            },
+                            {
+                                "help": "",
+                                "name": "optin timestamp",
+                                "type": "text",
+                                "label": null,
+                                "default": null,
+                                "required": false,
+                                "multiline": false
+                            },
+                            {
+                                "help": "",
+                                "name": "founder status",
+                                "type": "text",
+                                "label": null,
+                                "default": null,
+                                "required": false,
+                                "multiline": false
+                            },
+                            {
+                                "help": "",
+                                "name": "opt verified",
+                                "type": "text",
+                                "label": null,
+                                "default": null,
+                                "required": false,
+                                "multiline": false
+                            },
+                            {
+                                "help": "",
+                                "name": "founder level",
+                                "type": "text",
+                                "label": null,
+                                "default": null,
+                                "required": false,
+                                "multiline": false
+                            },
+                            {
+                                "help": "",
+                                "name": "founder start date",
+                                "type": "text",
+                                "label": null,
+                                "default": null,
+                                "required": false,
+                                "multiline": false
+                            },
+                            {
+                                "help": "",
+                                "name": "founder end date",
+                                "type": "text",
+                                "label": null,
+                                "default": null,
+                                "required": false,
+                                "multiline": false
+                            },
+                            {
+                                "help": "",
+                                "name": "number of visit",
+                                "type": "text",
+                                "label": null,
+                                "default": null,
+                                "required": false,
+                                "multiline": false
+                            },
+                            {
+                                "help": "",
+                                "name": "last visit",
+                                "type": "text",
+                                "label": null,
+                                "default": null,
+                                "required": false,
+                                "multiline": false
+                            },
+                            {
+                                "help": "",
+                                "name": "last reminder",
+                                "type": "text",
+                                "label": null,
+                                "default": null,
+                                "required": false,
+                                "multiline": false
+                            },
+                            {
+                                "help": "",
+                                "name": "total spent",
+                                "type": "text",
+                                "label": null,
+                                "default": null,
+                                "required": false,
+                                "multiline": false
+                            },
+                            {
+                                "help": "",
+                                "name": "ID",
+                                "type": "text",
+                                "label": null,
+                                "default": null,
+                                "required": false,
+                                "multiline": false
+                            }
+                        ],
+                        "type": "collection",
+                        "label": "Record"
+                    }
+                ],
+                "advanced": true
+            }
+        },
+        {
+            "id": 35,
+            "module": "builtin:BasicRouter",
+            "version": 1,
+            "mapper": null,
+            "metadata": {
+                "designer": {
+                    "x": -5812,
+                    "y": -1442
+                }
+            },
+            "routes": [
+                {
+                    "flow": [
+                        {
+                            "id": 36,
+                            "module": "gateway:WebhookRespond",
+                            "version": 1,
+                            "parameters": {},
+                            "filter": {
+                                "name": "Key exists",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{34.key}}",
+                                            "o": "exist"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "body": "{\"status\":\"error\", \"message\":\"Ihre Telefonnummer wurde bereits verwendet, bitte versuchen Sie eine andere Telefonnummer\"}",
+                                "status": "200",
+                                "headers": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ]
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": -5695,
+                                    "y": -1753
+                                },
+                                "restore": {
+                                    "expect": {
+                                        "headers": {
+                                            "mode": "chose",
+                                            "items": [
+                                                null
+                                            ]
+                                        }
+                                    }
+                                },
+                                "expect": [
+                                    {
+                                        "name": "status",
+                                        "type": "uinteger",
+                                        "label": "Status",
+                                        "required": true,
+                                        "validate": {
+                                            "min": 100
+                                        }
+                                    },
+                                    {
+                                        "name": "body",
+                                        "type": "any",
+                                        "label": "Body"
+                                    },
+                                    {
+                                        "name": "headers",
+                                        "spec": [
+                                            {
+                                                "name": "key",
+                                                "type": "text",
+                                                "label": "Key",
+                                                "required": true,
+                                                "validate": {
+                                                    "max": 256
+                                                }
+                                            },
+                                            {
+                                                "name": "value",
+                                                "type": "text",
+                                                "label": "Value",
+                                                "required": true,
+                                                "validate": {
+                                                    "max": 4096
+                                                }
+                                            }
+                                        ],
+                                        "type": "array",
+                                        "label": "Custom headers",
+                                        "validate": {
+                                            "maxItems": 16
+                                        }
+                                    }
+                                ],
+                                "advanced": true
+                            }
+                        }
+                    ]
+                },
+                {
+                    "flow": [
+                        {
+                            "id": 42,
+                            "module": "gateway:WebhookRespond",
+                            "version": 1,
+                            "parameters": {},
+                            "filter": {
+                                "name": "Key does not exist",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{34.key}}",
+                                            "o": "notexist"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "body": "{\n  \"status\": \"success\",\n  \"message\": \"OTP sent\"\n}",
+                                "status": "200",
+                                "headers": []
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": -5418,
+                                    "y": -1138
+                                },
+                                "restore": {
+                                    "expect": {
+                                        "headers": {
+                                            "mode": "chose"
+                                        }
+                                    }
+                                },
+                                "expect": [
+                                    {
+                                        "name": "status",
+                                        "type": "uinteger",
+                                        "label": "Status",
+                                        "required": true,
+                                        "validate": {
+                                            "min": 100
+                                        }
+                                    },
+                                    {
+                                        "name": "body",
+                                        "type": "any",
+                                        "label": "Body"
+                                    },
+                                    {
+                                        "name": "headers",
+                                        "spec": [
+                                            {
+                                                "name": "key",
+                                                "type": "text",
+                                                "label": "Key",
+                                                "required": true,
+                                                "validate": {
+                                                    "max": 256
+                                                }
+                                            },
+                                            {
+                                                "name": "value",
+                                                "type": "text",
+                                                "label": "Value",
+                                                "required": true,
+                                                "validate": {
+                                                    "max": 4096
+                                                }
+                                            }
+                                        ],
+                                        "type": "array",
+                                        "label": "Custom headers",
+                                        "validate": {
+                                            "maxItems": 16
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "id": 7,
+                            "module": "odoo:makeApiCall",
+                            "version": 1,
+                            "parameters": {
+                                "__IMTCONN__": 5613607
+                            },
+                            "filter": {
+                                "name": "Key does not exist",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{34.key}}",
+                                            "o": "notexist"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "action": "create",
+                                "entity": "res.partner",
+                                "headers": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "text/xml; charset=utf-8"
+                                    }
+                                ],
+                                "parameters": "[\r\n  {\r\n    \"name\": \"{{1.name}}\",\r\n    \"phone\": \"{{3.e164}}\",\r\n    \"email\": \"{{1.email}}\",\r\n\r\n    \"x_studio_sms_opt_in_1\": \"yes\",\r\n    \"x_studio_opt_in_text\": \"Ich stimme der Verifizierung sowie dem Erhalt von Infos, Updates und Rewards per SMS/WhatsApp zu.\",\r\n    \"x_studio_opt_in_timestamp\": \"{{formatDate(now; \"YYYY-MM-DD HH:mm:ss\"; \" Europe/Berlin\")}}\",\r\n\r\n    \"x_studio_founder_terms_accepted\": \"yes\",\r\n    \"x_studio_kc_terms_accepted\": \"no\",\r\n    \"x_studio_otp_verified\": \"no\",\r\n    \"x_studio_founder_status\": \"Pending Verification\",\r\n    \"x_studio_founder_level\": \"Trial\",\r\n\r\n    \"x_studio_last_reminder_date\": \"{{formatDate(now; \"YYYY-MM-DD\")}}\",\r\n    \"x_studio_total_spent\": 0,\r\n    \"x_number_of_visits\": 0,\r\n    \"x_studio_notes\": \"Founder Form Registration\"\r\n  }\r\n]"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": -5325,
+                                    "y": -1441
+                                },
+                                "restore": {
+                                    "expect": {
+                                        "action": {
+                                            "mode": "chose",
+                                            "label": "Create Records"
+                                        },
+                                        "headers": {
+                                            "mode": "chose",
+                                            "items": [
+                                                null
+                                            ]
+                                        }
+                                    },
+                                    "parameters": {
+                                        "__IMTCONN__": {
+                                            "data": {
+                                                "scoped": "true",
+                                                "connection": "odoo"
+                                            },
+                                            "label": "My Odoo connection"
+                                        }
+                                    }
+                                },
+                                "parameters": [
+                                    {
+                                        "name": "__IMTCONN__",
+                                        "type": "account:odoo",
+                                        "label": "Connection",
+                                        "required": true
+                                    }
+                                ],
+                                "expect": [
+                                    {
+                                        "name": "entity",
+                                        "type": "text",
+                                        "label": "Entity",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "action",
+                                        "type": "select",
+                                        "label": "Action",
+                                        "required": true,
+                                        "validate": {
+                                            "enum": [
+                                                "search",
+                                                "search_count",
+                                                "read",
+                                                "fields_get",
+                                                "search_read",
+                                                "create",
+                                                "write",
+                                                "unlink"
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "name": "parameters",
+                                        "type": "text",
+                                        "label": "Parameters"
+                                    },
+                                    {
+                                        "name": "headers",
+                                        "spec": [
+                                            {
+                                                "name": "key",
+                                                "type": "text",
+                                                "label": "Key"
+                                            },
+                                            {
+                                                "name": "value",
+                                                "type": "text",
+                                                "label": "Value"
+                                            }
+                                        ],
+                                        "type": "array",
+                                        "label": "Headers"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "id": 11,
+                            "module": "datastore:AddRecord",
+                            "version": 1,
+                            "parameters": {
+                                "datastore": 100231
+                            },
+                            "mapper": {
+                                "key": "{{3.e164}}",
+                                "data": {
+                                    "phone": "{{3.e164}}",
+                                    "otp_code": "{{floor(random * 900000 + 100000)}}",
+                                    "expires_at": "{{addMinutes(now; 10)}}",
+                                    "partner_id": "{{7.body}}",
+                                    "last_sent_at": "{{now}}",
+                                    "returned OTP": "",
+                                    "cooldown_until": "{{addMinutes(now; 3)}}",
+                                    "attempts_verify": "0"
+                                },
+                                "overwrite": "{{true}}"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": -5034,
+                                    "y": -1148
+                                },
+                                "restore": {
+                                    "expect": {
+                                        "overwrite": {
+                                            "mode": "edit"
+                                        }
+                                    },
+                                    "parameters": {
+                                        "datastore": {
+                                            "label": "Founder OTP"
+                                        }
+                                    }
+                                },
+                                "parameters": [
+                                    {
+                                        "name": "datastore",
+                                        "type": "datastore",
+                                        "label": "Data store",
+                                        "required": true
+                                    }
+                                ],
+                                "expect": [
+                                    {
+                                        "name": "key",
+                                        "type": "text",
+                                        "label": "Key"
+                                    },
+                                    {
+                                        "name": "overwrite",
+                                        "type": "boolean",
+                                        "label": "Overwrite an existing record",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "data",
+                                        "spec": [
+                                            {
+                                                "name": "otp_code",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "expires_at",
+                                                "type": "date",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "attempts_verify",
+                                                "type": "number",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "partner_id",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "last_sent_at",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "phone",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "cooldown_until",
+                                                "type": "date",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "returned OTP",
+                                                "type": "text",
+                                                "label": null
+                                            }
+                                        ],
+                                        "type": "collection",
+                                        "label": "Record"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "id": 17,
+                            "module": "datastore:GetRecord",
+                            "version": 1,
+                            "parameters": {
+                                "datastore": 100231
+                            },
+                            "mapper": {
+                                "key": "{{11.key}}",
+                                "returnWrapped": false
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": -4734,
+                                    "y": -1157
+                                },
+                                "restore": {
+                                    "parameters": {
+                                        "datastore": {
+                                            "label": "Founder OTP"
+                                        }
+                                    }
+                                },
+                                "parameters": [
+                                    {
+                                        "name": "datastore",
+                                        "type": "datastore",
+                                        "label": "Data store",
+                                        "required": true
+                                    }
+                                ],
+                                "expect": [
+                                    {
+                                        "name": "key",
+                                        "type": "text",
+                                        "label": "Key",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "returnWrapped",
+                                        "type": "boolean",
+                                        "label": "Return Wrapped Output",
+                                        "required": true
+                                    }
+                                ],
+                                "interface": [
+                                    {
+                                        "help": "OTP Code",
+                                        "name": "otp_code",
+                                        "type": "text",
+                                        "label": null,
+                                        "default": null,
+                                        "required": false,
+                                        "multiline": false
+                                    },
+                                    {
+                                        "help": "Important: Choose \"Date\" so Make can compare times.",
+                                        "name": "expires_at",
+                                        "type": "date",
+                                        "label": null,
+                                        "required": false
+                                    },
+                                    {
+                                        "help": "Set to 0 initially to track failed guesses",
+                                        "name": "attempts_verify",
+                                        "type": "number",
+                                        "label": null,
+                                        "default": null,
+                                        "required": false
+                                    },
+                                    {
+                                        "help": "Your Webhook or Partner ID.",
+                                        "name": "partner_id",
+                                        "type": "text",
+                                        "label": null,
+                                        "default": null,
+                                        "required": false,
+                                        "multiline": false
+                                    },
+                                    {
+                                        "help": "Last Sent Date",
+                                        "name": "last_sent_at",
+                                        "type": "text",
+                                        "label": null,
+                                        "default": null,
+                                        "required": false,
+                                        "multiline": false
+                                    },
+                                    {
+                                        "help": "Phone",
+                                        "name": "phone",
+                                        "type": "text",
+                                        "label": null,
+                                        "default": null,
+                                        "required": false,
+                                        "multiline": false
+                                    },
+                                    {
+                                        "help": "",
+                                        "name": "cooldown_until",
+                                        "type": "date",
+                                        "label": null,
+                                        "required": false
+                                    },
+                                    {
+                                        "help": "",
+                                        "name": "returned OTP",
+                                        "type": "text",
+                                        "label": null,
+                                        "default": null,
+                                        "required": false,
+                                        "multiline": false
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "id": 18,
+                            "module": "builtin:BasicRouter",
+                            "version": 1,
+                            "mapper": null,
+                            "metadata": {
+                                "designer": {
+                                    "x": -4939,
+                                    "y": -1479
+                                }
+                            },
+                            "routes": [
+                                {
+                                    "flow": [
+                                        {
+                                            "id": 20,
+                                            "module": "twilio:SendSMS",
+                                            "version": 2,
+                                            "parameters": {
+                                                "__IMTCONN__": 5599996
+                                            },
+                                            "filter": {
+                                                "name": "Strange Name processing",
+                                                "conditions": [
+                                                    [
+                                                        {
+                                                            "a": "{{1.name}}",
+                                                            "b": ".*[0-9!@#$%^&*].*",
+                                                            "o": "text:pattern"
+                                                        }
+                                                    ]
+                                                ]
+                                            },
+                                            "mapper": {
+                                                "to": "whatsapp:{{3.e164}}",
+                                                "body": "Hallo  {{first(split(1.name; ))}}! ✨!Ihr Code für den Founder-Zugang ist: *{{17.otp_code}}*. Bitte antworten Sie nur mit diesen 6 Ziffern.\nQUAN ESSKULTURE TEAM",
+                                                "from": "whatsapp:+14155238886",
+                                                "fromType": "phone",
+                                                "messageBody": "body"
+                                            },
+                                            "metadata": {
+                                                "designer": {
+                                                    "x": -4721,
+                                                    "y": -1660
+                                                },
+                                                "restore": {
+                                                    "expect": {
+                                                        "from": {
+                                                            "mode": "edit"
+                                                        },
+                                                        "fromType": {
+                                                            "mode": "chose",
+                                                            "label": "phone number"
+                                                        },
+                                                        "mediaUrl": {
+                                                            "mode": "chose"
+                                                        },
+                                                        "messageBody": {
+                                                            "mode": "chose",
+                                                            "label": "Create a Body"
+                                                        },
+                                                        "smartEncoded": {
+                                                            "mode": "chose"
+                                                        },
+                                                        "applicationSid": {
+                                                            "mode": "chose"
+                                                        },
+                                                        "provideFeedback": {
+                                                            "mode": "chose"
+                                                        }
+                                                    },
+                                                    "parameters": {
+                                                        "__IMTCONN__": {
+                                                            "data": {
+                                                                "scoped": "true",
+                                                                "connection": "twilio"
+                                                            },
+                                                            "label": "Quan-Esskultur Twilio"
+                                                        }
+                                                    }
+                                                },
+                                                "parameters": [
+                                                    {
+                                                        "name": "__IMTCONN__",
+                                                        "type": "account:twilio",
+                                                        "label": "Connection",
+                                                        "required": true
+                                                    }
+                                                ],
+                                                "expect": [
+                                                    {
+                                                        "name": "fromType",
+                                                        "type": "select",
+                                                        "label": "Send a message from",
+                                                        "required": true,
+                                                        "validate": {
+                                                            "enum": [
+                                                                "phone",
+                                                                "service",
+                                                                "channel"
+                                                            ]
+                                                        }
+                                                    },
+                                                    {
+                                                        "name": "to",
+                                                        "type": "text",
+                                                        "label": "To",
+                                                        "required": true
+                                                    },
+                                                    {
+                                                        "name": "messageBody",
+                                                        "type": "select",
+                                                        "label": "Message Body",
+                                                        "required": true,
+                                                        "validate": {
+                                                            "enum": [
+                                                                "body",
+                                                                "template"
+                                                            ]
+                                                        }
+                                                    },
+                                                    {
+                                                        "name": "mediaUrl",
+                                                        "spec": {
+                                                            "name": "value",
+                                                            "type": "url"
+                                                        },
+                                                        "type": "array",
+                                                        "label": "Media URL"
+                                                    },
+                                                    {
+                                                        "name": "smartEncoded",
+                                                        "type": "boolean",
+                                                        "label": "Smart encoded"
+                                                    },
+                                                    {
+                                                        "name": "validityPeriod",
+                                                        "type": "uinteger",
+                                                        "label": "Validity period"
+                                                    },
+                                                    {
+                                                        "name": "statusCallback",
+                                                        "type": "url",
+                                                        "label": "Status callback"
+                                                    },
+                                                    {
+                                                        "name": "applicationSid",
+                                                        "type": "select",
+                                                        "label": "Application"
+                                                    },
+                                                    {
+                                                        "name": "maxPrice",
+                                                        "type": "number",
+                                                        "label": "Max price"
+                                                    },
+                                                    {
+                                                        "name": "provideFeedback",
+                                                        "type": "boolean",
+                                                        "label": "Provide feedback"
+                                                    },
+                                                    {
+                                                        "name": "from",
+                                                        "type": "select",
+                                                        "label": "Phone number",
+                                                        "required": true
+                                                    },
+                                                    {
+                                                        "name": "body",
+                                                        "type": "text",
+                                                        "label": "Body",
+                                                        "required": true,
+                                                        "validate": {
+                                                            "max": 1600
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    "flow": [
+                                        {
+                                            "id": 15,
+                                            "module": "twilio:SendSMS",
+                                            "version": 2,
+                                            "parameters": {
+                                                "__IMTCONN__": 5599996
+                                            },
+                                            "filter": {
+                                                "name": "Name processing",
+                                                "conditions": [
+                                                    [
+                                                        {
+                                                            "a": "{{1.name}}",
+                                                            "b": "^[a-zA-ZÀ-ỹ\\s]+$",
+                                                            "o": "text:pattern"
+                                                        }
+                                                    ]
+                                                ]
+                                            },
+                                            "mapper": {
+                                                "to": "whatsapp:{{3.e164}}",
+                                                "body": "Hallo  {{first(split(1.name; ))}}! ✨!Ihr Code für den Founder-Zugang ist: *{{17.otp_code}}*. Bitte antworten Sie nur mit diesen 6 Ziffern.\nQUAN ESSKULTURE TEAM",
+                                                "from": "whatsapp:+14155238886",
+                                                "fromType": "phone",
+                                                "messageBody": "body"
+                                            },
+                                            "metadata": {
+                                                "designer": {
+                                                    "x": -5254,
+                                                    "y": -1765
+                                                },
+                                                "restore": {
+                                                    "expect": {
+                                                        "from": {
+                                                            "mode": "edit"
+                                                        },
+                                                        "fromType": {
+                                                            "mode": "chose",
+                                                            "label": "phone number"
+                                                        },
+                                                        "mediaUrl": {
+                                                            "mode": "chose"
+                                                        },
+                                                        "messageBody": {
+                                                            "mode": "chose",
+                                                            "label": "Create a Body"
+                                                        },
+                                                        "smartEncoded": {
+                                                            "mode": "chose"
+                                                        },
+                                                        "applicationSid": {
+                                                            "mode": "chose"
+                                                        },
+                                                        "provideFeedback": {
+                                                            "mode": "chose"
+                                                        }
+                                                    },
+                                                    "parameters": {
+                                                        "__IMTCONN__": {
+                                                            "data": {
+                                                                "scoped": "true",
+                                                                "connection": "twilio"
+                                                            },
+                                                            "label": "Quan-Esskultur Twilio"
+                                                        }
+                                                    }
+                                                },
+                                                "parameters": [
+                                                    {
+                                                        "name": "__IMTCONN__",
+                                                        "type": "account:twilio",
+                                                        "label": "Connection",
+                                                        "required": true
+                                                    }
+                                                ],
+                                                "expect": [
+                                                    {
+                                                        "name": "fromType",
+                                                        "type": "select",
+                                                        "label": "Send a message from",
+                                                        "required": true,
+                                                        "validate": {
+                                                            "enum": [
+                                                                "phone",
+                                                                "service",
+                                                                "channel"
+                                                            ]
+                                                        }
+                                                    },
+                                                    {
+                                                        "name": "to",
+                                                        "type": "text",
+                                                        "label": "To",
+                                                        "required": true
+                                                    },
+                                                    {
+                                                        "name": "messageBody",
+                                                        "type": "select",
+                                                        "label": "Message Body",
+                                                        "required": true,
+                                                        "validate": {
+                                                            "enum": [
+                                                                "body",
+                                                                "template"
+                                                            ]
+                                                        }
+                                                    },
+                                                    {
+                                                        "name": "mediaUrl",
+                                                        "spec": {
+                                                            "name": "value",
+                                                            "type": "url"
+                                                        },
+                                                        "type": "array",
+                                                        "label": "Media URL"
+                                                    },
+                                                    {
+                                                        "name": "smartEncoded",
+                                                        "type": "boolean",
+                                                        "label": "Smart encoded"
+                                                    },
+                                                    {
+                                                        "name": "validityPeriod",
+                                                        "type": "uinteger",
+                                                        "label": "Validity period"
+                                                    },
+                                                    {
+                                                        "name": "statusCallback",
+                                                        "type": "url",
+                                                        "label": "Status callback"
+                                                    },
+                                                    {
+                                                        "name": "applicationSid",
+                                                        "type": "select",
+                                                        "label": "Application"
+                                                    },
+                                                    {
+                                                        "name": "maxPrice",
+                                                        "type": "number",
+                                                        "label": "Max price"
+                                                    },
+                                                    {
+                                                        "name": "provideFeedback",
+                                                        "type": "boolean",
+                                                        "label": "Provide feedback"
+                                                    },
+                                                    {
+                                                        "name": "from",
+                                                        "type": "select",
+                                                        "label": "Phone number",
+                                                        "required": true
+                                                    },
+                                                    {
+                                                        "name": "body",
+                                                        "type": "text",
+                                                        "label": "Body",
+                                                        "required": true,
+                                                        "validate": {
+                                                            "max": 1600
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "metadata": {
+        "instant": true,
+        "version": 1,
+        "scenario": {
+            "roundtrips": 1,
+            "maxErrors": 10,
+            "autoCommit": true,
+            "autoCommitTriggerLast": true,
+            "sequential": false,
+            "slots": null,
+            "confidential": false,
+            "dataloss": false,
+            "dlq": false,
+            "freshVariables": false
+        },
+        "designer": {
+            "orphans": []
+        },
+        "zone": "eu1.make.com",
+        "notes": []
+    }
+}

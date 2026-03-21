@@ -5,11 +5,14 @@ import reservieungPage from '../public/reservierung.html';
 import thankYouPage from '../public/danke-reservierung.html';
 import appUI from '../public/app.html';
 import founderFormUI from '../public/founder-form.html';
+import boardUI from '../public/board.html';
 
 // Import utilities
 import { getTenantContext, validateTenantAccess } from './utils/tenant.js';
+import { requireTenant } from './utils/tenant-guard.js';
 import { initializeDatabase } from './db/init.js';
 import { getOrganizationSecret, getOrganizationSecretStatuses } from './utils/organization-secrets.js';
+import { odooCreateCrmLead, odooWriteLead } from './utils/odoo.js';
 
 // Store for SSE clients (company_id => Set of clients)
 const sseClients = new Map();
@@ -134,10 +137,13 @@ const INTEGRATION_SETTING_KEYS = [
   'TWILIO_WHATSAPP_FROM',
   'TWILIO_SMS_FROM',
   'TWILIO_MESSAGING_SERVICE_SID',
+  'ODOO_API_TOKEN',
   'ODOO_FOUNDER_CREATE_WEBHOOK',
   'ODOO_FOUNDER_VERIFY_WEBHOOK',
   'ODOO_STAFF_SYNC_WEBHOOK',
-  'ODOO_BOOKING_STAGE_WEBHOOK'
+  'ODOO_BOOKING_CREATE_WEBHOOK',
+  'ODOO_BOOKING_STAGE_WEBHOOK',
+  'ODOO_CRM_TEAM_ID'
 ];
 const INTEGRATION_SETTING_KEY_SET = new Set(INTEGRATION_SETTING_KEYS);
 const SECRET_ONLY_INTEGRATION_KEYS = new Set([
@@ -156,10 +162,13 @@ const INTEGRATION_KEY_DESCRIPTIONS = {
   TWILIO_WHATSAPP_FROM: 'Twilio WhatsApp sender (format: whatsapp:+E164)',
   TWILIO_SMS_FROM: 'Twilio SMS sender (E.164)',
   TWILIO_MESSAGING_SERVICE_SID: 'Twilio Messaging Service SID for outbound SMS/WhatsApp',
+  ODOO_API_TOKEN: 'Odoo API token for direct JSON-RPC calls',
   ODOO_FOUNDER_CREATE_WEBHOOK: 'Webhook URL for founder register sync',
   ODOO_FOUNDER_VERIFY_WEBHOOK: 'Webhook URL for founder verify sync',
   ODOO_STAFF_SYNC_WEBHOOK: 'Webhook URL for staff create/update sync',
-  ODOO_BOOKING_STAGE_WEBHOOK: 'Webhook URL for booking stage-change sync'
+  ODOO_BOOKING_CREATE_WEBHOOK: 'Webhook URL for booking lead-create sync (fallback when Odoo API is not configured)',
+  ODOO_BOOKING_STAGE_WEBHOOK: 'Webhook URL for booking stage-change sync (fallback when Odoo API is not configured)',
+  ODOO_CRM_TEAM_ID: 'Odoo CRM team ID to assign booking leads (default: 5)'
 };
 const MEDIA_ASSET_ALLOWED_MIME_TYPES = new Set([
   'image/jpeg',
@@ -564,6 +573,11 @@ function isLocalDevelopmentHost(url) {
   return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
 }
 
+function isTurnstileBypassHost(url) {
+  const hostname = String(url?.hostname || '').trim().toLowerCase();
+  return isLocalDevelopmentHost(url) || hostname.includes('workers.dev');
+}
+
 function getResolvedTurnstileSiteKey(env, url = null) {
   if (isLocalDevelopmentHost(url)) {
     return TURNSTILE_SITE_KEY_FALLBACK;
@@ -929,6 +943,56 @@ async function syncFounderVerifyToOdoo(env, payload, runtimeConfig = null) {
   return postOdooWebhook(webhook, payload);
 }
 
+/**
+ * Fetch per-company Odoo connection config from D1 + settings.
+ * Credentials precedence: settings table > companies table column > env var.
+ */
+async function getOdooConfig(env, companyId) {
+  const company = await env.DB.prepare(
+    `SELECT odoo_url, odoo_api_token, organization_id, odoo_company_id FROM companies WHERE id = ? LIMIT 1`
+  ).bind(companyId).first();
+
+  if (!company) return null;
+
+  const settingsMap = await getSettingsMap(env, companyId, [
+    'ODOO_API_TOKEN',
+    'odoo_api_token',
+    'ODOO_CRM_TEAM_ID',
+    'ODOO_BOOKING_CREATE_WEBHOOK',
+    'ODOO_BOOKING_STAGE_WEBHOOK'
+  ]);
+
+  const org = company.organization_id
+    ? await env.DB.prepare(
+        `SELECT odoo_db_name FROM organizations WHERE id = ? LIMIT 1`
+      ).bind(company.organization_id).first()
+    : null;
+
+  return {
+    odooUrl: String(company.odoo_url || env.ODOO_URL || '').trim(),
+    odooApiToken: String(
+      settingsMap.ODOO_API_TOKEN ||
+      settingsMap.odoo_api_token ||
+      company.odoo_api_token ||
+      env.ODOO_API_TOKEN ||
+      ''
+    ).trim(),
+    odooTeamId: Number(settingsMap.ODOO_CRM_TEAM_ID || env.ODOO_CRM_TEAM_ID || 5) || 5,
+    odooCompanyId: Number(company.odoo_company_id || 1),
+    odooDbName: String(org?.odoo_db_name || env.ODOO_DB_NAME || '').trim(),
+    createWebhook: String(
+      settingsMap.ODOO_BOOKING_CREATE_WEBHOOK ||
+      env.ODOO_BOOKING_CREATE_WEBHOOK ||
+      ''
+    ).trim(),
+    stageWebhook: String(
+      settingsMap.ODOO_BOOKING_STAGE_WEBHOOK ||
+      env.ODOO_BOOKING_STAGE_WEBHOOK ||
+      ''
+    ).trim()
+  };
+}
+
 // Stage map used when pushing booking stage changes to Odoo (CRM stage IDs).
 const BOOKING_STAGE_ID_MAP = {
   pending: 1,
@@ -939,14 +1003,172 @@ const BOOKING_STAGE_ID_MAP = {
   noshow: 6
 };
 
-async function syncBookingStageToOdoo(env, { bookingId, companyId, newStage, odooLeadId, changedBy, changedAt }) {
-  const settingsMap = await getSettingsMap(env, companyId, ['ODOO_BOOKING_STAGE_WEBHOOK']);
+function extractOdooLeadIdFromPayload(payload) {
+  if (!payload || typeof payload !== 'object') return '';
+
+  const candidates = [
+    payload.odoo_lead_id,
+    payload.lead_id,
+    payload.id,
+    payload?.data?.odoo_lead_id,
+    payload?.data?.lead_id,
+    payload?.data?.id,
+    payload?.result?.odoo_lead_id,
+    payload?.result?.lead_id,
+    payload?.result?.id
+  ];
+
+  for (const candidate of candidates) {
+    const value = String(candidate == null ? '' : candidate).trim();
+    if (value) return value;
+  }
+
+  return '';
+}
+
+async function syncBookingCreateToOdoo(env, {
+  bookingId,
+  companyId,
+  name,
+  phone,
+  email,
+  pax,
+  date,
+  time,
+  bookingDateTime,
+  area,
+  submittedAt,
+  flag,
+  notes,
+  duration,
+  staffUser,
+  source
+}) {
+  const config = await getOdooConfig(env, companyId).catch(() => null);
+
+  // ── Primary path: direct Odoo JSON-RPC API ───────────────────────────────
+  const PLACEHOLDER = 'YOUR_ODOO_TOKEN_HERE';
+  if (
+    config?.odooUrl &&
+    config.odooApiToken &&
+    config.odooApiToken !== PLACEHOLDER
+  ) {
+    const bookingDatetime = `${date} ${time}`;
+    const fields = {
+      type: 'opportunity',
+      name: 'Reservation',
+      team_id: config.odooTeamId,
+      stage_id: 1,
+      contact_name: name,
+      phone,
+      email_from: email || false,
+      x_studio_booking_datetime: bookingDatetime,
+      x_studio_guests: pax,
+      x_studio_area: area,
+      x_studio_submitted_at: String(submittedAt || '').replace('T', ' ').replace('Z', '').slice(0, 19),
+      x_studio_source: source || 'online',
+      x_studio_booking_id: bookingId
+    };
+    if (flag)      fields.x_studio_flag          = flag;
+    if (notes)     fields.x_studio_notes         = notes;
+    if (staffUser) fields.x_studio_staff         = staffUser;
+    if (duration)  fields.x_studio_duration_min  = Number(duration);
+
+    const result = await odooCreateCrmLead(config.odooUrl, config.odooApiToken, fields);
+    if (result.ok) {
+      return { ok: true, odooLeadId: result.leadId ? String(result.leadId) : null };
+    }
+    // Log but fall through to webhook fallback
+    console.warn('Odoo direct API create failed, trying webhook fallback:', result.error);
+  }
+
+  // ── Fallback path: webhook (make.com compatible) ─────────────────────────
   const webhook = String(
-    settingsMap['ODOO_BOOKING_STAGE_WEBHOOK'] ||
-    env.ODOO_BOOKING_STAGE_WEBHOOK ||
+    config?.createWebhook ||
+    config?.stageWebhook ||
     ''
   ).trim();
 
+  if (!webhook) {
+    return { ok: true, skipped: true, odooLeadId: null };
+  }
+
+  const payload = {
+    _model: 'crm.lead',
+    action: 'create_booking_lead',
+    booking_id: bookingId,
+    company_id: companyId,
+    name: `Booking ${name} ${date} ${time}`,
+    contact_name: name,
+    phone,
+    email: email || null,
+    guests_pax: pax,
+    booking_date: date,
+    booking_time: time,
+    booking_datetime: bookingDateTime,
+    area,
+    stage: 'pending',
+    stage_id: BOOKING_STAGE_ID_MAP.pending,
+    submitted_at: submittedAt
+  };
+
+  const response = await fetch(webhook, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  const rawBody = await response.text();
+  if (!response.ok) {
+    return { ok: false, error: rawBody || `HTTP ${response.status}`, odooLeadId: null };
+  }
+
+  let odooLeadId = '';
+  const trimmedBody = String(rawBody || '').trim();
+  if (trimmedBody) {
+    try {
+      const parsed = JSON.parse(trimmedBody);
+      odooLeadId = extractOdooLeadIdFromPayload(parsed);
+    } catch {
+      const labeled = trimmedBody.match(/(?:odoo[_\s-]?lead[_\s-]?id|lead[_\s-]?id|id)\s*[:=]\s*["']?([A-Za-z0-9_-]+)/i);
+      if (labeled?.[1]) {
+        odooLeadId = String(labeled[1]).trim();
+      } else if (/^[A-Za-z0-9_-]{2,80}$/.test(trimmedBody)) {
+        odooLeadId = trimmedBody;
+      }
+    }
+  }
+
+  return { ok: true, odooLeadId: odooLeadId || null };
+}
+
+async function syncBookingStageToOdoo(env, { bookingId, companyId, newStage, odooLeadId, changedBy, changedAt }) {
+  const numericLeadId = Number(odooLeadId);
+  const config = await getOdooConfig(env, companyId).catch(() => null);
+
+  // ── Primary path: direct Odoo JSON-RPC write ─────────────────────────────
+  const PLACEHOLDER = 'YOUR_ODOO_TOKEN_HERE';
+  if (
+    numericLeadId > 0 &&
+    config?.odooUrl &&
+    config.odooApiToken &&
+    config.odooApiToken !== PLACEHOLDER
+  ) {
+    const newStageId = BOOKING_STAGE_ID_MAP[newStage] ?? null;
+    if (newStageId) {
+      const result = await odooWriteLead(
+        config.odooUrl,
+        config.odooApiToken,
+        numericLeadId,
+        { stage_id: newStageId }
+      );
+      if (result.ok) return { ok: true };
+      console.warn('Odoo direct API stage update failed, trying webhook fallback:', result.error);
+    }
+  }
+
+  // ── Fallback path: webhook ────────────────────────────────────────────────
+  const webhook = String(config?.stageWebhook || '').trim();
   if (!webhook) {
     return { ok: true, skipped: true };
   }
@@ -1032,6 +1254,11 @@ function generateOtpCode() {
 }
 
 async function verifyTurnstileToken(token, env, remoteIp, secretConfig = null, url = null) {
+  // Dev bypass: set DISABLE_TURNSTILE_FOR_DEV=true in wrangler.jsonc vars (never in production)
+  if (env?.DISABLE_TURNSTILE_FOR_DEV === 'true' && isTurnstileBypassHost(url)) {
+    return { success: true, _bypass: 'dev' };
+  }
+
   if (!token) return { success: false };
 
   const turnstileSecret = isLocalDevelopmentHost(url)
@@ -1551,6 +1778,15 @@ export default {
       console.warn('Tenant resolution failed:', activeCompanyResolution.reason);
     }
 
+    const runTenantRoute = (handler) => requireTenant(handler)({
+      request,
+      env,
+      ctx,
+      tenant,
+      url,
+      activeCompanyResolution
+    });
+
     // ==================== HEALTH CHECK ====================
     if (url.pathname === "/api/health") {
       return Response.json({
@@ -1576,33 +1812,35 @@ export default {
 
     // ==================== BOOKING FORM ====================
     if (url.pathname === "/booking-form.html" || url.pathname === "/booking-form") {
-      const companyId = activeCompanyId;
-      const bookingEnabled = await isModuleEnabled(env, companyId, 'module_booking_management');
-      if (!bookingEnabled) {
-        return new Response('Booking management module is disabled for this restaurant.', {
-          status: 404,
-          headers: { "Content-Type": "text/plain; charset=utf-8" }
-        });
-      }
+      return runTenantRoute(async ({ companyId }) => {
+        const bookingEnabled = await isModuleEnabled(env, companyId, 'module_booking_management');
+        if (!bookingEnabled) {
+          return new Response('Booking management module is disabled for this restaurant.', {
+            status: 404,
+            headers: { "Content-Type": "text/plain; charset=utf-8" }
+          });
+        }
 
-      return new Response(injectTurnstileSiteKey(bookingForm, env, url), {
-        headers: { "Content-Type": "text/html; charset=utf-8" }
+        return new Response(injectTurnstileSiteKey(bookingForm, env, url), {
+          headers: { "Content-Type": "text/html; charset=utf-8" }
+        });
       });
     }
 
     // ==================== RESERVIERUNG PAGE ====================
     if (url.pathname === "/reservierung" || url.pathname === "/reservierung.html") {
-      const companyId = activeCompanyId;
-      const bookingEnabled = await isModuleEnabled(env, companyId, 'module_booking_management');
-      if (!bookingEnabled) {
-        return new Response('Booking management module is disabled for this restaurant.', {
-          status: 404,
-          headers: { "Content-Type": "text/plain; charset=utf-8" }
-        });
-      }
+      return runTenantRoute(async ({ companyId }) => {
+        const bookingEnabled = await isModuleEnabled(env, companyId, 'module_booking_management');
+        if (!bookingEnabled) {
+          return new Response('Booking management module is disabled for this restaurant.', {
+            status: 404,
+            headers: { "Content-Type": "text/plain; charset=utf-8" }
+          });
+        }
 
-      return new Response(reservieungPage, {
-        headers: { "Content-Type": "text/html; charset=utf-8" }
+        return new Response(reservieungPage, {
+          headers: { "Content-Type": "text/html; charset=utf-8" }
+        });
       });
     }
 
@@ -1626,34 +1864,36 @@ export default {
 
     // ==================== FOUNDER FORM ====================
     if (url.pathname === "/founder" || url.pathname === "/founder-form" || url.pathname === "/founder-form.html") {
-      const companyId = activeCompanyId;
-      const membershipEnabled = await isModuleEnabled(env, companyId, 'module_membership_management');
+      return runTenantRoute(async ({ companyId }) => {
+        const membershipEnabled = await isModuleEnabled(env, companyId, 'module_membership_management');
 
-      if (!membershipEnabled) {
-        const fallbackLink = await getStandardContactFallbackLink(env, companyId, url);
-        if (fallbackLink) {
-          return Response.redirect(fallbackLink, 302);
+        if (!membershipEnabled) {
+          const fallbackLink = await getStandardContactFallbackLink(env, companyId, url);
+          if (fallbackLink) {
+            return Response.redirect(fallbackLink, 302);
+          }
+
+          return new Response('Community membership module is disabled for this restaurant.', {
+            status: 404,
+            headers: { "Content-Type": "text/plain; charset=utf-8" }
+          });
         }
 
-        return new Response('Community membership module is disabled for this restaurant.', {
-          status: 404,
-          headers: { "Content-Type": "text/plain; charset=utf-8" }
+        const hydratedUrl = await buildFounderFormUrlWithSettingsDefaults(env, companyId, url);
+        if (hydratedUrl) {
+          return Response.redirect(hydratedUrl.toString(), 302);
+        }
+
+        return new Response(injectTurnstileSiteKey(founderFormUI, env, url), {
+          headers: { "Content-Type": "text/html; charset=utf-8" }
         });
-      }
-
-      const hydratedUrl = await buildFounderFormUrlWithSettingsDefaults(env, companyId, url);
-      if (hydratedUrl) {
-        return Response.redirect(hydratedUrl.toString(), 302);
-      }
-
-      return new Response(injectTurnstileSiteKey(founderFormUI, env, url), {
-        headers: { "Content-Type": "text/html; charset=utf-8" }
       });
     }
 
     // ==================== API: FOUNDER REGISTER ====================
     if ((url.pathname === "/api/founder/register" || url.pathname === '/api/kc/register') && request.method === "POST") {
-      try {
+      return runTenantRoute(async ({ companyId }) => {
+        try {
         const contentType = (request.headers.get('content-type') || '').toLowerCase();
         let getField = (_key, _fallback = '') => '';
 
@@ -1670,8 +1910,6 @@ export default {
             return String(value == null ? fallback : value).trim();
           };
         }
-
-        const companyId = activeCompanyId;
         const membershipEnabled = await isModuleEnabled(env, companyId, 'module_membership_management');
 
         if (!membershipEnabled) {
@@ -1865,16 +2103,17 @@ export default {
           phone,
           nextStep: 'verify_otp'
         });
-      } catch (e) {
-        console.error('Founder register error:', e);
-        return Response.json({ status: 'error', message: 'Interner Fehler bei der Registrierung.' }, { status: 500 });
-      }
+        } catch (e) {
+          console.error('Founder register error:', e);
+          return Response.json({ status: 'error', message: 'Interner Fehler bei der Registrierung.' }, { status: 500 });
+        }
+      });
     }
 
     // ==================== API: FOUNDER OTP RESEND ====================
     if ((url.pathname === '/api/founder/resend-otp' || url.pathname === '/api/kc/resend-otp') && request.method === 'POST') {
-      try {
-        const companyId = activeCompanyId;
+      return runTenantRoute(async ({ companyId }) => {
+        try {
         const membershipEnabled = await isModuleEnabled(env, companyId, 'module_membership_management');
 
         if (!membershipEnabled) {
@@ -1961,33 +2200,36 @@ export default {
           phone,
           nextStep: 'verify_otp'
         });
-      } catch (e) {
-        console.error('Founder resend OTP error:', e);
-        return Response.json({ status: 'error', message: 'Interner Fehler beim erneuten Senden des OTP.' }, { status: 500 });
-      }
+        } catch (e) {
+          console.error('Founder resend OTP error:', e);
+          return Response.json({ status: 'error', message: 'Interner Fehler beim erneuten Senden des OTP.' }, { status: 500 });
+        }
+      });
     }
 
     // ==================== API: FOUNDER OTP VERIFY (TWILIO WEBHOOK) ====================
     if ((url.pathname === '/webhooks/twilio/founder-otp' || url.pathname === '/api/webhooks/twilio/founder-otp') && request.method === 'POST') {
-      const companyId = activeCompanyId;
-      return handleFounderOtpVerificationRequest(request, env, companyId, { twilioWebhookMode: true });
+      return runTenantRoute(async ({ companyId }) => {
+        return handleFounderOtpVerificationRequest(request, env, companyId, { twilioWebhookMode: true });
+      });
     }
 
     // ==================== API: FOUNDER OTP VERIFY ====================
     if ((url.pathname === '/api/founder/verify' || url.pathname === '/api/kc/verify') && request.method === 'POST') {
-      const companyId = activeCompanyId;
-      return handleFounderOtpVerificationRequest(request, env, companyId);
+      return runTenantRoute(async ({ companyId }) => {
+        return handleFounderOtpVerificationRequest(request, env, companyId);
+      });
     }
 
     // ==================== API: STAFF AUTH ====================
     if (url.pathname === "/api/staff/auth" && request.method === "GET") {
-      try {
+      return runTenantRoute(async ({ companyId }) => {
+        try {
         const pin = url.searchParams.get("pin");
         if (!pin) {
           return Response.json({ success: false, error: "PIN required" }, { status: 400 });
         }
 
-        const companyId = activeCompanyId;
         const auth = await authorizeStaffByPin(env, companyId, pin);
         if (!auth.ok) {
           return Response.json(
@@ -2011,19 +2253,20 @@ export default {
           companyId: staff.company_id,
           role: staff.role
         });
-      } catch (e) {
-        console.error("Auth error:", e);
-        return Response.json(
-          { success: false, error: e.message },
-          { status: 500 }
-        );
-      }
+        } catch (e) {
+          console.error("Auth error:", e);
+          return Response.json(
+            { success: false, error: e.message },
+            { status: 500 }
+          );
+        }
+      });
     }
 
     // ==================== API: CONTACTS ====================
     if (url.pathname === "/api/contacts" && request.method === "GET") {
-      try {
-        const companyId = activeCompanyId;
+      return runTenantRoute(async ({ companyId }) => {
+        try {
         const pin = String(url.searchParams.get('pin') || request.headers.get('x-staff-pin') || request.headers.get('x-admin-pin') || '').trim();
         const statusFilter = String(url.searchParams.get('status') || '').trim();
         const auth = await authorizeStaffByPin(env, companyId, pin);
@@ -2056,15 +2299,16 @@ export default {
           companyId,
           data: result.results || []
         });
-      } catch (e) {
-        console.error('Contacts GET error:', e);
-        return Response.json({ ok: false, error: e.message }, { status: 500 });
-      }
+        } catch (e) {
+          console.error('Contacts GET error:', e);
+          return Response.json({ ok: false, error: e.message }, { status: 500 });
+        }
+      });
     }
 
     if (url.pathname.match(/^\/api\/contacts\/([^\/]+)\/push$/) && request.method === "POST") {
-      try {
-        const companyId = activeCompanyId;
+      return runTenantRoute(async ({ companyId }) => {
+        try {
         const routeMatch = url.pathname.match(/^\/api\/contacts\/([^\/]+)\/push$/);
         const contactId = decodeURIComponent(String(routeMatch?.[1] || '')).trim();
         const body = await request.json().catch(() => ({}));
@@ -2100,16 +2344,17 @@ export default {
         }
 
         return Response.json({ ok: true, contactId, status: 'processed' });
-      } catch (e) {
-        console.error('Contacts push error:', e);
-        return Response.json({ ok: false, error: e.message }, { status: 500 });
-      }
+        } catch (e) {
+          console.error('Contacts push error:', e);
+          return Response.json({ ok: false, error: e.message }, { status: 500 });
+        }
+      });
     }
 
     // ==================== API: ADMIN INTEGRATION CONFIG ====================
     if (url.pathname === "/api/admin/integration-config" && request.method === "GET") {
-      try {
-        const companyId = activeCompanyId;
+      return runTenantRoute(async ({ companyId }) => {
+        try {
         const pin = String(url.searchParams.get("pin") || request.headers.get("x-admin-pin") || '').trim();
 
         const auth = await authorizeAdminByPin(env, companyId, pin);
@@ -2150,18 +2395,19 @@ export default {
           tenantSecretVaultEnabled: !!env.TENANT_SECRETS_MASTER_KEY,
           config
         });
-      } catch (e) {
-        console.error('Admin integration-config GET error:', e);
-        return Response.json(
-          { success: false, error: e.message },
-          { status: 500 }
-        );
-      }
+        } catch (e) {
+          console.error('Admin integration-config GET error:', e);
+          return Response.json(
+            { success: false, error: e.message },
+            { status: 500 }
+          );
+        }
+      });
     }
 
     if (url.pathname === "/api/admin/integration-config" && request.method === "POST") {
-      try {
-        const companyId = activeCompanyId;
+      return runTenantRoute(async ({ companyId }) => {
+        try {
         const body = await request.json();
         const pin = String(body?.pin || '').trim();
 
@@ -2242,19 +2488,20 @@ export default {
           saved,
           rejected
         });
-      } catch (e) {
-        console.error('Admin integration-config POST error:', e);
-        return Response.json(
-          { success: false, error: e.message },
-          { status: 500 }
-        );
-      }
+        } catch (e) {
+          console.error('Admin integration-config POST error:', e);
+          return Response.json(
+            { success: false, error: e.message },
+            { status: 500 }
+          );
+        }
+      });
     }
 
     // ==================== API: ADMIN PLATFORM CONFIG ====================
     if (url.pathname === "/api/admin/platform-config" && request.method === "GET") {
-      try {
-        const companyId = activeCompanyId;
+      return runTenantRoute(async ({ companyId }) => {
+        try {
         const pin = String(url.searchParams.get("pin") || request.headers.get("x-admin-pin") || request.headers.get("x-staff-pin") || '').trim();
         const auth = await authorizeManagerOrAdminByPin(env, companyId, pin);
 
@@ -2264,15 +2511,16 @@ export default {
 
         const config = await getAdminPlatformConfig(env, companyId);
         return Response.json({ success: true, companyId, ...config });
-      } catch (e) {
-        console.error('Admin platform-config GET error:', e);
-        return Response.json({ success: false, error: e.message }, { status: 500 });
-      }
+        } catch (e) {
+          console.error('Admin platform-config GET error:', e);
+          return Response.json({ success: false, error: e.message }, { status: 500 });
+        }
+      });
     }
 
     if (url.pathname === "/api/admin/platform-config" && request.method === "POST") {
-      try {
-        const companyId = activeCompanyId;
+      return runTenantRoute(async ({ companyId }) => {
+        try {
         const body = await request.json();
         const pin = String(body?.pin || '').trim();
         const auth = await authorizeManagerOrAdminByPin(env, companyId, pin);
@@ -2375,16 +2623,17 @@ export default {
 
         const config = await getAdminPlatformConfig(env, companyId);
         return Response.json({ success: true, companyId, ...config });
-      } catch (e) {
-        console.error('Admin platform-config POST error:', e);
-        return Response.json({ success: false, error: e.message }, { status: 500 });
-      }
+        } catch (e) {
+          console.error('Admin platform-config POST error:', e);
+          return Response.json({ success: false, error: e.message }, { status: 500 });
+        }
+      });
     }
 
     // ==================== API: ADMIN STAFF ====================
     if (url.pathname === "/api/admin/staff" && request.method === "GET") {
-      try {
-        const companyId = activeCompanyId;
+      return runTenantRoute(async ({ companyId }) => {
+        try {
         const pin = String(url.searchParams.get("pin") || request.headers.get("x-admin-pin") || '').trim();
         const auth = await authorizeAdminByPin(env, companyId, pin);
 
@@ -2400,15 +2649,16 @@ export default {
         `).bind(companyId).all();
 
         return Response.json({ success: true, staff: result.results || [] });
-      } catch (e) {
-        console.error('Admin staff GET error:', e);
-        return Response.json({ success: false, error: e.message }, { status: 500 });
-      }
+        } catch (e) {
+          console.error('Admin staff GET error:', e);
+          return Response.json({ success: false, error: e.message }, { status: 500 });
+        }
+      });
     }
 
     if (url.pathname === "/api/admin/staff" && request.method === "POST") {
-      try {
-        const companyId = activeCompanyId;
+      return runTenantRoute(async ({ companyId }) => {
+        try {
         const body = await request.json();
         const pin = String(body?.pin || '').trim();
         const auth = await authorizeAdminByPin(env, companyId, pin);
@@ -2496,16 +2746,17 @@ export default {
         }
 
         return Response.json({ success: true, staffId });
-      } catch (e) {
-        console.error('Admin staff POST error:', e);
-        return Response.json({ success: false, error: e.message }, { status: 500 });
-      }
+        } catch (e) {
+          console.error('Admin staff POST error:', e);
+          return Response.json({ success: false, error: e.message }, { status: 500 });
+        }
+      });
     }
 
     // ==================== API: ADMIN MEDIA ASSETS ====================
     if (url.pathname === "/api/admin/media-assets" && request.method === "GET") {
-      try {
-        const companyId = activeCompanyId;
+      return runTenantRoute(async ({ companyId }) => {
+        try {
         const pin = String(url.searchParams.get("pin") || request.headers.get("x-admin-pin") || request.headers.get("x-staff-pin") || '').trim();
         const auth = await authorizeManagerOrAdminByPin(env, companyId, pin);
 
@@ -2526,15 +2777,16 @@ export default {
           .filter(Boolean);
 
         return Response.json({ success: true, companyId, assets });
-      } catch (e) {
-        console.error('Admin media-assets GET error:', e);
-        return Response.json({ success: false, error: e.message }, { status: 500 });
-      }
+        } catch (e) {
+          console.error('Admin media-assets GET error:', e);
+          return Response.json({ success: false, error: e.message }, { status: 500 });
+        }
+      });
     }
 
     if (url.pathname === "/api/admin/media-assets" && request.method === "POST") {
-      try {
-        const companyId = activeCompanyId;
+      return runTenantRoute(async ({ companyId }) => {
+        try {
         const body = await request.json();
         const pin = String(body?.pin || '').trim();
         const auth = await authorizeManagerOrAdminByPin(env, companyId, pin);
@@ -2667,79 +2919,82 @@ export default {
           action: existing ? 'updated' : 'created',
           asset: mapMediaAssetRow(row)
         });
-      } catch (e) {
-        console.error('Admin media-assets POST error:', e);
-        return Response.json({ success: false, error: e.message }, { status: 500 });
-      }
+        } catch (e) {
+          console.error('Admin media-assets POST error:', e);
+          return Response.json({ success: false, error: e.message }, { status: 500 });
+        }
+      });
     }
 
     // ==================== API: NOTIFICATIONS STREAM (SSE) ====================
     if (url.pathname === "/api/notifications/stream" && request.method === "GET") {
-      const requestedCompanyId = Number(url.searchParams.get("company_id") || 0);
-      let companyId = activeCompanyId;
+      return runTenantRoute(async ({ companyId }) => {
+        const requestedCompanyId = Number(url.searchParams.get("company_id") || 0);
+        let effectiveCompanyId = companyId;
 
-      if (Number.isInteger(requestedCompanyId) && requestedCompanyId > 0) {
-        if (requestedCompanyId === activeCompanyId) {
-          companyId = requestedCompanyId;
-        } else if (canOverrideCompanyIdForHost(tenant, url)) {
-          companyId = requestedCompanyId;
-        } else {
-          return Response.json(
-            { ok: false, error: "company_id override is not allowed for this host" },
-            { status: 403 }
-          );
-        }
-      }
-
-      // Create SSE response
-      let clientId = `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-      const encoder = new TextEncoder();
-      const stream = new ReadableStream({
-        start(controller) {
-          // Store client
-          if (!sseClients.has(companyId)) {
-            sseClients.set(companyId, new Set());
+        if (Number.isInteger(requestedCompanyId) && requestedCompanyId > 0) {
+          if (requestedCompanyId === companyId) {
+            effectiveCompanyId = requestedCompanyId;
+          } else if (canOverrideCompanyIdForHost(tenant, url)) {
+            effectiveCompanyId = requestedCompanyId;
+          } else {
+            return Response.json(
+              { ok: false, error: "company_id override is not allowed for this host" },
+              { status: 403 }
+            );
           }
-          const client = {
-            id: clientId,
-            send: (event, data) => {
-              const msg = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
-              controller.enqueue(encoder.encode(msg));
-            }
-          };
-          sseClients.get(companyId).add(client);
-
-          // Send initial connected message
-          client.send("connected", { ok: true });
-
-          // Cleanup on close
-          const closeInterval = setInterval(() => {
-            try {
-              controller.enqueue(encoder.encode(":\n\n"));
-            } catch (e) {
-              clearInterval(closeInterval);
-              sseClients.get(companyId).delete(client);
-            }
-          }, 30000);
         }
-      });
 
-      return new Response(stream, {
-        headers: {
-          "Content-Type": "text/event-stream",
-          "Cache-Control": "no-cache",
-          "Connection": "keep-alive",
-          "Access-Control-Allow-Origin": "*"
-        }
+        // Create SSE response
+        let clientId = `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+        const encoder = new TextEncoder();
+        const stream = new ReadableStream({
+          start(controller) {
+            // Store client
+            if (!sseClients.has(effectiveCompanyId)) {
+              sseClients.set(effectiveCompanyId, new Set());
+            }
+            const client = {
+              id: clientId,
+              send: (event, data) => {
+                const msg = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+                controller.enqueue(encoder.encode(msg));
+              }
+            };
+            sseClients.get(effectiveCompanyId).add(client);
+
+            // Send initial connected message
+            client.send("connected", { ok: true });
+
+            // Cleanup on close
+            const closeInterval = setInterval(() => {
+              try {
+                controller.enqueue(encoder.encode(":\n\n"));
+              } catch (e) {
+                clearInterval(closeInterval);
+                sseClients.get(effectiveCompanyId).delete(client);
+              }
+            }, 30000);
+          }
+        });
+
+        return new Response(stream, {
+          headers: {
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*"
+          }
+        });
       });
     }
 
     // ==================== API: CREATE BOOKING (FORM HANDLER) ====================
     if (url.pathname === "/api/bookings/create" && request.method === "POST") {
-      try {
+      return runTenantRoute(async ({ companyId }) => {
+        try {
         const formData = await request.formData();
-        const companyId = activeCompanyId;
         const bookingEnabled = await isModuleEnabled(env, companyId, 'module_booking_management');
 
         if (!bookingEnabled) {
@@ -2756,6 +3011,8 @@ export default {
         const date = String(formData.get("date") || "").trim();
         const time = String(formData.get("time") || "").trim();
         const pax = parseInt(formData.get("pax") || 0);
+        const areaRaw = String(formData.get('area') || 'indoor').trim().toLowerCase();
+        const area = ['indoor', 'outdoor', 'garden', 'bar'].includes(areaRaw) ? areaRaw : 'indoor';
         const cfToken = String(formData.get("cf_token") || "").trim();
 
         if (emailRaw && !email) {
@@ -2798,8 +3055,39 @@ export default {
           (id, company_id, contact_name, phone, email, guests_pax, booking_date, booking_time, booking_datetime, area, stage, stage_id, source, submitted_at, updated_at, created_by)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).bind(
-          bookingId, companyId, name, phone, email || null, pax, date, time, bookingDateTime, "indoor", "pending", 1, "web", now, now, "system"
+          bookingId, companyId, name, phone, email || null, pax, date, time, bookingDateTime, area, "pending", 1, "web", now, now, "system"
         ).run();
+
+        let odooLeadId = null;
+        const bookingCreateSyncResult = await syncBookingCreateToOdoo(env, {
+          bookingId,
+          companyId,
+          name,
+          phone,
+          email,
+          pax,
+          date,
+          time,
+          bookingDateTime,
+          area,
+          submittedAt: now
+        });
+
+        if (!bookingCreateSyncResult.ok) {
+          console.warn('Booking create Odoo sync failed:', bookingCreateSyncResult.error);
+        } else if (bookingCreateSyncResult.odooLeadId) {
+          odooLeadId = bookingCreateSyncResult.odooLeadId;
+          await env.DB.prepare(
+            `UPDATE bookings SET odoo_lead_id = ?, updated_at = ?, updated_by = ? WHERE id = ? AND company_id = ?`
+          ).bind(odooLeadId, now, 'odoo_sync', bookingId, companyId).run();
+        }
+
+        syncBookingStageToBoard(env, {
+          bookingId,
+          companyId,
+          newStage: 'pending',
+          changedAt: now
+        }).catch((err) => console.warn('Booking create board sync error:', err));
 
         // Notify SSE clients
         if (sseClients.has(companyId)) {
@@ -2811,43 +3099,51 @@ export default {
             guests_pax: pax,
             booking_date: date,
             booking_time: time,
-            area: "indoor",
+            area,
+            odoo_lead_id: odooLeadId,
             stage: "pending"
           };
 
           for (const client of sseClients.get(companyId)) {
-            client.send("booking", booking);
+            try {
+              client.send("booking", booking);
+            } catch {
+              sseClients.get(companyId).delete(client);
+            }
           }
         }
 
         return Response.json({
           ok: true,
           bookingId,
+          odoo_lead_id: odooLeadId,
           redirect_url: "/danke-reservierung"
         });
-      } catch (e) {
-        console.error("Booking create error:", e);
-        return Response.json(
-          { ok: false, error: e.message },
-          { status: 500 }
-        );
-      }
+        } catch (e) {
+          console.error("Booking create error:", e);
+          return Response.json(
+            { ok: false, error: e.message },
+            { status: 500 }
+          );
+        }
+      });
     }
 
     // ==================== API: UPDATE BOOKING STAGE ====================
     if (url.pathname.match(/^\/api\/bookings\/([^\/]+)\/stage$/) && request.method === "POST") {
-      try {
+      return runTenantRoute(async ({ companyId }) => {
+        try {
         const bookingId = url.pathname.match(/^\/api\/bookings\/([^\/]+)\/stage$/)[1];
         const body = await request.json();
         const { stage: newStage, staffId } = body;
 
-        let companyId = activeCompanyId;
+        let effectiveCompanyId = companyId;
         const reqCompanyId = Number(body?.companyId || 0);
         if (Number.isInteger(reqCompanyId) && reqCompanyId > 0) {
-          if (reqCompanyId === activeCompanyId) {
-            companyId = reqCompanyId;
+          if (reqCompanyId === companyId) {
+            effectiveCompanyId = reqCompanyId;
           } else if (canOverrideCompanyIdForHost(tenant, url)) {
-            companyId = reqCompanyId;
+            effectiveCompanyId = reqCompanyId;
           } else {
             return Response.json(
               { ok: false, error: "company_id override is not allowed for this host" },
@@ -2866,7 +3162,7 @@ export default {
         // Get existing booking
         const booking = await env.DB.prepare(
           `SELECT stage, odoo_lead_id FROM bookings WHERE id = ? AND company_id = ?`
-        ).bind(bookingId, companyId).first();
+        ).bind(bookingId, effectiveCompanyId).first();
 
         if (!booking) {
           return Response.json(
@@ -2879,7 +3175,7 @@ export default {
         const now = new Date().toISOString();
         await env.DB.prepare(
           `UPDATE bookings SET stage = ?, updated_at = ?, updated_by = ? WHERE id = ? AND company_id = ?`
-        ).bind(newStage, now, staffId || "staff", bookingId, companyId).run();
+        ).bind(newStage, now, staffId || "staff", bookingId, effectiveCompanyId).run();
 
         // Create audit log
         const actionId = `action_${Date.now()}`;
@@ -2887,20 +3183,24 @@ export default {
           `INSERT INTO booking_actions (id, company_id, booking_id, action_type, old_stage, new_stage, changed_by, changed_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
         ).bind(
-          actionId, companyId, bookingId, "stage_changed", booking.stage, newStage, staffId || "staff", now
+          actionId, effectiveCompanyId, bookingId, "stage_changed", booking.stage, newStage, staffId || "staff", now
         ).run();
 
         // Notify SSE clients
-        if (sseClients.has(companyId)) {
-          for (const client of sseClients.get(companyId)) {
-            client.send("stage-update", { bookingId, newStage });
+        if (sseClients.has(effectiveCompanyId)) {
+          for (const client of sseClients.get(effectiveCompanyId)) {
+            try {
+              client.send("stage-update", { bookingId, newStage });
+            } catch {
+              sseClients.get(effectiveCompanyId).delete(client);
+            }
           }
         }
 
         // Sync stage to Odoo (fire-and-forget; failure is non-blocking)
         syncBookingStageToOdoo(env, {
           bookingId,
-          companyId,
+          companyId: effectiveCompanyId,
           newStage,
           odooLeadId: booking.odoo_lead_id || null,
           changedBy: staffId || 'staff',
@@ -2910,7 +3210,7 @@ export default {
         // Sync stage to booking board KV (no-op when BOARD_KV binding is absent)
         syncBookingStageToBoard(env, {
           bookingId,
-          companyId,
+          companyId: effectiveCompanyId,
           newStage,
           changedAt: now
         }).catch((err) => console.warn('Booking stage board sync error:', err));
@@ -2920,19 +3220,20 @@ export default {
           message: `Stage updated to ${newStage}`,
           bookingId
         });
-      } catch (e) {
-        console.error("Stage update error:", e);
-        return Response.json(
-          { ok: false, error: e.message },
-          { status: 500 }
-        );
-      }
+        } catch (e) {
+          console.error("Stage update error:", e);
+          return Response.json(
+            { ok: false, error: e.message },
+            { status: 500 }
+          );
+        }
+      });
     }
 
     // ==================== API: GET BOOKINGS BY COMPANY ====================
     if (url.pathname === "/api/bookings" && request.method === "GET") {
-      try {
-        const companyId = activeCompanyId;
+      return runTenantRoute(async ({ companyId }) => {
+        try {
         const date = url.searchParams.get("date");
 
         let query = "SELECT * FROM bookings WHERE company_id = ?";
@@ -2952,18 +3253,139 @@ export default {
           companyId,
           data: result.results || []
         });
-      } catch (e) {
-        return Response.json(
-          { ok: false, error: e.message },
-          { status: 500 }
-        );
-      }
+        } catch (e) {
+          return Response.json(
+            { ok: false, error: e.message },
+            { status: 500 }
+          );
+        }
+      });
+    }
+
+    // ==================== API: STAFF BOARD BOOKING (onsite, no Turnstile) ====================
+    // Used by the /board kiosk — authentication replaces Turnstile.
+    if (url.pathname === "/api/bookings/staff-create" && request.method === "POST") {
+      return runTenantRoute(async ({ companyId }) => {
+        try {
+          const body = await request.json();
+
+          const pin      = String(body.pin      || '').trim();
+          const name     = String(body.name     || '').trim();
+          const phone    = String(body.phone    || '').trim();
+          const emailRaw = String(body.email    || '').trim();
+          const date     = String(body.date     || '').trim();
+          const time     = String(body.time     || '').trim();
+          const pax      = parseInt(body.pax    || 0);
+          const areaRaw  = String(body.area     || 'indoor').trim().toLowerCase();
+          const area     = ['indoor', 'outdoor', 'garden', 'bar'].includes(areaRaw) ? areaRaw : 'indoor';
+          const flag     = String(body.flag     || '').trim().toLowerCase();
+          const notes    = String(body.notes    || '').trim();
+          const duration = parseInt(body.duration || 120);
+
+          // Verify staff PIN — this replaces Turnstile
+          if (!pin) {
+            return Response.json({ ok: false, error: 'Staff PIN required' }, { status: 400 });
+          }
+          const auth = await authorizeStaffByPin(env, companyId, pin);
+          if (!auth.ok) {
+            return Response.json({ ok: false, error: auth.error }, { status: 401 });
+          }
+          const staffUser = auth.staff.name;
+
+          const bookingEnabled = await isModuleEnabled(env, companyId, 'module_booking_management');
+          if (!bookingEnabled) {
+            return Response.json({ ok: false, error: 'Booking management module is disabled' }, { status: 403 });
+          }
+
+          const email = normalizeOptionalEmail(emailRaw);
+          if (emailRaw && !email) {
+            return Response.json({ ok: false, error: 'Invalid email format' }, { status: 400 });
+          }
+
+          if (!name || !phone || !date || !time || !pax) {
+            return Response.json({ ok: false, error: 'Missing required fields' }, { status: 400 });
+          }
+
+          const bookingId      = `booking_${companyId}_${Date.now()}`;
+          const now            = new Date().toISOString();
+          const bookingDateTime = `${date}T${time}:00Z`;
+
+          await env.DB.prepare(`
+            INSERT INTO bookings
+            (id, company_id, contact_name, phone, email, guests_pax, booking_date, booking_time,
+             booking_datetime, area, flag, notes, duration_minutes, stage, stage_id, source,
+             submitted_at, updated_at, created_by, updated_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).bind(
+            bookingId, companyId, name, phone, email || null, pax, date, time,
+            bookingDateTime, area, flag || null, notes || null, duration,
+            'pending', 1, 'onsite',
+            now, now, staffUser, staffUser
+          ).run();
+
+          let odooLeadId = null;
+          const syncResult = await syncBookingCreateToOdoo(env, {
+            bookingId, companyId, name, phone, email, pax, date, time,
+            bookingDateTime, area, submittedAt: now,
+            flag, notes, duration, staffUser, source: 'onsite'
+          });
+          if (syncResult.ok && syncResult.odooLeadId) {
+            odooLeadId = syncResult.odooLeadId;
+            await env.DB.prepare(
+              `UPDATE bookings SET odoo_lead_id = ?, updated_at = ?, updated_by = ? WHERE id = ? AND company_id = ?`
+            ).bind(odooLeadId, now, 'odoo_sync', bookingId, companyId).run();
+          }
+
+          syncBookingStageToBoard(env, {
+            bookingId, companyId, newStage: 'pending', changedAt: now
+          }).catch(() => {});
+
+          if (sseClients.has(companyId)) {
+            const booking = {
+              id: bookingId, contact_name: name, phone,
+              email: email || null, guests_pax: pax, booking_date: date,
+              booking_time: time, area, flag: flag || null, source: 'onsite',
+              odoo_lead_id: odooLeadId, stage: 'pending'
+            };
+            for (const client of sseClients.get(companyId)) {
+              try { client.send('booking', booking); } catch {
+                sseClients.get(companyId).delete(client);
+              }
+            }
+          }
+
+          return Response.json({ ok: true, bookingId, odoo_lead_id: odooLeadId });
+        } catch (e) {
+          console.error('Staff create error:', e);
+          return Response.json({ ok: false, error: e.message }, { status: 500 });
+        }
+      });
+    }
+
+    // ==================== BOOKING BOARD (per-tenant kiosk) ====================
+    if (url.pathname === '/board' || url.pathname === '/board/') {
+      return runTenantRoute(async ({ companyId }) => {
+        const settingsMap = await getOperationalSettingsMap(env, companyId);
+        const areaCapacity = {
+          indoor:  Number(settingsMap.area_capacity_indoor  || 12),
+          outdoor: Number(settingsMap.area_capacity_outdoor || 10),
+          garden:  Number(settingsMap.area_capacity_garden  || 8),
+          bar:     Number(settingsMap.area_capacity_bar     || 6)
+        };
+        const maxLanes = Object.values(areaCapacity).reduce((s, v) => s + v, 0);
+        const html = String(boardUI || '')
+          .replace(/__AREA_CAPACITY_JSON__/g, JSON.stringify(areaCapacity))
+          .replace(/__MAX_LANES__/g, String(maxLanes));
+        return new Response(html, {
+          headers: { 'Content-Type': 'text/html; charset=UTF-8' }
+        });
+      });
     }
 
     // ==================== API: TEST BOOKING (Development) ====================
     if (url.pathname === "/api/test/booking/create" && request.method === "POST") {
-      try {
-        const companyId = activeCompanyId;
+      return runTenantRoute(async ({ companyId }) => {
+        try {
         const bookingEnabled = await isModuleEnabled(env, companyId, 'module_booking_management');
         if (!bookingEnabled) {
           return Response.json({ ok: false, error: 'Booking management module is disabled' }, { status: 403 });
@@ -2992,17 +3414,21 @@ export default {
         // Notify SSE clients
         if (sseClients.has(companyId)) {
           for (const client of sseClients.get(companyId)) {
-            client.send("booking", {
-              id: bookingId,
-              contact_name: body.name,
-              phone: body.phone,
-              email: bodyEmail || null,
-              guests_pax: body.pax,
-              booking_date: body.date,
-              booking_time: body.time,
-              area: body.area || "indoor",
-              stage: "pending"
-            });
+            try {
+              client.send("booking", {
+                id: bookingId,
+                contact_name: body.name,
+                phone: body.phone,
+                email: bodyEmail || null,
+                guests_pax: body.pax,
+                booking_date: body.date,
+                booking_time: body.time,
+                area: body.area || "indoor",
+                stage: "pending"
+              });
+            } catch {
+              sseClients.get(companyId).delete(client);
+            }
           }
         }
 
@@ -3011,16 +3437,16 @@ export default {
           bookingId,
           message: "Test booking created"
         });
-      } catch (e) {
-        return Response.json({ ok: false, error: e.message }, { status: 500 });
-      }
+        } catch (e) {
+          return Response.json({ ok: false, error: e.message }, { status: 500 });
+        }
+      });
     }
 
     // ==================== API: GET CUSTOMERS ====================
     if (url.pathname === "/api/customers" && request.method === "GET") {
-      try {
-        const companyId = activeCompanyId;
-
+      return runTenantRoute(async ({ companyId }) => {
+        try {
         const result = await env.DB.prepare(
           `SELECT * FROM customers WHERE company_id = ? ORDER BY created_at DESC LIMIT 100`
         ).bind(companyId).all();
@@ -3029,12 +3455,13 @@ export default {
           ok: true,
           data: result.results || []
         });
-      } catch (e) {
-        return Response.json(
-          { ok: false, error: e.message },
-          { status: 500 }
-        );
-      }
+        } catch (e) {
+          return Response.json(
+            { ok: false, error: e.message },
+            { status: 500 }
+          );
+        }
+      });
     }
 
     // ==================== 404 ====================

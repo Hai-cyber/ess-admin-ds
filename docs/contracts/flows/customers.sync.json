@@ -1,0 +1,83 @@
+{
+  "flow": "customers",
+  "version": "2026-03-19",
+  "status": "active",
+  "direction": "Workers_to_Odoo",
+  "system_of_record": "D1.customers",
+  "key": {
+    "primary": "x_external_ref scoped by company_id",
+    "current_fallback": "company_id + phone",
+    "immutability": "x_external_ref is immutable after first assignment"
+  },
+  "triggers": [
+    {
+      "event": "register",
+      "route": "POST /api/founder/register|/api/kc/register",
+      "method": "syncFounderRegisterToOdoo"
+    },
+    {
+      "event": "verify",
+      "route": "POST /api/founder/verify|/api/kc/verify",
+      "method": "syncFounderVerifyToOdoo"
+    }
+  ],
+  "filters": [
+    "module_membership_management must be enabled",
+    "phone must be present and valid",
+    "webhook endpoint must be configured or sync is skipped"
+  ],
+  "mapping": {
+    "target_model": "res.partner",
+    "register_payload": {
+      "_model": "res.partner",
+      "name": "name",
+      "phone": "phone",
+      "email": "email|null",
+      "x_studio_membership_type": "membershipType",
+      "x_studio_founder_status": "Pending Verification",
+      "x_studio_otp_verified": "no",
+      "company_id": "companyId"
+    },
+    "verify_payload": {
+      "_model": "res.partner",
+      "phone": "phone",
+      "x_studio_membership_type": "Founder|KC",
+      "x_studio_founder_status": "live",
+      "x_studio_otp_verified": "yes",
+      "updated_at": "ISO-8601",
+      "company_id": "companyId"
+    }
+  },
+  "conflicts": {
+    "policy": "last_write_wins",
+    "compare": ["odoo.write_date", "workers.updated_at"],
+    "tie_breaker": "WorkersDB",
+    "override": "Allowed only by explicit operator action"
+  },
+  "deletes": {
+    "mode": "soft_delete_only",
+    "workers": "no hard delete propagation",
+    "odoo": "deactivate or status transition; preserve history"
+  },
+  "rate_limits": {
+    "worker": "no internal throttling in request path",
+    "expectation": "respect downstream webhook or Odoo gateway limits"
+  },
+  "retry": {
+    "current": "single attempt in request lifecycle",
+    "planned": "queue retry with exponential backoff",
+    "max_attempts": 1
+  },
+  "observability": {
+    "logs": [
+      "Founder register Odoo sync failed",
+      "Founder verify Odoo sync failed"
+    ],
+    "metrics": [
+      "customer_sync_attempt_total",
+      "customer_sync_success_total",
+      "customer_sync_failure_total",
+      "customer_sync_skipped_total"
+    ]
+  }
+}

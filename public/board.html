@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>ESSKULTUR Booking Board</title>
+<style>
+:root{
+  --brand:#A54A7B;--bg:#0f172a;--card:#1e293b;--text:#f8fafc;
+  --muted:#94a3b8;--grid:#334155;
+  --s-pending:#f59e0b;--s-confirmed:#3b82f6;--s-arrived:#8b5cf6;
+  --s-done:#10b981;--s-cancelled:#6b7280;--s-noshow:#ef4444;
+  --f-vip:#fbbf24;--f-founder:#22d3ee;--f-kc:#db2777;
+  --a-indoor:#22c55e;--a-outdoor:#0ea5e9;--a-garden:#84cc16;--a-bar:#f97316;
+}
+*{box-sizing:border-box;}
+body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh;}
+.kiosk-root{display:flex;flex-direction:column;height:100%;}
+.header{position:relative;display:flex;align-items:center;gap:12px;padding:12px 20px;background:var(--card);border-bottom:1px solid var(--grid);}
+.btn{border:1px solid #475569;padding:10px 18px;border-radius:10px;background:#334155;color:#fff;cursor:pointer;font-weight:700;font-size:.85rem;}
+.btn.primary{background:var(--brand);border:none;}
+.btn:hover{filter:brightness(1.15);}
+.clock{position:absolute;left:50%;transform:translateX(-50%);font-family:monospace;font-size:1.5rem;font-weight:bold;color:var(--brand);pointer-events:none;}
+.legend{display:flex;gap:15px;padding:8px 20px;background:#1e293b;border-bottom:1px solid var(--grid);font-size:.75rem;overflow-x:auto;flex-shrink:0;}
+.legend-item{display:flex;align-items:center;gap:6px;white-space:nowrap;}
+.box{width:12px;height:12px;border-radius:3px;}
+.viewport{flex:1;overflow:hidden;position:relative;}
+.view{height:100%;display:none;overflow:auto;}
+.view.active{display:block;}
+.time-ruler{position:sticky;top:0;height:40px;background:var(--card);z-index:10;border-bottom:1px solid var(--grid);width:2400px;}
+.hour-tick{position:absolute;border-left:1px solid var(--grid);height:100%;padding:5px;font-size:.7rem;color:var(--muted);}
+.lane{position:relative;height:44px;border-bottom:1px solid var(--grid);width:2400px;display:flex;align-items:center;}
+.lane::before{content:attr(data-label);position:sticky;left:0;background:var(--card);padding:0 10px;font-size:.7rem;color:#64748b;z-index:2;height:100%;display:flex;align-items:center;border-right:1px solid var(--grid);min-width:64px;}
+.booking-bar{position:absolute;height:38px;top:3px;border-radius:8px;padding:0 10px 0 14px;display:flex;flex-direction:column;justify-content:center;font-size:.75rem;font-weight:bold;box-shadow:0 4px 6px rgba(0,0,0,.3);z-index:5;overflow:hidden;cursor:pointer;transition:.15s;}
+.booking-bar:hover{filter:brightness(1.15);transform:scaleY(1.04);}
+.flag-strip{position:absolute;left:0;top:0;bottom:0;width:6px;border-radius:8px 0 0 8px;}
+.area-underline{position:absolute;left:0;right:0;bottom:0;height:20%;border-radius:0 0 8px 8px;opacity:.9;}
+.booking-bar.cancelled::after,.booking-bar.noshow::after{content:'';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:white;pointer-events:none;}
+.booking-bar.cancelled::after{content:'CANCELLED';background:rgba(0,0,0,.4);}
+.booking-bar.noshow::after{content:'NO SHOW';background:rgba(120,0,0,.5);}
+.now-line{position:absolute;top:0;bottom:0;width:2px;background:#ef4444;z-index:30;pointer-events:none;}
+.now-label{position:absolute;top:4px;left:4px;background:#ef4444;color:#fff;font-size:.65rem;font-weight:700;padding:2px 5px;border-radius:999px;white-space:nowrap;}
+#authModal{position:fixed;inset:0;background:var(--bg);z-index:1000;display:flex;align-items:center;justify-content:center;}
+.pin-pad{background:var(--card);padding:30px;border-radius:20px;text-align:center;width:320px;border:1px solid var(--grid);}
+.pin-input{width:100%;font-size:2.5rem;text-align:center;background:#000;color:var(--brand);border:1px solid var(--grid);border-radius:12px;margin-bottom:14px;padding:10px;letter-spacing:12px;}
+.pin-error{color:#ef4444;font-size:.85rem;min-height:1.2em;margin-bottom:10px;}
+.tenant-panel{display:none;margin-bottom:10px;}
+.tenant-help{color:var(--muted);font-size:.78rem;line-height:1.35;margin-bottom:10px;}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:500;}
+.modal.open{display:flex;}
+.modal-content{background:var(--card);width:560px;max-width:calc(100vw - 20px);padding:28px;border-radius:20px;border:1px solid var(--grid);}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.full{grid-column:span 2;}
+input,select,textarea{width:100%;background:#0f172a;border:1px solid var(--grid);border-radius:8px;padding:11px;color:#fff;font-size:1rem;}
+label{font-size:.7rem;font-weight:bold;color:var(--muted);display:block;margin-bottom:4px;text-transform:uppercase;}
+.stage-modal{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:600;}
+.stage-modal.open{display:flex;}
+.stage-panel{background:var(--card);border-radius:20px;border:1px solid var(--grid);padding:24px;width:420px;max-width:calc(100vw - 20px);}
+.stage-title{font-weight:800;font-size:1.1rem;color:var(--brand);margin-bottom:6px;}
+.stage-sub{font-size:.8rem;color:var(--muted);margin-bottom:18px;}
+.stage-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.stage-btn{padding:14px;border:none;border-radius:10px;color:#fff;font-weight:800;font-size:.9rem;cursor:pointer;transition:.15s;}
+.stage-btn:hover{filter:brightness(1.2);}
+.status-badge{padding:6px 10px;border-radius:999px;background:#2f3d56;color:#fff;font-size:13px;font-weight:600;}
+</style>
+</head>
+<body>
+
+<!-- Auth overlay -->
+<div id="authModal">
+  <div class="pin-pad">
+    <h2 style="color:var(--brand);margin-top:0;">ESSKULTUR BOARD</h2>
+    <p style="color:var(--muted);font-size:.85rem;margin-bottom:18px;">Enter your staff PIN to continue</p>
+    <div id="tenantPanel" class="tenant-panel">
+      <label for="companyIdInput" style="text-align:left;">Company ID (localhost/dev)</label>
+      <input type="number" id="companyIdInput" min="1" step="1" placeholder="e.g. 1" style="margin-bottom:8px;"/>
+      <div class="tenant-help" id="tenantHelp">Use company ID for localhost/workers.dev testing. Production subdomains do not need this.</div>
+    </div>
+    <input type="password" id="pinInput" class="pin-input" maxlength="6" autocomplete="off" inputmode="numeric" placeholder="••••"/>
+    <div id="pinError" class="pin-error"></div>
+    <button class="btn primary" style="width:100%;" onclick="doLogin()">ENTER</button>
+  </div>
+</div>
+
+<div class="kiosk-root">
+  <div class="header">
+    <button class="btn primary" id="btnNew">＋ NEW BOOKING</button>
+    <button class="btn" id="btnBoard">BOARD</button>
+    <button class="btn" id="btnCal">🗓 CALENDAR</button>
+    <span class="status-badge" id="statusBadge" style="margin-left:4px;">●</span>
+    <button class="btn" id="btnRefresh" style="padding:10px 14px;">↻</button>
+    <div style="flex:1;"></div>
+    <span id="selectedDateLabel" style="font-weight:bold;color:var(--brand);font-size:1.15rem;"></span>
+    <div class="clock" id="clock">00:00:00</div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item" style="font-weight:bold;color:#94a3b8">Stage</div>
+    <div class="legend-item"><div class="box" style="background:var(--s-pending)"></div> Pending</div>
+    <div class="legend-item"><div class="box" style="background:var(--s-confirmed)"></div> Confirmed</div>
+    <div class="legend-item"><div class="box" style="background:var(--s-arrived)"></div> Arrived</div>
+    <div class="legend-item"><div class="box" style="background:var(--s-done)"></div> Done</div>
+    <div class="legend-item"><div class="box" style="background:var(--s-cancelled)"></div> Cancelled</div>
+    <div class="legend-item"><div class="box" style="background:var(--s-noshow)"></div> No-Show</div>
+    <div class="legend-item" style="margin-left:20px;font-weight:bold;color:#94a3b8">Flags</div>
+    <div class="legend-item"><div class="box" style="background:var(--f-vip)"></div> VIP</div>
+    <div class="legend-item"><div class="box" style="background:var(--f-founder)"></div> Founder</div>
+    <div class="legend-item"><div class="box" style="background:var(--f-kc)"></div> KC</div>
+    <div class="legend-item" style="margin-left:20px;font-weight:bold;color:#94a3b8">Area</div>
+    <div class="legend-item"><div class="box" style="background:var(--a-indoor)"></div> Indoor</div>
+    <div class="legend-item"><div class="box" style="background:var(--a-outdoor)"></div> Outdoor</div>
+    <div class="legend-item"><div class="box" style="background:var(--a-garden)"></div> Garden</div>
+    <div class="legend-item"><div class="box" style="background:var(--a-bar)"></div> Bar</div>
+  </div>
+
+  <div class="viewport">
+    <!-- Day Timeline View -->
+    <div id="viewDay" class="view active">
+      <div id="ruler" class="time-ruler"></div>
+      <div id="laneGrid"></div>
+    </div>
+
+    <!-- Calendar Overview -->
+    <div id="viewCal" class="view" style="padding:18px;overflow:auto;">
+      <div style="max-width:960px;margin:0 auto;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+          <button class="btn" id="calPrev">◀</button>
+          <span id="calTitle" style="font-weight:800;font-size:1.2rem;color:var(--brand);"></span>
+          <button class="btn" id="calNext">▶</button>
+        </div>
+        <div id="calDow" style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:8px;"></div>
+        <div id="calGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;"></div>
+        <p style="font-size:.75rem;color:var(--muted);margin-top:12px;">Click a date to switch to board view.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- New Booking Modal -->
+<div class="modal" id="modalNew">
+  <div class="modal-content">
+    <h2 style="margin:0 0 18px;color:var(--brand);">New Booking</h2>
+    <form id="newBookingForm" onsubmit="submitNewBooking(event)">
+      <div class="form-grid">
+        <div class="full"><label>Guest Name *</label><input type="text" id="f_name" required></div>
+        <div><label>Phone *</label><input type="tel" id="f_phone" required></div>
+        <div><label>Email</label><input type="email" id="f_email"></div>
+        <div><label>Date *</label><input type="date" id="f_date" required></div>
+        <div><label>Time *</label><input type="time" id="f_time" required></div>
+        <div><label>Pax</label><input type="number" id="f_pax" value="2" min="1" max="50"></div>
+        <div><label>Duration (min)</label><input type="number" id="f_duration" value="120" min="15" step="15"></div>
+        <div><label>Area</label>
+          <select id="f_area">
+            <option value="indoor">Indoor</option>
+            <option value="outdoor">Outdoor</option>
+            <option value="garden">Garden</option>
+            <option value="bar">Bar</option>
+          </select>
+        </div>
+        <div><label>Flag</label>
+          <select id="f_flag">
+            <option value="">None</option>
+            <option value="vip">VIP</option>
+            <option value="founder">Founder</option>
+            <option value="kc">KC</option>
+          </select>
+        </div>
+        <div class="full"><label>Notes</label><textarea id="f_notes" rows="2"></textarea></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:18px;">
+        <button type="button" class="btn" style="flex:1;" onclick="closeNewModal()">CANCEL</button>
+        <button type="submit" class="btn primary" style="flex:2;">CONFIRM BOOKING</button>
+      </div>
+      <div id="newBookingError" style="color:#ef4444;font-size:.85rem;margin-top:10px;min-height:1em;"></div>
+    </form>
+  </div>
+</div>
+
+<!-- Stage Update Modal -->
+<div class="stage-modal" id="stageModal">
+  <div class="stage-panel">
+    <div class="stage-title" id="stageModalTitle">Update Stage</div>
+    <div class="stage-sub" id="stageModalSub"></div>
+    <div class="stage-btns" id="stageBtns"></div>
+    <div style="margin-top:14px;">
+      <button class="btn" style="width:100%;" onclick="closeStageModal()">CLOSE</button>
+    </div>
+    <div id="stageError" style="color:#ef4444;font-size:.85rem;margin-top:8px;min-height:1em;"></div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────── CONFIG ───────────────────────────────────────────────
+const AREA_CAPACITY = __AREA_CAPACITY_JSON__;
+const MAX_LANES     = __MAX_LANES__;
+const PX_PER_HOUR   = 120;
+const DAY_START     = 10;   // 10:00
+const DAY_END       = 24;   // 24:00
+
+// Read ?company_id= from page URL so localhost dev testing works
+// (on production the subdomain is used instead and this is ignored)
+let boardCompanyId = (() => {
+  const raw = new URLSearchParams(window.location.search).get('company_id') || '';
+  const n = parseInt(raw, 10);
+  return n > 0 ? n : null;
+})();
+
+function isCompanyIdQueryHost() {
+  const host = String(window.location.hostname || '').toLowerCase();
+  return (
+    host === 'localhost' ||
+    host === '127.0.0.1' ||
+    host === '[::1]' ||
+    host.includes('workers.dev')
+  );
+}
+
+function syncTenantLoginUi() {
+  const panel = document.getElementById('tenantPanel');
+  const input = document.getElementById('companyIdInput');
+  if (!panel || !input) return;
+
+  const needsCompanyId = isCompanyIdQueryHost() && !boardCompanyId;
+  panel.style.display = needsCompanyId ? 'block' : 'none';
+
+  if (boardCompanyId) {
+    input.value = String(boardCompanyId);
+  }
+}
+
+// Build a URL with optional company_id query param appended
+function apiUrl(path, extra = {}) {
+  const p = new URLSearchParams(extra);
+  if (boardCompanyId) p.set('company_id', String(boardCompanyId));
+  const qs = p.toString();
+  return qs ? path + (path.includes('?') ? '&' : '?') + qs : path;
+}
+
+syncTenantLoginUi();
+
+const STAGE_COLOR = {
+  pending: '#f59e0b', confirmed: '#3b82f6', arrived: '#8b5cf6',
+  done: '#10b981', cancelled: '#6b7280', noshow: '#ef4444'
+};
+const FLAG_COLOR  = { vip: '#fbbf24', founder: '#22d3ee', kc: '#db2777' };
+const AREA_COLOR  = { indoor: '#22c55e', outdoor: '#0ea5e9', garden: '#84cc16', bar: '#f97316' };
+const ALLOWED_STAGES = ['confirmed', 'arrived', 'done', 'cancelled', 'noshow'];
+
+// ─────────────────────── STATE ────────────────────────────────────────────────
+let currentPin  = '';
+let currentUser = '';
+let selectedDate = new Date().toISOString().slice(0, 10);
+let calMonth    = new Date();
+let bookings    = [];
+let selectedBooking = null;
+let sse         = null;
+
+// ─────────────────────── AUTH ─────────────────────────────────────────────────
+async function doLogin() {
+  const pin = document.getElementById('pinInput').value.trim();
+  const companyIdInputEl = document.getElementById('companyIdInput');
+  const typedCompanyId = parseInt(String(companyIdInputEl?.value || '').trim(), 10);
+  document.getElementById('pinError').textContent = '';
+  if (!pin) return;
+
+  if (!boardCompanyId && isCompanyIdQueryHost()) {
+    if (typedCompanyId > 0) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('company_id', String(typedCompanyId));
+      window.location.href = url.toString();
+      return;
+    }
+
+    document.getElementById('pinError').textContent = 'Enter Company ID first (localhost/workers.dev testing).';
+    return;
+  }
+
+  try {
+    const res  = await fetch(apiUrl('/api/staff/auth', { pin }));
+    const data = await res.json().catch(() => ({}));
+    if (data.success) {
+      currentPin  = pin;
+      currentUser = data.staffName || data.user || 'Staff';
+      document.getElementById('authModal').style.display = 'none';
+      init();
+    } else {
+      const err = String(data.error || '').toLowerCase();
+      if (err === 'tenant_required') {
+        document.getElementById('pinError').textContent = 'Missing tenant context. Open with ?company_id=1 (or your tenant ID).';
+      } else if (err === 'company_id_override_not_allowed') {
+        document.getElementById('pinError').textContent = 'company_id override is not allowed on this host. Use your tenant subdomain.';
+      } else {
+        document.getElementById('pinError').textContent = 'Incorrect PIN. Try again.';
+      }
+      document.getElementById('pinInput').value = '';
+    }
+  } catch {
+    document.getElementById('pinError').textContent = 'Connection error. Retry.';
+  }
+}
+
+document.getElementById('pinInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+// ─────────────────────── INITIALISE ───────────────────────────────────────────
+function init() {
+  buildRuler();
+  setDateLabel();
+  updateClock();
+  setInterval(updateClock, 1000);
+  setInterval(autoScrollToNow, 30000);
+  document.getElementById('f_date').value = selectedDate;
+  loadBookings(selectedDate);
+  connectSSE();
+
+  document.getElementById('btnNew').onclick    = openNewModal;
+  document.getElementById('btnRefresh').onclick = () => loadBookings(selectedDate);
+  document.getElementById('btnBoard').onclick  = () => switchView('day');
+  document.getElementById('btnCal').onclick    = () => { renderCal(); switchView('cal'); };
+  document.getElementById('calPrev').onclick   = () => { calMonth.setMonth(calMonth.getMonth()-1); renderCal(); };
+  document.getElementById('calNext').onclick   = () => { calMonth.setMonth(calMonth.getMonth()+1); renderCal(); };
+
+  setTimeout(autoScrollToNow, 300);
+}
+
+// ─────────────────────── DATA LOAD ────────────────────────────────────────────
+async function loadBookings(date) {
+  setStatus('loading…', '#f59e0b');
+  try {
+    const res  = await fetch(apiUrl('/api/bookings', { date }));
+    const data = await res.json();
+    if (data.ok) {
+      bookings = data.data || [];
+      renderBoard();
+      setStatus('Live', '#10b981');
+    } else {
+      setStatus('Error', '#ef4444');
+    }
+  } catch {
+    setStatus('Offline', '#6b7280');
+  }
+}
+
+// ─────────────────────── SSE ──────────────────────────────────────────────────
+function connectSSE() {
+  if (sse) sse.close();
+  sse = new EventSource(apiUrl('/api/notifications/stream'));
+
+  sse.addEventListener('booking', e => {
+    try {
+      const b = JSON.parse(e.data);
+      if (b.booking_date === selectedDate) {
+        const idx = bookings.findIndex(x => x.id === b.id);
+        if (idx >= 0) bookings[idx] = { ...bookings[idx], ...b };
+        else bookings.push(b);
+        renderBoard();
+      }
+    } catch {}
+  });
+
+  const handleStageEvent = (e) => {
+    try {
+      const data = JSON.parse(e.data || '{}');
+      const bookingId = data.bookingId || data.booking_id;
+      const stage = data.newStage || data.stage;
+      const idx = bookings.findIndex(x => x.id === bookingId);
+      if (idx >= 0) { bookings[idx].stage = stage; renderBoard(); }
+    } catch {}
+  };
+
+  // Backend emits "stage-update". Keep "stage_update" for legacy compatibility.
+  sse.addEventListener('stage-update', handleStageEvent);
+  sse.addEventListener('stage_update', handleStageEvent);
+
+  sse.onopen  = () => setStatus('Live', '#10b981');
+  sse.onerror = () => { setStatus('Reconnecting…', '#f59e0b'); setTimeout(connectSSE, 5000); };
+}
+
+// ─────────────────────── BOARD RENDER ─────────────────────────────────────────
+function buildRuler() {
+  const r = document.getElementById('ruler');
+  r.innerHTML = '';
+  for (let h = DAY_START; h <= DAY_END; h++) {
+    const t = document.createElement('div');
+    t.className = 'hour-tick';
+    t.style.left = ((h - DAY_START) * PX_PER_HOUR) + 'px';
+    t.textContent = String(h).padStart(2,'0') + ':00';
+    r.appendChild(t);
+  }
+}
+
+function buildLanes(count) {
+  const grid = document.getElementById('laneGrid');
+  grid.innerHTML = '';
+  for (let i = 1; i <= Math.min(count, MAX_LANES + 4); i++) {
+    const l = document.createElement('div');
+    l.className = 'lane';
+    l.setAttribute('data-lane', i);
+    l.setAttribute('data-label', 'T' + i);
+    grid.appendChild(l);
+  }
+}
+
+function renderBoard() {
+  // Figure out how many unique lanes are needed across all bookings
+  const areaCounters = {};
+  const laneAssign   = {};
+
+  const dayBookings  = bookings.filter(b => b.booking_date === selectedDate);
+  dayBookings.forEach(b => {
+    const area = b.area || 'indoor';
+    areaCounters[area] = (areaCounters[area] || 0) + 1;
+    const areaBase = getAreaBase(area);
+    let assigned = areaBase + ((areaCounters[area] - 1));
+    laneAssign[b.id] = assigned;
+  });
+
+  const totalLanes = Math.max(1, ...Object.values(laneAssign).map(n => n + 1));
+  buildLanes(totalLanes);
+
+  // Update lane labels with area info
+  dayBookings.forEach(b => {
+    const lane = document.querySelector(`[data-lane="${laneAssign[b.id]}"]`);
+    if (lane) {
+      lane.setAttribute('data-label', (b.area || 'T').toUpperCase().slice(0,3) + laneAssign[b.id]);
+    }
+  });
+
+  // Draw booking bars
+  const grid = document.getElementById('laneGrid');
+  grid.querySelectorAll('.booking-bar').forEach(el => el.remove());
+
+  const nowLine = grid.querySelector('.now-line');
+  if (nowLine) nowLine.remove();
+
+  dayBookings.forEach(b => drawBar(b, laneAssign[b.id]));
+  drawNowLine();
+}
+
+function getAreaBase(area) {
+  const order = ['indoor', 'outdoor', 'garden', 'bar'];
+  let base = 1;
+  for (const a of order) {
+    if (a === area) return base;
+    base += (AREA_CAPACITY[a] || 0);
+  }
+  return base;
+}
+
+function drawBar(b, laneNum) {
+  const laneEl = document.querySelector(`[data-lane="${laneNum}"]`);
+  if (!laneEl) return;
+
+  const [hh, mm] = String(b.booking_time || '12:00').split(':').map(Number);
+  const startH   = hh + mm / 60;
+  const durMin   = Number(b.duration_minutes || b.duration || 120);
+  const endH     = startH + durMin / 60;
+
+  if (endH < DAY_START || startH > DAY_END) return;
+
+  const left  = Math.max(0, (startH - DAY_START) * PX_PER_HOUR);
+  const width = Math.max(40, (endH - startH) * PX_PER_HOUR - 2);
+  const stage    = String(b.stage || 'pending').toLowerCase();
+  const flag     = String(b.flag  || '').toLowerCase();
+  const area     = String(b.area  || 'indoor').toLowerCase();
+
+  const bar = document.createElement('div');
+  bar.className = `booking-bar ${stage}`;
+  bar.style.left    = left + 'px';
+  bar.style.width   = width + 'px';
+  bar.style.background = STAGE_COLOR[stage] || '#64748b';
+
+  if (FLAG_COLOR[flag]) {
+    const strip = document.createElement('div');
+    strip.className = 'flag-strip';
+    strip.style.background = FLAG_COLOR[flag];
+    bar.appendChild(strip);
+  }
+
+  const aline = document.createElement('div');
+  aline.className = 'area-underline';
+  aline.style.background = AREA_COLOR[area] || '#64748b';
+  bar.appendChild(aline);
+
+  bar.innerHTML += `<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(b.contact_name || '')} · ${b.guests_pax}pax</div>`;
+  bar.innerHTML += `<div style="font-size:.65rem;color:rgba(255,255,255,.8);">${b.booking_time} · ${b.area || ''}</div>`;
+
+  bar.onclick = () => openStageModal(b);
+  bar.title   = `${b.contact_name} (${b.guests_pax}pax) ${b.booking_time} ${b.area} [${stage.toUpperCase()}]`;
+  laneEl.appendChild(bar);
+}
+
+function drawNowLine() {
+  const now  = new Date();
+  const h    = now.getHours() + now.getMinutes() / 60;
+  if (h < DAY_START || h > DAY_END) return;
+  const left = (h - DAY_START) * PX_PER_HOUR;
+
+  const grid = document.getElementById('laneGrid');
+  const line = document.createElement('div');
+  line.className = 'now-line';
+  line.style.left = left + 'px';
+
+  const label = document.createElement('div');
+  label.className = 'now-label';
+  label.textContent = now.toTimeString().slice(0,5);
+  line.appendChild(label);
+  grid.appendChild(line);
+}
+
+// ─────────────────────── STAGE MODAL ─────────────────────────────────────────
+function openStageModal(b) {
+  selectedBooking = b;
+  document.getElementById('stageModalTitle').textContent = b.contact_name + ' · ' + b.guests_pax + ' pax';
+  document.getElementById('stageModalSub').textContent   = b.booking_date + ' ' + b.booking_time + ' · ' + (b.area || '') + (b.flag ? ' · ' + b.flag.toUpperCase() : '');
+  document.getElementById('stageError').textContent = '';
+
+  const btns = document.getElementById('stageBtns');
+  btns.innerHTML = '';
+  ALLOWED_STAGES.forEach(s => {
+    if (s === b.stage) return;
+    const btn = document.createElement('button');
+    btn.className = 'stage-btn';
+    btn.style.background = STAGE_COLOR[s] || '#64748b';
+    btn.textContent = s.toUpperCase();
+    btn.onclick = () => doStageUpdate(b.id, s);
+    btns.appendChild(btn);
+  });
+
+  document.getElementById('stageModal').classList.add('open');
+}
+
+function closeStageModal() {
+  document.getElementById('stageModal').classList.remove('open');
+  selectedBooking = null;
+}
+
+async function doStageUpdate(bookingId, stage) {
+  document.getElementById('stageError').textContent = '';
+  try {
+    const res  = await fetch(apiUrl(`/api/bookings/${encodeURIComponent(bookingId)}/stage`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        stage,
+        staffId: currentUser,
+        pin: currentPin,
+        companyId: BOARD_COMPANY_ID || undefined
+      })
+    });
+    const data = await res.json();
+    if (data.ok || data.success) {
+      const idx = bookings.findIndex(b => b.id === bookingId);
+      if (idx >= 0) { bookings[idx].stage = stage; }
+      closeStageModal();
+      renderBoard();
+    } else {
+      document.getElementById('stageError').textContent = data.error || 'Update failed.';
+    }
+  } catch {
+    document.getElementById('stageError').textContent = 'Connection error.';
+  }
+}
+
+// ─────────────────────── NEW BOOKING MODAL ────────────────────────────────────
+function openNewModal() {
+  document.getElementById('f_date').value   = selectedDate;
+  document.getElementById('f_name').value   = '';
+  document.getElementById('f_phone').value  = '';
+  document.getElementById('f_email').value  = '';
+  document.getElementById('f_pax').value    = '2';
+  document.getElementById('f_duration').value = '120';
+  document.getElementById('f_flag').value   = '';
+  document.getElementById('f_notes').value  = '';
+  document.getElementById('newBookingError').textContent = '';
+  document.getElementById('modalNew').classList.add('open');
+}
+
+function closeNewModal() {
+  document.getElementById('modalNew').classList.remove('open');
+}
+
+async function submitNewBooking(e) {
+  e.preventDefault();
+  document.getElementById('newBookingError').textContent = '';
+  const payload = {
+    pin:      currentPin,
+    name:     document.getElementById('f_name').value.trim(),
+    phone:    document.getElementById('f_phone').value.trim(),
+    email:    document.getElementById('f_email').value.trim(),
+    date:     document.getElementById('f_date').value,
+    time:     document.getElementById('f_time').value,
+    pax:      parseInt(document.getElementById('f_pax').value || 2),
+    area:     document.getElementById('f_area').value,
+    flag:     document.getElementById('f_flag').value,
+    notes:    document.getElementById('f_notes').value.trim(),
+    duration: parseInt(document.getElementById('f_duration').value || 120)
+  };
+
+  try {
+    const res = await fetch(apiUrl('/api/bookings/staff-create'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.ok) {
+      closeNewModal();
+      loadBookings(selectedDate);
+    } else {
+      document.getElementById('newBookingError').textContent = data.error || 'Failed to create booking.';
+    }
+  } catch {
+    document.getElementById('newBookingError').textContent = 'Connection error.';
+  }
+}
+
+// ─────────────────────── CALENDAR ─────────────────────────────────────────────
+function renderCal() {
+  const y = calMonth.getFullYear(), mo = calMonth.getMonth();
+  document.getElementById('calTitle').textContent =
+    new Date(y, mo, 1).toLocaleDateString('en', { month: 'long', year: 'numeric' });
+
+  const dow = document.getElementById('calDow');
+  dow.innerHTML = '';
+  ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(d => {
+    const el = document.createElement('div');
+    el.style.cssText = 'background:var(--card);border:1px solid var(--grid);border-radius:10px;padding:8px;text-align:center;color:var(--muted);font-size:.8rem;font-weight:700;';
+    el.textContent = d;
+    dow.appendChild(el);
+  });
+
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+  const first = new Date(y, mo, 1);
+  const startOffset = (first.getDay() + 6) % 7;
+  const days = new Date(y, mo + 1, 0).getDate();
+
+  for (let i = 0; i < startOffset; i++) {
+    const el = document.createElement('div');
+    el.style.minHeight = '90px';
+    grid.appendChild(el);
+  }
+
+  for (let d = 1; d <= days; d++) {
+    const dateStr = `${y}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const count   = bookings.filter(b => b.booking_date === dateStr).length;
+    const el = document.createElement('div');
+    el.style.cssText = 'background:var(--card);border:1px solid var(--grid);border-radius:14px;min-height:90px;padding:10px;cursor:pointer;' + (dateStr === selectedDate ? 'outline:2px solid var(--brand);' : '');
+    el.innerHTML = `<div style="font-weight:800;">${d}</div>` +
+      (count ? `<span style="display:inline-block;margin-top:6px;padding:4px 8px;border-radius:999px;font-size:.72rem;background:rgba(165,74,123,.18);color:#f3c5dd;border:1px solid rgba(165,74,123,.4);">${count} booking${count!==1?'s':''}</span>` : '');
+    el.onclick = () => { selectedDate = dateStr; setDateLabel(); loadBookings(dateStr); switchView('day'); };
+    grid.appendChild(el);
+  }
+}
+
+// ─────────────────────── HELPERS ─────────────────────────────────────────────
+function switchView(view) {
+  document.getElementById('viewDay').classList.toggle('active', view === 'day');
+  document.getElementById('viewCal').classList.toggle('active', view === 'cal');
+}
+
+function setDateLabel() {
+  document.getElementById('selectedDateLabel').textContent = selectedDate;
+}
+
+function setStatus(text, color) {
+  const b = document.getElementById('statusBadge');
+  b.textContent = '● ' + text;
+  b.style.background = color + '33';
+  b.style.color = color;
+}
+
+function updateClock() {
+  document.getElementById('clock').textContent = new Date().toTimeString().slice(0,8);
+}
+
+function autoScrollToNow() {
+  const now = new Date();
+  const h   = now.getHours() + now.getMinutes() / 60;
+  if (h < DAY_START || h > DAY_END) return;
+  const viewDay = document.getElementById('viewDay');
+  const target  = (h - DAY_START) * PX_PER_HOUR - viewDay.clientWidth / 2;
+  viewDay.scrollLeft = Math.max(0, target);
+}
+
+function escHtml(s) {
+  return String(s || '')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>

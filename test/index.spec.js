@@ -100,7 +100,7 @@ describe('ESSKULTUR worker', () => {
 		});
 
 		const phone = `+49176${Date.now().toString().slice(-8)}`;
-		const request = new Request('http://example.com/api/kc/register?company_id=1', {
+		const request = new Request('http://restaurant1.quan-esskultur.de/api/kc/register', {
 			method: 'POST',
 			headers: {
 				'content-type': 'application/json'
@@ -222,7 +222,7 @@ describe('ESSKULTUR worker', () => {
 			'pre-existing founder'
 		).run();
 
-		const request = new Request('http://example.com/api/founder/register?company_id=1', {
+		const request = new Request('http://restaurant1.quan-esskultur.de/api/founder/register', {
 			method: 'POST',
 			headers: {
 				'content-type': 'application/json'
@@ -290,7 +290,7 @@ describe('ESSKULTUR worker', () => {
 			).run();
 		}
 
-		const request = new Request('http://example.com/founder?program=kc', {
+		const request = new Request('http://restaurant1.quan-esskultur.de/founder?program=kc', {
 			redirect: 'manual'
 		});
 		const ctx = createExecutionContext();
@@ -314,7 +314,7 @@ describe('ESSKULTUR worker', () => {
 	it('allows manager role to manage social settings but not full company profile', async () => {
 		await initializeDatabase(env.DB);
 
-		const getReq = new Request('http://example.com/api/admin/platform-config?pin=8888');
+		const getReq = new Request('http://restaurant1.quan-esskultur.de/api/admin/platform-config?pin=8888');
 		let ctx = createExecutionContext();
 		const getRes = await worker.fetch(getReq, env, ctx);
 		await waitOnExecutionContext(ctx);
@@ -324,7 +324,7 @@ describe('ESSKULTUR worker', () => {
 			`SELECT value FROM settings WHERE company_id = ? AND key = ? LIMIT 1`
 		).bind(1, 'business_hours_open').first();
 
-		const socialPostReq = new Request('http://example.com/api/admin/platform-config', {
+		const socialPostReq = new Request('http://restaurant1.quan-esskultur.de/api/admin/platform-config', {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify({
@@ -355,7 +355,7 @@ describe('ESSKULTUR worker', () => {
 		).bind(1, 'business_hours_open').first();
 		expect(String(afterBusinessHours?.value || '')).toBe(String(beforeBusinessHours?.value || ''));
 
-		const deniedCompanyPostReq = new Request('http://example.com/api/admin/platform-config', {
+		const deniedCompanyPostReq = new Request('http://restaurant1.quan-esskultur.de/api/admin/platform-config', {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify({
@@ -373,7 +373,7 @@ describe('ESSKULTUR worker', () => {
 		await waitOnExecutionContext(ctx);
 		expect(deniedCompanyPostRes.status).toBe(403);
 
-		const mediaGetReq = new Request('http://example.com/api/admin/media-assets?pin=8888');
+		const mediaGetReq = new Request('http://restaurant1.quan-esskultur.de/api/admin/media-assets?pin=8888');
 		ctx = createExecutionContext();
 		const mediaGetRes = await worker.fetch(mediaGetReq, env, ctx);
 		await waitOnExecutionContext(ctx);
@@ -608,6 +608,170 @@ describe('ESSKULTUR worker', () => {
 		await readerCompany2.cancel();
 	});
 
+	it('syncs booking create to configured Odoo webhook and stores odoo_lead_id', async () => {
+		await initializeDatabase(env.DB);
+		const now = new Date().toISOString();
+
+		await env.DB.prepare(`
+			INSERT INTO settings (company_id, key, value, description, updated_at, updated_by)
+			VALUES (?, ?, ?, ?, ?, ?)
+			ON CONFLICT(company_id, key) DO UPDATE SET
+				value = excluded.value,
+				description = excluded.description,
+				updated_at = excluded.updated_at,
+				updated_by = excluded.updated_by
+		`).bind(
+			1,
+			'ODOO_BOOKING_CREATE_WEBHOOK',
+			'https://booking-sync.example/odoo',
+			'test booking create webhook',
+			now,
+			'test'
+		).run();
+
+		const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+			const requestUrl = typeof input === 'string' ? input : input.url;
+
+			if (requestUrl.includes('challenges.cloudflare.com/turnstile')) {
+				return new Response(JSON.stringify({ success: true }), {
+					status: 200,
+					headers: { 'content-type': 'application/json' }
+				});
+			}
+
+			if (requestUrl.includes('booking-sync.example/odoo')) {
+				return new Response(JSON.stringify({ odoo_lead_id: 'odoo_lead_123' }), {
+					status: 200,
+					headers: { 'content-type': 'application/json' }
+				});
+			}
+
+			return new Response('Unhandled mock URL', { status: 500 });
+		});
+
+		const formData = new FormData();
+		formData.set('name', 'Booking Lead Guest');
+		formData.set('phone', '+491701234567');
+		formData.set('email', 'lead-guest@example.com');
+		formData.set('date', '2026-12-31');
+		formData.set('time', '19:15');
+		formData.set('pax', '4');
+		formData.set('area', 'garden');
+		formData.set('cf_token', 'turnstile-test-token');
+
+		const request = new Request('http://restaurant1.quan-esskultur.de/api/bookings/create', {
+			method: 'POST',
+			body: formData
+		});
+
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(200);
+		const body = await response.json();
+		expect(body.ok).toBe(true);
+
+		const calledWebhook = fetchSpy.mock.calls.some(([input]) => {
+			const requestUrl = typeof input === 'string' ? input : input?.url;
+			return String(requestUrl || '').includes('booking-sync.example/odoo');
+		});
+		expect(calledWebhook).toBe(true);
+
+		const booking = await env.DB.prepare(
+			`SELECT odoo_lead_id, area, stage FROM bookings WHERE company_id = ? AND id = ? LIMIT 1`
+		).bind(1, body.bookingId).first();
+
+		expect(String(booking?.odoo_lead_id || '')).toBe('odoo_lead_123');
+		expect(String(booking?.area || '')).toBe('garden');
+		expect(String(booking?.stage || '')).toBe('pending');
+		expect(fetchSpy).toHaveBeenCalled();
+	});
+
+	it('returns 400 tenant_required for main-domain bookings and staff auth routes', async () => {
+		await initializeDatabase(env.DB);
+
+		let ctx = createExecutionContext();
+		const bookingsRes = await worker.fetch(new Request('http://quan-esskultur.de/api/bookings'), env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(bookingsRes.status).toBe(400);
+		const bookingsBody = await bookingsRes.json();
+		expect(bookingsBody.ok).toBe(false);
+		expect(String(bookingsBody.error || '')).toBe('tenant_required');
+
+		ctx = createExecutionContext();
+		const staffAuthRes = await worker.fetch(new Request('http://quan-esskultur.de/api/staff/auth?pin=1111'), env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(staffAuthRes.status).toBe(400);
+		const staffAuthBody = await staffAuthRes.json();
+		expect(staffAuthBody.ok).toBe(false);
+		expect(String(staffAuthBody.error || '')).toBe('tenant_required');
+	});
+
+	it('returns 404 tenant_subdomain_not_found for unknown-subdomain booking and founder pages', async () => {
+		await initializeDatabase(env.DB);
+
+		let ctx = createExecutionContext();
+		const bookingFormRes = await worker.fetch(new Request('http://unknown.quan-esskultur.de/booking-form'), env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(bookingFormRes.status).toBe(404);
+		const bookingFormBody = await bookingFormRes.json();
+		expect(bookingFormBody.ok).toBe(false);
+		expect(String(bookingFormBody.error || '')).toBe('tenant_subdomain_not_found');
+
+		ctx = createExecutionContext();
+		const founderRes = await worker.fetch(new Request('http://unknown.quan-esskultur.de/founder'), env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(founderRes.status).toBe(404);
+		const founderBody = await founderRes.json();
+		expect(founderBody.ok).toBe(false);
+		expect(String(founderBody.error || '')).toBe('tenant_subdomain_not_found');
+	});
+
+	it('returns 400 tenant_required for main-domain notifications stream without opening SSE', async () => {
+		await initializeDatabase(env.DB);
+
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(new Request('http://quan-esskultur.de/api/notifications/stream'), env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(400);
+		expect(String(response.headers.get('content-type') || '')).toContain('application/json');
+		const body = await response.json();
+		expect(body.ok).toBe(false);
+		expect(String(body.error || '')).toBe('tenant_required');
+	});
+
+	it('allows localhost and workers.dev company_id override when company exists', async () => {
+		await initializeDatabase(env.DB);
+
+		for (const host of ['localhost:8787', 'tenant-preview.workers.dev']) {
+			const request = new Request(`http://${host}/api/bookings?company_id=2`);
+			const ctx = createExecutionContext();
+			const response = await worker.fetch(request, env, ctx);
+			await waitOnExecutionContext(ctx);
+
+			expect(response.status).toBe(200);
+			const body = await response.json();
+			expect(body.ok).toBe(true);
+			expect(Number(body.companyId)).toBe(2);
+		}
+	});
+
+	it('returns 403 company_id_override_not_allowed for tenant host with mismatched company_id query', async () => {
+		await initializeDatabase(env.DB);
+
+		const request = new Request('http://restaurant1.quan-esskultur.de/api/bookings?company_id=2');
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(403);
+		const body = await response.json();
+		expect(body.ok).toBe(false);
+		expect(String(body.error || '')).toBe('company_id_override_not_allowed');
+	});
+
 		it('syncs staff create/update to configured Odoo staff webhook', async () => {
 			await initializeDatabase(env.DB);
 			const now = new Date().toISOString();
@@ -641,7 +805,7 @@ describe('ESSKULTUR worker', () => {
 				return new Response('Unhandled mock URL', { status: 500 });
 			});
 
-			const request = new Request('http://example.com/api/admin/staff', {
+			const request = new Request('http://restaurant1.quan-esskultur.de/api/admin/staff', {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify({
@@ -701,7 +865,7 @@ describe('ESSKULTUR worker', () => {
 				updated_by = excluded.updated_by
 		`).bind(1, 'standard_contact_link', '/kontakt', 'test', now, 'test').run();
 
-		const request = new Request('http://example.com/founder?program=kc', {
+		const request = new Request('http://restaurant1.quan-esskultur.de/founder?program=kc', {
 			redirect: 'manual'
 		});
 		const ctx = createExecutionContext();
@@ -734,7 +898,7 @@ describe('ESSKULTUR worker', () => {
 		formData.set('pax', '2');
 		formData.set('cf_token', 'token');
 
-		const request = new Request('http://example.com/api/bookings/create', {
+		const request = new Request('http://restaurant1.quan-esskultur.de/api/bookings/create', {
 			method: 'POST',
 			body: formData
 		});
@@ -755,7 +919,7 @@ describe('ESSKULTUR worker', () => {
 			`SELECT name, email, phone, timezone, odoo_url, odoo_company_id FROM companies WHERE id = ? LIMIT 1`
 		).bind(1).first();
 
-		const request = new Request('http://example.com/api/admin/platform-config', {
+		const request = new Request('http://restaurant1.quan-esskultur.de/api/admin/platform-config', {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify({

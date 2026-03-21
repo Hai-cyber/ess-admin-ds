@@ -1,0 +1,2633 @@
+// --- CONFIGURATION ---
+
+
+
+
+export default {
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+
+
+
+    const MAX_VISUAL_LANES_RUNTIME =
+      Number(env.MAX_VISUAL_LANES || 40) || 40;
+
+
+    let AREA_CAPACITY_BLOCKS_RUNTIME = {
+  indoor: 12,
+  outdoor: 10,
+  garden: 8,
+  bar: 6
+};
+
+try {
+  const raw = env?.AREA_CAPACITY_BLOCKS;
+
+  if (raw) {
+    if (typeof raw === "string") {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        AREA_CAPACITY_BLOCKS_RUNTIME = parsed;
+      }
+    } else if (typeof raw === "object" && !Array.isArray(raw)) {
+      AREA_CAPACITY_BLOCKS_RUNTIME = raw;
+    }
+  }
+} catch (e) {
+  console.log("AREA_CAPACITY_BLOCKS parse failed:", e?.message || e);
+}
+
+const DEFAULT_AREA_CAPACITY_BLOCKS_RUNTIME =
+  Number(env.DEFAULT_AREA_CAPACITY_BLOCKS || 40) || 40;
+
+
+    const corsHeaders = {
+  "Access-Control-Allow-Origin": request.headers.get("Origin") || "*",
+  "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type"
+};
+
+
+    if (request.method === "OPTIONS") {
+      return new Response(null, { headers: corsHeaders });
+    }
+
+
+    // Fallback tạm để không bị khóa ngoài hệ thống nếu env chưa load
+    const STAFF_DATA_FALLBACK = [
+  { id: "u1", name: "Hostess", pin: "1111", role: "staff" },
+  { id: "u2", name: "Manager", pin: "8888", role: "manager" },
+  { id: "u3", name: "Admin", pin: "1234", role: "admin" },
+  { id: "u4", name: "Anna", pin: "7878" }
+];
+
+let STAFF_DATA = STAFF_DATA_FALLBACK;
+
+try {
+  const rawStaff = env?.STAFF_DATA;
+
+  if (typeof rawStaff === "string" && rawStaff.trim()) {
+    const parsed = JSON.parse(rawStaff);
+
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      STAFF_DATA = parsed
+        .filter(u => u && typeof u === "object")
+        .map(u => ({
+          id: String(u.id || "").trim(),
+          name: String(u.name || "").trim(),
+          pin: String(u.pin || "").trim(),
+          role: String(u.role || "staff").trim()
+        }))
+        .filter(u => u.name && u.pin);
+    }
+  }
+} catch (e) {
+  // giữ fallback, không làm worker chết
+}
+
+    if (url.pathname === "/api/auth") {
+      const pin = String(url.searchParams.get("pin") || "").trim();
+
+
+      const user = STAFF_DATA.find(
+        u => String(u.pin || "").trim() === pin
+      );
+
+
+      return jsonResponse(
+        user
+          ? {
+              success: true,
+              user: user.name,
+              staff: STAFF_DATA.map(s => s.name)
+            }
+          : {
+              success: false,
+              debug_pin: pin,
+              debug_staff_count: STAFF_DATA.length,
+              debug_env_present: !!(env && env.STAFF_DATA)
+            },
+        user ? 200 : 401,
+        corsHeaders
+      );
+    }
+
+
+    function boardKey(date) {
+  return "board:" + date;
+}
+
+// ---------- KV TEST ----------
+
+    if (url.pathname === "/api/config-debug") {
+      return jsonResponse({
+        has_env_area_capacity_blocks: !!env.AREA_CAPACITY_BLOCKS,
+        raw_area_capacity_blocks: env.AREA_CAPACITY_BLOCKS || null,
+        parsed_area_capacity_blocks_runtime: AREA_CAPACITY_BLOCKS_RUNTIME,
+        default_area_capacity_blocks_runtime: DEFAULT_AREA_CAPACITY_BLOCKS_RUNTIME
+      }, 200, corsHeaders);
+    }
+
+    if (url.pathname === "/api/kv-test") {
+      await env.ESSKULTUR_BOARD.put("test","hello");
+      const v = await env.ESSKULTUR_BOARD.get("test");
+
+      return jsonResponse({ success:true, value:v },200,corsHeaders);
+    }
+
+    function bookingIdentityKey(b) {
+  const id = String(b?.booking_id || "").trim();
+  if (id) return "id:" + id;
+
+  return [
+    "fallback",
+    String(b?.guest_name || "").trim().toLowerCase(),
+    String(b?.date || "").trim(),
+    String(b?.time || "").trim(),
+    String(b?.phone || "").trim()
+  ].join("|");
+}
+
+function bookingTs(b) {
+  return new Date(b?.updated_at || b?.submitted_at || 0).getTime() || 0;
+}
+
+     // ---------- BOARD SYNC ----------
+    if (url.pathname === "/api/board-sync" && request.method === "POST") {
+
+      const body = await request.json();
+      const booking = body.booking || body;
+
+      if (!booking.date) {
+        return jsonResponse(
+          { success:false, error:"Invalid booking: missing date" },
+          400,
+          corsHeaders
+        );
+      }
+
+      const key = "board:" + booking.date;
+
+      const snapshot =
+        await env.ESSKULTUR_BOARD.get(key,"json") ||
+        { bookings:[], revision:0 };
+
+      const incomingKey = bookingIdentityKey(booking);
+      const incomingTs = bookingTs(booking);
+
+      const idx = snapshot.bookings.findIndex(b => {
+        const sameId =
+          String(b?.booking_id || "").trim() &&
+          String(booking?.booking_id || "").trim() &&
+          String(b.booking_id) === String(booking.booking_id);
+
+        const sameFallback = bookingIdentityKey(b) === incomingKey;
+
+        return sameId || sameFallback;
+      });
+
+      if (idx >= 0) {
+        const existing = snapshot.bookings[idx];
+        const existingTs = bookingTs(existing);
+
+        if (incomingTs >= existingTs) {
+          snapshot.bookings[idx] = {
+            ...existing,
+            ...booking
+          };
+        }
+      } else {
+        snapshot.bookings.push(booking);
+      }
+
+      // dedupe mạnh lần cuối để cắt clone cũ
+      const map = new Map();
+      for (const b of snapshot.bookings) {
+        const k = bookingIdentityKey(b);
+        const prev = map.get(k);
+        if (!prev || bookingTs(b) >= bookingTs(prev)) {
+          map.set(k, b);
+        }
+      }
+      snapshot.bookings = Array.from(map.values());
+
+      snapshot.revision++;
+      snapshot.updated_at = new Date().toISOString();
+
+      await env.ESSKULTUR_BOARD.put(key, JSON.stringify(snapshot));
+
+      return jsonResponse(
+        { success:true, revision:snapshot.revision, count:snapshot.bookings.length },
+        200,
+        corsHeaders
+      );
+    }
+
+    // ---------- BOARD LIST ----------
+    if (url.pathname === "/api/list") {
+
+      const date = url.searchParams.get("date");
+
+      const snapshot =
+        await env.ESSKULTUR_BOARD.get("board:"+date,"json") ||
+        { bookings:[], revision:0 };
+
+      return jsonResponse(snapshot,200,corsHeaders);
+    }
+
+    //-------------API CREATE----------
+
+    if (url.pathname === "/api/create" && request.method === "POST") {
+  try {
+    const incoming = await request.formData();
+
+    const guest_name = String(incoming.get("guest_name") || "").trim();
+    const phone = String(incoming.get("phone") || "").trim();
+    const pax = Number(incoming.get("pax") || 0);
+    const date = String(incoming.get("date") || "").trim();
+    const time = String(incoming.get("time") || "").trim();
+    const duration = Number(incoming.get("duration") || 120);
+    const area = String(incoming.get("area") || "indoor").trim().toLowerCase();
+    const flag = String(incoming.get("flag") || "").trim().toLowerCase();
+    const staff_user = String(incoming.get("staff_user") || "").trim();
+    const notes = String(incoming.get("notes") || "").trim();
+    const created_by = String(incoming.get("created_by") || "").trim();
+
+    if (!guest_name || !date || !time || !pax) {
+      return jsonResponse({
+        success: false,
+        error: "Missing required fields",
+        required: ["guest_name", "pax", "date", "time"]
+      }, 400, corsHeaders);
+    }
+
+    const bookingDateTime = new Date(date + "T" + time);
+
+    if (Number.isNaN(bookingDateTime.getTime())) {
+      return jsonResponse({
+        success: false,
+        error: "Invalid date/time"
+      }, 400, corsHeaders);
+    }
+
+    if (bookingDateTime.getTime() < Date.now()) {
+      return jsonResponse({
+        success: false,
+        error: "Past bookings are not allowed"
+      }, 400, corsHeaders);
+    }
+
+    const outbound = {
+      source: "onsite",
+      guest_name,
+      contact_name: guest_name,
+      phone,
+      pax,
+      blocks: Math.max(1, Math.ceil(pax / 2)),
+      date,
+      start_at: time,
+      time,
+      duration,
+      staff_user,
+      staff: staff_user,
+      area: area || "indoor",
+      flag,
+      notes,
+      created_by,
+      updated_by: created_by
+    };
+
+    const fd = new FormData();
+    Object.entries(outbound).forEach(([k, v]) => {
+      fd.append(k, v == null ? "" : String(v));
+    });
+
+    // compatibility aliases for Make
+    fd.append("name", guest_name);
+    fd.append("guests", String(pax));
+    fd.append("worker_secret", env.WORKER_SECRET || "my-super-secret");
+    fd.append("payload_json", JSON.stringify(outbound));
+
+    const baseUrl = (
+      env.MAKE_CREATE_URL ||
+      "https://hook.eu1.make.com/snewlt3wj9evwebw2mo5z2i75apox7bf"
+    ).trim();
+
+    const makeUrl = baseUrl + (baseUrl.includes("?") ? "&" : "?") + "_t=" + Date.now();
+
+    const makeRes = await fetch(makeUrl, {
+      method: "POST",
+      body: fd
+    });
+
+    const makeText = await makeRes.text();
+
+    if (!makeRes.ok) {
+      return jsonResponse({
+        success: false,
+        error: "Make rejected booking",
+        make_status: makeRes.status,
+        make_response: makeText
+      }, 502, corsHeaders);
+    }
+
+    return jsonResponse({
+      success: true,
+      accepted: true,
+      message: "Booking accepted by Make. Waiting for board sync.",
+      make_status: makeRes.status,
+      make_response: makeText
+    }, 200, corsHeaders);
+
+  } catch (e) {
+    return jsonResponse({
+      success: false,
+      error: e.message || String(e),
+      where: "/api/create"
+    }, 500, corsHeaders);
+  }
+}
+
+
+    if (url.pathname === "/") {
+  const html = renderHTMLPage({
+    maxVisualLanes: MAX_VISUAL_LANES_RUNTIME,
+    areaCapacityBlocks: AREA_CAPACITY_BLOCKS_RUNTIME,
+    defaultAreaCapacityBlocks: DEFAULT_AREA_CAPACITY_BLOCKS_RUNTIME
+  });
+
+  return new Response(html, {
+    headers: { "Content-Type": "text/html; charset=UTF-8" }
+  });
+}
+
+// ---------- API STAGE UPDATE ----------
+if (url.pathname === "/api/stage-update" && request.method === "POST") {
+  try {
+    const body = await request.json();
+
+    const booking_id = String(body.booking_id || "").trim();
+    const date = String(body.date || "").trim();
+    const stage = String(body.stage || "").trim().toLowerCase();
+    const updated_by = String(body.updated_by || "").trim();
+
+    const allowedStages = ["arrived", "done", "confirmed", "cancelled", "noshow"];
+
+    if (!booking_id || !date || !stage) {
+      return jsonResponse({
+        success: false,
+        error: "Missing booking_id, date or stage"
+      }, 400, corsHeaders);
+    }
+
+    if (!allowedStages.includes(stage)) {
+      return jsonResponse({
+        success: false,
+        error: "Invalid stage"
+      }, 400, corsHeaders);
+    }
+
+    const outbound = {
+      booking_id,
+      date,
+      stage,
+      updated_by,
+      worker_secret: env.WORKER_SECRET || "my-super-secret"
+    };
+
+    const baseUrl = (
+      env.MAKE_STAGE_URL ||
+      "https://hook.eu1.make.com/PUT_YOUR_STAGE_WEBHOOK_HERE"
+    ).trim();
+
+    const makeUrl = baseUrl + (baseUrl.includes("?") ? "&" : "?") + "_t=" + Date.now();
+
+    const makeRes = await fetch(makeUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(outbound)
+    });
+
+    const makeText = await makeRes.text();
+
+    if (!makeRes.ok) {
+      return jsonResponse({
+        success: false,
+        error: "Make rejected stage update",
+        make_status: makeRes.status,
+        make_response: makeText
+      }, 502, corsHeaders);
+    }
+
+    return jsonResponse({
+      success: true,
+      accepted: true,
+      message: "Stage update accepted by Make. Waiting for board sync.",
+      make_status: makeRes.status,
+      make_response: makeText
+    }, 200, corsHeaders);
+
+  } catch (e) {
+    return jsonResponse({
+      success: false,
+      error: e.message || String(e),
+      where: "/api/stage-update"
+    }, 500, corsHeaders);
+  }
+}
+
+    // ---------- DEFAULT ----------
+    return new Response("Not found", { status:404 });
+
+  }
+};
+
+function jsonResponse(data, status = 200, corsHeaders = {}) {
+ return new Response(JSON.stringify(data), {
+   status,
+   headers: {
+     ...corsHeaders,
+     "Content-Type": "application/json"
+   }
+ });
+}
+
+
+
+
+function renderHTMLPage(config) {
+  const {
+    maxVisualLanes,
+    areaCapacityBlocks,
+    defaultAreaCapacityBlocks
+  } = config;
+
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>ESSKULTUR Booking Board</title>
+<div id="board-version" style="display:none;">BOARD-KV-V1</div>
+<style>
+:root {
+ --brand: #A54A7B;
+ --bg: #0f172a;
+ --card: #1e293b;
+ --text: #f8fafc;
+ --muted: #94a3b8;
+ --grid: #334155;
+
+
+
+
+--s-pending: #f59e0b;     /* amber */
+--s-confirmed: #3b82f6;   /* blue */
+--s-arrived: #8b5cf6;     /* violet */
+--s-done: #10b981;        /* emerald */
+--s-cancelled: #6b7280;   /* gray */
+--s-noshow: #ef4444;      /* red */
+
+
+ --f-vip: #fbbf24;
+ --f-founder: #22d3ee;
+ --f-kc: #db2777;
+
+
+
+
+ --a-indoor: #22c55e;
+ --a-outdoor: #0ea5e9;
+ --a-garden: #84cc16;
+ --a-bar: #f97316;
+}
+
+
+
+
+* { box-sizing: border-box; }
+
+
+
+
+body {
+ margin: 0;
+ font-family: system-ui, sans-serif;
+ background: var(--bg);
+ color: var(--text);
+ overflow: hidden;
+ height: 100vh;
+}
+
+
+
+
+.kiosk-root {
+ display: flex;
+ flex-direction: column;
+ height: 100%;
+}
+
+
+
+
+.header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  background: var(--card);
+  border-bottom: 1px solid var(--grid);
+}
+
+
+
+
+.btn {
+ border: 1px solid #475569;
+ padding: 10px 18px;
+ border-radius: 10px;
+ background: #334155;
+ color: #fff;
+ cursor: pointer;
+ font-weight: 700;
+}
+
+
+
+
+.btn.primary {
+ background: var(--brand);
+ border: none;
+}
+
+
+
+
+.clock {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: monospace;
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: var(--brand);
+  pointer-events: none;
+}
+
+
+
+
+.legend {
+ display: flex;
+ gap: 15px;
+ padding: 8px 20px;
+ background: #1e293b;
+ border-bottom: 1px solid var(--grid);
+ font-size: 0.75rem;
+ overflow-x: auto;
+}
+
+
+
+
+.legend-item {
+ display: flex;
+ align-items: center;
+ gap: 6px;
+ white-space: nowrap;
+}
+
+
+
+
+.box {
+ width: 12px;
+ height: 12px;
+ border-radius: 3px;
+}
+
+
+
+
+.viewport {
+ flex: 1;
+ position: relative;
+ overflow: hidden;
+}
+
+
+
+
+.view {
+ height: 100%;
+ display: none;
+}
+
+
+
+
+.view.active {
+ display: block;
+}
+
+
+
+
+#viewDay {
+ overflow: auto;
+ position: relative;
+}
+
+
+
+
+.time-ruler {
+ position: sticky;
+ top: 0;
+ height: 40px;
+ background: var(--card);
+ z-index: 10;
+ border-bottom: 1px solid var(--grid);
+ width: 2400px;
+}
+
+
+
+
+.hour-tick {
+ position: absolute;
+ border-left: 1px solid var(--grid);
+ height: 100%;
+ padding: 5px;
+ font-size: 0.7rem;
+ color: var(--muted);
+}
+
+
+
+
+.lane {
+ position: relative;
+ height: 40px;
+ border-bottom: 1px solid var(--grid);
+ width: 2400px;
+ display: flex;
+ align-items: center;
+}
+
+
+
+
+.lane::before {
+ content: attr(data-table);
+ position: sticky;
+ left: 0;
+ background: var(--card);
+ padding: 0 10px;
+ font-size: 0.7rem;
+ color: #64748b;
+ z-index: 2;
+ height: 100%;
+ display: flex;
+ align-items: center;
+ border-right: 1px solid var(--grid);
+ min-width: 52px;
+}
+
+
+
+
+.booking-bar {
+ position: absolute;
+ height: 36px;
+ top: 3px;
+ border-radius: 8px;
+ padding: 0 12px 0 14px;
+ display: flex;
+ flex-direction: column;
+ justify-content: center;
+ font-size: 0.8rem;
+ font-weight: bold;
+ box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+ z-index: 5;
+ border-bottom: 3px solid rgba(0,0,0,0.2);
+ transition: 0.2s;
+ overflow: hidden;
+}
+
+
+
+
+.booking-bar.local-pending {
+  opacity: 0.88;
+}
+
+
+
+
+.flag-strip {
+ position: absolute;
+ left: 0;
+ top: 0;
+ bottom: 0;
+ width: 6px;
+ border-radius: 8px 0 0 8px;
+}
+
+
+
+
+.area-underline {
+ position: absolute;
+ left: 0;
+ right: 0;
+ bottom: 0;
+ height: 20%;
+ border-radius: 0 0 8px 8px;
+ opacity: 0.95;
+}
+
+
+
+
+.now-line {
+ position: absolute;
+ top: 0;
+ bottom: 0;
+ width: 2px;
+ background: #ef4444;
+ z-index: 30;
+ pointer-events: none;
+}
+
+
+
+
+.now-label {
+ position: absolute;
+ top: 4px;
+ left: 4px;
+ background: #ef4444;
+ color: #fff;
+ font-size: 0.68rem;
+ font-weight: 700;
+ padding: 2px 6px;
+ border-radius: 999px;
+ white-space: nowrap;
+}
+
+
+#authModal {
+ position: fixed;
+ inset: 0;
+ background: var(--bg);
+ z-index: 1000;
+ display: flex;
+ align-items: center;
+ justify-content: center;
+}
+
+
+
+
+.pin-pad {
+ background: var(--card);
+ padding: 30px;
+ border-radius: 20px;
+ text-align: center;
+ width: 320px;
+}
+
+
+
+
+.pin-input {
+ width: 100%;
+ font-size: 2.5rem;
+ text-align: center;
+ background: #000;
+ color: var(--brand);
+ border: 1px solid var(--grid);
+ border-radius: 12px;
+ margin-bottom: 20px;
+ padding: 10px;
+ letter-spacing: 12px;
+}
+
+
+
+
+.modal {
+ position: fixed;
+ inset: 0;
+ background: rgba(0,0,0,0.85);
+ display: none;
+ align-items: center;
+ justify-content: center;
+ z-index: 500;
+}
+
+
+
+
+.modal-content {
+ background: var(--card);
+ width: 560px;
+ max-width: calc(100vw - 30px);
+ padding: 30px;
+ border-radius: 20px;
+ border: 1px solid var(--grid);
+}
+
+
+
+
+.form-grid {
+ display: grid;
+ grid-template-columns: 1fr 1fr;
+ gap: 15px;
+}
+
+
+
+
+.full { grid-column: span 2; }
+
+
+
+
+input, select, textarea {
+ width: 100%;
+ background: #0f172a;
+ border: 1px solid var(--grid);
+ border-radius: 8px;
+ padding: 12px;
+ color: #fff;
+ font-size: 1rem;
+}
+
+
+
+
+label {
+ font-size: 0.7rem;
+ font-weight: bold;
+ color: var(--muted);
+ display: block;
+ margin-bottom: 5px;
+ text-transform: uppercase;
+}
+
+
+
+
+#viewCalendar {
+ overflow: auto;
+ padding: 18px;
+}
+
+
+
+
+.calendar-shell {
+ max-width: 980px;
+ margin: 0 auto;
+}
+
+
+
+
+.calendar-toolbar {
+ display: flex;
+ align-items: center;
+ justify-content: space-between;
+ margin-bottom: 16px;
+ gap: 10px;
+}
+
+
+
+
+.calendar-title {
+ font-size: 1.25rem;
+ font-weight: 800;
+ color: var(--brand);
+}
+
+
+
+
+.calendar-grid {
+ display: grid;
+ grid-template-columns: repeat(7, 1fr);
+ gap: 10px;
+}
+
+
+
+
+.calendar-dow,
+.calendar-cell {
+ background: var(--card);
+ border: 1px solid var(--grid);
+ border-radius: 14px;
+}
+
+
+
+
+.calendar-dow {
+ padding: 10px;
+ text-align: center;
+ color: var(--muted);
+ font-size: 0.8rem;
+ font-weight: 700;
+}
+
+
+
+
+.calendar-cell {
+ min-height: 110px;
+ padding: 10px;
+ cursor: pointer;
+ position: relative;
+}
+
+
+
+
+.calendar-cell.other-month {
+ opacity: 0.35;
+}
+
+
+
+
+.calendar-cell.selected {
+ outline: 2px solid var(--brand);
+}
+
+
+
+
+.calendar-date {
+ font-weight: 800;
+ margin-bottom: 8px;
+}
+
+
+
+
+.calendar-meta {
+ font-size: 0.75rem;
+ color: var(--muted);
+}
+
+
+
+
+.calendar-badge {
+ display: inline-block;
+ margin-top: 6px;
+ padding: 4px 8px;
+ border-radius: 999px;
+ font-size: 0.72rem;
+ background: rgba(165,74,123,0.18);
+ color: #f3c5dd;
+ border: 1px solid rgba(165,74,123,0.4);
+}
+
+
+
+
+.small-note {
+ font-size: 0.72rem;
+ color: var(--muted);
+}
+
+/* overlay status */
+.booking-bar.cancelled::after{
+  content:"CANCELLED";
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:16px;
+  font-weight:800;
+  color:white;
+  background:rgba(0,0,0,0.35);
+  pointer-events:none;
+}
+
+.booking-bar.no-show::after,
+.booking-bar.noshow::after{
+  content:"NO SHOW";
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:16px;
+  font-weight:800;
+  color:white;
+  background:rgba(120,0,0,0.45);
+  pointer-events:none;
+}
+
+
+</style>
+</head>
+<body>
+
+
+<div id="authModal" style="display:none">
+  <div class="pin-pad">
+    <h2>SECURITY PIN</h2>
+    <input type="password" id="pinInput" class="pin-input" maxlength="4">
+  </div>
+</div>
+
+
+<div class="kiosk-root">
+ <div class="header">
+   <button class="btn primary" id="btnNew"><strong>+</strong> NEW BOOKING</button>
+   <button class="btn" id="btnBoard">BOARD</button>
+   <button class="btn" id="btnCal">🗓 CALENDAR</button>
+   <div id="dataStatusInline" style="display:flex;align-items:center;gap:8px;margin-left:auto;">
+  <span id="dataStatusBadge" style="padding:6px 10px;border-radius:999px;background:#2f3d56;color:#fff;font-size:13px;font-weight:600;">
+    Idle
+  </span>
+  <button id="refreshBoardBtn" type="button" style="padding:6px 10px;border-radius:10px;border:1px solid #4c5c78;background:#33445f;color:#fff;cursor:pointer;">
+    ↻
+  </button>
+</div>
+   <div style="flex:1"></div>
+   <div id="selectedDateLabel" style="font-weight:bold; color:var(--brand); font-size:1.2rem;"></div>
+   <div class="clock" id="clock">00:00</div>
+ </div>
+
+
+
+
+ <div class="legend">
+
+
+  <div class="legend-item" style="font-weight:bold;color:#94a3b8">Stage</div>
+  <div class="legend-item"><div class="box" style="background:var(--s-pending)"></div> Pending</div>
+  <div class="legend-item"><div class="box" style="background:var(--s-confirmed)"></div> Confirmed</div>
+  <div class="legend-item"><div class="box" style="background:var(--s-arrived)"></div> Arrived</div>
+  <div class="legend-item"><div class="box" style="background:var(--s-done)"></div> Done</div>
+  <div class="legend-item"><div class="box" style="background:var(--s-cancelled)"></div> Cancelled</div>
+  <div class="legend-item"><div class="box" style="background:var(--s-noshow)"></div> No-Show</div>
+
+
+  <div class="legend-item" style="margin-left:20px;font-weight:bold;color:#94a3b8">Flags</div>
+  <div class="legend-item"><div class="box" style="background:var(--f-vip)"></div> VIP</div>
+  <div class="legend-item"><div class="box" style="background:var(--f-founder)"></div> Founder</div>
+  <div class="legend-item"><div class="box" style="background:var(--f-kc)"></div> KC</div>
+
+
+  <div class="legend-item" style="margin-left:20px;font-weight:bold;color:#94a3b8">Area</div>
+  <div class="legend-item"><div class="box" style="background:var(--a-indoor)"></div> Indoor</div>
+  <div class="legend-item"><div class="box" style="background:var(--a-outdoor)"></div> Outdoor</div>
+  <div class="legend-item"><div class="box" style="background:var(--a-garden)"></div> Garden</div>
+  <div class="legend-item"><div class="box" style="background:var(--a-bar)"></div> Bar</div>
+
+
+</div>
+
+
+
+
+ <div class="viewport">
+   <div id="viewDay" class="view active">
+     <div class="time-ruler" id="ruler"></div>
+     <div id="laneGrid"></div>
+   </div>
+
+
+
+
+   <div id="viewCalendar" class="view">
+     <div class="calendar-shell">
+       <div class="calendar-toolbar">
+         <button class="btn" id="calPrev">◀</button>
+         <div class="calendar-title" id="calendarTitle"></div>
+         <button class="btn" id="calNext">▶</button>
+       </div>
+       <div class="calendar-grid" id="calendarDow"></div>
+       <div class="calendar-grid" id="calendarGrid"></div>
+       <div style="margin-top:12px" class="small-note">
+         Click a date to switch back to Board view for that day.
+       </div>
+     </div>
+   </div>
+ </div>
+</div>
+
+
+
+
+<div class="modal" id="modalPinGate">
+ <div class="modal-content" style="max-width:360px">
+   <h3 style="margin-top:0; color:var(--brand)">Staff PIN</h3>
+  <label>Enter staff PIN to open booking form</label>
+   <input type="password" id="bookingPinInput" maxlength="4" placeholder="****">
+   <div style="display:flex; gap:10px; margin-top:20px">
+     <button type="button" class="btn" style="flex:1" onclick="closePinGate()">Cancel</button>
+     <button type="button" class="btn primary" style="flex:1" onclick="confirmBookingPin()">Open</button>
+   </div>
+ </div>
+</div>
+
+
+
+
+<div class="modal" id="modalBooking">
+ <div class="modal-content">
+   <h2 style="margin:0 0 20px 0; color:var(--brand)">New Booking</h2>
+  <form id="bookingForm">
+ <div class="form-grid">
+   <div class="full">
+     <label>Guest Name *</label>
+     <input type="text" id="in_name" name="guest_name" required>
+   </div>
+
+
+
+
+   <div>
+     <label>Phone *</label>
+     <input type="tel" id="in_phone" name="phone"> required
+   </div>
+
+
+
+
+   <div>
+     <label>Pax</label>
+     <input type="number" id="in_pax" name="pax" value="2" min="1">
+   </div>
+
+
+
+
+   <div>
+     <label>Date *</label>
+     <input type="date" id="in_date" name="date" required>
+   </div>
+
+
+
+
+   <div>
+     <label>Time *</label>
+     <input type="time" id="in_time" name="time" required>
+   </div>
+
+
+
+
+   <div>
+     <label>Duration (min)</label>
+     <input type="number" id="in_duration" name="duration" value="120" min="15" step="15">
+   </div>
+
+
+
+
+   <div>
+     <label>Area</label>
+     <select id="in_area" name="area">
+       <option value="indoor">Indoor</option>
+       <option value="outdoor">Outdoor</option>
+       <option value="garden">Garden</option>
+       <option value="bar">Bar</option>
+     </select>
+   </div>
+
+
+
+
+   <div>
+     <label>Flag</label>
+     <select id="in_flag" name="flag">
+       <option value="">None</option>
+       <option value="vip">VIP</option>
+       <option value="founder">Founder</option>
+       <option value="kc">KC</option>
+     </select>
+   </div>
+
+
+
+
+   <div class="full">
+     <label>Staff</label>
+     <select id="staffDropdown" name="staff_user"></select>
+   </div>
+
+
+
+
+   <div class="full">
+     <label>Notes</label>
+     <textarea id="in_notes" name="notes" rows="2"></textarea>
+   </div>
+ </div>
+
+
+
+
+ <div style="display:flex; gap:10px; margin-top:20px">
+   <button type="button" class="btn" style="flex:1" onclick="closeModal()">CANCEL</button>
+   <button type="submit" class="btn primary" style="flex:2">CONFIRM</button>
+ </div>
+</form>
+ </div>
+</div>
+
+
+
+
+<script>
+let currentUser = "";
+let bookingCreator = "";
+let selectedDate = new Date().toISOString().split("T")[0];
+let currentCalendarDate = new Date();
+let serverBookings = [];
+let localPendingBookings = [];
+
+
+const PX_H = 120;
+const DAY_START_HOUR = 10;
+const DAY_END_HOUR = 24;
+const MAX_LANES_LIMIT = ${maxVisualLanes};
+const AREA_CAPACITY_BLOCKS = ${JSON.stringify(areaCapacityBlocks)};
+const DEFAULT_AREA_CAPACITY_BLOCKS = ${defaultAreaCapacityBlocks};
+
+
+function init() {
+  buildRuler();
+  buildLanes(1);
+  buildCalendarDow();
+  renderCalendar();
+  updateClock();
+  setupButtons();
+
+  const authModal = document.getElementById("authModal");
+  if (authModal) authModal.style.display = "none";
+
+  currentUser = "";
+  bookingCreator = "";
+
+  const staffDropdown = document.getElementById("staffDropdown");
+  if (staffDropdown) {
+    staffDropdown.innerHTML = '<option value="">Select staff after PIN</option>';
+  }
+
+  setInterval(autoScrollToNow, 30000);
+  setInterval(updateClock, 1000);
+  updateSelectedDateLabel();
+  setBookingMinDate();
+  setTimeout(autoScrollToNow, 200);
+
+  loadData(selectedDate, true);
+
+  const refreshBtn = document.getElementById("refreshBoardBtn");
+  if (refreshBtn) {
+    refreshBtn.onclick = function () {
+      loadData(selectedDate, true);
+    };
+  }
+}
+
+
+function setupButtons() {
+  document.getElementById("btnNew").onclick = () => {
+    openPinGateForBooking();
+  };
+
+
+  document.getElementById("btnBoard").onclick = () => {
+    switchView("day");
+  };
+
+
+  document.getElementById("btnCal").onclick = () => {
+    switchView("calendar");
+  };
+
+
+  document.getElementById("calPrev").onclick = () => {
+    currentCalendarDate = new Date(
+      currentCalendarDate.getFullYear(),
+      currentCalendarDate.getMonth() - 1,
+      1
+    );
+    renderCalendar();
+  };
+
+
+  document.getElementById("calNext").onclick = () => {
+    currentCalendarDate = new Date(
+      currentCalendarDate.getFullYear(),
+      currentCalendarDate.getMonth() + 1,
+      1
+    );
+    renderCalendar();
+  };
+}
+
+
+function switchView(view) {
+  document.getElementById("viewDay").classList.toggle("active", view === "day");
+  document.getElementById("viewCalendar").classList.toggle("active", view === "calendar");
+}
+
+
+function updateSelectedDateLabel() {
+  document.getElementById("selectedDateLabel").textContent = selectedDate;
+}
+
+
+function buildRuler() {
+  const r = document.getElementById("ruler");
+  r.innerHTML = "";
+  for (let i = DAY_START_HOUR; i <= DAY_END_HOUR; i++) {
+    const t = document.createElement("div");
+    t.className = "hour-tick";
+    t.style.left = ((i - DAY_START_HOUR) * PX_H) + "px";
+    t.textContent = String(i).padStart(2, "0") + ":00";
+    r.appendChild(t);
+  }
+}
+
+
+function buildLanes(count) {
+  const grid = document.getElementById("laneGrid");
+  grid.innerHTML = "";
+  const laneCount = Math.max(1, Math.min(count, MAX_LANES_LIMIT));
+
+
+  for (let i = 1; i <= laneCount; i++) {
+    const l = document.createElement("div");
+    l.className = "lane";
+    l.setAttribute("data-table", "T" + i);
+    grid.appendChild(l);
+  }
+}
+
+
+function buildCalendarDow() {
+  const dow = document.getElementById("calendarDow");
+  dow.innerHTML = "";
+  ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].forEach(d => {
+    const el = document.createElement("div");
+    el.className = "calendar-dow";
+    el.textContent = d;
+    dow.appendChild(el);
+  });
+}
+
+
+function renderCalendar() {
+  const grid = document.getElementById("calendarGrid");
+  const title = document.getElementById("calendarTitle");
+  grid.innerHTML = "";
+
+
+  const y = currentCalendarDate.getFullYear();
+  const m = currentCalendarDate.getMonth();
+
+
+  title.textContent = currentCalendarDate.toLocaleDateString("en-GB", {
+    month: "long",
+    year: "numeric"
+  });
+
+
+  const firstDay = new Date(y, m, 1);
+  let startWeekday = firstDay.getDay();
+  startWeekday = startWeekday === 0 ? 7 : startWeekday;
+
+
+  const gridStart = new Date(y, m, 1 - (startWeekday - 1));
+
+
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(gridStart);
+    d.setDate(gridStart.getDate() + i);
+
+
+    const iso = toISODate(d);
+    const cell = document.createElement("div");
+    cell.className = "calendar-cell";
+    if (d.getMonth() !== m) cell.classList.add("other-month");
+    if (iso === selectedDate) cell.classList.add("selected");
+
+
+    const isToday = iso === toISODate(new Date());
+
+
+    cell.innerHTML =
+      '<div class="calendar-date">' + d.getDate() + (isToday ? " • today" : "") + '</div>' +
+      '<div class="calendar-meta">' + iso + '</div>' +
+      '<div class="calendar-badge">Open board</div>';
+
+
+    cell.onclick = () => {
+      selectedDate = iso;
+      updateSelectedDateLabel();
+      switchView("day");
+      loadData(selectedDate, true);
+      renderCalendar();
+    };
+
+
+    grid.appendChild(cell);
+  }
+}
+
+
+function setupAuth() {
+  const pinInput = document.getElementById("pinInput");
+
+  pinInput.addEventListener("input", async () => {
+    if (pinInput.value.length !== 4) return;
+
+    try {
+      const r = await fetch("/api/auth?pin=" + encodeURIComponent(pinInput.value));
+      const d = await r.json().catch(() => ({}));
+
+      if (r.ok && d.success) {
+        currentUser = d.user || "";
+        document.getElementById("authModal").style.display = "none";
+        populateStaff(d.staff || []);
+        document.getElementById("in_date").value = selectedDate;
+        loadData(selectedDate, true);
+      } else {
+        alert(
+         "PIN failed.\\n" +
+          "pin=" + (d.debug_pin || "") + "\\n" +
+          "staff_count=" + (d.debug_staff_count ?? "?") + "\\n" +
+          "env_present=" + (d.debug_env_present ?? "?")
+          );
+      }
+    } catch (e) {
+      alert("PIN check failed: " + (e.message || e));
+      pinInput.value = "";
+    }
+  });
+}
+
+
+function populateStaff(list) {
+  const s = document.getElementById("staffDropdown");
+  if (!s) return;
+
+  if (!Array.isArray(list) || list.length === 0) {
+    s.innerHTML = '<option value="">Select staff after PIN</option>';
+    return;
+  }
+
+  s.innerHTML = list.map(n =>
+    '<option value="' + escapeHtml(n) + '" ' +
+    (n === currentUser ? "selected" : "") +
+    ">" + escapeHtml(n) + "</option>"
+  ).join("");
+}
+
+
+function updateClock() {
+  const n = new Date();
+  document.getElementById("clock").textContent =
+    n.getHours().toString().padStart(2, "0") + ":" +
+    n.getMinutes().toString().padStart(2, "0");
+}
+
+
+function autoScrollToNow() {
+
+
+  const container = document.getElementById("viewDay");
+  if (!container) return;
+
+
+  const now = new Date();
+
+
+  const minutes =
+    now.getHours() * 60 +
+    now.getMinutes();
+
+
+  const startMinutes = DAY_START_HOUR * 60;
+  const endMinutes = DAY_END_HOUR * 60;
+
+
+  if (minutes < startMinutes || minutes > endMinutes) return;
+
+
+  const x = minutesToX(minutes);
+
+
+  const viewportWidth = container.clientWidth;
+
+
+  const target = x - viewportWidth * 0.30;
+
+
+  container.scrollLeft = Math.max(0, target);
+}
+
+
+function isPastBooking(dateStr, timeStr) {
+  if (!dateStr || !timeStr) return false;
+  const dt = new Date(dateStr + "T" + timeStr);
+  return dt.getTime() < Date.now();
+}
+
+
+function setBookingMinDate() {
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  document.getElementById("in_date").min = yyyy + "-" + mm + "-" + dd;
+}
+
+
+function openPinGateForBooking() {
+  setBookingMinDate();
+  bookingCreator = "";
+  document.getElementById("bookingPinInput").value = "";
+  document.getElementById("modalPinGate").style.display = "flex";
+}
+
+
+function closePinGate() {
+  document.getElementById("modalPinGate").style.display = "none";
+}
+
+async function confirmBookingPin() {
+  const pin = document.getElementById("bookingPinInput").value.trim();
+
+  if (!pin) {
+    alert("Please enter staff PIN.");
+    return;
+  }
+
+  try {
+    const r = await fetch("/api/auth?pin=" + encodeURIComponent(pin));
+    const d = await r.json().catch(() => ({}));
+
+    if (!r.ok || !d.success || !d.user) {
+  alert(
+    "Wrong PIN.\\n" +
+    "pin=" + (d.debug_pin || "") + "\\n" +
+    "staff_count=" + (d.debug_staff_count ?? "?")
+  );
+  return;
+}
+
+    bookingCreator = d.user || "";
+    currentUser = d.user || "";
+
+    const staffDropdown = document.getElementById("staffDropdown");
+    if (staffDropdown) {
+      staffDropdown.innerHTML =
+        '<option value="' + bookingCreator.replace(/"/g, "&quot;") + '" selected>' +
+        bookingCreator +
+        '</option>';
+      staffDropdown.value = bookingCreator;
+    }
+
+    closePinGate();
+    document.getElementById("in_date").value = selectedDate;
+    document.getElementById("in_duration").value = 120;
+    document.getElementById("modalBooking").style.display = "flex";
+  } catch (e) {
+    console.error("confirmBookingPin failed", e);
+    alert("PIN check failed: " + (e.message || e));
+  }
+}
+
+
+function getBookingBlocks(b) {
+  const pax = Number(b?.pax || 0);
+  if (!Number.isFinite(pax) || pax <= 0) return 0;
+  return Math.ceil(pax / 2);
+}
+
+
+function getAreaCapacityBlocks(area) {
+  return AREA_CAPACITY_BLOCKS[area] || DEFAULT_AREA_CAPACITY_BLOCKS;
+}
+
+
+function bookingOverlapsMinute(booking, minute) {
+  const start = getBookingStartMinutes(booking);
+  const end = getBookingEndMinutes(booking);
+  return start <= minute && minute < end;
+}
+
+
+function isStillBlockingBooking(booking) {
+  if (!booking) return false;
+
+  if (!isClosedStage(booking.stage)) return true;
+
+  const ts = booking.updated_at || booking.submitted_at || "";
+  if (!ts) return false;
+
+  const t = new Date(ts).getTime();
+  if (!Number.isFinite(t)) return false;
+
+  const ageMs = Date.now() - t;
+  return ageMs <= 10 * 60 * 1000; // chỉ block tối đa 10 phút
+}
+
+function shouldShowOnBoard(booking) {
+  return isStillBlockingBooking(booking);
+}
+
+function getBlockUsageAtMinute(bookings, minute, area = "") {
+  return bookings
+    .filter(b => shouldBlockCapacity(b))
+    .filter(b => !area || String(b.area || "") === String(area))
+    .filter(b => bookingOverlapsMinute(b, minute))
+    .reduce((sum, b) => sum + getBookingBlocks(b), 0);
+}
+
+
+function wouldExceedCapacity(newBooking, existingBookings) {
+  const area = newBooking.area || "";
+  const cap = getAreaCapacityBlocks(area);
+  const newBlocks = getBookingBlocks(newBooking);
+
+
+  const start = getBookingStartMinutes(newBooking);
+  const end = getBookingEndMinutes(newBooking);
+
+
+  for (let minute = start; minute < end; minute += 15) {
+    const usage = getBlockUsageAtMinute(existingBookings, minute, area);
+    if (usage + newBlocks > cap) {
+      return {
+        exceeds: true,
+        minute: minute,
+        usage: usage,
+        cap: cap
+      };
+    }
+  }
+
+
+  return { exceeds: false };
+}
+
+
+function saveBoardCache(date, bookings) {
+  const payload = {
+    date: date,
+    savedAt: new Date().toISOString(),
+    bookings: bookings
+  };
+  localStorage.setItem("booking_cache_" + date, JSON.stringify(payload));
+}
+
+
+function loadBoardCache(date) {
+  const raw = localStorage.getItem("booking_cache_" + date);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+
+function setBoardStatus(label, text) {
+  const badge = document.getElementById("dataStatusBadge");
+  if (!badge) return;
+  badge.textContent = label || "Idle";
+  badge.title = text || "";
+}
+
+async function requireAccess(request) {
+  const jwt = request.headers.get("Cf-Access-Jwt-Assertion");
+
+  if (!jwt) {
+    return {
+      ok: false,
+      reason: "Cloudflare Access required"
+    };
+  }
+
+  return { ok: true };
+}
+
+function normalizeBooking(raw) {
+  if (!raw || typeof raw !== "object") return null;
+
+  const guest_name = String(
+    raw.guest_name ??
+    raw.contact_name ??
+    raw.name ??
+    ""
+  ).trim();
+
+  const date = String(raw.date || "").trim();
+
+  const time = String(
+    raw.time ??
+    raw.start_at ??
+    ""
+  ).trim();
+
+  const pax = Number(raw.pax ?? raw.guests ?? 0);
+  const duration = Number(raw.duration ?? raw.duration_minutes ?? 120);
+
+  const stage = String(raw.stage || "pending").trim().toLowerCase();
+  const area = String(raw.area || "indoor").trim().toLowerCase();
+  const flag = String(raw.flag || "").trim().toLowerCase();
+
+  const staff_user =
+    raw.staff != null
+      ? String(raw.staff).trim()
+      : (raw.staff_user != null ? String(raw.staff_user).trim() : "");
+
+  if (!guest_name || !date || !time) return null;
+
+  return {
+    booking_id: String(raw.booking_id ?? raw.id ?? "").trim(),
+    guest_name,
+    contact_name: String(raw.contact_name ?? guest_name).trim(),
+    phone: String(raw.phone || "").trim(),
+    pax: Number.isFinite(pax) && pax > 0 ? pax : 0,
+    blocks: Number(raw.blocks) > 0 ? Number(raw.blocks) : Math.max(1, Math.ceil((pax || 0) / 2)),
+    date,
+    time,
+    start_at: String(raw.start_at ?? time).trim(),
+    duration: Number.isFinite(duration) && duration > 0 ? duration : 120,
+    area,
+    flag,
+    staff_user,
+    staff: staff_user,
+    stage,
+    stage_id: Number(raw.stage_id || 0),
+    notes: String(raw.notes || "").trim(),
+    created_by: String(raw.created_by || "").trim(),
+    updated_by: String(raw.updated_by || "").trim(),
+    updated_at: String(raw.updated_at || "").trim(),
+    submitted_at: String(raw.submitted_at || "").trim(),
+    _localPending: !!raw._localPending,
+    _localId: raw._localId ? String(raw._localId) : ""
+  };
+}
+
+async function loadBookingsForDate(selectedDate) {
+ const res = await fetch("/api/list?date=" + encodeURIComponent(selectedDate));
+ if (!res.ok) throw new Error("Failed to load bookings: " + res.status);
+
+  const data = await res.json();
+  return Array.isArray(data) ? data : (data.bookings || []);
+}
+
+async function loadData(date = selectedDate, forceRefresh = false) {
+  try {
+    const cached = !forceRefresh ? loadBoardCache(date) : null;
+
+    if (cached && cached.bookings) {
+      serverBookings = cached.bookings
+        .map(normalizeBooking)
+        .filter(b => b && b.date === date);
+
+      renderAllBookings();
+      setBoardStatus("Cached", "Last update " + cached.savedAt);
+      return;
+    }
+
+    setBoardStatus("Refreshing", "Loading latest bookings...");
+
+    const bookings = await loadBookingsForDate(date);
+    const normalized = bookings
+      .map(normalizeBooking)
+      .filter(b => b && b.date === date);
+
+    serverBookings = normalized;
+
+    saveBoardCache(date, normalized);
+
+    renderAllBookings();
+    setBoardStatus("Live", "Loaded " + normalized.length + " bookings");
+  } catch (err) {
+    console.error("loadData error:", err);
+
+    const cached = loadBoardCache(date);
+    if (cached && cached.bookings) {
+      serverBookings = cached.bookings
+        .map(normalizeBooking)
+        .filter(b => b && b.date === date);
+
+      renderAllBookings();
+      setBoardStatus("Offline", "Showing cached data");
+    } else {
+      serverBookings = [];
+      renderAllBookings();
+      setBoardStatus("Error", err.message || String(err));
+    }
+  }
+}
+
+
+function shouldShowOnBoard(booking) {
+  if (!booking) return false;
+
+  if (!isClosedStage(booking.stage)) return true;
+
+  const ts =
+    booking.updated_at ||
+    booking.submitted_at ||
+    "";
+
+  if (!ts) return false;
+
+  const t = new Date(ts).getTime();
+  if (!Number.isFinite(t)) return false;
+
+  const ageMs = Date.now() - t;
+  return ageMs <= 10 * 60 * 1000; // 10 phút
+}
+  
+function getBookingIdentityKey(b) {
+  const id = String(b?.booking_id || "").trim();
+  if (id) return "id:" + id;
+
+  // fallback nếu booking_id bị thiếu
+  return [
+    "fallback",
+    String(b?.guest_name || "").trim().toLowerCase(),
+    String(b?.date || "").trim(),
+    String(b?.time || "").trim(),
+    String(b?.phone || "").trim()
+  ].join("|");
+}
+
+function dedupeBookingsForCapacity(bookings) {
+  const map = new Map();
+
+  for (const b of bookings || []) {
+    if (!b) continue;
+
+    const key = getBookingIdentityKey(b);
+    const prev = map.get(key);
+
+    if (!prev) {
+      map.set(key, b);
+      continue;
+    }
+
+    const prevTs = new Date(prev.updated_at || prev.submitted_at || 0).getTime() || 0;
+    const currTs = new Date(b.updated_at || b.submitted_at || 0).getTime() || 0;
+
+    // ưu tiên bản mới hơn
+    if (currTs >= prevTs) {
+      map.set(key, b);
+    }
+  }
+
+  return Array.from(map.values());
+}
+
+function dedupeBookingsById(bookings) {
+  const map = new Map();
+
+  for (const b of bookings) {
+    if (!b) continue;
+
+    const key = String(b.booking_id || "").trim();
+    if (!key) continue;
+
+    const prev = map.get(key);
+    if (!prev) {
+      map.set(key, b);
+      continue;
+    }
+
+    const prevTs = new Date(prev.updated_at || prev.submitted_at || 0).getTime() || 0;
+    const currTs = new Date(b.updated_at || b.submitted_at || 0).getTime() || 0;
+
+    if (currTs >= prevTs) {
+      map.set(key, b);
+    }
+  }
+
+  return Array.from(map.values());
+}
+
+function isClosedStage(stage) {
+  const s = String(stage || "").trim().toLowerCase();
+  return s === "done" || s === "cancelled" || s === "noshow";
+}
+
+function shouldBlockCapacity(booking) {
+  if (!booking) return false;
+
+  // booking đã đóng thì giải phóng block NGAY LẬP TỨC
+  if (isClosedStage(booking.stage)) return false;
+
+  return true;
+}
+
+function shouldShowOnBoard(booking) {
+  if (!booking) return false;
+
+  // booking còn active thì luôn hiện
+  if (!isClosedStage(booking.stage)) return true;
+
+  // booking đóng thì chỉ hiện thêm 5 phút để staff nhìn
+  const ts = booking.updated_at || booking.submitted_at || "";
+  if (!ts) return false;
+
+  const t = new Date(ts).getTime();
+  if (!Number.isFinite(t)) return false;
+
+  const ageMs = Date.now() - t;
+  return ageMs <= 5 * 60 * 1000;
+}
+
+function isStillBlockingBooking(booking) {
+  if (!booking) return false;
+
+  if (!isClosedStage(booking.stage)) return true;
+
+  const ts = booking.updated_at || booking.submitted_at || "";
+  if (!ts) return false;
+
+  const t = new Date(ts).getTime();
+  if (!Number.isFinite(t)) return false;
+
+  const ageMs = Date.now() - t;
+  return ageMs <= 10 * 60 * 1000;
+}
+
+function shouldShowOnBoard(booking) {
+  return isStillBlockingBooking(booking);
+}
+
+function renderAllBookings() {
+  const merged = dedupeBookingsForCapacity([
+    ...serverBookings,
+    ...localPendingBookings
+  ]);
+
+  const combined = merged.filter(
+    b => b && b.date === selectedDate && shouldShowOnBoard(b)
+  );
+
+  const result = assignLanesByOverlap(combined);
+
+  buildLanes(result.laneCount);
+
+  const lanes = document.querySelectorAll(".lane");
+  for (const b of result.placed) {
+    if (b._laneIndex >= lanes.length) continue;
+    const bar = createBarElement(b);
+    lanes[b._laneIndex].appendChild(bar);
+  }
+
+  attachBookingPopupEvents();
+  attachArrivedButtonEvents();
+}
+
+
+function assignLanesByOverlap(bookings) {
+  const sorted = [...bookings].sort((a, b) => {
+    const sa = getBookingStartMinutes(a);
+    const sb = getBookingStartMinutes(b);
+    if (sa !== sb) return sa - sb;
+
+
+    const ea = getBookingEndMinutes(a);
+    const eb = getBookingEndMinutes(b);
+    if (ea !== eb) return ea - eb;
+
+
+    return getBookingBlocks(b) - getBookingBlocks(a);
+  });
+
+
+  const laneEndTimes = [];
+  const placed = [];
+
+
+  for (const booking of sorted) {
+    const start = getBookingStartMinutes(booking);
+    const end = getBookingEndMinutes(booking);
+    const blocksNeeded = Math.max(1, getBookingBlocks(booking));
+
+
+    let startLane = -1;
+
+
+    for (let i = 0; i <= laneEndTimes.length; i++) {
+      let canFit = true;
+
+
+      for (let j = 0; j < blocksNeeded; j++) {
+        const laneIndex = i + j;
+        const laneEnd = laneEndTimes[laneIndex] || 0;
+        if (start < laneEnd) {
+          canFit = false;
+          break;
+        }
+      }
+
+
+      if (canFit) {
+        startLane = i;
+        break;
+      }
+    }
+
+
+    if (startLane === -1) {
+      startLane = laneEndTimes.length;
+    }
+
+
+    for (let j = 0; j < blocksNeeded; j++) {
+      const laneIndex = startLane + j;
+      laneEndTimes[laneIndex] = end;
+
+
+      placed.push({
+        ...booking,
+        _laneIndex: laneIndex,
+        _lanePart: j + 1,
+        _laneTotal: blocksNeeded
+      });
+    }
+  }
+
+
+  return {
+    placed: placed,
+    laneCount: Math.max(1, Math.min(laneEndTimes.length, MAX_LANES_LIMIT))
+  };
+}
+
+
+function createBarElement(b) {
+  const startMinutes = getBookingStartMinutes(b);
+  const durationMinutes = getBookingDurationMinutes(b);
+  const x = minutesToX(startMinutes);
+  const width = durationToWidth(durationMinutes);
+  const tableCount = getBookingBlocks(b);
+
+
+  const bar = document.createElement("div");
+  bar.className = "booking-bar stage-" + (b.stage || "pending");
+  bar.dataset.booking = JSON.stringify(b);
+  if (b._localPending) bar.classList.add("local-pending");
+
+
+  bar.style.left = x + "px";
+  bar.style.width = width + "px";
+  bar.style.backgroundColor = "var(--s-" + (b.stage || "pending") + ")";
+if (b.stage === "done") {
+  bar.style.opacity = "0.72";
+}
+
+if (b.stage === "cancelled" || b.stage === "noshow") {
+  bar.style.opacity = "0.55";
+  bar.style.filter = "grayscale(0.2)";
+}
+
+if (b.stage === "arrived") {
+  bar.style.boxShadow = "0 0 0 2px rgba(255,255,255,0.15), 0 4px 10px rgba(0,0,0,0.35)";
+}
+
+  const fColor = b.flag ? "var(--f-" + b.flag + ")" : "transparent";
+  const aColor = b.area ? "var(--a-" + b.area + ")" : "transparent";
+
+
+  const partLabel =
+    tableCount > 1
+      ? ' <span style="opacity:0.75">(' + b._lanePart + '/' + b._laneTotal + ')</span>'
+      : '';
+
+
+  const stageLabelMap = {
+  pending: "PENDING",
+  confirmed: "CONFIRMED",
+  arrived: "ARRIVED",
+  done: "DONE",
+  cancelled: "CANCELLED",
+  noshow: "NO-SHOW"
+};
+
+const stageLabel = stageLabelMap[b.stage] || "PENDING";
+
+const canArrive = b.stage === "confirmed";
+
+bar.innerHTML =
+  '<div class="flag-strip" style="background:' + fColor + '"></div>' +
+  '<div class="area-underline" style="background:' + aColor + '"></div>' +
+  '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;">' +
+    '<div style="overflow:hidden; white-space:nowrap; text-overflow:ellipsis; min-width:0;">[' +
+      escapeHtml(String(b.pax || "")) + 'p • ' + escapeHtml(String(tableCount)) + 'T] ' +
+      escapeHtml(String(b.guest_name || "")) +
+      partLabel +
+    '</div>' +
+    '<div style="font-size:0.62rem;padding:2px 6px;border-radius:999px;background:rgba(0,0,0,0.18);white-space:nowrap;">' +
+      escapeHtml(stageLabel) +
+    '</div>' +
+  '</div>' +
+  '<div style="font-size:0.68rem; opacity:0.85; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">' +
+    escapeHtml(String(b.time || "")) +
+    ' • ' + durationMinutes + 'm' +
+    (b.area ? ' • ' + escapeHtml(String(b.area)) : '') +
+    (b._localPending ? ' • saving...' : '') +
+  '</div>' +
+  (canArrive
+    ? '<button class="arrived-btn" ' +
+        'data-booking-id="' + escapeHtml(String(b.booking_id || "")) + '" ' +
+        'data-date="' + escapeHtml(String(b.date || "")) + '" ' +
+        'style="position:absolute;right:6px;bottom:4px;padding:3px 8px;border:none;border-radius:999px;background:#ffffff;color:#111827;font-size:0.66rem;font-weight:700;cursor:pointer;z-index:20;">' +
+        'Arrived' +
+      '</button>'
+    : '');
+  
+  return bar;
+}
+
+
+function toMinutes(timeStr) {
+  if (!timeStr || !String(timeStr).includes(":")) return 0;
+  const parts = String(timeStr).split(":").map(Number);
+  return (parts[0] || 0) * 60 + (parts[1] || 0);
+}
+
+
+function getBookingStartMinutes(b) {
+  return toMinutes(b.time || "00:00");
+}
+
+
+function getBookingDurationMinutes(b) {
+  const d = Number(b.duration || b.duration_minutes || 120);
+  return Number.isFinite(d) && d > 0 ? d : 120;
+}
+
+
+function getBookingEndMinutes(b) {
+  return getBookingStartMinutes(b) + getBookingDurationMinutes(b);
+}
+
+
+function minutesToX(mins) {
+  return (mins - DAY_START_HOUR * 60) * (PX_H / 60);
+}
+
+
+function durationToWidth(mins) {
+  return mins * (PX_H / 60);
+}
+
+
+function closeModal() {
+  document.getElementById("modalBooking").style.display = "none";
+}
+
+
+document.getElementById("bookingForm").onsubmit = async (e) => {
+  e.preventDefault();
+
+  const form = e.target;
+  const fd = new FormData(form);
+  fd.set("created_by", bookingCreator || "");
+
+  const date = String(fd.get("date") || "");
+  const time = String(fd.get("time") || "");
+
+  if (isPastBooking(date, time)) {
+    alert("Can't book the past.");
+    return;
+  }
+
+  const optimisticPax = Number(fd.get("pax") || 0);
+
+  const optimisticBooking = {
+    guest_name: String(fd.get("guest_name") || ""),
+    phone: String(fd.get("phone") || ""),
+    pax: optimisticPax,
+    blocks: Math.ceil(optimisticPax / 2),
+    date: String(fd.get("date") || ""),
+    time: String(fd.get("time") || ""),
+    duration: Number(fd.get("duration") || 120),
+    area: String(fd.get("area") || ""),
+    flag: String(fd.get("flag") || ""),
+    staff_user: String(fd.get("staff_user") || ""),
+    stage: "sending",
+    _localPending: true,
+    _localId: "tmp_" + Date.now()
+  };
+
+  const sameDayBookings = dedupeBookingsForCapacity(serverBookings)
+  .filter(b => b && b.date === optimisticBooking.date)
+  .filter(b => isStillBlockingBooking(b));
+
+  const capCheck = wouldExceedCapacity(optimisticBooking, sameDayBookings);
+
+  if (capCheck.exceeds) {
+    alert(
+      "No more table capacity in " +
+      (optimisticBooking.area || "this area") +
+      " for that time slot."
+    );
+    return;
+  }
+
+  localPendingBookings.push(optimisticBooking);
+  renderAllBookings();
+  closeModal();
+
+  try {
+    const res = await fetch("/api/create?_t=" + Date.now(), {
+      method: "POST",
+      body: fd
+    });
+
+    const rawText = await res.text();
+    let data = {};
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      data = { raw: rawText };
+    }
+
+    if (!res.ok || !data.success) {
+      throw new Error(
+        data.error ||
+        data.make_response ||
+        data.raw ||
+        ("Create failed: " + res.status)
+      );
+    }
+
+    // chờ Make sync ngược về KV
+    let synced = false;
+    for (let i = 0; i < 8; i++) {
+      await new Promise(r => setTimeout(r, 1000));
+      await loadData(selectedDate, true);
+
+      synced = serverBookings.some(b =>
+        b.guest_name === optimisticBooking.guest_name &&
+        b.date === optimisticBooking.date &&
+        b.time === optimisticBooking.time
+      );
+
+      if (synced) break;
+    }
+
+    localPendingBookings = localPendingBookings.filter(
+      b => b._localId !== optimisticBooking._localId
+    );
+    renderAllBookings();
+
+    if (!synced) {
+      alert("Booking was accepted by Make, but has not appeared on the board yet.");
+      return;
+    }
+
+    form.reset();
+    document.getElementById("in_date").value = selectedDate;
+    document.getElementById("in_duration").value = 120;
+
+  } catch (err) {
+    console.error("create booking error:", err);
+    localPendingBookings = localPendingBookings.filter(
+      b => b._localId !== optimisticBooking._localId
+    );
+    renderAllBookings();
+    alert("Booking failed: " + (err.message || err));
+  }
+};
+
+
+function toISODate(d) {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return year + "-" + month + "-" + day;
+}
+
+
+function escapeHtml(str) {
+  return String(str)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+
+let currentPopupBookingId = null;
+
+
+function formatBookingPopupHtml(booking) {
+  const bookingId = booking.booking_id || booking.id || "-";
+  const guestName = booking.guest_name || "-";
+  const phone = booking.phone || "-";
+  const pax = booking.pax || "-";
+  const tables = getBookingBlocks(booking);
+  const date = booking.date || "-";
+  const time = booking.time || "-";
+  const duration = booking.duration || "-";
+  const area = booking.area || "-";
+  const flag = booking.flag || "-";
+  const status = booking.stage || booking.status || "-";
+  const updatedBy = booking.updated_by || "-";
+  const updatedAt = booking.updated_at || "-";
+  const notes = booking.notes || "-";
+
+
+  return ''
+    + '<div style="display:flex;justify-content:space-between;align-items:start;gap:8px;margin-bottom:8px;">'
+    +   '<div style="font-size:16px;font-weight:700;">' + escapeHtml(guestName) + '</div>'
+    +   '<div style="font-size:12px;opacity:0.8;">#' + escapeHtml(bookingId) + '</div>'
+    + '</div>'
+    + '<div style="display:grid;grid-template-columns:90px 1fr;gap:6px 10px;">'
+    +   '<div style="opacity:0.75;">Phone</div><div>' + escapeHtml(phone) + '</div>'
+    +   '<div style="opacity:0.75;">Pax</div><div>' + escapeHtml(pax) + '</div>'
+    +   '<div style="opacity:0.75;">Tables</div><div>' + escapeHtml(String(tables)) + '</div>'
+    +   '<div style="opacity:0.75;">Date</div><div>' + escapeHtml(date) + '</div>'
+    +   '<div style="opacity:0.75;">Time</div><div>' + escapeHtml(time) + '</div>'
+    +   '<div style="opacity:0.75;">Duration</div><div>' + escapeHtml(duration) + ' min</div>'
+    +   '<div style="opacity:0.75;">Area</div><div>' + escapeHtml(area) + '</div>'
+    +   '<div style="opacity:0.75;">Flag</div><div>' + escapeHtml(flag) + '</div>'
+    +   '<div style="opacity:0.75;">Status</div><div>' + escapeHtml(status) + '</div>'
+    +   '<div style="opacity:0.75;">Notes</div><div style="white-space:pre-wrap;">' + escapeHtml(notes) + '</div>'
+    +   '<div style="opacity:0.75;">Updated by</div><div>' + escapeHtml(updatedBy) + '</div>'
++   '<div style="opacity:0.75;">Updated at</div><div>' + escapeHtml(updatedAt) + '</div>'
+    + '</div>';
+}
+
+
+function hideBookingPopup() {
+  const popup = document.getElementById("bookingPopup");
+  if (!popup) return;
+  popup.style.display = "none";
+  currentPopupBookingId = null;
+}
+
+
+function showBookingPopup(booking, anchorEl) {
+  const popup = document.getElementById("bookingPopup");
+  const content = document.getElementById("bookingPopupContent");
+  if (!popup || !content || !anchorEl) return;
+
+
+  content.innerHTML = formatBookingPopupHtml(booking);
+  popup.style.display = "block";
+
+
+  const rect = anchorEl.getBoundingClientRect();
+  popup.style.left = "0px";
+  popup.style.top = "0px";
+
+
+  requestAnimationFrame(() => {
+    const popupRect = popup.getBoundingClientRect();
+    const gap = 10;
+
+
+    let left = rect.right + gap;
+    let top = rect.top;
+
+
+    if (left + popupRect.width > window.innerWidth - 12) {
+      left = rect.left - popupRect.width - gap;
+    }
+
+
+    if (left < 12) left = 12;
+
+
+    if (top + popupRect.height > window.innerHeight - 12) {
+      top = window.innerHeight - popupRect.height - 12;
+    }
+
+
+    if (top < 12) top = 12;
+
+
+    popup.style.left = left + "px";
+    popup.style.top = top + "px";
+  });
+
+
+  currentPopupBookingId = booking.booking_id || booking.id || null;
+}
+
+
+function attachBookingPopupEvents() {
+  document.querySelectorAll(".booking-bar").forEach(el => {
+    if (el.dataset.popupBound === "1") return;
+    el.dataset.popupBound = "1";
+
+
+    el.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+
+
+      let booking = null;
+      try {
+        booking = JSON.parse(el.dataset.booking || "{}");
+      } catch {
+        booking = {};
+      }
+
+
+      const clickedId = booking.booking_id || booking.id || null;
+
+
+      if (currentPopupBookingId && clickedId === currentPopupBookingId) {
+        hideBookingPopup();
+        return;
+      }
+
+
+      showBookingPopup(booking, el);
+    });
+  });
+}
+
+function attachArrivedButtonEvents() {
+  document.querySelectorAll(".arrived-btn").forEach(btn => {
+    if (btn.dataset.bound === "1") return;
+    btn.dataset.bound = "1";
+
+    btn.addEventListener("click", async (ev) => {
+      ev.stopPropagation();
+
+      const bookingId = String(btn.dataset.bookingId || "").trim();
+      const date = String(btn.dataset.date || "").trim();
+
+      if (!bookingId || !date) {
+        alert("Missing booking id or date.");
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = "Sending...";
+
+      try {
+        // optimistic UI
+        const target = serverBookings.find(b => String(b.booking_id) === bookingId && b.date === date);
+        if (target) {
+          target.stage = "arrived";
+          target.updated_by = currentUser || bookingCreator || "";
+          target.updated_at = new Date().toISOString();
+          renderAllBookings();
+        }
+                  // patch local KV projection ngay để board không bị chờ Make quá lâu
+        await fetch("/api/board-sync?_t=" + Date.now(), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            ...(target || {
+              booking_id: bookingId,
+              date: date,
+              stage: "arrived",
+              updated_by: currentUser || bookingCreator || "",
+              updated_at: new Date().toISOString()
+            })
+          })
+        });
+
+        const res = await fetch("/api/stage-update?_t=" + Date.now(), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            booking_id: bookingId,
+            date: date,
+            stage: "arrived",
+            updated_by: currentUser || bookingCreator || ""
+          })
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || data.make_response || ("Stage update failed: " + res.status));
+        }
+
+        // poll cho tới khi Make sync ngược về board KV
+        let synced = false;
+        for (let i = 0; i < 8; i++) {
+          await new Promise(r => setTimeout(r, 1000));
+          await loadData(selectedDate, true);
+
+          const updated = serverBookings.find(
+            b => String(b.booking_id) === bookingId && b.date === date
+          );
+
+          if (updated && updated.stage === "arrived") {
+            synced = true;
+            break;
+          }
+        }
+
+        if (!synced) {
+          alert("Arrived accepted, but board sync has not returned yet.");
+        }
+
+      } catch (err) {
+        console.error("arrived update error:", err);
+        await loadData(selectedDate, true);
+        alert("Arrived failed: " + (err.message || err));
+      } finally {
+        await loadData(selectedDate, true);
+      }
+    });
+  });
+}
+
+
+document.addEventListener("click", (ev) => {
+  const popup = document.getElementById("bookingPopup");
+  if (!popup) return;
+
+
+  const clickedInsidePopup = popup.contains(ev.target);
+  const clickedBooking = ev.target.closest(".booking-bar");
+
+
+  if (!clickedInsidePopup && !clickedBooking) {
+    hideBookingPopup();
+  }
+});
+
+
+document.addEventListener("keydown", (ev) => {
+  if (ev.key === "Escape") hideBookingPopup();
+});
+
+window.__boardProbe = "before-init";
+window.loadData = loadData;
+window.renderAllBookings = renderAllBookings;
+window.buildLanes = buildLanes;
+
+try {
+  init();
+  window.__boardProbe = "after-init";
+} catch (e) {
+  window.__boardProbe = "init-error";
+  window.__boardInitError = String((e && e.stack) || e);
+  console.error("init failed:", e);
+}
+
+</script>
+
+
+<div id="bookingPopup" style="
+  display:none;
+  position:fixed;
+  z-index:9999;
+  min-width:260px;
+  max-width:320px;
+  background:#1f2a3a;
+  color:#fff;
+  border:1px solid #3b4b63;
+  border-radius:14px;
+  box-shadow:0 12px 30px rgba(0,0,0,0.35);
+  padding:14px;
+  font-size:14px;
+  line-height:1.45;
+">
+  <div id="bookingPopupContent"></div>
+</div>
+</body>
+</html>`;
+}
+
+
+
+

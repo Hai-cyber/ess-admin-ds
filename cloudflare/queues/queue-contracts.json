@@ -1,0 +1,24 @@
+{
+  "queues": [
+    {
+      "name": "booking-sync",
+      "event_types": ["booking.created", "booking.stage_changed"],
+      "required_fields": ["company_id", "booking_id", "timestamp"]
+    },
+    {
+      "name": "media-processing",
+      "event_types": ["media.uploaded", "media.tagged"],
+      "required_fields": ["company_id", "asset_id", "timestamp"]
+    },
+    {
+      "name": "crm-sync",
+      "event_types": ["customer.created", "customer.updated"],
+      "required_fields": ["company_id", "customer_id", "timestamp"]
+    },
+    {
+      "name": "notification-delivery",
+      "event_types": ["notification.requested"],
+      "required_fields": ["company_id", "channel", "timestamp"]
+    }
+  ]
+}

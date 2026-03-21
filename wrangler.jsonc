@@ -1,44 +1,50 @@
-/**
- * For more details on how to configure Wrangler, refer to:
- * https://developers.cloudflare.com/workers/wrangler/configuration/
- */
 {
-	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "ess-admin-ds",
-	"main": "src/index.js",
-	"compatibility_date": "2026-03-10",
-	"observability": {
-		"enabled": true
-	},
-	"compatibility_flags": [
-		"nodejs_compat"
-	]
-	/**
-	 * Smart Placement
-	 * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
-	 */
-	// "placement": {  "mode": "smart" }
-	/**
-	 * Bindings
-	 * Bindings allow your Worker to interact with resources on the Cloudflare Developer Platform, including
-	 * databases, object storage, AI inference, real-time communication and more.
-	 * https://developers.cloudflare.com/workers/runtime-apis/bindings/
-	 */
-	/**
-	 * Environment Variables
-	 * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
-	 * Note: Use secrets to store sensitive data.
-	 * https://developers.cloudflare.com/workers/configuration/secrets/
-	 */
-	// "vars": {  "MY_VARIABLE": "production_value" }
-	/**
-	 * Static Assets
-	 * https://developers.cloudflare.com/workers/static-assets/binding/
-	 */
-	// "assets": {  "directory": "./public/",  "binding": "ASSETS" }
-	/**
-	 * Service Bindings (communicate between multiple Workers)
-	 * https://developers.cloudflare.com/workers/wrangler/configuration/#service-bindings
-	 */
-	// "services": [  {   "binding": "MY_SERVICE",   "service": "my-service"  } ]
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "ess-admin-ds",
+  "main": "src/index.js",
+  "compatibility_date": "2026-03-16",
+
+  "vars": {
+    "TURNSTILE_SITE_KEY": "0x4AAAAAACsnreaoe8DRwhYJ",
+    "DISABLE_TURNSTILE_FOR_DEV": "true",
+    "FOUNDER_OTP_CHANNELS": "sms",
+    "FOUNDER_TEST_EXCEPTION_PHONES": "+491723855711",
+    "TWILIO_WHATSAPP_FROM": "whatsapp:+14155238886",
+    "TWILIO_SMS_FROM": "+15177014808",
+    "TWILIO_MESSAGING_SERVICE_SID": "MG0a4b056b926c76faf0acbd7b1921766d"
+  },
+
+  "assets": {
+    "directory": "./public"
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ess_admin_ds",
+      "database_id": "55939312-121a-4fc1-91d2-061c4d9fa61e"
+    }
+  ],
+
+  "env": {
+    "production": {
+      "name": "ess-admin-ds-prod",
+      "vars": {
+        "TURNSTILE_SITE_KEY": "0x4AAAAAACmwktNVObyT3tQ7",
+        "FOUNDER_OTP_CHANNELS": "sms",
+        "FOUNDER_TEST_EXCEPTION_PHONES": "+491723855711",
+        "TWILIO_WHATSAPP_FROM": "whatsapp:+14155238886",
+        "TWILIO_SMS_FROM": "+15177014808",
+        "TWILIO_MESSAGING_SERVICE_SID": "MG0a4b056b926c76faf0acbd7b1921766d"
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "esskultur-admin-prod",
+          "database_id": "your-prod-database-id"
+        }
+      ]
+    }
+  }
 }
+

@@ -806,6 +806,48 @@
     let bookingsSearchTerm = '';
     let customersSearchTerm = '';
 
+    function getRequestedCompanyIdFromLocation() {
+      try {
+        const raw = String(new URLSearchParams(window.location.search || '').get('company_id') || '').trim();
+        const value = Number(raw || 0);
+        return Number.isInteger(value) && value > 0 ? value : null;
+      } catch {
+        return null;
+      }
+    }
+
+    function hostRequiresCompanyIdQuery() {
+      const host = String(window.location.hostname || '').toLowerCase();
+      return host === 'localhost' || host === '127.0.0.1' || host === '[::1]' || host.includes('workers.dev');
+    }
+
+    const requestedCompanyId = getRequestedCompanyIdFromLocation();
+
+    function withCompanyIdForApi(rawUrl) {
+      if (!requestedCompanyId || typeof rawUrl !== 'string') return rawUrl;
+
+      try {
+        const urlObj = new URL(rawUrl, window.location.origin);
+        if (!urlObj.pathname.startsWith('/api/')) return rawUrl;
+        if (!urlObj.searchParams.has('company_id')) {
+          urlObj.searchParams.set('company_id', String(requestedCompanyId));
+        }
+        return urlObj.pathname + (urlObj.search || '');
+      } catch {
+        return rawUrl;
+      }
+    }
+
+    // Ensure all admin API calls include company_id when this page is opened
+    // as /admin?company_id=... on localhost/workers.dev.
+    const nativeFetch = window.fetch.bind(window);
+    window.fetch = function patchedAdminFetch(input, init) {
+      if (typeof input === 'string') {
+        return nativeFetch(withCompanyIdForApi(input), init);
+      }
+      return nativeFetch(input, init);
+    };
+
     const OPERATIONAL_SETTING_KEYS = [
       'website_url',
       'standard_contact_link',
@@ -905,9 +947,13 @@
       'TWILIO_WHATSAPP_FROM',
       'TWILIO_SMS_FROM',
       'TWILIO_MESSAGING_SERVICE_SID',
+      'ODOO_API_TOKEN',
       'ODOO_FOUNDER_CREATE_WEBHOOK',
       'ODOO_FOUNDER_VERIFY_WEBHOOK',
-      'ODOO_STAFF_SYNC_WEBHOOK'
+      'ODOO_STAFF_SYNC_WEBHOOK',
+      'ODOO_BOOKING_CREATE_WEBHOOK',
+      'ODOO_BOOKING_STAGE_WEBHOOK',
+      'ODOO_CRM_TEAM_ID'
     ];
 
     const SECRET_INTEGRATION_KEYS = [
@@ -922,9 +968,13 @@
       TWILIO_WHATSAPP_FROM: 'Twilio WhatsApp From',
       TWILIO_SMS_FROM: 'Twilio SMS From',
       TWILIO_MESSAGING_SERVICE_SID: 'Twilio Messaging Service SID',
+      ODOO_API_TOKEN: 'Odoo API Token (direct API)',
       ODOO_FOUNDER_CREATE_WEBHOOK: 'Odoo Founder Create Webhook',
       ODOO_FOUNDER_VERIFY_WEBHOOK: 'Odoo Founder Verify Webhook',
       ODOO_STAFF_SYNC_WEBHOOK: 'Odoo Staff Sync Webhook',
+      ODOO_BOOKING_CREATE_WEBHOOK: 'Odoo Booking Create Webhook (fallback)',
+      ODOO_BOOKING_STAGE_WEBHOOK: 'Odoo Booking Stage Webhook (fallback)',
+      ODOO_CRM_TEAM_ID: 'Odoo CRM Team ID (default: 5)',
       TURNSTILE_SECRET: 'Turnstile Secret',
       TWILIO_ACCOUNT_SID: 'Twilio Account SID',
       TWILIO_AUTH_TOKEN: 'Twilio Auth Token'
@@ -963,6 +1013,11 @@
     }
 
     async function showPINGate() {
+      if (hostRequiresCompanyIdQuery() && !requestedCompanyId) {
+        alert('Missing tenant context. Open this page with ?company_id=1 (or your tenant ID).');
+        return;
+      }
+
       const pin = prompt('🔐 Enter Staff PIN:');
       if (!pin) {
         alert('PIN required to access');
@@ -975,6 +1030,16 @@
         const data = await res.json().catch(() => ({}));
 
         if (!res.ok || !data.success) {
+          const err = String(data.error || '').toLowerCase();
+          if (err === 'tenant_required') {
+            alert('Missing tenant context. Open this page with ?company_id=1 (or your tenant ID).');
+            return;
+          }
+          if (err === 'company_id_override_not_allowed') {
+            alert('company_id override is not allowed on this host. Use tenant subdomain.');
+            return;
+          }
+
           alert(data.error || 'Invalid PIN');
           await showPINGate();
           return;

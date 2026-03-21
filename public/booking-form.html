@@ -304,6 +304,11 @@ select.with-icon { padding-left: 38px !important; }
           return 'en';
         }
 
+        function allowTurnstileBypassOnHost() {
+          const host = String(window.location.hostname || '').toLowerCase();
+          return host === 'localhost' || host === '127.0.0.1' || host === '[::1]' || host.includes('workers.dev');
+        }
+
         const currentLang = detectLanguage();
 
         const i18n = {
@@ -348,6 +353,7 @@ select.with-icon { padding-left: 38px !important; }
         };
 
         const t = i18n[currentLang];
+        const tenantCompanyId = readQueryParam('company_id');
         const emailPrefill = readQueryParam('email');
         if (emailPrefill &amp;&amp; inputEmail) {
           inputEmail.value = emailPrefill;
@@ -498,7 +504,7 @@ select.with-icon { padding-left: 38px !important; }
           isSubmitting = true;
 
           const turnstileRes = document.getElementsByName('cf-turnstile-response')[0]?.value || '';
-          if(!turnstileRes){
+          if(!turnstileRes && !allowTurnstileBypassOnHost()){
             alert(t.security);
             isSubmitting = false;
             return false;
@@ -513,6 +519,7 @@ select.with-icon { padding-left: 38px !important; }
           const name = form.name.value.trim();
           const phone = form.phone.value.trim();
           const email = (form.email &amp;&amp; form.email.value ? form.email.value : '').trim();
+          const area = (form.area &amp;&amp; form.area.value ? form.area.value : 'indoor').trim();
           const pax = parseInt(form.pax.value,10);
           const date = form.date.value;
           const time = form.time.value;
@@ -553,9 +560,14 @@ select.with-icon { padding-left: 38px !important; }
           fd.append('date', date);
           fd.append('time', time);
           fd.append('pax', pax);
+          fd.append('area', area || 'indoor');
           fd.append('cf_token', turnstileRes);
 
-          const url = WEBHOOK_URL + '?_t=' + Date.now();
+          const query = new URLSearchParams({ _t: String(Date.now()) });
+          if (tenantCompanyId) {
+            query.set('company_id', tenantCompanyId);
+          }
+          const url = WEBHOOK_URL + '?' + query.toString();
 
           try{
             const resp = await fetch(url,{method:'POST',body:fd});

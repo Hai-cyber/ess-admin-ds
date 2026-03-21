@@ -1,0 +1,129 @@
+{
+  "contract": "odoo_methods",
+  "version": "2026-03-19",
+  "status": "active",
+  "methods": [
+    {
+      "flow": "customers",
+      "name": "syncFounderRegisterToOdoo",
+      "transport": "http_webhook",
+      "endpoint_setting_key": "ODOO_FOUNDER_CREATE_WEBHOOK",
+      "http_method": "POST",
+      "trigger": "POST /api/founder/register or POST /api/kc/register",
+      "arguments": {
+        "payload_required": ["_model", "name", "phone", "company_id"],
+        "payload_optional": [
+          "email",
+          "x_studio_membership_type",
+          "x_studio_founder_status",
+          "x_studio_otp_verified",
+          "x_studio_notes"
+        ]
+      },
+      "expected_return": {
+        "ok": "boolean",
+        "skipped": "boolean when webhook is empty",
+        "error": "string when non-2xx"
+      },
+      "side_effects": [
+        "Outbound create or upsert request for res.partner in downstream integration."
+      ],
+      "downstream_odoo_rpc": {
+        "known": false,
+        "notes": "Worker delegates to webhook receiver; direct Odoo RPC method names are not in this codebase."
+      }
+    },
+    {
+      "flow": "customers",
+      "name": "syncFounderVerifyToOdoo",
+      "transport": "http_webhook",
+      "endpoint_setting_key": "ODOO_FOUNDER_VERIFY_WEBHOOK",
+      "http_method": "POST",
+      "trigger": "POST /api/founder/verify or POST /api/kc/verify",
+      "arguments": {
+        "payload_required": [
+          "_model",
+          "phone",
+          "x_studio_membership_type",
+          "x_studio_founder_status",
+          "x_studio_otp_verified",
+          "updated_at",
+          "company_id"
+        ],
+        "payload_optional": []
+      },
+      "expected_return": {
+        "ok": "boolean",
+        "skipped": "boolean when webhook is empty",
+        "error": "string when non-2xx"
+      },
+      "side_effects": [
+        "Outbound status update request for existing res.partner in downstream integration."
+      ],
+      "downstream_odoo_rpc": {
+        "known": false,
+        "notes": "Method resolution is owned by webhook receiver."
+      }
+    },
+    {
+      "flow": "bookings",
+      "name": "syncBookingStageToOdoo",
+      "transport": "http_webhook",
+      "endpoint_setting_key": "ODOO_BOOKING_STAGE_WEBHOOK",
+      "http_method": "POST",
+      "trigger": "POST /api/bookings/{bookingId}/stage",
+      "arguments": {
+        "payload_required": ["booking_id", "company_id", "stage", "changed_at"],
+        "payload_optional": ["stage_id", "odoo_lead_id", "changed_by"]
+      },
+      "expected_return": {
+        "ok": "boolean",
+        "skipped": "boolean when webhook is empty",
+        "error": "string when non-2xx"
+      },
+      "side_effects": [
+        "Outbound stage update request intended for crm.lead stage synchronization."
+      ],
+      "downstream_odoo_rpc": {
+        "known": false,
+        "notes": "Worker emits webhook payload only; direct Odoo write method is handled downstream."
+      }
+    },
+    {
+      "flow": "staff",
+      "name": "syncStaffToOdoo",
+      "transport": "http_webhook",
+      "endpoint_setting_key": "ODOO_STAFF_SYNC_WEBHOOK",
+      "http_method": "POST",
+      "trigger": "POST /api/admin/staff",
+      "arguments": {
+        "payload_required": [
+          "_model",
+          "action",
+          "staff_id",
+          "name",
+          "role",
+          "is_active",
+          "company_id",
+          "updated_at"
+        ],
+        "payload_optional": [
+          "permissions",
+          "updated_by"
+        ]
+      },
+      "expected_return": {
+        "ok": "boolean",
+        "skipped": "boolean when webhook is empty",
+        "error": "string when non-2xx"
+      },
+      "side_effects": [
+        "Outbound create or update request for staff records in downstream Odoo integration."
+      ],
+      "downstream_odoo_rpc": {
+        "known": false,
+        "notes": "Worker emits webhook payload only; downstream integration resolves Odoo model/method calls."
+      }
+    }
+  ]
+}

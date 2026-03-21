@@ -567,6 +567,7 @@
         companyId: null,
         staffId: null,
         staffName: null,
+        requestedCompanyId: null,
         soundEnabled: localStorage.getItem('soundEnabled') !== 'false',
         bookings: [],
         eventSource: null,
@@ -608,6 +609,7 @@
 
       // Initialize
       function init() {
+        state.requestedCompanyId = getRequestedCompanyIdFromLocation();
         loginForm.addEventListener('submit', handleLogin);
         logoutBtn.addEventListener('click', handleLogout);
         settingsBtn.addEventListener('click', () => settingsModal.style.display = 'flex');
@@ -621,6 +623,21 @@
         updateSoundToggleUI();
       }
 
+      function getRequestedCompanyIdFromLocation() {
+        try {
+          const raw = String(new URLSearchParams(window.location.search || '').get('company_id') || '').trim();
+          const value = Number(raw || 0);
+          return Number.isInteger(value) && value > 0 ? value : null;
+        } catch {
+          return null;
+        }
+      }
+
+      function requiresCompanyIdQueryOnHost() {
+        const host = String(window.location.hostname || '').toLowerCase();
+        return host === 'localhost' || host === '127.0.0.1' || host === '[::1]' || host.includes('workers.dev');
+      }
+
       // Login
       async function handleLogin(e) {
         e.preventDefault();
@@ -631,20 +648,38 @@
           return;
         }
 
+        if (!state.requestedCompanyId && requiresCompanyIdQueryOnHost()) {
+          showLoginError('Open this page with ?company_id=1 (or your tenant ID).');
+          return;
+        }
+
         loginError.style.display = 'none';
 
         try {
-          const res = await fetch(`/api/staff/auth?pin=${encodeURIComponent(pin)}`);
+          const params = new URLSearchParams({ pin: pin.trim() });
+          if (state.requestedCompanyId) {
+            params.set('company_id', String(state.requestedCompanyId));
+          }
+
+          const res = await fetch(`/api/staff/auth?${params.toString()}`);
           const data = await res.json();
 
           if (data.success) {
-            state.companyId = data.companyId;
+            state.companyId = Number(data.companyId || state.requestedCompanyId || 0) || null;
             state.staffId = data.staffId;
             state.staffName = data.staffName;
             showApp();
+            await loadInitialBookings();
             startSSEStream();
           } else {
-            showLoginError('Invalid PIN');
+            const err = String(data.error || '').toLowerCase();
+            if (err === 'tenant_required') {
+              showLoginError('Missing tenant context. Open with ?company_id=1 (or your tenant ID).');
+            } else if (err === 'company_id_override_not_allowed') {
+              showLoginError('company_id override is not allowed on this host. Use your tenant subdomain.');
+            } else {
+              showLoginError('Invalid PIN');
+            }
             pinInput.value = '';
             pinInput.focus();
           }
@@ -684,13 +719,31 @@
         appScreen.style.display = 'flex';
       }
 
+      async function loadInitialBookings() {
+        if (!state.companyId) return;
+
+        try {
+          const res = await fetch(`/api/bookings?company_id=${encodeURIComponent(state.companyId)}`);
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || !data.ok) {
+            console.warn('Unable to load initial bookings:', data.error || res.status);
+            return;
+          }
+
+          state.bookings = Array.isArray(data.data) ? data.data : [];
+          renderFeed();
+        } catch (err) {
+          console.warn('Initial bookings load failed:', err);
+        }
+      }
+
       // SSE Stream for Notifications
       function startSSEStream() {
         if (state.eventSource) {
           state.eventSource.close();
         }
 
-        const url = `/api/notifications/stream?company_id=${state.companyId}`;
+        const url = `/api/notifications/stream?company_id=${encodeURIComponent(state.companyId)}`;
         state.eventSource = new EventSource(url);
 
         state.eventSource.addEventListener('booking', (e) => {
@@ -846,7 +899,8 @@
         btn.disabled = true;
 
         try {
-          const res = await fetch(`/api/bookings/${bookingId}/stage`, {
+          const stageUrl = `/api/bookings/${encodeURIComponent(bookingId)}/stage?company_id=${encodeURIComponent(state.companyId)}`;
+          const res = await fetch(stageUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -858,11 +912,11 @@
 
           const data = await res.json();
 
-          if (data.success) {
+          if (res.ok && (data.ok || data.success)) {
             updateBookingStage(bookingId, newStage);
             showToast(`Booking updated to ${STAGE_LABELS[newStage]}`);
           } else {
-            showToast('Error updating booking', 'error');
+            showToast(data.error || 'Error updating booking', 'error');
           }
         } catch (err) {
           console.error('Update error:', err);

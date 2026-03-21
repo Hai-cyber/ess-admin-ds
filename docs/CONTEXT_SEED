@@ -1,0 +1,473 @@
+Anh, dưới đây là **Context Seed đầy đủ và chính xác với trạng thái hiện tại của dự án** để anh mở thread mới mà tôi (hoặc bất kỳ AI nào) vẫn bám đúng kiến trúc, không lệch logic.
+
+Anh chỉ cần **copy nguyên khối này sang thread mới**.
+
+---
+
+# CONTEXT SEED — Esskultur Cloudflare Platform (Development State)
+
+## 1. Project goal
+
+Build a **Restaurant Operating Platform** for Esskultur.
+
+The system architecture:
+
+```
+Cloudflare Workers = platform logic
+Cloudflare D1 = source of truth
+Odoo Online = ERP mirror
+Staff mobile web app = operation interface
+```
+
+The goal is to support:
+
+```
+multi-restaurant
+franchise model
+fully automated booking management
+```
+
+---
+
+# 2. Core architecture
+
+```
+Customer
+   ↓
+Website form
+   ↓
+Cloudflare Worker
+   ↓
+D1 database (source of truth)
+   ↓
+Staff mobile web app
+   ↓
+Odoo CRM / ERP mirror
+```
+
+Important rule:
+
+```
+Cloudflare D1 = master
+Odoo = mirror
+```
+
+---
+
+# 3. Cloudflare platform components
+
+The system runs on:
+
+```
+Cloudflare Workers
+Cloudflare D1
+Cloudflare KV (future)
+Cloudflare R2 (future)
+```
+
+Worker responsibilities:
+
+```
+booking API
+stage engine
+contact management
+admin UI
+staff mobile UI
+automation
+Odoo sync
+```
+
+---
+
+# 4. Repository
+
+Git repository:
+
+```
+github.com/Hai-cyber/ess-admin-ds
+```
+
+Project structure:
+
+```
+ess-admin-ds
+├── migrations
+├── public
+│   ├── index.html
+│   ├── app.js
+│   └── style.css
+├── src
+│   └── index.js
+├── test
+├── package.json
+└── wrangler.jsonc
+```
+
+Important note:
+
+```
+admin.html
+admin.js
+are NOT currently in the repository yet
+```
+
+These files existed on another machine but were not successfully synced to the Mac clone.
+
+---
+
+# 5. Database
+
+Cloudflare D1 database.
+
+Source of truth for:
+
+```
+contacts
+bookings
+memberships
+stage history
+restaurants
+```
+
+---
+
+## bookings table (important fields)
+
+```
+id
+restaurant_id
+contact_id
+odoo_lead_id
+
+type
+name
+team_id
+stage_id
+
+contact_name
+phone
+email_from
+
+x_studio_booking_datetime
+x_studio_guests
+x_studio_area
+x_studio_flag
+x_studio_staff
+x_studio_duration_min
+x_studio_submitted_at
+x_studio_source
+x_studio_notes
+
+booking_date
+booking_time
+
+x_studio_stage_runtime
+x_studio_required_blocks
+
+telegram_message_id
+
+x_studio_sync_status
+x_studio_sync_error
+
+created_at
+updated_at
+```
+
+---
+
+# 6. Stage system
+
+Booking stage runtime values:
+
+```
+pending
+confirmed
+arrived
+done
+cancelled
+noshow
+```
+
+Stage mapping to Odoo:
+
+```
+pending    → 1
+confirmed  → 2
+arrived    → 3
+done       → 4
+cancelled  → 5
+noshow     → 6
+```
+
+Cloudflare stage engine controls:
+
+```
+stage_runtime
+stage_id
+```
+
+Odoo only mirrors `stage_id`.
+
+---
+
+# 7. Current APIs implemented
+
+### list bookings
+
+```
+GET /api/admin/bookings
+```
+
+Returns:
+
+```
+items[]
+```
+
+Fields include:
+
+```
+booking_time
+contact_name
+phone
+x_studio_guests
+x_studio_required_blocks
+x_studio_stage_runtime
+x_studio_source
+updated_at
+```
+
+---
+
+### change stage
+
+```
+POST /api/admin/stage
+```
+
+Payload:
+
+```
+{
+  booking_id,
+  stage
+}
+```
+
+Worker updates:
+
+```
+stage_runtime
+stage_id
+updated_at
+```
+
+and logs event into:
+
+```
+booking_stage_log
+```
+
+---
+
+# 8. Admin UI (development)
+
+Admin UI is a simple web page served by Worker.
+
+Purpose:
+
+```
+inspect bookings
+change stage
+debug system
+```
+
+Features implemented:
+
+```
+table view
+search
+stage buttons
+reload
+booking detail JSON
+```
+
+But **admin UI files are missing in the Mac clone**.
+
+---
+
+# 9. Staff interface plan
+
+Telegram will eventually be removed.
+
+Staff interface will be a **mobile web app**.
+
+Pages planned:
+
+```
+/staff
+summary dashboard
+
+/staff/day?date=YYYY-MM-DD
+booking list
+
+/staff/booking?id=bk_xxx
+booking detail
+```
+
+Actions available:
+
+```
+confirm
+arrived
+done
+cancel
+noshow
+```
+
+---
+
+# 10. Odoo integration
+
+Odoo is **ERP mirror only**.
+
+Cloudflare sends:
+
+```
+create contact
+create lead
+update stage
+membership sync
+```
+
+Odoo may send back webhook events.
+
+But rule remains:
+
+```
+D1 = source of truth
+```
+
+---
+
+# 11. Development environment
+
+Local dev server:
+
+```
+npx wrangler dev
+```
+
+Local URL:
+
+```
+http://localhost:8787
+```
+
+Admin UI expected:
+
+```
+/admin.html
+```
+
+---
+
+# 12. Current issue on Mac machine
+
+Repository clone succeeded.
+
+But missing files:
+
+```
+public/admin.html
+public/admin.js
+```
+
+Likely cause:
+
+```
+files not committed or pushed from previous machine
+```
+
+---
+
+# 13. Next development steps
+
+Next tasks in platform development:
+
+1. restore admin UI files
+
+2. implement:
+
+```
+GET /api/admin/booking
+```
+
+3. implement:
+
+```
+stage history API
+```
+
+4. build:
+
+```
+staff mobile interface
+```
+
+5. implement:
+
+```
+Odoo sync worker
+```
+
+---
+
+# 14. Design principles
+
+The platform must be:
+
+```
+stable
+deterministic
+simple
+serverless
+```
+
+Avoid:
+
+```
+business logic in Odoo
+manual staff workflows
+Make.com dependency
+```
+
+Cloudflare must control:
+
+```
+booking logic
+capacity logic
+stage engine
+```
+
+---
+
+# 15. Key architectural rule
+
+Always remember:
+
+```
+Cloudflare = platform
+D1 = source of truth
+Odoo = ERP mirror
+```
+
+---
+
+Anh chỉ cần paste seed này vào thread mới và nói:
+
+```
+Continue Esskultur Cloudflare platform development
+```
+
+là tôi có thể **tiếp tục ngay đúng vị trí anh đang đứng**, không bị lệch kiến trúc.--- và tạo dev notes trong repo của dự án, để mỗi lần lấy ra có thể bám sườn-

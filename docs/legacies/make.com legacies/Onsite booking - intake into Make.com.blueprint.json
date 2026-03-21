@@ -1,0 +1,1447 @@
+{
+    "name": "Onsite booking - intake into Make.com",
+    "flow": [
+        {
+            "id": 1,
+            "module": "gateway:CustomWebHook",
+            "version": 1,
+            "parameters": {
+                "hook": 2611206,
+                "maxResults": 1
+            },
+            "mapper": {},
+            "metadata": {
+                "designer": {
+                    "x": -2702,
+                    "y": -27
+                },
+                "restore": {
+                    "parameters": {
+                        "hook": {
+                            "data": {
+                                "editable": "true"
+                            },
+                            "label": "Onsite Booking Platform - Make CREATE"
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "hook",
+                        "type": "hook:gateway-webhook",
+                        "label": "Webhook",
+                        "required": true
+                    },
+                    {
+                        "name": "maxResults",
+                        "type": "number",
+                        "label": "Maximum number of results"
+                    }
+                ]
+            }
+        },
+        {
+            "id": 2,
+            "module": "phonenumber:TransformerParseNumber",
+            "version": 1,
+            "parameters": {},
+            "filter": {
+                "name": "Filter Cloudflare",
+                "conditions": [
+                    [
+                        {
+                            "a": "{{1.worker_secret}}",
+                            "b": "my-super-secret",
+                            "o": "text:equal"
+                        }
+                    ]
+                ]
+            },
+            "mapper": {
+                "number": "{{1.phone}}",
+                "defaultCountry": "DE"
+            },
+            "metadata": {
+                "designer": {
+                    "x": -2551,
+                    "y": 245
+                },
+                "restore": {
+                    "expect": {
+                        "defaultCountry": {
+                            "mode": "chose",
+                            "label": "Germany (DE)"
+                        }
+                    }
+                },
+                "expect": [
+                    {
+                        "name": "number",
+                        "type": "text",
+                        "label": "Phone number",
+                        "required": true
+                    },
+                    {
+                        "name": "defaultCountry",
+                        "type": "select",
+                        "label": "Default country for parsing",
+                        "required": true,
+                        "validate": {
+                            "enum": [
+                                "AC",
+                                "AD",
+                                "AE",
+                                "AF",
+                                "AG",
+                                "AI",
+                                "AL",
+                                "AM",
+                                "AO",
+                                "AQ",
+                                "AR",
+                                "AS",
+                                "AT",
+                                "AU",
+                                "AW",
+                                "AX",
+                                "AZ",
+                                "BA",
+                                "BB",
+                                "BD",
+                                "BE",
+                                "BF",
+                                "BG",
+                                "BH",
+                                "BI",
+                                "BJ",
+                                "BL",
+                                "BM",
+                                "BN",
+                                "BO",
+                                "BQ",
+                                "BR",
+                                "BS",
+                                "BT",
+                                "BV",
+                                "BW",
+                                "BY",
+                                "BZ",
+                                "CA",
+                                "CC",
+                                "CD",
+                                "CF",
+                                "CG",
+                                "CH",
+                                "CI",
+                                "CK",
+                                "CL",
+                                "CM",
+                                "CN",
+                                "CO",
+                                "CP",
+                                "CR",
+                                "CU",
+                                "CV",
+                                "CW",
+                                "CX",
+                                "CY",
+                                "CZ",
+                                "DE",
+                                "DG",
+                                "DJ",
+                                "DK",
+                                "DM",
+                                "DO",
+                                "DZ",
+                                "EA",
+                                "EC",
+                                "EE",
+                                "EG",
+                                "EH",
+                                "ER",
+                                "ES",
+                                "ET",
+                                "EU",
+                                "FI",
+                                "FJ",
+                                "FK",
+                                "FM",
+                                "FO",
+                                "FR",
+                                "FX",
+                                "GA",
+                                "GB",
+                                "GD",
+                                "GE",
+                                "GF",
+                                "GG",
+                                "GH",
+                                "GI",
+                                "GL",
+                                "GM",
+                                "GN",
+                                "GP",
+                                "GQ",
+                                "GR",
+                                "GS",
+                                "GT",
+                                "GU",
+                                "GW",
+                                "GY",
+                                "HK",
+                                "HM",
+                                "HN",
+                                "HR",
+                                "HT",
+                                "HU",
+                                "IC",
+                                "ID",
+                                "IE",
+                                "IL",
+                                "IM",
+                                "IN",
+                                "IO",
+                                "IQ",
+                                "IR",
+                                "IS",
+                                "IT",
+                                "JE",
+                                "JM",
+                                "JO",
+                                "JP",
+                                "KE",
+                                "KG",
+                                "KH",
+                                "KI",
+                                "KM",
+                                "KN",
+                                "KP",
+                                "KR",
+                                "KW",
+                                "KY",
+                                "KZ",
+                                "LA",
+                                "LB",
+                                "LC",
+                                "LI",
+                                "LK",
+                                "LR",
+                                "LS",
+                                "LT",
+                                "LU",
+                                "LV",
+                                "LY",
+                                "MA",
+                                "MC",
+                                "MD",
+                                "ME",
+                                "MF",
+                                "MG",
+                                "MH",
+                                "MK",
+                                "ML",
+                                "MM",
+                                "MN",
+                                "MO",
+                                "MP",
+                                "MQ",
+                                "MR",
+                                "MS",
+                                "MT",
+                                "MU",
+                                "MV",
+                                "MW",
+                                "MX",
+                                "MY",
+                                "MZ",
+                                "NA",
+                                "NC",
+                                "NE",
+                                "NF",
+                                "NG",
+                                "NI",
+                                "NL",
+                                "NO",
+                                "NP",
+                                "NR",
+                                "NU",
+                                "NZ",
+                                "OM",
+                                "PA",
+                                "PE",
+                                "PF",
+                                "PG",
+                                "PH",
+                                "PK",
+                                "PL",
+                                "PM",
+                                "PN",
+                                "PR",
+                                "PS",
+                                "PT",
+                                "PW",
+                                "PY",
+                                "QA",
+                                "RE",
+                                "RO",
+                                "RS",
+                                "RU",
+                                "RW",
+                                "SA",
+                                "SB",
+                                "SC",
+                                "SD",
+                                "SE",
+                                "SG",
+                                "SH",
+                                "SI",
+                                "SJ",
+                                "SK",
+                                "SL",
+                                "SM",
+                                "SN",
+                                "SO",
+                                "SR",
+                                "SS",
+                                "ST",
+                                "SU",
+                                "SV",
+                                "SX",
+                                "SY",
+                                "SZ",
+                                "TA",
+                                "TC",
+                                "TD",
+                                "TF",
+                                "TG",
+                                "TH",
+                                "TJ",
+                                "TK",
+                                "TL",
+                                "TM",
+                                "TN",
+                                "TO",
+                                "TR",
+                                "TT",
+                                "TV",
+                                "TW",
+                                "TZ",
+                                "UA",
+                                "UG",
+                                "UM",
+                                "US",
+                                "UY",
+                                "UZ",
+                                "VA",
+                                "VC",
+                                "VE",
+                                "VG",
+                                "VI",
+                                "VN",
+                                "VU",
+                                "WF",
+                                "WS",
+                                "YE",
+                                "YT",
+                                "ZA",
+                                "ZM",
+                                "ZW"
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "id": 3,
+            "module": "odoo:makeApiCall",
+            "version": 1,
+            "parameters": {
+                "__IMTCONN__": 5613607
+            },
+            "mapper": {
+                "action": "create",
+                "entity": "crm.lead",
+                "headers": [
+                    {
+                        "key": "Content-Type",
+                        "value": "text/xml; charset=utf-8"
+                    }
+                ],
+                "parameters": "[\r\n  {\r\n    \"type\": \"opportunity\",\n    \"name\": \"Reservation\",\n    \"team_id\": 5,\n    \"stage_id\": \"1\",\n    \"contact_name\": \"{{1.name}}\",\r\n    \"phone\": \"{{2.e164}}\",\r\n    \"email_from\": \"{{1.email}}\",\n    \"x_studio_booking_datetime\": \"{{1.date}} {{1.time}}\",\n    \"x_studio_guests\": \"{{1.guests}}\",\n    \"x_studio_area\": \"{{1.area}}\",\n  \"x_studio_flag\": \"{{1.flag}}\",\n  \"x_studio_staff\": \"{{1.staff_user}}\",\n  \"x_studio_duration_min\": \"{{1.duration}}\",\n  \"x_studio_submitted_at\": \"{{formatDate(now; \"YYYY-MM-DD HH:mm:ss\")}}\",\n  \"x_studio_source\": \"\",\n  \"x_studio_notes\": \"{{1.notes}}\"  \r\n  }\r\n]"
+            },
+            "metadata": {
+                "designer": {
+                    "x": -2304,
+                    "y": 262
+                },
+                "restore": {
+                    "expect": {
+                        "action": {
+                            "mode": "chose",
+                            "label": "Create Records"
+                        },
+                        "headers": {
+                            "mode": "chose",
+                            "items": [
+                                null
+                            ]
+                        }
+                    },
+                    "parameters": {
+                        "__IMTCONN__": {
+                            "data": {
+                                "scoped": "true",
+                                "connection": "odoo"
+                            },
+                            "label": "My Odoo connection"
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "__IMTCONN__",
+                        "type": "account:odoo",
+                        "label": "Connection",
+                        "required": true
+                    }
+                ],
+                "expect": [
+                    {
+                        "name": "entity",
+                        "type": "text",
+                        "label": "Entity",
+                        "required": true
+                    },
+                    {
+                        "name": "action",
+                        "type": "select",
+                        "label": "Action",
+                        "required": true,
+                        "validate": {
+                            "enum": [
+                                "search",
+                                "search_count",
+                                "read",
+                                "fields_get",
+                                "search_read",
+                                "create",
+                                "write",
+                                "unlink"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "parameters",
+                        "type": "text",
+                        "label": "Parameters"
+                    },
+                    {
+                        "name": "headers",
+                        "spec": [
+                            {
+                                "name": "key",
+                                "type": "text",
+                                "label": "Key"
+                            },
+                            {
+                                "name": "value",
+                                "type": "text",
+                                "label": "Value"
+                            }
+                        ],
+                        "type": "array",
+                        "label": "Headers"
+                    }
+                ]
+            }
+        },
+        {
+            "id": 5,
+            "module": "datastore:AddRecord",
+            "version": 1,
+            "parameters": {
+                "datastore": 102092
+            },
+            "mapper": {
+                "key": "{{3.body}}",
+                "data": {
+                    "pax": "{{1.pax}}",
+                    "area": "{{1.area}}",
+                    "date": "{{1.date}}",
+                    "flag": "{{1.flag}}",
+                    "phone": "{{2.e164}}",
+                    "staff": "{{1.staff_user}}",
+                    "stage": "{{1.stage}}",
+                    "source": "onsite",
+                    "chat_id": "",
+                    "duration": "{{1.duration}}",
+                    "stage_id": "1",
+                    "start_at": "{{1.time}}",
+                    "booking_id": "{{3.body}}",
+                    "created_by": "{{1.created_by}}",
+                    "message_id": "",
+                    "updated_at": "",
+                    "updated_by": "",
+                    "contact_name": "{{1.guest_name}}",
+                    "submitted_at": "{{formatDate(now; \"YYYY-MM-DD HH:mm:ss\")}}",
+                    "x_studio_booking_datetime": "{{1.date}}{{1.time}}"
+                },
+                "overwrite": true
+            },
+            "metadata": {
+                "designer": {
+                    "x": -2305,
+                    "y": 16
+                },
+                "restore": {
+                    "expect": {
+                        "overwrite": {
+                            "mode": "chose"
+                        }
+                    },
+                    "parameters": {
+                        "datastore": {
+                            "label": "Reservation datastore"
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "datastore",
+                        "type": "datastore",
+                        "label": "Data store",
+                        "required": true
+                    }
+                ],
+                "expect": [
+                    {
+                        "name": "key",
+                        "type": "text",
+                        "label": "Key"
+                    },
+                    {
+                        "name": "overwrite",
+                        "type": "boolean",
+                        "label": "Overwrite an existing record",
+                        "required": true
+                    },
+                    {
+                        "name": "data",
+                        "spec": [
+                            {
+                                "name": "booking_id",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "chat_id",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "message_id",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "contact_name",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "phone",
+                                "type": "number",
+                                "label": null
+                            },
+                            {
+                                "name": "pax",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "x_studio_booking_datetime",
+                                "type": "date",
+                                "label": null
+                            },
+                            {
+                                "name": "date",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "start_at",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "duration",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "staff",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "area",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "flag",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "submitted_at",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "created_by",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "updated_at",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "stage_id",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "stage",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "updated_by",
+                                "type": "text",
+                                "label": null
+                            },
+                            {
+                                "name": "source",
+                                "type": "text",
+                                "label": null
+                            }
+                        ],
+                        "type": "collection",
+                        "label": "Record"
+                    }
+                ]
+            }
+        },
+        {
+            "id": 10,
+            "module": "builtin:BasicRouter",
+            "version": 1,
+            "mapper": null,
+            "metadata": {
+                "designer": {
+                    "x": -2077,
+                    "y": 209
+                }
+            },
+            "routes": [
+                {
+                    "flow": [
+                        {
+                            "id": 7,
+                            "module": "telegram:SendReplyMessage",
+                            "version": 1,
+                            "parameters": {
+                                "__IMTCONN__": 5783414
+                            },
+                            "mapper": {
+                                "text": "🍽 Booking #{{3.body}}\n{{1.name}} • {{1.pax}} pax\n🕒 {{1.date}} - {{1.time}} - {{1.duration}} min\n📍 {{1.area}}\n\nStatus: pending",
+                                "chatId": "-5101793550",
+                                "parseMode": "",
+                                "replyMarkup": "{\n  \"inline_keyboard\": [\n    [\n      { \"text\": \"Confirm\", \"callback_data\": \"stage|{{3.body}}|confirmed\" },\n      { \"text\": \"Cancel\", \"callback_data\": \"stage|{{3.body}}|cancelled\" }\n    ]\n  ]\n}",
+                                "messageThreadId": "",
+                                "replyToMessageId": "",
+                                "replyMarkupAssembleType": "reply_markup_enter"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": -1800,
+                                    "y": 20
+                                },
+                                "restore": {
+                                    "expect": {
+                                        "parseMode": {
+                                            "label": "Empty"
+                                        },
+                                        "disableNotification": {
+                                            "mode": "chose"
+                                        },
+                                        "replyMarkupAssembleType": {
+                                            "label": "Enter the Reply Markup"
+                                        }
+                                    },
+                                    "parameters": {
+                                        "__IMTCONN__": {
+                                            "data": {
+                                                "scoped": "true",
+                                                "connection": "telegram"
+                                            },
+                                            "label": "My Telegram Bot connection"
+                                        }
+                                    }
+                                },
+                                "parameters": [
+                                    {
+                                        "name": "__IMTCONN__",
+                                        "type": "account:telegram",
+                                        "label": "Connection",
+                                        "required": true
+                                    }
+                                ],
+                                "expect": [
+                                    {
+                                        "name": "chatId",
+                                        "type": "text",
+                                        "label": "Chat ID",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "text",
+                                        "type": "text",
+                                        "label": "Text",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "messageThreadId",
+                                        "type": "number",
+                                        "label": "Message Thread ID"
+                                    },
+                                    {
+                                        "name": "parseMode",
+                                        "type": "select",
+                                        "label": "Parse Mode",
+                                        "validate": {
+                                            "enum": [
+                                                "Markdown",
+                                                "HTML"
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "name": "disableNotification",
+                                        "type": "boolean",
+                                        "label": "Disable Notifications"
+                                    },
+                                    {
+                                        "name": "disableWebPagePreview",
+                                        "type": "boolean",
+                                        "label": "Disable Link Previews"
+                                    },
+                                    {
+                                        "name": "replyToMessageId",
+                                        "type": "number",
+                                        "label": "Original Message ID"
+                                    },
+                                    {
+                                        "name": "replyMarkupAssembleType",
+                                        "type": "select",
+                                        "label": "Enter/Assemble the Reply Markup Field",
+                                        "validate": {
+                                            "enum": [
+                                                "reply_markup_enter",
+                                                "reply_markup_assemble"
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "name": "replyMarkup",
+                                        "type": "text",
+                                        "label": "Reply Markup"
+                                    }
+                                ],
+                                "advanced": true
+                            }
+                        },
+                        {
+                            "id": 9,
+                            "module": "datastore:UpdateRecord",
+                            "version": 1,
+                            "parameters": {
+                                "datastore": 102092
+                            },
+                            "mapper": {
+                                "key": "{{5.key}}",
+                                "data": {
+                                    "pax": "",
+                                    "area": "",
+                                    "date": "",
+                                    "flag": "",
+                                    "phone": "",
+                                    "staff": "",
+                                    "stage": "",
+                                    "source": "",
+                                    "chat_id": "{{7.chat.id}}",
+                                    "duration": "",
+                                    "stage_id": "",
+                                    "start_at": "",
+                                    "booking_id": "",
+                                    "created_by": "",
+                                    "message_id": "{{7.message_id}}",
+                                    "updated_at": "",
+                                    "updated_by": "",
+                                    "contact_name": "",
+                                    "submitted_at": "",
+                                    "x_studio_booking_datetime": ""
+                                },
+                                "upsert": true,
+                                "overwriteArrays": true
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": -1689,
+                                    "y": 262
+                                },
+                                "restore": {
+                                    "expect": {
+                                        "upsert": {
+                                            "mode": "chose"
+                                        },
+                                        "overwriteArrays": {
+                                            "mode": "chose"
+                                        }
+                                    },
+                                    "parameters": {
+                                        "datastore": {
+                                            "label": "Reservation datastore"
+                                        }
+                                    }
+                                },
+                                "parameters": [
+                                    {
+                                        "name": "datastore",
+                                        "type": "datastore",
+                                        "label": "Data store",
+                                        "required": true
+                                    }
+                                ],
+                                "expect": [
+                                    {
+                                        "name": "key",
+                                        "type": "text",
+                                        "label": "Key",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "upsert",
+                                        "type": "boolean",
+                                        "label": "Insert missing record",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "overwriteArrays",
+                                        "type": "boolean",
+                                        "label": "Overwrite an existing array in the record",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "data",
+                                        "spec": [
+                                            {
+                                                "name": "booking_id",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "chat_id",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "message_id",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "contact_name",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "phone",
+                                                "type": "number",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "pax",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "x_studio_booking_datetime",
+                                                "type": "date",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "date",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "start_at",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "duration",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "staff",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "area",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "flag",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "submitted_at",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "created_by",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "updated_at",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "stage_id",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "stage",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "updated_by",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "source",
+                                                "type": "text",
+                                                "label": null
+                                            }
+                                        ],
+                                        "type": "collection",
+                                        "label": "Record"
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "flow": [
+                        {
+                            "id": 11,
+                            "module": "http:MakeRequest",
+                            "version": 4,
+                            "parameters": {
+                                "tlsType": "",
+                                "proxyKeychain": "",
+                                "authenticationType": "noAuth"
+                            },
+                            "mapper": {
+                                "url": "https://quan-esskultur.divine-shape-9f0a.workers.dev/api/board-sync",
+                                "method": "post",
+                                "headers": [
+                                    {
+                                        "name": "CF-Access-Client-Id",
+                                        "value": "886e4bc8155e30f24c7414af7ccf1966.access"
+                                    },
+                                    {
+                                        "name": "CF-Access-Client-Secret",
+                                        "value": "8298d543d3f652217274895be93162c6c596c21944ddc4393729aae75900fdea"
+                                    }
+                                ],
+                                "contentType": "json",
+                                "inputMethod": "dataStructure",
+                                "shareCookies": false,
+                                "parseResponse": true,
+                                "allowRedirects": true,
+                                "stopOnHttpError": true,
+                                "bodyDataStructure": 330074,
+                                "dataStructureBodyContent": {
+                                    "pax": "{{1.pax}}",
+                                    "area": "{{1.area}}",
+                                    "date": "{{1.date}}",
+                                    "flag": "{{1.flag}}",
+                                    "phone": "{{2.e164}}",
+                                    "staff": "{{1.staff_user}}",
+                                    "stage": "pending",
+                                    "duration": "{{1.duration}}",
+                                    "stage_id": "1",
+                                    "start_at": "{{1.time}}",
+                                    "booking_id": "{{3.body}}",
+                                    "created_by": "{{1.created_by}}",
+                                    "contact_name": "{{1.name}}",
+                                    "submitted_at": "{{formatDate(now; \"YYYY-MM-DD HH:mm:ss\")}}"
+                                },
+                                "requestCompressedContent": true
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": -2079,
+                                    "y": -201
+                                },
+                                "restore": {
+                                    "expect": {
+                                        "method": {
+                                            "mode": "chose",
+                                            "label": "POST"
+                                        },
+                                        "headers": {
+                                            "mode": "chose",
+                                            "items": [
+                                                null,
+                                                null
+                                            ]
+                                        },
+                                        "contentType": {
+                                            "label": "application/jsonEnter data in the JSON format, as a string or using a data structure."
+                                        },
+                                        "inputMethod": {
+                                            "label": "Data structureDefine the JSON body with a data structure to map or enter values for each key. JSON reserved characters are escaped automatically."
+                                        },
+                                        "shareCookies": {
+                                            "mode": "chose"
+                                        },
+                                        "parseResponse": {
+                                            "mode": "chose"
+                                        },
+                                        "allowRedirects": {
+                                            "mode": "chose"
+                                        },
+                                        "paginationType": {
+                                            "label": "Empty"
+                                        },
+                                        "queryParameters": {
+                                            "mode": "chose"
+                                        },
+                                        "stopOnHttpError": {
+                                            "mode": "chose"
+                                        },
+                                        "bodyDataStructure": {
+                                            "label": "Reservation Store"
+                                        },
+                                        "requestCompressedContent": {
+                                            "mode": "chose"
+                                        }
+                                    },
+                                    "parameters": {
+                                        "tlsType": {
+                                            "label": "Empty"
+                                        },
+                                        "proxyKeychain": {
+                                            "label": "Choose a key"
+                                        },
+                                        "authenticationType": {
+                                            "label": "No authenticationUse when no credentials are required for the request."
+                                        }
+                                    }
+                                },
+                                "parameters": [
+                                    {
+                                        "name": "authenticationType",
+                                        "type": "select",
+                                        "label": "Authentication type",
+                                        "required": true,
+                                        "validate": {
+                                            "enum": [
+                                                "noAuth",
+                                                "apiKey",
+                                                "basicAuth",
+                                                "oAuth"
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "name": "tlsType",
+                                        "type": "select",
+                                        "label": "Transport layer security (TLS)",
+                                        "validate": {
+                                            "enum": [
+                                                "mTls",
+                                                "tls"
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "name": "proxyKeychain",
+                                        "type": "keychain:proxy",
+                                        "label": "Proxy"
+                                    }
+                                ],
+                                "expect": [
+                                    {
+                                        "name": "url",
+                                        "type": "url",
+                                        "label": "URL",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "method",
+                                        "type": "select",
+                                        "label": "Method",
+                                        "required": true,
+                                        "validate": {
+                                            "enum": [
+                                                "get",
+                                                "head",
+                                                "post",
+                                                "put",
+                                                "patch",
+                                                "delete",
+                                                "options"
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "name": "headers",
+                                        "spec": {
+                                            "name": "value",
+                                            "spec": [
+                                                {
+                                                    "name": "name",
+                                                    "type": "text",
+                                                    "label": "Name",
+                                                    "required": true,
+                                                    "validate": {
+                                                        "pattern": "^[-!#$%&'*+.^_`|~0-9A-Za-z]+$"
+                                                    }
+                                                },
+                                                {
+                                                    "name": "value",
+                                                    "type": "text",
+                                                    "label": "Value"
+                                                }
+                                            ],
+                                            "type": "collection",
+                                            "label": "Header"
+                                        },
+                                        "type": "array",
+                                        "label": "Headers"
+                                    },
+                                    {
+                                        "name": "queryParameters",
+                                        "spec": {
+                                            "name": "value",
+                                            "spec": [
+                                                {
+                                                    "name": "name",
+                                                    "type": "text",
+                                                    "label": "Name",
+                                                    "required": true
+                                                },
+                                                {
+                                                    "name": "value",
+                                                    "type": "text",
+                                                    "label": "Value"
+                                                }
+                                            ],
+                                            "type": "collection",
+                                            "label": "Parameter"
+                                        },
+                                        "type": "array",
+                                        "label": "Query parameters"
+                                    },
+                                    {
+                                        "name": "contentType",
+                                        "type": "select",
+                                        "label": "Body content type",
+                                        "validate": {
+                                            "enum": [
+                                                "json",
+                                                "multipart",
+                                                "urlEncoded",
+                                                "custom"
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "name": "parseResponse",
+                                        "type": "boolean",
+                                        "label": "Parse response",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "stopOnHttpError",
+                                        "type": "boolean",
+                                        "label": "Return error if HTTP request fails",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "timeout",
+                                        "type": "uinteger",
+                                        "label": "Timeout",
+                                        "validate": {
+                                            "max": 300,
+                                            "min": 1
+                                        }
+                                    },
+                                    {
+                                        "name": "allowRedirects",
+                                        "type": "boolean",
+                                        "label": "Allow redirects",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "shareCookies",
+                                        "type": "boolean",
+                                        "label": "Share cookies with other HTTP modules",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "requestCompressedContent",
+                                        "type": "boolean",
+                                        "label": "Request compressed content",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "inputMethod",
+                                        "type": "select",
+                                        "label": "Body input method",
+                                        "required": true,
+                                        "validate": {
+                                            "enum": [
+                                                "dataStructure",
+                                                "jsonString"
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "name": "bodyDataStructure",
+                                        "type": "udt",
+                                        "label": "Body structure",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "dataStructureBodyContent",
+                                        "spec": [
+                                            {
+                                                "name": "booking_id",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "chat_id",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "message_id",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "contact_name",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "phone",
+                                                "type": "number",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "pax",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "x_studio_booking_datetime",
+                                                "type": "date",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "date",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "start_at",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "duration",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "staff",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "area",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "flag",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "submitted_at",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "created_by",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "updated_at",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "stage_id",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "stage",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "updated_by",
+                                                "type": "text",
+                                                "label": null
+                                            },
+                                            {
+                                                "name": "source",
+                                                "type": "text",
+                                                "label": null
+                                            }
+                                        ],
+                                        "type": "collection",
+                                        "label": "Body content"
+                                    },
+                                    {
+                                        "name": "paginationType",
+                                        "type": "select",
+                                        "label": "Pagination type",
+                                        "validate": {
+                                            "enum": [
+                                                "offsetBased",
+                                                "pageBased",
+                                                "urlBased",
+                                                "tokenBased"
+                                            ]
+                                        }
+                                    }
+                                ],
+                                "interface": [
+                                    {
+                                        "name": "data",
+                                        "type": "any",
+                                        "label": "Data"
+                                    },
+                                    {
+                                        "name": "statusCode",
+                                        "type": "number",
+                                        "label": "Status Code"
+                                    },
+                                    {
+                                        "name": "headers",
+                                        "spec": [
+                                            {
+                                                "name": "content-length",
+                                                "type": "text",
+                                                "label": "Content-Length"
+                                            },
+                                            {
+                                                "name": "content-encoding",
+                                                "type": "text",
+                                                "label": "Content-Encoding"
+                                            },
+                                            {
+                                                "name": "content-type",
+                                                "type": "text",
+                                                "label": "Content-Type"
+                                            },
+                                            {
+                                                "name": "server",
+                                                "type": "text",
+                                                "label": "Server"
+                                            },
+                                            {
+                                                "name": "cache-control",
+                                                "type": "text",
+                                                "label": "Cache-Control"
+                                            },
+                                            {
+                                                "name": "set-cookie",
+                                                "spec": {
+                                                    "type": "text"
+                                                },
+                                                "type": "array",
+                                                "label": "Set-Cookie"
+                                            }
+                                        ],
+                                        "type": "collection",
+                                        "label": "Headers"
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "metadata": {
+        "instant": true,
+        "version": 1,
+        "scenario": {
+            "roundtrips": 1,
+            "maxErrors": 10,
+            "autoCommit": true,
+            "autoCommitTriggerLast": true,
+            "sequential": false,
+            "slots": null,
+            "confidential": false,
+            "dataloss": false,
+            "dlq": false,
+            "freshVariables": false
+        },
+        "designer": {
+            "orphans": []
+        },
+        "zone": "eu1.make.com",
+        "notes": []
+    }
+}

@@ -1,0 +1,10 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "ess-admin-ds",
+  "main": "src/index.js",
+  "compatibility_date": "2026-03-16",
+
+  "assets": {
+    "directory": "./public"
+  }
+}

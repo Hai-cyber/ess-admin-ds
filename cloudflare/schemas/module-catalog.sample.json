@@ -1,0 +1,36 @@
+{
+  "modules": [
+    {
+      "key": "module_seo_management",
+      "name": "SEO Management",
+      "category": "growth",
+      "default_enabled": false,
+      "tenant_visible": true,
+      "billing_plan_codes": ["seo_basic", "seo_pro"]
+    },
+    {
+      "key": "module_media_management",
+      "name": "Media Management",
+      "category": "growth",
+      "default_enabled": false,
+      "tenant_visible": true,
+      "billing_plan_codes": ["media_standard", "media_plus"]
+    },
+    {
+      "key": "module_membership_management",
+      "name": "Membership Management",
+      "category": "retention",
+      "default_enabled": true,
+      "tenant_visible": true,
+      "billing_plan_codes": ["membership_core"]
+    },
+    {
+      "key": "module_marketing_management",
+      "name": "Marketing Automation",
+      "category": "growth",
+      "default_enabled": false,
+      "tenant_visible": true,
+      "billing_plan_codes": ["marketing_core", "marketing_plus"]
+    }
+  ]
+}
