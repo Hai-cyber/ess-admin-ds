@@ -17,6 +17,9 @@ async function ensureColumn(db, tableName, columnName, columnDefinition) {
 
 async function ensureSchemaEvolution(db) {
   await ensureColumn(db, 'companies', 'organization_id', 'INTEGER');
+  await ensureColumn(db, 'platform_signups', 'follow_up_status', "TEXT DEFAULT 'new'");
+  await ensureColumn(db, 'platform_signups', 'follow_up_note', 'TEXT');
+  await ensureColumn(db, 'platform_signups', 'followed_up_at', 'TEXT');
 }
 
 /**

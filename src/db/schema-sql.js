@@ -183,6 +183,40 @@ CREATE TABLE IF NOT EXISTS settings (
   UNIQUE(company_id, key)
 );
 
+CREATE TABLE IF NOT EXISTS platform_contacts (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  email TEXT,
+  subject TEXT,
+  message TEXT NOT NULL,
+  submitted_at TEXT NOT NULL,
+  status TEXT DEFAULT 'new'
+);
+
+CREATE TABLE IF NOT EXISTS platform_signups (
+  id TEXT PRIMARY KEY,
+  company_id INTEGER,
+  organization_id INTEGER,
+  restaurant_name TEXT NOT NULL,
+  owner_email TEXT NOT NULL,
+  owner_phone TEXT,
+  subdomain TEXT NOT NULL,
+  plan TEXT NOT NULL,
+  website_template TEXT,
+  staff_users INTEGER DEFAULT 1,
+  country TEXT,
+  payment_status TEXT DEFAULT 'demo_paid',
+  due_today_eur REAL DEFAULT 0,
+  recurring_monthly_eur REAL DEFAULT 0,
+  follow_up_status TEXT DEFAULT 'new',
+  follow_up_note TEXT,
+  followed_up_at TEXT,
+  raw_payload_json TEXT,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (company_id) REFERENCES companies(id),
+  FOREIGN KEY (organization_id) REFERENCES organizations(id)
+);
+
 CREATE TABLE IF NOT EXISTS media_assets (
   id TEXT PRIMARY KEY,
   company_id INTEGER NOT NULL,
@@ -237,6 +271,9 @@ CREATE INDEX IF NOT EXISTS idx_booking_actions_company ON booking_actions(compan
 CREATE INDEX IF NOT EXISTS idx_contacts_company ON contacts(company_id);
 CREATE INDEX IF NOT EXISTS idx_staff_company ON staff(company_id);
 CREATE INDEX IF NOT EXISTS idx_settings_company ON settings(company_id);
+CREATE INDEX IF NOT EXISTS idx_platform_contacts_status ON platform_contacts(status);
+CREATE INDEX IF NOT EXISTS idx_platform_signups_company ON platform_signups(company_id);
+CREATE INDEX IF NOT EXISTS idx_platform_signups_email ON platform_signups(owner_email);
 CREATE INDEX IF NOT EXISTS idx_media_assets_company ON media_assets(company_id);
 CREATE INDEX IF NOT EXISTS idx_otp_company ON otp_cache(company_id);
 CREATE INDEX IF NOT EXISTS idx_telegram_company ON telegram_messages(company_id);

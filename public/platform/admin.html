@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Restaurant OS SaaS Admin</title>
+  <link rel="stylesheet" href="/platform/platform.css" />
+  <style>
+    body { background: var(--bg-2); }
+    .saas-shell { max-width: 1180px; margin: 0 auto; padding: 36px 24px 72px; }
+    .saas-header { margin-bottom: 28px; }
+    .saas-grid { display: grid; grid-template-columns: 1.1fr 1.2fr; gap: 24px; }
+    .saas-grid-bottom { display: grid; grid-template-columns: 1fr; gap: 24px; margin-top: 24px; }
+    .saas-card { background: white; border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 28px; }
+    .saas-card h2 { margin: 0 0 8px; font-size: 1.05rem; }
+    .saas-card p.meta { margin: 0 0 18px; color: var(--text-muted); font-size: 0.88rem; }
+    .saas-login { display: flex; gap: 10px; align-items: end; margin-top: 12px; flex-wrap: wrap; }
+    .saas-table { width: 100%; border-collapse: collapse; }
+    .saas-table th, .saas-table td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); font-size: 0.88rem; vertical-align: top; }
+    .badge-lite { display: inline-block; padding: 3px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; }
+    .badge-new { background: #eff6ff; color: #1d4ed8; }
+    .badge-contacted { background: #ecfdf5; color: #047857; }
+    .badge-won { background: #f0fdf4; color: #166534; }
+    .badge-lost { background: #fef2f2; color: #b91c1c; }
+    .pricing-form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .pricing-form .full { grid-column: 1 / -1; }
+    .lead-row { display: grid; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--border); }
+    .lead-row:last-child { border-bottom: none; }
+    .lead-top { display: flex; justify-content: space-between; gap: 12px; align-items: start; }
+    .lead-name { font-weight: 700; }
+    .lead-meta { font-size: 0.82rem; color: var(--text-muted); }
+    .lead-controls { display: grid; grid-template-columns: 180px 1fr auto; gap: 10px; align-items: start; }
+    @media (max-width: 980px) { .saas-grid { grid-template-columns: 1fr; } .pricing-form { grid-template-columns: 1fr; } .lead-controls { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div id="nav-placeholder"></div>
+
+  <div class="saas-shell">
+    <div class="saas-header">
+      <div class="section-tag">Operator Console</div>
+      <h1 style="margin:0 0 8px;font-size:2rem;">SaaS Admin</h1>
+      <p class="text-muted" style="max-width:720px;">This is the platform-side admin surface. It is intentionally simpler than tenant admin: website builder defaults, pricing, signup CRM-lite, and follow-up workflow.</p>
+    </div>
+
+    <div class="saas-card" style="margin-bottom:24px;">
+      <h2>Access</h2>
+      <p class="meta">Use the operator admin PIN. Default preview PIN on seeded data is <strong>1234</strong>.</p>
+      <div class="saas-login">
+        <div class="form-group" style="margin:0;min-width:180px;">
+          <label for="saas-pin">Operator Admin PIN</label>
+          <input id="saas-pin" type="password" placeholder="1234" />
+        </div>
+        <button class="btn btn-primary" onclick="loadSaasDashboard()">Load SaaS Admin</button>
+      </div>
+      <div id="saas-login-message" class="form-hint" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="saas-grid">
+      <div class="saas-card">
+        <h2>Platform Pricing</h2>
+        <p class="meta">Global SaaS-side pricing and extra costs for the public marketing website.</p>
+        <div class="pricing-form">
+          <div class="form-group"><label>Core €/user/month</label><input id="cfg_platform_core_price_per_user" type="number" step="0.01"></div>
+          <div class="form-group"><label>Commerce €/user/month</label><input id="cfg_platform_commerce_price_per_user" type="number" step="0.01"></div>
+          <div class="form-group"><label>Growth €/user/month</label><input id="cfg_platform_growth_price_per_user" type="number" step="0.01"></div>
+          <div class="form-group"><label>One-time setup €</label><input id="cfg_platform_setup_fee_once" type="number" step="0.01"></div>
+          <div class="form-group"><label>TSE monthly €</label><input id="cfg_platform_tse_fee_monthly" type="number" step="0.01"></div>
+          <div class="form-group"><label>IT support hourly €</label><input id="cfg_platform_it_support_hourly" type="number" step="0.01"></div>
+          <div class="form-group"><label>IT retainer monthly €</label><input id="cfg_platform_it_support_monthly" type="number" step="0.01"></div>
+          <div class="form-group full"><label>Pricing note</label><textarea id="cfg_platform_price_note"></textarea></div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:14px;">
+          <button class="btn btn-primary" onclick="saveSaasConfig()">Save pricing</button>
+        </div>
+      </div>
+
+      <div class="saas-card">
+        <h2>Signup CRM Lite</h2>
+        <p class="meta">Recent self-serve signups. Follow up manually for now; automation can be layered later.</p>
+        <div id="saas-signups-list"></div>
+      </div>
+    </div>
+
+    <div class="saas-grid-bottom">
+      <div class="saas-card">
+        <h2>Inbound Contact Leads</h2>
+        <p class="meta">Messages submitted from the platform contact form.</p>
+        <div id="saas-contacts-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="footer-placeholder"></div>
+
+  <script src="/platform/platform.js"></script>
+  <script>
+    let saasPin = '';
+    let saasDashboard = { pricingSettings: {}, signups: [], contacts: [] };
+
+    function statusBadge(status) {
+      const normalized = String(status || 'new').toLowerCase();
+      const css = ['new', 'contacted', 'won', 'lost'].includes(normalized) ? normalized : 'new';
+      return `<span class="badge-lite badge-${css}">${normalized}</span>`;
+    }
+
+    async function loadSaasDashboard() {
+      saasPin = String(document.getElementById('saas-pin')?.value || '').trim();
+      const msg = document.getElementById('saas-login-message');
+      if (!saasPin) {
+        msg.textContent = 'PIN required.';
+        return;
+      }
+
+      msg.textContent = 'Loading…';
+      const res = await fetch(`/api/platform/admin/dashboard?pin=${encodeURIComponent(saasPin)}`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
+        msg.textContent = data.error || 'Failed to load SaaS admin.';
+        return;
+      }
+
+      saasDashboard = data;
+      msg.textContent = `Loaded ${data.signups.length} signups and ${data.contacts.length} contact leads.`;
+      renderSaasPricing();
+      renderSaasSignups();
+      renderSaasContacts();
+    }
+
+    function renderSaasPricing() {
+      const settings = saasDashboard.pricingSettings || {};
+      [
+        'platform_core_price_per_user',
+        'platform_commerce_price_per_user',
+        'platform_growth_price_per_user',
+        'platform_setup_fee_once',
+        'platform_tse_fee_monthly',
+        'platform_it_support_hourly',
+        'platform_it_support_monthly',
+        'platform_price_note'
+      ].forEach((key) => {
+        const input = document.getElementById(`cfg_${key}`);
+        if (input) input.value = settings[key] || '';
+      });
+    }
+
+    function renderSaasSignups() {
+      const el = document.getElementById('saas-signups-list');
+      const signups = Array.isArray(saasDashboard.signups) ? saasDashboard.signups : [];
+      if (!signups.length) {
+        el.innerHTML = '<p class="text-muted">No signups yet.</p>';
+        return;
+      }
+
+      el.innerHTML = signups.map((row) => `
+        <div class="lead-row">
+          <div class="lead-top">
+            <div>
+              <div class="lead-name">${escapeHtml(row.restaurant_name || 'Unknown restaurant')}</div>
+              <div class="lead-meta">${escapeHtml(row.owner_email || '')} • ${escapeHtml(row.subdomain || '')} • plan: ${escapeHtml(row.plan || '')} • recurring: €${Number(row.recurring_monthly_eur || 0).toFixed(0)}</div>
+            </div>
+            <div>${statusBadge(row.follow_up_status || 'new')}</div>
+          </div>
+          <div class="lead-controls">
+            <select id="follow_status_${row.id}">
+              ${['new','contacted','won','lost'].map((value) => `<option value="${value}" ${String(row.follow_up_status || 'new') === value ? 'selected' : ''}>${value}</option>`).join('')}
+            </select>
+            <textarea id="follow_note_${row.id}" placeholder="Follow-up note">${escapeHtml(row.follow_up_note || '')}</textarea>
+            <button class="btn btn-sm btn-outline" onclick="saveFollowup('${row.id}')">Save</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function renderSaasContacts() {
+      const el = document.getElementById('saas-contacts-list');
+      const contacts = Array.isArray(saasDashboard.contacts) ? saasDashboard.contacts : [];
+      if (!contacts.length) {
+        el.innerHTML = '<p class="text-muted">No inbound contact leads yet.</p>';
+        return;
+      }
+
+      el.innerHTML = `
+        <table class="saas-table">
+          <thead>
+            <tr><th>Name</th><th>Email</th><th>Subject</th><th>Message</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            ${contacts.map((row) => `
+              <tr>
+                <td>${escapeHtml(row.name || '')}</td>
+                <td>${escapeHtml(row.email || '')}</td>
+                <td>${escapeHtml(row.subject || '')}</td>
+                <td>${escapeHtml(row.message || '')}</td>
+                <td>${escapeHtml(row.status || 'new')}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    async function saveSaasConfig() {
+      if (!saasPin) return alert('Load SaaS admin first.');
+      const values = {
+        platform_core_price_per_user: document.getElementById('cfg_platform_core_price_per_user')?.value || '',
+        platform_commerce_price_per_user: document.getElementById('cfg_platform_commerce_price_per_user')?.value || '',
+        platform_growth_price_per_user: document.getElementById('cfg_platform_growth_price_per_user')?.value || '',
+        platform_setup_fee_once: document.getElementById('cfg_platform_setup_fee_once')?.value || '',
+        platform_tse_fee_monthly: document.getElementById('cfg_platform_tse_fee_monthly')?.value || '',
+        platform_it_support_hourly: document.getElementById('cfg_platform_it_support_hourly')?.value || '',
+        platform_it_support_monthly: document.getElementById('cfg_platform_it_support_monthly')?.value || '',
+        platform_price_note: document.getElementById('cfg_platform_price_note')?.value || ''
+      };
+      const res = await fetch('/api/platform/admin/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: saasPin, values })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) return alert(data.error || 'Failed to save pricing');
+      saasDashboard.pricingSettings = data.pricingSettings || {};
+      renderSaasPricing();
+      alert('SaaS pricing saved.');
+    }
+
+    async function saveFollowup(signupId) {
+      if (!saasPin) return alert('Load SaaS admin first.');
+      const followUpStatus = document.getElementById(`follow_status_${signupId}`)?.value || 'new';
+      const followUpNote = document.getElementById(`follow_note_${signupId}`)?.value || '';
+      const res = await fetch('/api/platform/admin/signup-followup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: saasPin, signupId, followUpStatus, followUpNote })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) return alert(data.error || 'Failed to save follow-up');
+      await loadSaasDashboard();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const navEl = document.getElementById('nav-placeholder');
+      const footerEl = document.getElementById('footer-placeholder');
+      if (navEl) navEl.outerHTML = renderNav();
+      if (footerEl) footerEl.outerHTML = renderFooter();
+      applyLang();
+    });
+  </script>
+</body>
+</html>

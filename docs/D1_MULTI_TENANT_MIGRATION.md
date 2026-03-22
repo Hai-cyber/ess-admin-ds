@@ -108,13 +108,13 @@ All steps implemented:
 3. ✅ **Step-3**: Tenant resolution tests + error normalization
 
 **Documentation:**
-- #codebase docs/contracts/tenant.md (resolver contract)
-- #codebase docs/contracts/routes.md (route split + guard ordering)
-- #codebase docs/contracts/errors.md (error mapping table)
-- #codebase docs/contracts/sse.md (SSE architecture)
-- #codebase docs/contracts/tests.md (test summary)
-- #codebase docs/contracts/db-schema.md (DB schema + queries)
-- #codebase docs/contracts/modules.md (module descriptions)
-- #codebase docs/checkpoints/tenant-checkpoint.md (quick primer)
+- #codebase docs/contracts/SECURITY_CONTRACTS.md (tenant/auth resolver contract)
+- #codebase docs/contracts/API_CONTRACTS.md (route contract + SSE endpoint)
+- #codebase docs/contracts/ERROR_CONTRACTS.md (error mapping table)
+- #codebase docs/contracts/DATA_CONTRACTS.md (DB schema + query guardrails)
+- #codebase docs/contracts/MODULE_CONTRACTS.md (module responsibilities)
+- #codebase CHECKPOINTS.md (active checkpoint system)
+- #codebase CHECKPOINT_PROGRESS.md (active progress tracker)
+- #codebase docs/archive/2026-03/checkpoints-legacy/tenant-checkpoint.md (legacy primer)
 
 **Next Steps:** Maintenance & optional enhancements (performance tuning, advanced audit logging).

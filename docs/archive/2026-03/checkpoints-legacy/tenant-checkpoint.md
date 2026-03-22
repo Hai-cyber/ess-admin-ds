@@ -1,4 +1,23 @@
-# Tenant Checkpoint (Primer)
+# Tenant Checkpoint (Archived)
+
+**Status**: SUPERSEDED by [CHECKPOINTS.md](/CHECKPOINTS.md) (comprehensive checkpoint system)
+
+## Historical Reference
+
+This file documents the tenant isolation implementation. For the current checkpoint system, see [CHECKPOINTS.md](../../CHECKPOINTS.md) which includes:
+
+- **CP-1: Tenant Isolation** ✅ (This checkpoint, verified)
+- **CP-2: Booking MVP** ✅
+- **CP-3: Admin UI Setup** ⏳
+- **CP-4: Staff Mobile** 📋 (Phase 2)
+- **CP-5: POS System** 📋 (Phase 3)
+- **CP-6: Payment** 📋 (Phase 3)
+- **CP-7: Odoo Removed** ❌ (Phase 4)
+- **CP-8: Growth Features** ❌ (Phase 5)
+
+---
+
+## Original Tenant Isolation Details (For Reference)
 
 Resolver is fail-closed: `resolveActiveCompanyId` returns `{ ok:true, companyId }` or `{ ok:false, reason }` (#codebase src/index.js:477-556). No company-1 fallback exists.
 

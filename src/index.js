@@ -6,6 +6,13 @@ import thankYouPage from '../public/danke-reservierung.html';
 import appUI from '../public/app.html';
 import founderFormUI from '../public/founder-form.html';
 import boardUI from '../public/board.html';
+import platformHomeUI from '../public/platform/index.html';
+import platformSignupUI from '../public/platform/signup.html';
+import platformContactUI from '../public/platform/contact.html';
+import platformAdminUI from '../public/platform/admin.html';
+import platformTermsUI from '../public/platform/legal/terms.html';
+import platformPrivacyUI from '../public/platform/legal/privacy.html';
+import platformImpressumUI from '../public/platform/legal/impressum.html';
 
 // Import utilities
 import { getTenantContext, validateTenantAccess } from './utils/tenant.js';
@@ -24,10 +31,50 @@ const TURNSTILE_SITE_KEY_FALLBACK = '0x4AAAAAACmwktNVObyT3tQ7';
 const FOUNDER_OTP_COOLDOWN_SECONDS = 180;
 const FOUNDER_OTP_EXPIRES_SECONDS = 600;
 const FOUNDER_DEFAULT_MEMBERSHIP_TYPE = 'Founder';
+const PLATFORM_OPERATOR_COMPANY_ID = 1;
+const PLATFORM_PRICING_DEFAULTS = {
+  platform_core_price_per_user: '29',
+  platform_commerce_price_per_user: '69',
+  platform_growth_price_per_user: '99',
+  platform_setup_fee_once: '349',
+  platform_tse_fee_monthly: '19',
+  platform_it_support_hourly: '95',
+  platform_it_support_monthly: '249',
+  platform_price_note: 'Prices are billed per active staff user. Additional fees may apply for TSE, onboarding, and IT support.'
+};
+const WEBSITE_BUILDER_DEFAULTS = {
+  site_template: 'modern',
+  site_tagline: 'Neighborhood restaurant with a modern booking experience.',
+  site_hero_title: 'Welcome to our restaurant',
+  site_hero_subtitle: 'Book a table, explore our menu, and discover what makes us special.',
+  site_about_title: 'About us',
+  site_about_body: 'Tell guests what your restaurant is about, what style of cuisine you serve, and why they should visit.',
+  site_primary_cta_text: 'Book a table',
+  site_secondary_cta_text: 'View menu',
+  site_accent_color: '#A54A7B'
+};
 const OPERATIONAL_SETTING_KEYS = [
   'website_url',
   'standard_contact_link',
   'booking_email',
+  'platform_core_price_per_user',
+  'platform_commerce_price_per_user',
+  'platform_growth_price_per_user',
+  'platform_setup_fee_once',
+  'platform_tse_fee_monthly',
+  'platform_it_support_hourly',
+  'platform_it_support_monthly',
+  'platform_price_note',
+  'custom_domain',
+  'stripe_account_id',
+  'company_plan',
+  'billable_staff_count',
+  'billing_include_tse',
+  'billing_include_support_retainer',
+  'billing_include_setup',
+  'demo_payment_status',
+  'demo_payment_due_today_eur',
+  'demo_payment_recurring_monthly_eur',
   'social_instagram_url',
   'social_facebook_url',
   'social_tiktok_url',
@@ -49,13 +96,31 @@ const OPERATIONAL_SETTING_KEYS = [
   'kc_redirect_link',
   'founder_terms_link',
   'kc_terms_link',
-  'privacy_link'
+  'privacy_link',
+  'site_template',
+  'site_tagline',
+  'site_hero_title',
+  'site_hero_subtitle',
+  'site_about_title',
+  'site_about_body',
+  'site_primary_cta_text',
+  'site_secondary_cta_text',
+  'site_accent_color'
 ];
 const MANAGER_EDITABLE_OPERATIONAL_SETTING_KEYS = new Set([
   'social_instagram_url',
   'social_facebook_url',
   'social_tiktok_url',
-  'social_google_business_url'
+  'social_google_business_url',
+  'site_template',
+  'site_tagline',
+  'site_hero_title',
+  'site_hero_subtitle',
+  'site_about_title',
+  'site_about_body',
+  'site_primary_cta_text',
+  'site_secondary_cta_text',
+  'site_accent_color'
 ]);
 const MODULE_SETTING_KEYS = [
   'module_membership_management',
@@ -83,6 +148,24 @@ const OPERATIONAL_KEY_DESCRIPTIONS = {
   website_url: 'Public website URL for this restaurant',
   standard_contact_link: 'Fallback contact page path or URL when membership module is disabled',
   booking_email: 'Operational email for booking notices',
+  platform_core_price_per_user: 'Core plan price per active user / month for the public platform site',
+  platform_commerce_price_per_user: 'Commerce plan price per active user / month for the public platform site',
+  platform_growth_price_per_user: 'Growth plan price per active user / month for the public platform site',
+  platform_setup_fee_once: 'One-time onboarding / setup fee displayed on the public platform site',
+  platform_tse_fee_monthly: 'Monthly TSE surcharge displayed on the public platform site',
+  platform_it_support_hourly: 'Hourly IT support fee displayed on the public platform site',
+  platform_it_support_monthly: 'Monthly IT support retainer displayed on the public platform site',
+  platform_price_note: 'Pricing note displayed under the public platform pricing section',
+  custom_domain: 'Custom domain mapped for the tenant website',
+  stripe_account_id: 'Tenant-owned Stripe account id / payment method binding',
+  company_plan: 'Current tenant subscription plan',
+  billable_staff_count: 'Current count of active billable staff users',
+  billing_include_tse: 'Whether the tenant invoice includes TSE monthly surcharge',
+  billing_include_support_retainer: 'Whether the tenant invoice includes monthly IT support retainer',
+  billing_include_setup: 'Whether the tenant invoice includes one-time setup fee',
+  demo_payment_status: 'Current payment status for signup/demo billing',
+  demo_payment_due_today_eur: 'Due today amount for initial signup invoice',
+  demo_payment_recurring_monthly_eur: 'Recurring monthly amount for the tenant invoice',
   social_instagram_url: 'Instagram profile URL',
   social_facebook_url: 'Facebook page URL',
   social_tiktok_url: 'TikTok profile URL',
@@ -104,7 +187,16 @@ const OPERATIONAL_KEY_DESCRIPTIONS = {
   kc_redirect_link: 'Post-verification redirect path or URL for KC flow',
   founder_terms_link: 'Terms path or URL for founder flow',
   kc_terms_link: 'Terms path or URL for KC flow',
-  privacy_link: 'Privacy policy path or URL for founder/KC flows'
+  privacy_link: 'Privacy policy path or URL for founder/KC flows',
+  site_template: 'Public website template choice (minimal, modern, premium)',
+  site_tagline: 'Short public-facing tagline for the restaurant website',
+  site_hero_title: 'Main hero title on the tenant website',
+  site_hero_subtitle: 'Hero subtitle on the tenant website',
+  site_about_title: 'About section title on the tenant website',
+  site_about_body: 'About section body text on the tenant website',
+  site_primary_cta_text: 'Primary call-to-action label on the tenant website',
+  site_secondary_cta_text: 'Secondary call-to-action label on the tenant website',
+  site_accent_color: 'Primary brand accent color for the tenant website'
 };
 const MODULE_KEY_DESCRIPTIONS = {
   module_membership_management: 'Product line: community & membership (Founder/KC forms, OTP, member lifecycle automation)',
@@ -403,6 +495,230 @@ async function getAdminPlatformConfig(env, companyId) {
     company,
     operationalSettings,
     modules
+  };
+}
+
+async function getPlatformMarketingSettings(env) {
+  const settingsMap = await getSettingsMap(env, PLATFORM_OPERATOR_COMPANY_ID, Object.keys(PLATFORM_PRICING_DEFAULTS));
+  const merged = {};
+  for (const key of Object.keys(PLATFORM_PRICING_DEFAULTS)) {
+    const raw = String(settingsMap[key] || '').trim();
+    merged[key] = raw || PLATFORM_PRICING_DEFAULTS[key];
+  }
+  return merged;
+}
+
+function buildPlatformPlansResponse(settingsMap) {
+  const setupFee = Number(settingsMap.platform_setup_fee_once || PLATFORM_PRICING_DEFAULTS.platform_setup_fee_once || 0);
+  const tseFee = Number(settingsMap.platform_tse_fee_monthly || PLATFORM_PRICING_DEFAULTS.platform_tse_fee_monthly || 0);
+  const supportHourly = Number(settingsMap.platform_it_support_hourly || PLATFORM_PRICING_DEFAULTS.platform_it_support_hourly || 0);
+  const supportMonthly = Number(settingsMap.platform_it_support_monthly || PLATFORM_PRICING_DEFAULTS.platform_it_support_monthly || 0);
+
+  return {
+    ok: true,
+    billingModel: 'per_user_monthly',
+    pricingNote: String(settingsMap.platform_price_note || PLATFORM_PRICING_DEFAULTS.platform_price_note),
+    extras: {
+      oneTimeSetupFeeEur: setupFee,
+      tseMonthlyFeeEur: tseFee,
+      itSupportHourlyEur: supportHourly,
+      itSupportMonthlyRetainerEur: supportMonthly
+    },
+    plans: [
+      {
+        id: 'core',
+        name: 'Core',
+        priceEurPerUserMonthly: Number(settingsMap.platform_core_price_per_user || PLATFORM_PRICING_DEFAULTS.platform_core_price_per_user || 0),
+        features: [
+          'Restaurant website (3 templates)',
+          'Contact form',
+          'Online booking form',
+          'Booking email notifications',
+          'Basic admin dashboard',
+          'Website builder starter setup'
+        ]
+      },
+      {
+        id: 'commerce',
+        name: 'Commerce',
+        priceEurPerUserMonthly: Number(settingsMap.platform_commerce_price_per_user || PLATFORM_PRICING_DEFAULTS.platform_commerce_price_per_user || 0),
+        features: [
+          'Everything in Core',
+          'Onsite booking + walk-ins',
+          'Booking board + stage management',
+          'SMS notifications',
+          'Staff PIN app',
+          'POS + table management',
+          'Payment methods: cash, PayPal, debit card, credit card, Apple Pay',
+          'Stripe can be used as one payment gateway',
+          'TSE receipts (German compliance)',
+          'Advanced booking management'
+        ]
+      },
+      {
+        id: 'growth',
+        name: 'Growth',
+        priceEurPerUserMonthly: Number(settingsMap.platform_growth_price_per_user || PLATFORM_PRICING_DEFAULTS.platform_growth_price_per_user || 0),
+        features: [
+          'Everything in Commerce',
+          'CRM: guest profiles + history',
+          'Loyalty program',
+          'Marketing automation',
+          'SEO tools'
+        ]
+      },
+      {
+        id: 'enterprise',
+        name: 'Enterprise',
+        priceEurPerUserMonthly: null,
+        features: [
+          'Everything in Growth',
+          'Multi-location support',
+          'Custom integrations API',
+          'Dedicated onboarding + SLA'
+        ]
+      }
+    ]
+  };
+}
+
+async function getNextIntegerId(env, tableName) {
+  const row = await env.DB.prepare(`SELECT COALESCE(MAX(id), 0) + 1 AS nextId FROM ${tableName}`).first();
+  return Number(row?.nextId || 1);
+}
+
+async function cloneOrganizationDefaults(env, sourceOrganizationId, targetOrganizationId, updatedBy = 'platform-signup') {
+  const result = await env.DB.prepare(`
+    SELECT key, value, description
+    FROM organization_settings
+    WHERE organization_id = ?
+  `).bind(sourceOrganizationId).all();
+
+  const rows = result?.results || [];
+  const now = new Date().toISOString();
+  for (const row of rows) {
+    await env.DB.prepare(`
+      INSERT OR IGNORE INTO organization_settings (organization_id, key, value, description, updated_at, updated_by)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).bind(
+      targetOrganizationId,
+      String(row.key || ''),
+      String(row.value || ''),
+      String(row.description || ''),
+      now,
+      updatedBy
+    ).run();
+  }
+}
+
+function normalizeHexColor(value, fallback = WEBSITE_BUILDER_DEFAULTS.site_accent_color) {
+  const input = String(value || '').trim();
+  if (/^#[0-9a-f]{6}$/i.test(input)) return input;
+  return fallback;
+}
+
+function normalizePlanId(planRaw) {
+  const normalized = String(planRaw || '').trim().toLowerCase();
+  return ['core', 'commerce', 'growth', 'enterprise'].includes(normalized) ? normalized : '';
+}
+
+function normalizeWebsiteTemplate(templateRaw) {
+  const normalized = String(templateRaw || '').trim().toLowerCase();
+  return ['minimal', 'modern', 'premium'].includes(normalized) ? normalized : WEBSITE_BUILDER_DEFAULTS.site_template;
+}
+
+function computeDemoPaymentSummary(planId, userCount, extras, settingsMap) {
+  const perUserMap = {
+    core: Number(settingsMap.platform_core_price_per_user || PLATFORM_PRICING_DEFAULTS.platform_core_price_per_user || 0),
+    commerce: Number(settingsMap.platform_commerce_price_per_user || PLATFORM_PRICING_DEFAULTS.platform_commerce_price_per_user || 0),
+    growth: Number(settingsMap.platform_growth_price_per_user || PLATFORM_PRICING_DEFAULTS.platform_growth_price_per_user || 0),
+    enterprise: 0
+  };
+  const perUser = Number(perUserMap[planId] || 0);
+  const monthlyBase = perUser * Math.max(1, Number(userCount || 1));
+  const setupFee = parseBooleanLike(extras?.includeSetup, true)
+    ? Number(settingsMap.platform_setup_fee_once || PLATFORM_PRICING_DEFAULTS.platform_setup_fee_once || 0)
+    : 0;
+  const tseFee = parseBooleanLike(extras?.includeTse, false)
+    ? Number(settingsMap.platform_tse_fee_monthly || PLATFORM_PRICING_DEFAULTS.platform_tse_fee_monthly || 0)
+    : 0;
+  const supportMonthly = parseBooleanLike(extras?.includeSupportRetainer, false)
+    ? Number(settingsMap.platform_it_support_monthly || PLATFORM_PRICING_DEFAULTS.platform_it_support_monthly || 0)
+    : 0;
+  return {
+    billingModel: 'demo_payment',
+    perUserMonthlyEur: perUser,
+    users: Math.max(1, Number(userCount || 1)),
+    monthlyBaseEur: monthlyBase,
+    monthlyExtrasEur: tseFee + supportMonthly,
+    oneTimeSetupEur: setupFee,
+    dueTodayEur: setupFee,
+    recurringMonthlyEur: monthlyBase + tseFee + supportMonthly,
+    extras: {
+      includeSetup: parseBooleanLike(extras?.includeSetup, true),
+      includeTse: parseBooleanLike(extras?.includeTse, false),
+      includeSupportRetainer: parseBooleanLike(extras?.includeSupportRetainer, false),
+      tseFeeEur: tseFee,
+      supportRetainerMonthlyEur: supportMonthly
+    },
+    paymentStatus: 'demo_paid'
+  };
+}
+
+async function recalculateCompanyBillingSummary(env, companyId) {
+  const [pricingSettings, companySettings, staffCountRow] = await Promise.all([
+    getPlatformMarketingSettings(env),
+    getSettingsMap(env, companyId, [
+      'company_plan',
+      'billing_include_tse',
+      'billing_include_support_retainer',
+      'billing_include_setup'
+    ]),
+    env.DB.prepare(`SELECT COUNT(*) AS count FROM staff WHERE company_id = ? AND is_active = 1`).bind(companyId).first()
+  ]);
+
+  const plan = normalizePlanId(companySettings.company_plan || 'core') || 'core';
+  const extras = {
+    includeTse: parseBooleanLike(companySettings.billing_include_tse, false),
+    includeSupportRetainer: parseBooleanLike(companySettings.billing_include_support_retainer, false),
+    includeSetup: parseBooleanLike(companySettings.billing_include_setup, false)
+  };
+  const activeStaff = Math.max(1, Number(staffCountRow?.count || 1));
+  const summary = computeDemoPaymentSummary(plan, activeStaff, extras, pricingSettings);
+
+  await upsertSettingValue(env, companyId, 'billable_staff_count', String(activeStaff), OPERATIONAL_KEY_DESCRIPTIONS.billable_staff_count, 'billing-automation');
+  await upsertSettingValue(env, companyId, 'demo_payment_recurring_monthly_eur', String(summary.recurringMonthlyEur), OPERATIONAL_KEY_DESCRIPTIONS.demo_payment_recurring_monthly_eur, 'billing-automation');
+
+  return { activeStaff, summary };
+}
+
+async function authorizePlatformOperator(env, pinRaw) {
+  return authorizeAdminByPin(env, PLATFORM_OPERATOR_COMPANY_ID, pinRaw);
+}
+
+async function getPlatformAdminDashboard(env) {
+  const [pricingSettings, signupsResult, contactsResult] = await Promise.all([
+    getPlatformMarketingSettings(env),
+    env.DB.prepare(`
+      SELECT id, company_id, organization_id, restaurant_name, owner_email, owner_phone, subdomain, plan,
+             website_template, staff_users, country, payment_status, due_today_eur, recurring_monthly_eur,
+             follow_up_status, follow_up_note, followed_up_at, created_at
+      FROM platform_signups
+      ORDER BY created_at DESC
+      LIMIT 100
+    `).all(),
+    env.DB.prepare(`
+      SELECT id, name, email, subject, message, submitted_at, status
+      FROM platform_contacts
+      ORDER BY submitted_at DESC
+      LIMIT 100
+    `).all()
+  ]);
+
+  return {
+    pricingSettings,
+    signups: signupsResult?.results || [],
+    contacts: contactsResult?.results || []
   };
 }
 
@@ -1810,6 +2126,346 @@ export default {
       });
     }
 
+    // ==================== PLATFORM SITE ====================
+    if (url.pathname === "/platform" || url.pathname === "/platform/" || url.pathname === "/platform/index.html") {
+      return new Response(platformHomeUI, {
+        headers: { "Content-Type": "text/html; charset=utf-8" }
+      });
+    }
+
+    if (url.pathname === "/platform/signup" || url.pathname === "/platform/signup.html") {
+      return new Response(platformSignupUI, {
+        headers: { "Content-Type": "text/html; charset=utf-8" }
+      });
+    }
+
+    if (url.pathname === "/platform/admin" || url.pathname === "/platform/admin.html") {
+      return new Response(platformAdminUI, {
+        headers: { "Content-Type": "text/html; charset=utf-8" }
+      });
+    }
+
+    if (url.pathname === "/platform/contact" || url.pathname === "/platform/contact.html") {
+      return new Response(platformContactUI, {
+        headers: { "Content-Type": "text/html; charset=utf-8" }
+      });
+    }
+
+    if (url.pathname === "/platform/legal/terms" || url.pathname === "/platform/legal/terms.html") {
+      return new Response(platformTermsUI, {
+        headers: { "Content-Type": "text/html; charset=utf-8" }
+      });
+    }
+
+    if (url.pathname === "/platform/legal/privacy" || url.pathname === "/platform/legal/privacy.html") {
+      return new Response(platformPrivacyUI, {
+        headers: { "Content-Type": "text/html; charset=utf-8" }
+      });
+    }
+
+    if (url.pathname === "/platform/legal/impressum" || url.pathname === "/platform/legal/impressum.html") {
+      return new Response(platformImpressumUI, {
+        headers: { "Content-Type": "text/html; charset=utf-8" }
+      });
+    }
+
+    // ==================== PLATFORM API ====================
+    if (url.pathname === "/api/platform/plans" && request.method === "GET") {
+      try {
+        const settingsMap = await getPlatformMarketingSettings(env);
+        return Response.json(buildPlatformPlansResponse(settingsMap));
+      } catch (e) {
+        return Response.json({ ok: false, error: e.message }, { status: 500 });
+      }
+    }
+
+    if (url.pathname === "/api/platform/signup/check-subdomain" && request.method === "GET") {
+      try {
+        const requestedSlug = normalizeTenantSubdomain(url.searchParams.get('slug') || '');
+        if (!requestedSlug || !isValidTenantSubdomain(requestedSlug)) {
+          return Response.json({ ok: false, code: 'validation_failed', message: 'Subdomain must use lowercase letters, numbers, and hyphens.' }, { status: 400 });
+        }
+
+        const existing = await env.DB.prepare(`
+          SELECT id FROM companies WHERE lower(subdomain) = lower(?) LIMIT 1
+        `).bind(requestedSlug).first();
+
+        if (existing?.id) {
+          return Response.json({ ok: false, code: 'subdomain_taken', available: false, slug: requestedSlug, suggestion: `${requestedSlug}-2` }, { status: 409 });
+        }
+
+        return Response.json({ ok: true, available: true, slug: requestedSlug, url: `https://${requestedSlug}.restaurantos.app` });
+      } catch (e) {
+        return Response.json({ ok: false, error: e.message }, { status: 500 });
+      }
+    }
+
+    if (url.pathname === "/api/platform/contact" && request.method === "POST") {
+      try {
+        const body = await request.json().catch(() => ({}));
+        const name = String(body?.name || '').trim();
+        const email = normalizeOptionalEmail(body?.email || '');
+        const subject = String(body?.subject || '').trim();
+        const message = String(body?.message || '').trim();
+
+        if (!name || !message) {
+          return Response.json({ ok: false, code: 'validation_failed', message: 'Name and message are required.' }, { status: 400 });
+        }
+
+        await env.DB.prepare(`
+          INSERT INTO platform_contacts (id, name, email, subject, message, submitted_at, status)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).bind(
+          crypto.randomUUID(),
+          name,
+          email,
+          subject,
+          message,
+          new Date().toISOString(),
+          'new'
+        ).run();
+
+        return Response.json({ ok: true, message: 'Message received.' });
+      } catch (e) {
+        return Response.json({ ok: false, error: e.message }, { status: 500 });
+      }
+    }
+
+    if (url.pathname === "/api/platform/admin/dashboard" && request.method === "GET") {
+      try {
+        const pin = String(url.searchParams.get('pin') || request.headers.get('x-admin-pin') || '').trim();
+        const auth = await authorizePlatformOperator(env, pin);
+        if (!auth.ok) {
+          return Response.json({ ok: false, error: auth.error }, { status: auth.status });
+        }
+
+        const dashboard = await getPlatformAdminDashboard(env);
+        return Response.json({ ok: true, ...dashboard });
+      } catch (e) {
+        return Response.json({ ok: false, error: e.message }, { status: 500 });
+      }
+    }
+
+    if (url.pathname === "/api/platform/admin/config" && request.method === "POST") {
+      try {
+        const body = await request.json().catch(() => ({}));
+        const pin = String(body?.pin || '').trim();
+        const auth = await authorizePlatformOperator(env, pin);
+        if (!auth.ok) {
+          return Response.json({ ok: false, error: auth.error }, { status: auth.status });
+        }
+
+        const incoming = body?.values && typeof body.values === 'object' ? body.values : {};
+        const updatedBy = String(auth.staff.name || auth.staff.id || 'platform-admin');
+        for (const key of Object.keys(PLATFORM_PRICING_DEFAULTS)) {
+          if (!(key in incoming)) continue;
+          await upsertSettingValue(env, PLATFORM_OPERATOR_COMPANY_ID, key, String(incoming[key] ?? '').trim(), OPERATIONAL_KEY_DESCRIPTIONS[key] || 'Platform operator setting', updatedBy);
+        }
+
+        const pricingSettings = await getPlatformMarketingSettings(env);
+        return Response.json({ ok: true, pricingSettings });
+      } catch (e) {
+        return Response.json({ ok: false, error: e.message }, { status: 500 });
+      }
+    }
+
+    if (url.pathname === "/api/platform/admin/signup-followup" && request.method === "POST") {
+      try {
+        const body = await request.json().catch(() => ({}));
+        const pin = String(body?.pin || '').trim();
+        const auth = await authorizePlatformOperator(env, pin);
+        if (!auth.ok) {
+          return Response.json({ ok: false, error: auth.error }, { status: auth.status });
+        }
+
+        const signupId = String(body?.signupId || '').trim();
+        const followUpStatus = String(body?.followUpStatus || '').trim() || 'new';
+        const followUpNote = String(body?.followUpNote || '').trim();
+        if (!signupId) {
+          return Response.json({ ok: false, error: 'signupId required' }, { status: 400 });
+        }
+
+        await env.DB.prepare(`
+          UPDATE platform_signups
+          SET follow_up_status = ?, follow_up_note = ?, followed_up_at = ?
+          WHERE id = ?
+        `).bind(followUpStatus, followUpNote, new Date().toISOString(), signupId).run();
+
+        return Response.json({ ok: true, signupId, followUpStatus });
+      } catch (e) {
+        return Response.json({ ok: false, error: e.message }, { status: 500 });
+      }
+    }
+
+    if (url.pathname === "/api/platform/signup" && request.method === "POST") {
+      try {
+        const body = await request.json().catch(() => ({}));
+        const restaurantName = String(body?.restaurant_name || '').trim();
+        const ownerEmail = normalizeOptionalEmail(body?.owner_email || '');
+        const ownerPhone = normalizeFounderPhone(body?.owner_phone || '');
+        const requestedSlug = normalizeTenantSubdomain(body?.subdomain || '');
+        const plan = normalizePlanId(body?.plan || '');
+        const country = String(body?.country || 'DE').trim().slice(0, 10);
+        const timezone = String(body?.timezone || 'Europe/Berlin').trim() || 'Europe/Berlin';
+        const adminPin = String(body?.admin_pin || '').trim();
+        const adminName = String(body?.admin_name || 'Owner').trim() || 'Owner';
+        const websiteTemplate = normalizeWebsiteTemplate(body?.website_template || 'modern');
+        const staffUsers = Math.max(1, Number(body?.staff_users || 1));
+        const demoPayment = parseBooleanLike(body?.demo_payment, true);
+        const extras = body?.extras && typeof body.extras === 'object' ? body.extras : {};
+
+        if (!restaurantName || !ownerEmail || !requestedSlug || !plan) {
+          return Response.json({ ok: false, code: 'validation_failed', message: 'Restaurant name, owner email, plan, and subdomain are required.' }, { status: 400 });
+        }
+
+        if (!isValidTenantSubdomain(requestedSlug)) {
+          return Response.json({ ok: false, code: 'validation_failed', message: 'Subdomain must use lowercase letters, numbers, and hyphens.' }, { status: 400 });
+        }
+
+        if (!/^\d{4}$/.test(adminPin)) {
+          return Response.json({ ok: false, code: 'validation_failed', message: 'Admin PIN must be exactly 4 digits.' }, { status: 400 });
+        }
+
+        const existingSubdomain = await env.DB.prepare(`SELECT id FROM companies WHERE lower(subdomain) = lower(?) LIMIT 1`).bind(requestedSlug).first();
+        if (existingSubdomain?.id) {
+          return Response.json({ ok: false, code: 'subdomain_taken', message: 'Subdomain already in use.' }, { status: 409 });
+        }
+
+        const existingEmail = await env.DB.prepare(`SELECT id FROM companies WHERE lower(email) = lower(?) LIMIT 1`).bind(ownerEmail).first();
+        if (existingEmail?.id) {
+          return Response.json({ ok: false, code: 'email_already_registered', message: 'This owner email is already registered.' }, { status: 409 });
+        }
+
+        const now = new Date().toISOString();
+        const [organizationId, companyId, pricingSettings] = await Promise.all([
+          getNextIntegerId(env, 'organizations'),
+          getNextIntegerId(env, 'companies'),
+          getPlatformMarketingSettings(env)
+        ]);
+
+        const paymentSummary = computeDemoPaymentSummary(plan, staffUsers, extras, pricingSettings);
+
+        await env.DB.prepare(`
+          INSERT INTO organizations (id, slug, name, billing_email, phone, is_active, timezone, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?)
+        `).bind(
+          organizationId,
+          `${requestedSlug}-org`,
+          restaurantName,
+          ownerEmail,
+          ownerPhone,
+          timezone,
+          now,
+          now
+        ).run();
+
+        await cloneOrganizationDefaults(env, PLATFORM_OPERATOR_COMPANY_ID, organizationId, 'platform-signup');
+
+        await env.DB.prepare(`
+          INSERT INTO companies (id, organization_id, subdomain, name, email, phone, is_active, timezone, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
+        `).bind(
+          companyId,
+          organizationId,
+          requestedSlug,
+          restaurantName,
+          ownerEmail,
+          ownerPhone,
+          timezone,
+          now,
+          now
+        ).run();
+
+        await env.DB.prepare(`
+          INSERT INTO staff (id, company_id, name, pin, role, is_active, permissions, created_at, updated_at, created_by, updated_by)
+          VALUES (?, ?, ?, ?, 'admin', 1, ?, ?, ?, ?, ?)
+        `).bind(
+          crypto.randomUUID(),
+          companyId,
+          adminName,
+          adminPin,
+          JSON.stringify(['*']),
+          now,
+          now,
+          'platform-signup',
+          'platform-signup'
+        ).run();
+
+        const websiteUrl = `https://${requestedSlug}.restaurantos.app`;
+        const initialSettings = {
+          website_url: websiteUrl,
+          booking_email: ownerEmail,
+          standard_contact_link: '/contact',
+          site_template: websiteTemplate,
+          site_tagline: WEBSITE_BUILDER_DEFAULTS.site_tagline,
+          site_hero_title: WEBSITE_BUILDER_DEFAULTS.site_hero_title,
+          site_hero_subtitle: WEBSITE_BUILDER_DEFAULTS.site_hero_subtitle,
+          site_about_title: WEBSITE_BUILDER_DEFAULTS.site_about_title,
+          site_about_body: WEBSITE_BUILDER_DEFAULTS.site_about_body,
+          site_primary_cta_text: WEBSITE_BUILDER_DEFAULTS.site_primary_cta_text,
+          site_secondary_cta_text: WEBSITE_BUILDER_DEFAULTS.site_secondary_cta_text,
+          site_accent_color: normalizeHexColor(body?.site_accent_color || WEBSITE_BUILDER_DEFAULTS.site_accent_color),
+          company_plan: plan,
+          billing_include_setup: String(parseBooleanLike(extras?.includeSetup, true)),
+          billing_include_tse: String(parseBooleanLike(extras?.includeTse, false)),
+          billing_include_support_retainer: String(parseBooleanLike(extras?.includeSupportRetainer, false)),
+          demo_payment_status: paymentSummary.paymentStatus,
+          demo_payment_due_today_eur: String(paymentSummary.dueTodayEur),
+          demo_payment_recurring_monthly_eur: String(paymentSummary.recurringMonthlyEur),
+          billable_staff_count: String(Math.max(1, staffUsers)),
+          country_code: country
+        };
+
+        for (const [key, value] of Object.entries(initialSettings)) {
+          await upsertSettingValue(env, companyId, key, String(value || ''), `Platform signup setting: ${key}`, 'platform-signup');
+        }
+
+        await env.DB.prepare(`
+          INSERT INTO platform_signups (
+            id, company_id, organization_id, restaurant_name, owner_email, owner_phone, subdomain, plan,
+            website_template, staff_users, country, payment_status, due_today_eur, recurring_monthly_eur,
+            raw_payload_json, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).bind(
+          crypto.randomUUID(),
+          companyId,
+          organizationId,
+          restaurantName,
+          ownerEmail,
+          ownerPhone,
+          requestedSlug,
+          plan,
+          websiteTemplate,
+          Math.max(1, staffUsers),
+          country,
+          paymentSummary.paymentStatus,
+          Number(paymentSummary.dueTodayEur || 0),
+          Number(paymentSummary.recurringMonthlyEur || 0),
+          JSON.stringify(body || {}),
+          now
+        ).run();
+
+        const previewAdminUrl = `${url.origin}/admin?company_id=${companyId}`;
+        const previewBoardUrl = `${url.origin}/board?company_id=${companyId}`;
+
+        return Response.json({
+          ok: true,
+          message: demoPayment ? 'Demo payment completed. Account created.' : 'Account created.',
+          company_id: companyId,
+          organization_id: organizationId,
+          subdomain: requestedSlug,
+          website_url: websiteUrl,
+          preview_admin_url: previewAdminUrl,
+          preview_board_url: previewBoardUrl,
+          payment: paymentSummary,
+          admin_pin_hint: adminPin,
+          status: 'trial_active'
+        }, { status: 201 });
+      } catch (e) {
+        return Response.json({ ok: false, error: e.message }, { status: 500 });
+      }
+    }
+
     // ==================== BOOKING FORM ====================
     if (url.pathname === "/booking-form.html" || url.pathname === "/booking-form") {
       return runTenantRoute(async ({ companyId }) => {
@@ -2744,6 +3400,8 @@ export default {
         if (ctx?.waitUntil) {
           ctx.waitUntil(staffSyncPromise);
         }
+
+        await recalculateCompanyBillingSummary(env, companyId);
 
         return Response.json({ success: true, staffId });
         } catch (e) {

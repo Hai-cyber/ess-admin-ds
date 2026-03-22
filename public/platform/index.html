@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Restaurant OS — Run your restaurant, not your software</title>
+  <meta name="description" content="From online bookings to POS to your own website — everything your restaurant needs, on one Cloudflare-powered platform." />
+  <link rel="stylesheet" href="/platform/platform.css" />
+</head>
+<body>
+
+<!-- ── NAV (injected by JS) ── -->
+<div id="nav-placeholder"></div>
+
+<!-- ═══════════════════════════════════════
+     HERO
+═══════════════════════════════════════ -->
+<section class="hero">
+  <div class="hero-badge" data-i18n="hero.badge">🍽️ Restaurant OS — Built for modern restaurants</div>
+
+  <h1>
+    <span data-i18n="hero.title" style="white-space:pre-line">Run your restaurant,
+not your software</span>
+  </h1>
+
+  <p class="hero-subtitle" data-i18n="hero.subtitle">
+    From online bookings to POS to your own website — everything your restaurant needs, on one Cloudflare-powered platform.
+  </p>
+
+  <div class="hero-cta">
+    <a href="/platform/signup.html" class="btn btn-primary btn-lg" data-i18n="hero.cta1">Start free 14-day trial</a>
+    <a href="#pricing"              class="btn btn-outline btn-lg" data-i18n="hero.cta2">See pricing</a>
+  </div>
+
+  <div class="hero-meta">
+    <span data-i18n="hero.m1">No credit card required</span>
+    <span data-i18n="hero.m2">Setup in under 1 hour</span>
+    <span data-i18n="hero.m3">Cancel anytime</span>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════
+     FEATURES
+═══════════════════════════════════════ -->
+<section class="section section-alt section-center" id="features">
+  <div class="section-tag" data-i18n="feat.tag">Everything you need</div>
+  <h2 data-i18n="feat.h2">Built for how restaurants actually work</h2>
+  <p class="section-subtitle" data-i18n="feat.sub">
+    Not an ERP. Not a generic platform. Purpose-built for daily restaurant operations.
+  </p>
+
+  <div class="features-grid">
+
+    <div class="feature-card">
+      <span class="feature-icon">📅</span>
+      <h3 data-i18n="feat.booking.title">Online & onsite bookings</h3>
+      <p  data-i18n="feat.booking.desc">Guests book online. Staff create walk-ins. Both flow into the same real-time board with zero delay.</p>
+    </div>
+
+    <div class="feature-card">
+      <span class="feature-icon">🗂️</span>
+      <h3 data-i18n="feat.board.title">Live booking board</h3>
+      <p  data-i18n="feat.board.desc">See today's bookings at a glance. Confirm, seat, and close — all from one screen, in real-time.</p>
+    </div>
+
+    <div class="feature-card">
+      <span class="feature-icon">🔄</span>
+      <h3 data-i18n="feat.stages.title">Stage management</h3>
+      <p  data-i18n="feat.stages.desc">Pending → Confirmed → Arrived → Done. Move guests through the flow with a single tap.</p>
+    </div>
+
+    <div class="feature-card">
+      <span class="feature-icon">🌐</span>
+      <h3 data-i18n="feat.website.title">Your restaurant website</h3>
+      <p  data-i18n="feat.website.desc">Professional website at your own subdomain. Menu, booking form, contact info — ready in minutes.</p>
+    </div>
+
+    <div class="feature-card">
+      <span class="feature-icon">🔑</span>
+      <h3 data-i18n="feat.staff.title">Staff PIN app</h3>
+      <p  data-i18n="feat.staff.desc">No accounts to manage. Staff log in with a 4-digit PIN. Works on any phone, no install needed.</p>
+    </div>
+
+    <div class="feature-card">
+      <span class="feature-icon">👥</span>
+      <h3 data-i18n="feat.crm.title">Guest CRM</h3>
+      <p  data-i18n="feat.crm.desc">Guest profiles, booking history, notes, and tags. All first-party in your own database — no Odoo needed.</p>
+      <span class="feature-phase" data-i18n="feat.crm.phase">Phase 4</span>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════
+     PRICING
+═══════════════════════════════════════ -->
+<section class="section section-center" id="pricing">
+  <div class="section-tag" data-i18n="price.tag">Pricing</div>
+  <h2 data-i18n="price.h2">Simple, transparent pricing</h2>
+  <p class="section-subtitle" data-i18n="price.sub">
+    Start with Core and grow into what you need. No hidden fees.
+  </p>
+
+  <div class="pricing-grid">
+
+    <!-- Core -->
+    <div class="pricing-card">
+      <div class="pricing-name">Core</div>
+      <div class="pricing-price" data-plan-price="core">€29<span class="mo">/user/mo</span></div>
+      <p class="pricing-desc" data-i18n="price.core_desc">Everything a new restaurant needs to go live.</p>
+      <ul class="pricing-features">
+        <li data-i18n="price.core_f1">Restaurant website (3 templates)</li>
+        <li data-i18n="price.core_f2">Contact form</li>
+        <li data-i18n="price.core_f3">Online booking form</li>
+        <li data-i18n="price.core_f4">Booking email notifications</li>
+        <li data-i18n="price.core_f5">Basic admin dashboard</li>
+        <li data-i18n="price.core_f6">Website builder starter setup</li>
+      </ul>
+      <a href="/platform/signup.html?plan=core" class="btn btn-outline btn-block" data-i18n="price.cta">Start free trial</a>
+    </div>
+
+    <!-- Commerce -->
+    <div class="pricing-card popular">
+      <div class="popular-badge" data-i18n="price.popular">Most popular</div>
+      <div class="pricing-name">Commerce</div>
+      <div class="pricing-price" data-plan-price="commerce">€69<span class="mo">/user/mo</span></div>
+      <p class="pricing-desc" data-i18n="price.com_desc">Full table, order, and payment control.</p>
+      <ul class="pricing-features">
+        <li data-i18n="price.com_f1">Everything in Core</li>
+        <li data-i18n="price.com_f2">Onsite booking + walk-ins</li>
+        <li data-i18n="price.com_f3">Booking board + stage management</li>
+        <li data-i18n="price.com_f4">SMS notifications + staff PIN app</li>
+        <li data-i18n="price.com_f5">POS + payment methods: cash, PayPal, debit/credit card, Apple Pay</li>
+        <li data-i18n="price.com_f6">Stripe can be one configured payment gateway + TSE</li>
+      </ul>
+      <a href="/platform/signup.html?plan=commerce" class="btn btn-primary btn-block" data-i18n="price.cta">Start free trial</a>
+    </div>
+
+    <!-- Growth -->
+    <div class="pricing-card">
+      <div class="pricing-name">Growth</div>
+      <div class="pricing-price" data-plan-price="growth">€99<span class="mo">/user/mo</span></div>
+      <p class="pricing-desc" data-i18n="price.grow_desc">CRM, loyalty, and marketing for growing restaurants.</p>
+      <ul class="pricing-features">
+        <li data-i18n="price.grow_f1">Everything in Commerce</li>
+        <li data-i18n="price.grow_f2">CRM: guest profiles + history</li>
+        <li data-i18n="price.grow_f3">Loyalty program</li>
+        <li data-i18n="price.grow_f4">Marketing automation</li>
+        <li data-i18n="price.grow_f5">SEO tools</li>
+      </ul>
+      <a href="/platform/signup.html?plan=growth" class="btn btn-outline btn-block" data-i18n="price.cta">Start free trial</a>
+    </div>
+
+    <!-- Enterprise -->
+    <div class="pricing-card">
+      <div class="pricing-name">Enterprise</div>
+      <div class="pricing-price custom" data-plan-price="enterprise" data-i18n="price.custom" style="font-size:1.6rem;padding-top:6px;">Custom</div>
+      <p class="pricing-desc" data-i18n="price.ent_desc">Multi-location, custom integrations, dedicated SLA support.</p>
+      <ul class="pricing-features">
+        <li data-i18n="price.ent_f1">Everything in Growth</li>
+        <li data-i18n="price.ent_f2">Multi-location support</li>
+        <li data-i18n="price.ent_f3">Custom integrations API</li>
+        <li data-i18n="price.ent_f4">Dedicated onboarding + SLA</li>
+      </ul>
+      <a href="/platform/contact.html" class="btn btn-ghost btn-block" data-i18n="price.cta_ent">Contact us</a>
+    </div>
+
+  </div><!-- /pricing-grid -->
+
+  <div class="card-box" style="margin-top:32px;max-width:860px;text-align:left;">
+    <h3 style="margin:0 0 14px;font-size:1rem;font-weight:800;">Additional costs</h3>
+    <div class="features-grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;">
+      <div class="feature-card" style="padding:20px;">
+        <h3 style="margin-bottom:6px;">One-time onboarding</h3>
+        <p id="platform-extra-setup">€349 one-time setup</p>
+      </div>
+      <div class="feature-card" style="padding:20px;">
+        <h3 style="margin-bottom:6px;">German compliance</h3>
+        <p id="platform-extra-tse">€19/month TSE package</p>
+      </div>
+      <div class="feature-card" style="padding:20px;">
+        <h3 style="margin-bottom:6px;">IT support</h3>
+        <p id="platform-extra-support">€95/hour IT support or €249/month retainer</p>
+      </div>
+    </div>
+    <p id="platform-pricing-note" class="text-muted" style="margin:16px 0 0;font-size:0.88rem;">Prices are billed per active staff user. Additional fees may apply for TSE, onboarding, and IT support.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════
+     BOTTOM CTA
+═══════════════════════════════════════ -->
+<section class="section section-center" style="background: var(--brand); color: white; padding: 72px max(5%,24px);">
+  <h2 style="color:white; margin-bottom:16px;" data-i18n="hero.cta1">Start free 14-day trial</h2>
+  <p style="color:rgba(255,255,255,0.85); max-width:460px; margin:0 auto 36px; font-size:1.05rem;" data-i18n="hero.subtitle"></p>
+  <div class="hero-cta">
+    <a href="/platform/signup.html" class="btn btn-block" style="background:white;color:var(--brand);max-width:260px;" data-i18n="hero.cta1">Start free 14-day trial</a>
+    <a href="/platform/contact.html" class="btn btn-outline btn-block" style="border-color:rgba(255,255,255,0.5);color:white;max-width:200px;" data-i18n="nav.contact">Contact</a>
+  </div>
+  <div class="hero-meta" style="margin-top:32px;">
+    <span style="color:rgba(255,255,255,0.7)" data-i18n="hero.m1">No credit card required</span>
+    <span style="color:rgba(255,255,255,0.7)" data-i18n="hero.m2">Setup in under 1 hour</span>
+    <span style="color:rgba(255,255,255,0.7)" data-i18n="hero.m3">Cancel anytime</span>
+  </div>
+</section>
+
+<!-- ── FOOTER (injected by JS) ── -->
+<div id="footer-placeholder"></div>
+
+<script src="/platform/platform.js"></script>
+</body>
+</html>

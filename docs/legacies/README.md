@@ -1,45 +1,55 @@
-# Legacy Archive
+# Legacy Reference Registry
 
-This folder is a non-destructive archive pass created on 2026-03-18.
+This folder tracks legacy materials kept for reference while the active system moves forward.
 
-## Archive policy
+## Policy
 
-- Originals remain in their existing locations.
-- No source files were deleted or renamed in this pass.
-- External source material was copied into this archive, not moved.
-- This archive is intended to make later cleanup and review safer.
+- Legacy docs are preserved for design compatibility and historical context.
+- Founder and KC form assets are still relevant for future restaurant operations.
+- During current phases, Founder/KC materials are reference-only and not part of active core runtime flow.
+- Do not delete Founder/KC references unless equivalent replacement documentation is in place.
 
-## Archive groups
+## Critical Reference Assets
 
-### form-legacies
-
-Contains archive copies of legacy form-related files that still remain in the root docs folder:
+### Founder Form (reference)
 
 - `docs/Founder form code legacy`
+- `docs/legacies/form-legacies/`
+
+Use this reference for:
+- founder onboarding semantics
+- OTP cooldown/expiry assumptions
+- payload/field naming alignment
+
+### KC Form (reference)
+
 - `docs/KC form codes legacy`
-- `docs/booking form legacy`
-- `docs/contact form legacy`
+- `docs/legacies/form-legacies/`
+
+Use this reference for:
+- KC registration and verification field mapping
+- legacy form behavior needed for future compatibility
+
+## Other Legacy Groups
 
 ### booking-board-legacy
 
-Contains an archive copy of:
-
 - `docs/CF booking board code legacy`
+- `docs/legacies/booking-board-legacy/`
 
 ### make-logic-legacy
 
-Contains an archive copy of:
-
 - `docs/make.com logics legacy`
+- `docs/legacies/make-logic-legacy/`
 
-### make.com legacies
-
-Contains a copied archive of the external source folder:
+### make.com legacies (external archive copy)
 
 - `/Users/nguyennhathai/Downloads/make.com legacies`
+- `docs/legacies/make.com legacies/`
 
-The external source folder was intentionally left in place.
+## Active Contracts for Future Reactivation
 
-## Suggested next step
-
-After review, a later cleanup pass can decide whether any originals in `docs/` should be moved or replaced by redirects/index notes. That cleanup should remain separate from this archive-copy pass.
+When Founder/KC are reactivated, use:
+- `docs/contracts/API_CONTRACTS.md` (compatibility mapping section)
+- `docs/contracts/DATA_CONTRACTS.md` (canonical field mapping section)
+- `CHECKPOINTS.md` (Founder/KC reactivation readiness checkpoint)

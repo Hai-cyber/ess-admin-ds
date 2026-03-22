@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign up — Restaurant OS</title>
+  <link rel="stylesheet" href="/platform/platform.css" />
+</head>
+<body>
+
+<div id="nav-placeholder"></div>
+
+<div class="wizard-wrap">
+
+  <!-- Title -->
+  <div class="text-center" style="margin-bottom:36px;">
+    <h1 style="font-size:1.6rem;font-weight:800;margin:0 0 6px;" data-i18n="su.title">Create your account</h1>
+    <p style="color:var(--text-muted);font-size:0.92rem;margin:0;" data-i18n="su.subtitle">14-day free trial. No credit card required.</p>
+  </div>
+
+  <!-- Step indicators -->
+  <div class="wizard-steps" id="wizard-steps">
+    <div class="step-item active" id="step-ind-1">
+      <div class="step-dot">1</div>
+      <div class="step-label" data-i18n="su.s1">Plan</div>
+    </div>
+    <div class="step-item" id="step-ind-2">
+      <div class="step-dot">2</div>
+        <div class="plan-card-choice" data-plan="core" onclick="selectPlan('core')">
+          <div class="plan-choice-name">Core</div>
+          <div class="plan-choice-price" data-plan-price="core">€29<span class="mo">/user/mo</span></div>
+      <div class="step-label" data-i18n="su.s2">Restaurant</div>
+    </div>
+    <div class="step-item" id="step-ind-3">
+      <div class="step-dot">3</div>
+          <div class="plan-choice-price" data-plan-price="commerce">€69<span class="mo">/user/mo</span></div>
+    </div>
+    <div class="step-item" id="step-ind-4">
+      <div class="step-dot">✓</div>
+      <div class="step-label" data-i18n="su.s4">Done</div>
+    </div>
+          <div class="plan-choice-price" data-plan-price="growth">€99<span class="mo">/user/mo</span></div>
+
+  <!-- ── STEP 1: Plan selection ── -->
+  <div class="wizard-panel active" id="step-panel-1">
+    <div class="card-box card-box-lg">
+      <p style="font-size:0.92rem;font-weight:600;margin-bottom:16px;" data-i18n="su.plan_label">Choose your plan</p>
+          <div class="plan-choice-price" data-plan-price="enterprise" style="font-size:1rem;padding-top:4px;" data-i18n="price.custom">Custom</div>
+      <div class="plan-cards-grid">
+
+        <div class="plan-card-choice selected" data-plan="core" onclick="selectPlan('core')">
+          <div class="plan-choice-name">Core</div>
+          <div class="plan-choice-price">€29<span class="mo" data-i18n="price.per_mo">/mo</span></div>
+          <div class="plan-choice-desc" data-i18n="price.core_desc">Everything a new restaurant needs to go live.</div>
+        </div>
+
+        <div class="plan-card-choice" data-plan="commerce" onclick="selectPlan('commerce')">
+
+      <div data-signup-summary></div>
+          <div class="plan-choice-name">Commerce</div>
+          <div class="plan-choice-price">€69<span class="mo" data-i18n="price.per_mo">/mo</span></div>
+          <div class="plan-choice-desc" data-i18n="price.com_desc">Full table, order, and payment control.</div>
+        </div>
+
+        <div class="plan-card-choice" data-plan="growth" onclick="selectPlan('growth')">
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="f-admin-name">Admin / Owner Name</label>
+          <input id="f-admin-name" type="text" placeholder="Owner name" autocomplete="name" />
+          <div class="form-error">Admin name is required.</div>
+        </div>
+        <div class="form-group">
+          <label for="f-admin-pin">Admin PIN (4 digits)</label>
+          <input id="f-admin-pin" type="password" inputmode="numeric" maxlength="4" placeholder="1234" autocomplete="one-time-code" />
+          <div class="form-error">Admin PIN must be 4 digits.</div>
+          <div class="form-hint">This PIN lets you test-login to the admin and staff app immediately.</div>
+        </div>
+      </div>
+          <div class="plan-choice-name">Growth</div>
+          <div class="plan-choice-price">€99<span class="mo" data-i18n="price.per_mo">/mo</span></div>
+          <div class="plan-choice-desc" data-i18n="price.grow_desc">CRM, loyalty, and marketing for growing restaurants.</div>
+        </div>
+
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="f-staff-users">Expected active staff users</label>
+          <input id="f-staff-users" type="number" min="1" value="3" />
+        </div>
+        <div class="form-group">
+          <label for="f-template">Website template</label>
+          <select id="f-template">
+            <option value="minimal">Minimal</option>
+            <option value="modern" selected>Modern</option>
+            <option value="premium">Premium</option>
+          </select>
+        </div>
+      </div>
+        <div class="plan-card-choice" data-plan="enterprise" onclick="selectPlan('enterprise')">
+      <div class="alert alert-info">
+        <strong>Demo payment options</strong><br>
+        Choose the add-ons you want to include in the invoice preview. This test flow will create the account and mark payment as demo-paid.
+      </div>
+
+      <div class="form-group" style="display:grid;gap:8px;">
+        <label style="position:static !important;width:auto !important;height:auto !important;margin:0 !important;clip:auto !important;white-space:normal !important;overflow:visible !important;font-weight:400;">
+          <input id="f-extra-setup" type="checkbox" checked /> Include one-time setup package
+        </label>
+        <label style="position:static !important;width:auto !important;height:auto !important;margin:0 !important;clip:auto !important;white-space:normal !important;overflow:visible !important;font-weight:400;">
+          <input id="f-extra-tse" type="checkbox" /> Include TSE monthly package
+        </label>
+        <label style="position:static !important;width:auto !important;height:auto !important;margin:0 !important;clip:auto !important;white-space:normal !important;overflow:visible !important;font-weight:400;">
+          <input id="f-extra-support" type="checkbox" /> Include monthly IT support retainer
+        </label>
+      </div>
+
+      <div data-signup-summary></div>
+
+      <!-- Enterprise note -->
+      <div class="success-icon">✅</div>
+      <div class="success-title">Demo signup completed</div>
+        <a href="/platform/contact.html" style="margin-left:8px;font-weight:600;" data-i18n="su.ent_link">Contact sales →</a>
+      </div>
+
+      <p class="success-note" data-i18n="su.ok_note">
+        The link expires in 24 hours. Check your spam folder if you don't see it.
+      </p>
+      <hr class="divider" />
+      <p style="font-size:0.85rem;color:var(--text-muted);">
+        <a href="/platform/" style="color:var(--brand);">← Back to homepage</a>
+      </p>
+        <button class="btn btn-primary" onclick="wizardNext()" data-i18n="su.next">Continue</button>
+      </div>
+
+      <p style="margin-top:20px;text-align:center;font-size:0.82rem;color:var(--text-muted);">
+        Already have an account? <a href="#" style="color:var(--brand);" data-i18n="nav.login">Log in</a>
+      </p>
+    </div>
+  </div>
+
+  <!-- ── STEP 2: Restaurant info ── -->
+  <div class="wizard-panel" id="step-panel-2">
+    <div class="card-box">
+
+      <div class="form-group">
+        <label for="f-name" data-i18n="su.name_label">Restaurant name</label>
+        <input id="f-name" type="text" data-i18n-placeholder="su.name_ph" placeholder="e.g. Trattoria Roma" autocomplete="organization" />
+        <div class="form-error">Restaurant name is required.</div>
+      </div>
+
+      <div class="form-group">
+        <label for="f-address" data-i18n="su.addr_label">Address</label>
+        <input id="f-address" type="text" data-i18n-placeholder="su.addr_ph" placeholder="Street, city" autocomplete="street-address" />
+      </div>
+
+      <div class="form-group">
+        <label for="f-country" data-i18n="su.country_label">Country</label>
+        <select id="f-country">
+          <option value="DE" selected>Germany</option>
+          <option value="AT">Austria</option>
+          <option value="CH">Switzerland</option>
+          <option value="VN">Vietnam</option>
+          <option value="US">United States</option>
+          <option value="GB">United Kingdom</option>
+          <option value="FR">France</option>
+          <option value="IT">Italy</option>
+          <option value="ES">Spain</option>
+          <option value="NL">Netherlands</option>
+          <option value="OTHER">Other</option>
+        </select>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;gap:12px;">
+        <button class="btn btn-ghost" onclick="goStep(1)" data-i18n="su.back">Back</button>
+        <button class="btn btn-primary" onclick="wizardNext()" data-i18n="su.next">Continue</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── STEP 3: Account details ── -->
+  <div class="wizard-panel" id="step-panel-3">
+    <div class="card-box">
+
+      <div class="form-group">
+        <label for="f-email" data-i18n="su.email_label">Owner email</label>
+        <input id="f-email" type="email" data-i18n-placeholder="su.email_ph" placeholder="you@yourrestaurant.com" autocomplete="email" />
+        <div class="form-error">Valid email is required.</div>
+      </div>
+
+      <div class="form-group">
+        <label for="f-phone" data-i18n="su.phone_label">Phone (optional)</label>
+        <input id="f-phone" type="tel" placeholder="+49 123 456789" autocomplete="tel" />
+      </div>
+
+      <div class="form-group">
+        <label for="f-subdomain" data-i18n="su.sub_label">Your Restaurant OS URL</label>
+        <div class="subdomain-input-row">
+          <input id="f-subdomain" type="text" placeholder="my-restaurant" maxlength="30"
+                 oninput="this.value=this.value.toLowerCase();checkSubdomain(this.value)" />
+          <div class="subdomain-suffix">.restaurantos.app</div>
+        </div>
+        <div class="form-error">Subdomain is required.</div>
+        <div class="subdomain-status" id="subdomain-status"></div>
+        <div class="form-hint" data-i18n="su.sub_hint">Guests see this URL when booking online. Lowercase letters, numbers, and hyphens only.</div>
+      </div>
+
+      <div class="form-group">
+        <label for="f-password" data-i18n="su.pass_label">Password</label>
+        <input id="f-password" type="password" placeholder="••••••••" autocomplete="new-password" />
+        <div class="form-error">Password must be at least 8 characters.</div>
+        <div class="form-hint" data-i18n="su.pass_hint">Minimum 8 characters.</div>
+      </div>
+
+      <div class="form-group" style="display:flex;gap:10px;align-items:flex-start;">
+        <input id="f-agree" type="checkbox" style="width:auto;margin-top:3px;flex-shrink:0;" />
+        <label for="f-agree" style="font-weight:400;font-size:0.87rem;cursor:pointer;">
+          <span data-i18n="su.agree_pre">I agree to the</span>
+          <a href="/platform/legal/terms.html" target="_blank" data-i18n="su.agree_terms">Terms & Conditions</a>
+          <span data-i18n="su.agree_and">and</span>
+          <a href="/platform/legal/privacy.html" target="_blank" data-i18n="su.agree_priv">Privacy Policy</a>
+        </label>
+      </div>
+
+      <div class="alert alert-error" id="signup-error" style="display:none;"></div>
+
+      <div style="display:flex;justify-content:space-between;gap:12px;">
+        <button class="btn btn-ghost" onclick="goStep(2)" data-i18n="su.back">Back</button>
+        <button class="btn btn-primary" id="btn-submit" onclick="wizardNext()" data-i18n="su.submit">Create account</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── STEP 4: Success ── -->
+  <div class="wizard-panel" id="step-panel-4">
+    <div class="card-box text-center">
+      <div class="success-icon">✉️</div>
+      <div class="success-title" data-i18n="su.ok_title">Check your email!</div>
+      <p class="success-body" id="success-body" style="color:var(--text-muted);font-size:0.95rem;margin-bottom:12px;">
+        <!-- filled by JS -->
+      </p>
+      <p class="success-note" data-i18n="su.ok_note">
+        The link expires in 24 hours. Check your spam folder if you don't see it.
+      </p>
+      <hr class="divider" />
+      <p style="font-size:0.85rem;color:var(--text-muted);">
+        <a href="/platform/" style="color:var(--brand);">← Back to homepage</a>
+      </p>
+    </div>
+  </div>
+
+</div><!-- /wizard-wrap -->
+
+<div id="footer-placeholder"></div>
+
+<script src="/platform/platform.js"></script>
+<script>
+  // Pre-select plan from URL query param
+  document.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    const plan = params.get('plan');
+    if (plan) selectPlan(plan);
+
+    // Show enterprise note when enterprise card is selected
+    const cards = document.querySelectorAll('.plan-card-choice');
+    cards.forEach(c => c.addEventListener('click', () => {
+      const note = document.getElementById('enterprise-note');
+      if (note) note.style.display = state.plan === 'enterprise' ? 'block' : 'none';
+    }));
+  });
+</script>
+</body>
+</html>

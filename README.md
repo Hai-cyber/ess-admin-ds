@@ -1,28 +1,220 @@
-# ESSKULTUR Multi-Tenant Platform
+# ESSKULTUR — Restaurant OS
 
-This repository is evolving from a single-restaurant setup into a multi-tenant platform where each customer restaurant can have isolated operations while sharing one Cloudflare codebase.
+**Vertical SaaS for modern restaurant operations, built on Cloudflare.**
 
-## Platform Goals
+Not an ERP. Not Odoo. Not generic.
 
-- Each restaurant can run its own website, staff app, booking board, email routing, POS integration, and tenant-level settings.
-- Operator control plane can enable or disable paid modules per customer (SEO, media management, membership, marketing, and more).
-- Tenant front admin can manage operations variables (staff, area, capacity, social platform links, and media uploads for automation).
+---
 
-## Recommended Workspace Layout
+## 🚀 Quick Start
 
-- cloudflare/: Cloudflare-first runtime architecture (workers, durable objects, queues, schemas, tests).
-- knowledge/: Product and architecture knowledge base (ADRs, specs, APIs, runbooks, standards).
-- .github/workflows/: CI automation for structural validation.
+**New to the project?** Start here:
 
-## Migration Note
+1. [PRODUCT.md](./PRODUCT.md) — Product positioning, business model, user society
+2. [ARCHITECTURE.md](./ARCHITECTURE.md) — System design, multi-tenant data model, provisioning flow
+3. [BUSINESS_MODEL.md](./BUSINESS_MODEL.md) — Pricing tiers (€29-€99/user), revenue streams, activation flow
+4. [ROADMAP.md](./ROADMAP.md) — Execution phases (booking → POS → payment → remove Odoo)
+5. [AI_CONTEXT.md](./AI_CONTEXT.md) — What this platform is, core rules, what NOT to do
+6. [COPILOT_SPECIFICATION.md](./COPILOT_SPECIFICATION.md) — AI assistant design (process-bound, rule-based)
+7. [MODULE_CATALOG.md](./MODULE_CATALOG.md) — Core modules (Auth, Booking, POS, Payment, Admin, Notifications, etc.)
 
-Current production code remains in src/ and public/. The new cloudflare/ and knowledge/ trees define the target architecture and rollout contracts for multi-tenant SaaS operations.
+---
 
-## Where To Start
+## 💡 Key Principles
 
-- Product overview: knowledge/specs/project-overview.md
-- Platform spec: knowledge/specs/multi-tenant-platform-spec.md
-- Tenant self-service spec: knowledge/specs/frontend-self-service-spec.md
-- Control plane API: knowledge/apis/control-plane-api.md
-- Tenant admin API: knowledge/apis/tenant-admin-api.md
-- Founder and booking form query variables: docs/FORM_QUERY_VARIABLES.md
+- **Cloudflare-native**: Workers = business logic, D1 = source of truth
+- **Vertical SaaS**: Built for restaurants, not generic businesses
+- **Multi-tenant**: Each restaurant has isolated data, shared infrastructure
+- **Real-time**: No batch delays, instant updates for staff and guests
+- **Tenant-first**: Every table has `tenant_id`, zero data leaks
+
+---
+
+## 📋 Project Structure
+
+```
+ess-admin-ds/
+├── src/                  -- Current implementation (Workers, APIs, databases)
+├── public/               -- Static assets (forms, pages)
+├── cloudflare/           -- Target runtime architecture (coming)
+├── knowledge/            -- Architecture docs, ADRs, specs, APIs
+├── docs/                 -- Contracts, secrets, data, migration notes
+├── test/                 -- Test suite
+├── scripts/              -- Verification and checkpoint scripts
+│
+├── PRODUCT.md            -- ✨ Product positioning (START HERE)
+├── ARCHITECTURE.md       -- System design
+├── BUSINESS_MODEL.md     -- Pricing, revenue, activation flow
+├── ROADMAP.md            -- Phases: booking → POS → payment → Odoo removal
+├── CHECKPOINTS.md        -- Progress verification (8 checkpoints per phase)
+├── COPILOT_SPECIFICATION.md -- AI assistant rules
+├── MODULE_CATALOG.md     -- Core module definitions
+├── DECISIONS.md          -- Architecture decision records (ADRs)
+├── TRANSITION.md         -- Migration from Odoo to Cloudflare-native
+└── AI_CONTEXT.md         -- Context guide for AI assistance
+```
+
+---
+
+## 🎯 Current Status
+
+**Phase 1: Booking System Stabilization** (NOW → Q2 2026)
+
+- ✅ Booking form working
+- ✅ Booking board (realtime board with table layout)
+- ✅ Staff app (PIN login, stage management)
+- 🔄 Admin UI (setup wizard under development)
+- 🔄 Multi-tenant infrastructure (finalization)
+
+**Verified** (March 2026 E2E tests):
+- Online booking → Board → Staff notifications (real-time SSE)
+- Staff create booking from board → all systems updated
+- Stage transitions (pending → confirmed → arrived → done)
+- Per-tenant data isolation working
+
+---
+
+## 📦 Core Modules
+
+| Module | Status | Purpose |
+|--------|--------|---------|
+| **Auth** | ✅ | Staff PIN login, role-based access |
+| **Booking** | ✅ | Online reservations, stage management |
+| **POS** | 🔄 | Table management, orders, kitchen display |
+| **Payment** | 🔄 | Stripe integration, transaction handling |
+| **Website** | ✅ | Template builder, menu, booking form |
+| **Admin** | 🔄 | Settings, staff management, reporting |
+| **Notifications** | ✅ | Real-time SSE, SMS, email delivery |
+| **Marketing** (Phase 5) | ❌ | Campaigns, discounts, loyalty |
+| **Shop** (Phase 5) | ❌ | Ecommerce, preorder, delivery |
+
+---
+
+## 🛠️ Development
+
+### Setup
+
+```bash
+npm install
+npm run dev              # Start Wrangler dev server
+npm run test             # Run tests
+npm run deploy           # Deploy to Cloudflare
+```
+
+### Key Scripts
+
+```bash
+npm run check:tenant:failopen   # Verify no hardcoded fallback tenants
+npm run check:tenant:sql        # Verify all SQL queries filter by tenant_id
+npm run ci                      # Full CI checks (structure + tenant isolation + tests)
+npm run check:cp-all            # Run all checkpoint verifications
+npm run check:cp-booking-mvp    # Run specific checkpoint (booking MVP)
+```
+
+### Checkpoints
+
+See [CHECKPOINTS.md](./CHECKPOINTS.md) for 8 verification checkpoints across all phases:
+
+| Checkpoint | Status | Purpose |
+|-----------|--------|---------|
+| **CP-1: Tenant Isolation** | ✅ DONE | No cross-tenant data leaks |
+| **CP-2: Booking MVP** | ✅ DONE | Complete booking flow (form → board → notifications) |
+| **CP-3: Admin UI Setup** | ⏳ IN PROGRESS | Setup wizard, go-live flow |
+| **CP-4: Staff Mobile** | 📋 Phase 2 | Mobile-first, touch UI, 8h battery |
+| **CP-5: POS System** | 📋 Phase 3 | Table mgmt, orders, kitchen, payment |
+| **CP-6: Payment** | 📋 Phase 3 | Card, split bill, TSE receipts |
+| **CP-7: Odoo Removed** | ❌ Phase 4 | Zero Odoo in critical path |
+| **CP-8: Growth** | ❌ Phase 5 | Loyalty, shop, 50+ restaurants |
+
+**Run all checkpoints**:
+```bash
+npm run check:cp-all
+```
+
+### Environment
+
+Copy `.dev.vars.example` to `.dev.vars` and fill in:
+- `TURNSTILE_SECRET` — Cloudflare CAPTCHA
+- `DATABASE_URL` — D1 connection string
+- `STRIPE_SECRET_KEY` — Payment gateway (Phase 3)
+- `TWILIO_ACCOUNT_SID` — SMS provider (Phase 2)
+
+---
+
+## 📊 Database
+
+D1 (SQLite) schema with tenant isolation:
+
+```sql
+-- Example: every table has tenant_id
+CREATE TABLE bookings (
+  id STRING,
+  tenant_id STRING NOT NULL,
+  phone STRING NOT NULL,
+  name STRING NOT NULL,
+  guests_pax INT,
+  booking_datetime TIMESTAMP,
+  area STRING,
+  stage STRING,
+  created_at TIMESTAMP,
+  FOREIGN KEY (tenant_id) REFERENCES tenants(id)
+);
+
+-- Query pattern: ALWAYS include tenant_id
+SELECT * FROM bookings
+WHERE tenant_id = ? AND created_at >= ?
+```
+
+---
+
+## 🔐 Security & Compliance
+
+- **Tenant isolation**: Every query filtered by `tenant_id`
+- **No shared data**: Each restaurant's data is logically isolated
+- **TSE compliance**: Signed receipts, audit trails (Phase 3)
+- **PCI-DSS**: Payment handling via Stripe, no card data stored locally
+
+---
+
+## 🚀 Deployment
+
+### Production
+
+```bash
+npm run deploy              # Deploy to Cloudflare Workers
+wrangler publish           # Publish D1 migrations
+```
+
+### Monitoring
+
+- Cloudflare Workers Analytics (requests, latency, errors)
+- D1 Query Performance dashboard
+- Custom alerting (email on 500 errors)
+
+---
+
+## 📞 Support
+
+- **Documentation**: See PRODUCT.md, ARCHITECTURE.md, MODULE_CATALOG.md
+- **Issues**: GitHub Issues (with `tenant_id` context)
+- **Slack**: Engineering channel for architectural discussions
+
+---
+
+## 📄 License
+
+Proprietary — ESSKULTUR GmbH 2026
+
+---
+
+## 🗺️ Roadmap Summary
+
+| Phase | Focus | ETA |
+|-------|-------|-----|
+| 1 | Booking + Admin UI | Q2 2026 |
+| 2 | Staff mobile UI | Q3 2026 |
+| 3 | POS + Payment + TSE | Q4 2026 |
+| 4 | Remove Odoo | Q1 2027 |
+| 5 | Loyalty + Shop + Marketing | Q2+ 2027 |
+
+See [ROADMAP.md](./ROADMAP.md) for detailed milestones.

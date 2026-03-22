@@ -1,8 +1,22 @@
-# Database Schema (Tenant-Scoped)
+# Database Schema (Archived)
 
-## Critical Tables for Tenant Isolation
+**Status**: SUPERSEDED by [DATA_CONTRACTS.md](./DATA_CONTRACTS.md) (complete schema, validation rules, indexes)
 
-All sensitive tables **must include** `company_id` column and **queries must filter** `WHERE company_id = ?`.
+## Historical Reference
+
+This file contained the initial D1 schema. All current schema definitions are now in [DATA_CONTRACTS.md](./DATA_CONTRACTS.md) with:
+
+- Complete table schemas (all fields, types, constraints)
+- Validation rules per field
+- Foreign key relationships
+- Index strategy for performance
+- Soft delete patterns
+- Backup & recovery
+- GDPR compliance
+
+## Current Schema (Updated)
+
+All sensitive tables **must include** `tenant_id` column and **queries must filter** `WHERE tenant_id = ?`.
 
 ### customers
 
