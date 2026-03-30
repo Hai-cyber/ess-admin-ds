@@ -17,7 +17,7 @@
 ### "I need to understand the project RIGHT NOW"
 → Read **[QUICKSTART.md](./QUICKSTART.md)** (5 min)
 
-Summary: You're building Restaurant OS (vertical SaaS). Phase 1 (Booking) is 75% done. Admin UI needs completion. That's it.
+Summary: You're building Restaurant OS (vertical SaaS). Phase 1 (Booking + Platform Entry) is 85% done. Admin UI and founder/KC runtime hardening remain. That's it.
 
 ### "I need to know what's blocked / what to work on?"
 → Read **[STATUS.md](./STATUS.md)** (3 min)
@@ -114,17 +114,17 @@ If building an API endpoint
 If building database queries
 ├── docs/contracts/DATA_CONTRACTS.md (schema + validation)
 ├── docs/contracts/SECURITY_CONTRACTS.md (tenant isolation rule)
-└── src/modules/*/db.js (see examples)
+└── src/index.js + src/db/ (current runtime implementation)
 
 If creating a new module
 ├── docs/contracts/MODULE_CONTRACTS.md (module structure)
-├── src/modules/ (copy existing module as template)
+├── src/index.js (current runtime entry) + public/ (UI surfaces)
 └── tests/ (>80% coverage required)
 
 If integrating external service
 ├── docs/contracts/INTEGRATION_CONTRACTS.md (API specs)
 ├── docs/contracts/SECURITY_CONTRACTS.md (secrets management)
-└── src/modules/*/api.js (see examples)
+└── src/index.js + src/utils/ (current runtime integration points)
 ```
 
 ### Related Project Docs
@@ -155,11 +155,11 @@ If integrating external service
 
 **Before coding ANY feature:**
 
-### Every database query MUST filter by tenant_id
+### Every database query MUST filter by company_id in the current runtime
 
 ```javascript
 // ✅ CORRECT
-SELECT * FROM bookings WHERE tenant_id = ? AND ...
+SELECT * FROM bookings WHERE company_id = ? AND ...
 
 // ❌ WRONG (data leak!)
 SELECT * FROM bookings WHERE ...
@@ -174,23 +174,26 @@ Multi-tenant system = restaurants are isolated. One restaurant can't see another
 ## 📊 Current Status (Right Now)
 
 **Phase**: 1 of 5 (Booking System)  
-**Progress**: 75% complete  
+**Progress**: 85% complete  
 **ETA**: April 15, 2026  
-**Status**: 🟡 ON TRACK (minor blocker: admin UI refactoring)
+**Status**: 🟡 ON TRACK (remaining: Stripe wiring, website runtime binding, founder/KC OTP local fix)
 
 **What's done**:
 - ✅ Tenant isolation (verified)
 - ✅ Booking MVP (live form + board)
 - ✅ Staff authentication (PIN login)
 - ✅ Real-time notifications (SSE)
+- ✅ Platform site, SaaS admin, and self-service signup verified locally on 2026-03-30
+- ✅ Platform login/signup/pricing experience now includes browser-language auto-detect, contextual login, and localized pricing/add-on messaging
 
 **What's in progress** (your focus):
-- 🔄 Admin UI setup wizard (60% complete)
+- 🔄 Admin UI setup wizard (75% complete)
+- 🔄 Founder/KC OTP runtime hardening
 
 **What's next**:
 1. Complete admin UI (3-4 days)
-2. Beta with 2-3 restaurants (1 week)
-3. Phase 1 GA launch (Apr 15)
+2. Fix founder/KC OTP local runtime and rerun tests
+3. Beta with 2-3 restaurants (1 week)
 
 **For full details** → Read [STATUS.md](./STATUS.md)
 
@@ -204,12 +207,12 @@ Multi-tenant system = restaurants are isolated. One restaurant can't see another
 1. Read [QUICKSTART.md](./QUICKSTART.md) (5 min)
 2. Read [STATUS.md](./STATUS.md) → "What Happens Next" (3 min)
 3. Read [docs/contracts/API_CONTRACTS.md](./docs/contracts/API_CONTRACTS.md) → search "admin" (5 min)
-4. Start implemented in `src/modules/admin/`
-5. Test with `npm run check:cp-admin-setup`
+4. Start in `src/index.js` and `public/admin.html`
+5. Validate with `npm test` and `wrangler dev --config wrangler.jsonc`
 
 **Est. time**: 3-4 days
 
-**Blocker**: Component refactoring approval (by Mar 24)
+**Blocker**: Stripe/Twilio credential wiring and final go-live UX completion
 
 **Questions?** → Read relevant contract or ask in PR comments
 

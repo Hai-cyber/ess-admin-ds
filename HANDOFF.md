@@ -8,7 +8,7 @@
 
 ---
 
-## 📊 CURRENT PROJECT STATUS (As of 2026-03-22)
+## 📊 CURRENT PROJECT STATUS (As of 2026-03-30)
 
 ### ✅ What's Complete
 
@@ -25,7 +25,7 @@
 - [x] Decision records (DECISIONS.md)
 - [x] Legacy reference policy formalized (Founder/KC retained as reference assets)
 
-#### Implementation (75%)
+#### Implementation (85%)
 - [x] Tenant isolation (CP-1) ✅ VERIFIED
 - [x] Booking MVP (CP-2) ✅ VERIFIED
 - [x] Booking form live
@@ -33,8 +33,11 @@
 - [x] Stage engine (pending → confirmed → arrived → done)
 - [x] Staff PIN authentication
 - [x] Tenant guard middleware
-- [x] E2E tests passing
-- [ ] Admin UI setup wizard (60% complete)
+- [x] Local runtime verified for platform home/plans/contact, signup provisioning, board, admin config, staff auth, booking create, and stage updates
+- [x] Vitest baseline: 19/21 passing
+- [x] Platform UX/copy pass shipped locally: signup redesign, contextual login modal, browser-language detection, and localized pricing/add-on messaging
+- [ ] Founder/KC OTP runtime still fails locally without Twilio credentials
+- [ ] Admin UI setup wizard / go-live flow still incomplete (75% complete)
 
 #### Contracts & Specifications (100%)
 - [x] API Contracts (all endpoints defined)
@@ -48,19 +51,22 @@
 
 ### 🔄 In Progress (Current Sprint)
 
-#### CP-3: Admin UI Setup (60% complete)
+#### CP-3: Admin UI Setup (75% complete)
 
 **What's done**:
-- [x] Setup wizard UI framework (basic pages visible)
-- [x] Tenant signup endpoint skeleton
+- [x] Restaurant admin page + platform-config API + staff API are live
+- [x] SaaS admin dashboard/config routes are live
+- [x] Tenant signup endpoint provisions organization/company/admin staff user
+- [x] Platform landing and signup pricing copy now reflects Service POS/German checkout and Repeat Guests SMS/loyal-guest positioning in EN/DE/VI
+- [x] Included/add-on pricing notes and signup commercial summary are now language-aware instead of hardcoded English
 - [ ] Restaurant config form (email/phone/hours/areas)
 - [ ] Staff PIN setup
 - [ ] Payment integration setup
 - [ ] "Go Live" verification
 
-**What's blocked**: Admin component refactoring (scheduled end of week)
+**What's blocked**: final UX completion plus founder/KC OTP runtime depending on Twilio credentials
 
-**Entry point**: `src/modules/admin/` (partially implemented)
+**Entry points**: `src/index.js`, `public/admin.html`, `public/platform/admin.html`
 
 ---
 
@@ -87,16 +93,17 @@
 
 ## 🎯 Current Phase: Phase 1 (Booking System)
 
-**Status**: 75% complete  
+**Status**: 85% complete  
 **ETA**: April 15, 2026  
 **Owner**: Development team
 
 | Checkpoint | Status | Evidence | Blockers |
 |-----------|--------|----------|----------|
 | CP-1: Tenant Isolation | ✅ DONE | E2E_TEST_SUMMARY.md | None |
-| CP-2: Booking MVP | ✅ DONE | Booking form live, board working | None |
-| CP-3: Admin UI Setup | 🔄 60% | Setup wizard UI framework done | Component refactoring (ETA: Mar 31) |
-| **Phase 1 Total** | **🔄 75%** | — | **Admin UI refinement** |
+| CP-2: Booking MVP | ✅ DONE | Local runtime verified on 2026-03-30 | None |
+| CP-3: Admin UI Setup | 🔄 75% | Admin routes/UI live; go-live flow still incomplete | UX completion |
+| CP-10: Platform Site + Self-Service Signup | 🔄 80% | Platform home/contact/admin/signup verified live; localized pricing/login/signup polish shipped locally | Stripe + website runtime binding + Twilio for founder/KC |
+| **Phase 1 Total** | **🔄 85%** | — | **Platform/founder finalization** |
 
 ---
 
@@ -111,7 +118,7 @@
 - Add "Setup Complete" → "Go Live" button
 - Time estimate: 3-4 days
 - Owner: @dev-lead
-- Files: `src/modules/admin/` + form validation
+- Files: `src/index.js` + `public/admin.html`
 
 **Task 2**: Test CP-3 end-to-end
 - Run signup flow (tenant creation)
@@ -120,11 +127,16 @@
 - Verify booking form now works
 - Time estimate: 1 day
 - Owner: QA
-- Checkpoint script: `npm run check:cp-admin-setup`
+- Verification path: `npm test` + `wrangler dev --config wrangler.jsonc` + manual smoke tests
 
 **Task 3**: Document admin API endpoints
 - Verify all endpoints match API_CONTRACTS.md
 - Test with real data
+- Time estimate: Half day
+
+**Task 4**: Fix founder/KC OTP local runtime
+- Configure Twilio test credentials or add an explicit development stub
+- Re-run founder/KC registration tests and localhost flow
 - Time estimate: Half day
 
 ### Next Week (Mar 29-Apr 5)

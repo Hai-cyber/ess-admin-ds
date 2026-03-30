@@ -67,15 +67,15 @@ Latency target: nnn ms
     },
     {
       "id": "growth",
-      "name": "Growth",
-      "price_eur_monthly": 99,
-      "features": ["Everything in Commerce", "CRM module", "Loyalty program", "Marketing automation", "SEO tools"]
+      "name": "Repeat Guests",
+      "price_eur_monthly": 89,
+      "features": ["Everything in Service", "Offers for previous guests", "Simple return campaigns", "Repeat-guest overview"]
     },
     {
       "id": "enterprise",
-      "name": "Enterprise",
+      "name": "Groups",
       "price_eur_monthly": null,
-      "features": ["Everything in Growth", "Multi-location", "Custom integrations", "SLA support"]
+      "features": ["Everything in Repeat Guests", "Multi-location", "Custom integrations", "SLA support"]
     }
   ]
 }

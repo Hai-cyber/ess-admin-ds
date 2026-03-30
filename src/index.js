@@ -34,13 +34,13 @@ const FOUNDER_DEFAULT_MEMBERSHIP_TYPE = 'Founder';
 const PLATFORM_OPERATOR_COMPANY_ID = 1;
 const PLATFORM_PRICING_DEFAULTS = {
   platform_core_price_per_user: '29',
-  platform_commerce_price_per_user: '69',
-  platform_growth_price_per_user: '99',
+  platform_commerce_price_per_user: '59',
+  platform_growth_price_per_user: '89',
   platform_setup_fee_once: '349',
   platform_tse_fee_monthly: '19',
   platform_it_support_hourly: '95',
   platform_it_support_monthly: '249',
-  platform_price_note: 'Prices are billed per active staff user. Additional fees may apply for TSE, onboarding, and IT support.'
+  platform_price_note: 'Billed per active user. Included: hosting, platform maintenance, and standard domain setup. Add-ons only apply for SMS usage, TSE, onboarding, and optional IT support.'
 };
 const WEBSITE_BUILDER_DEFAULTS = {
   site_template: 'modern',
@@ -527,52 +527,43 @@ function buildPlatformPlansResponse(settingsMap) {
     plans: [
       {
         id: 'core',
-        name: 'Core',
+        name: 'Online',
         priceEurPerUserMonthly: Number(settingsMap.platform_core_price_per_user || PLATFORM_PRICING_DEFAULTS.platform_core_price_per_user || 0),
         features: [
-          'Restaurant website (3 templates)',
-          'Contact form',
+          'Restaurant website',
           'Online booking form',
-          'Booking email notifications',
-          'Basic admin dashboard',
-          'Website builder starter setup'
+          'Contact and info page',
+          'Bookings in one place'
         ]
       },
       {
         id: 'commerce',
-        name: 'Commerce',
+        name: 'Service',
         priceEurPerUserMonthly: Number(settingsMap.platform_commerce_price_per_user || PLATFORM_PRICING_DEFAULTS.platform_commerce_price_per_user || 0),
         features: [
-          'Everything in Core',
-          'Onsite booking + walk-ins',
-          'Booking board + stage management',
-          'SMS notifications',
-          'Staff PIN app',
-          'POS + table management',
-          'Payment methods: cash, PayPal, debit card, credit card, Apple Pay',
-          'Stripe can be used as one payment gateway',
-          'TSE receipts (German compliance)',
-          'Advanced booking management'
+          'Everything in Online',
+          'Restaurant POS',
+          'Live booking board, reminders, and confirmations',
+          'German-standard cash register workflow'
         ]
       },
       {
         id: 'growth',
-        name: 'Growth',
+        name: 'Repeat Guests',
         priceEurPerUserMonthly: Number(settingsMap.platform_growth_price_per_user || PLATFORM_PRICING_DEFAULTS.platform_growth_price_per_user || 0),
         features: [
-          'Everything in Commerce',
-          'CRM: guest profiles + history',
-          'Loyalty program',
-          'Marketing automation',
-          'SEO tools'
+          'Everything in Service',
+          'SMS marketing for previous guests',
+          'Loyal guest profiles and segments',
+          'Repeat-guest overview and follow-up'
         ]
       },
       {
         id: 'enterprise',
-        name: 'Enterprise',
+        name: 'Groups',
         priceEurPerUserMonthly: null,
         features: [
-          'Everything in Growth',
+          'Everything in Repeat Guests',
           'Multi-location support',
           'Custom integrations API',
           'Dedicated onboarding + SLA'

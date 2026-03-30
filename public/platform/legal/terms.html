@@ -215,6 +215,15 @@ function showLegalLang(lang, btn) {
   document.getElementById('legal-' + lang)?.classList.add('active');
   btn.classList.add('active');
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+  const lang = window.getPreferredRosLang?.() || 'en';
+  const btn = document.querySelector(`.lang-tab-btn[onclick*="'${lang}'"]`) || document.querySelector('.lang-tab-btn');
+  if (btn) {
+    const match = btn.getAttribute('onclick')?.match(/'([a-z]{2})'/i);
+    showLegalLang(match?.[1] || 'en', btn);
+  }
+});
 </script>
 </body>
 </html>

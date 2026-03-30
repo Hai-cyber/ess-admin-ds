@@ -191,19 +191,33 @@ label{font-size:.7rem;font-weight:bold;color:var(--muted);display:block;margin-b
 
 <script>
 // ─────────────────────── CONFIG ───────────────────────────────────────────────
-const AREA_CAPACITY = __AREA_CAPACITY_JSON__;
-const MAX_LANES     = __MAX_LANES__;
+const RAW_AREA_CAPACITY = '__AREA_CAPACITY_JSON__';
+const DEFAULT_AREA_CAPACITY = { indoor: 12, outdoor: 10, garden: 8, bar: 6 };
+const AREA_CAPACITY = (() => {
+  if (!RAW_AREA_CAPACITY || RAW_AREA_CAPACITY === '__AREA_CAPACITY_JSON__') {
+    return DEFAULT_AREA_CAPACITY;
+  }
+
+  try {
+    const parsed = JSON.parse(RAW_AREA_CAPACITY);
+    return parsed && typeof parsed === 'object' ? parsed : DEFAULT_AREA_CAPACITY;
+  } catch {
+    return DEFAULT_AREA_CAPACITY;
+  }
+})();
+const RAW_MAX_LANES = '__MAX_LANES__';
+const MAX_LANES = (() => {
+  const parsed = parseInt(RAW_MAX_LANES, 10);
+  if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  return Object.values(AREA_CAPACITY).reduce((sum, value) => sum + Number(value || 0), 0);
+})();
 const PX_PER_HOUR   = 120;
 const DAY_START     = 10;   // 10:00
 const DAY_END       = 24;   // 24:00
 
-// Read ?company_id= from page URL so localhost dev testing works
-// (on production the subdomain is used instead and this is ignored)
-let boardCompanyId = (() => {
-  const raw = new URLSearchParams(window.location.search).get('company_id') || '';
-  const n = parseInt(raw, 10);
-  return n > 0 ? n : null;
-})();
+// Read ?company_id= from page URL so localhost dev testing works.
+// On localhost, default to company 1 so the board opens without extra typing.
+let boardCompanyId = null;
 
 function isCompanyIdQueryHost() {
   const host = String(window.location.hostname || '').toLowerCase();
@@ -214,6 +228,16 @@ function isCompanyIdQueryHost() {
     host.includes('workers.dev')
   );
 }
+
+function getInitialBoardCompanyId() {
+  const raw = new URLSearchParams(window.location.search).get('company_id') || '';
+  const parsed = parseInt(raw, 10);
+  if (parsed > 0) return parsed;
+  if (isCompanyIdQueryHost()) return 1;
+  return null;
+}
+
+boardCompanyId = getInitialBoardCompanyId();
 
 function syncTenantLoginUi() {
   const panel = document.getElementById('tenantPanel');
@@ -546,7 +570,7 @@ async function doStageUpdate(bookingId, stage) {
         stage,
         staffId: currentUser,
         pin: currentPin,
-        companyId: BOARD_COMPANY_ID || undefined
+        companyId: boardCompanyId || undefined
       })
     });
     const data = await res.json();

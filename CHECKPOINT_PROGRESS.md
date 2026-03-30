@@ -2,7 +2,7 @@
 
 **Purpose**: Track checkpoint completion as you move through phases. Update this weekly.
 
-**Last Updated**: 2026-03-22  
+**Last Updated**: 2026-03-30  
 **Current Phase**: Phase 1 (Booking + Platform Entry) — 85% complete
 
 ---
@@ -15,9 +15,9 @@
 | Checkpoint | Component | Status | Evidence | Owner | ETA |
 |-----------|-----------|--------|----------|-------|-----|
 | CP-1 | Tenant Isolation | ✅ DONE | E2E_TEST_SUMMARY.md | Team | ✅ Done |
-| CP-2 | Booking MVP | ✅ DONE | Booking form live, board working, SSE verified | Team | ✅ Done |
+| CP-2 | Booking MVP | ✅ DONE | Local runtime verified: booking form render, board, staff-create, booking list, stage updates | Team | ✅ Done |
 | CP-3 | Admin UI Setup | ⏳ 75% | Tenant admin refined, billing/domain/payment section active | @dev-lead | Mar 31 |
-| CP-10 | Platform Site + Self-Service Signup | ⏳ 80% | Live deploy, SaaS admin split, real signup provisioning + demo payment | @dev-lead | Mar 31 |
+| CP-10 | Platform Site + Self-Service Signup | ⏳ 80% | Live runtime verified: platform pages, SaaS admin dashboard, contact form, signup provisioning | @dev-lead | Mar 31 |
 | **Phase 1 Total** | — | **85%** | — | — | **Apr 15** |
 
 ### CP-1 Evidence ✅
@@ -32,12 +32,12 @@
 ### CP-2 Evidence ✅
 
 ```bash
-✅ Run: npm run check:cp-booking-mvp
-✅ Result: Booking form submission works (< 500ms)
-✅ Result: Bookings appear on board (< 1s)
-✅ Result: SSE notifications stream (< 200ms)
-✅ Result: Stage transitions persist
-✅ Result: E2E test passed (form → board → staff notification)
+✅ Run: npm test
+✅ Result: booking isolation and SSE tests still pass locally
+✅ Run: wrangler dev + manual smoke test on 2026-03-30
+✅ Result: booking form renders for tenant host
+✅ Result: localhost public booking submit works with `company_id` override
+✅ Result: staff-create booking and stage transitions persist live
 ```
 
 ### CP-3/CP-10 Status ⏳
@@ -46,14 +46,16 @@
 ✅ Platform marketing site deployed on Cloudflare
 ✅ SaaS admin and restaurant admin split (separate routes and APIs)
 ✅ Signup endpoint provisions organization/company/admin staff user
+✅ Platform contact form and admin dashboard verified live locally
 ✅ Demo payment flow and billable staff auto-recalc hook implemented
 ⏳ Real Stripe checkout wiring still pending
 ⏳ Tenant website templates still need runtime binding to website-builder fields
+⏳ Founder/KC OTP runtime blocked locally by missing Twilio credentials
 ```
 
-**Blockers**: Stripe test credentials and final checkout flow decisions
+**Blockers**: Stripe test credentials, tenant website runtime binding, and Twilio credentials or a local OTP stub
 
-**Next**: Wire Stripe test checkout + connect tenant templates to website-builder runtime settings
+**Next**: Wire Stripe test checkout + connect tenant templates to website-builder runtime settings + fix founder/KC OTP local runtime path
 
 ---
 

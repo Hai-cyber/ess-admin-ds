@@ -5,271 +5,1067 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sign up — Restaurant OS</title>
   <link rel="stylesheet" href="/platform/platform.css" />
+  <style>
+    :root {
+      --onboarding-brand: #a54a7b;
+      --onboarding-brand-strong: #8f355f;
+      --onboarding-brand-deep: #6f2246;
+      --onboarding-brand-soft: #f5e8ee;
+      --onboarding-brand-soft-2: #fbf5f7;
+      --onboarding-ink: #2b1730;
+    }
+
+    body.signup-onboarding {
+      background:
+        radial-gradient(circle at top left, rgba(165, 74, 123, 0.18), transparent 32%),
+        radial-gradient(circle at 80% 10%, rgba(111, 34, 70, 0.12), transparent 24%),
+        linear-gradient(180deg, #fdf8fa 0%, #f8fafc 48%, #f6eef2 100%);
+    }
+
+    body.signup-onboarding::after {
+      bottom: 18px;
+      right: 18px;
+    }
+
+    .signup-page {
+      min-height: calc(100vh - 64px);
+      padding: 34px max(4vw, 24px) 72px;
+    }
+
+    .signup-shell {
+      max-width: 1240px;
+      margin: 0 auto;
+    }
+
+    .signup-intro {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: end;
+      margin-bottom: 22px;
+    }
+
+    .signup-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(165, 74, 123, 0.1);
+      color: var(--onboarding-brand);
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .signup-intro h1 {
+      margin: 0;
+      font-size: clamp(2.1rem, 4vw, 3.35rem);
+      line-height: 1.02;
+      letter-spacing: -0.04em;
+      color: var(--onboarding-ink);
+      max-width: 11ch;
+    }
+
+    .signup-intro p {
+      margin: 12px 0 0;
+      max-width: 58ch;
+      color: #59637d;
+      font-size: 1rem;
+    }
+
+    .signup-side-note {
+      padding: 18px 20px;
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.76);
+      border: 1px solid rgba(165, 74, 123, 0.16);
+      box-shadow: 0 18px 50px rgba(111, 34, 70, 0.08);
+      color: #5d3a4d;
+      min-width: 260px;
+    }
+
+    .signup-side-note strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--onboarding-ink);
+      font-size: 0.96rem;
+    }
+
+    .signup-side-note span {
+      font-size: 0.86rem;
+      color: #68728a;
+    }
+
+    .signup-progress {
+      position: relative;
+      margin-bottom: 26px;
+      padding: 18px 24px;
+      border-radius: 26px;
+      background: rgba(255, 255, 255, 0.84);
+      border: 1px solid rgba(165, 74, 123, 0.16);
+      box-shadow: 0 18px 50px rgba(111, 34, 70, 0.08);
+      overflow: hidden;
+    }
+
+    .signup-progress::before {
+      content: '';
+      position: absolute;
+      left: 7%;
+      right: 7%;
+      top: 42px;
+      height: 4px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(165, 74, 123, 0.24), rgba(111, 34, 70, 0.12));
+    }
+
+    .wizard-steps {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 18px;
+      margin: 0;
+      max-width: none;
+    }
+
+    .wizard-steps::before {
+      display: none;
+    }
+
+    .step-item {
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .step-dot {
+      width: 48px;
+      height: 48px;
+      border: none;
+      background: #f2e7ec;
+      color: #87586c;
+      font-size: 0.95rem;
+      font-weight: 800;
+      box-shadow: inset 0 0 0 1px rgba(165, 74, 123, 0.1);
+    }
+
+    .step-item.active .step-dot,
+    .step-item.done .step-dot {
+      color: #fff;
+      background: linear-gradient(135deg, var(--onboarding-brand-deep) 0%, var(--onboarding-brand) 52%, #bb628d 100%);
+      box-shadow: 0 12px 28px rgba(165, 74, 123, 0.28);
+    }
+
+    .step-copy {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      padding-top: 2px;
+    }
+
+    .step-caption {
+      font-size: 0.72rem;
+      font-weight: 800;
+      color: #7b7590;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .step-label {
+      font-size: 0.96rem;
+      font-weight: 800;
+      color: var(--onboarding-ink);
+      text-align: left;
+    }
+
+    .step-detail {
+      font-size: 0.82rem;
+      color: #7a8398;
+      line-height: 1.45;
+    }
+
+    .wizard-panel {
+      display: none;
+    }
+
+    .wizard-panel.active {
+      display: block;
+    }
+
+    .signup-stage {
+      background: rgba(255, 255, 255, 0.96);
+      border: 1px solid rgba(165, 74, 123, 0.14);
+      border-radius: 34px;
+      box-shadow: 0 28px 80px rgba(111, 34, 70, 0.12);
+      padding: clamp(24px, 3vw, 40px);
+      backdrop-filter: blur(14px);
+    }
+
+    .signup-stage-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 280px;
+      gap: 20px;
+      align-items: start;
+      margin-bottom: 26px;
+    }
+
+    .signup-stage-tag {
+      display: inline-block;
+      margin-bottom: 10px;
+      font-size: 0.8rem;
+      font-weight: 800;
+      color: var(--onboarding-brand);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .signup-stage-header h2 {
+      margin: 0;
+      font-size: clamp(1.6rem, 2.4vw, 2.35rem);
+      line-height: 1.06;
+      letter-spacing: -0.03em;
+      color: var(--onboarding-ink);
+    }
+
+    .signup-stage-header p {
+      margin: 10px 0 0;
+      max-width: 58ch;
+      color: #65708a;
+      font-size: 0.98rem;
+    }
+
+    .signup-stage-pill {
+      padding: 18px 20px;
+      border-radius: 24px;
+      background: linear-gradient(160deg, #4e1f35 0%, #7a2f52 100%);
+      color: #fff1f6;
+      min-height: 116px;
+    }
+
+    .signup-stage-pill strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 0.96rem;
+      color: #fff;
+    }
+
+    .signup-stage-pill span {
+      display: block;
+      font-size: 0.86rem;
+      line-height: 1.55;
+      color: rgba(255, 241, 246, 0.8);
+    }
+
+    .signup-stage-body {
+      display: grid;
+      grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.92fr);
+      gap: 24px;
+      align-items: start;
+    }
+
+    .signup-main-panel,
+    .signup-side-panel {
+      border-radius: 28px;
+      background: #fff;
+      border: 1px solid rgba(222, 226, 240, 0.92);
+      box-shadow: 0 14px 30px rgba(55, 40, 93, 0.06);
+    }
+
+    .signup-main-panel {
+      padding: 26px;
+    }
+
+    .signup-side-panel {
+      padding: 22px;
+      position: sticky;
+      top: 92px;
+      background: linear-gradient(180deg, #fffafb 0%, var(--onboarding-brand-soft-2) 100%);
+    }
+
+    .signup-panel-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .signup-panel-title h3,
+    .signup-panel-title h4 {
+      margin: 0;
+      color: #1d1737;
+      font-size: 1.08rem;
+      font-weight: 800;
+    }
+
+    .signup-panel-title span {
+      color: #7b7692;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .plan-cards-grid.signup-plan-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin: 0;
+    }
+
+    .plan-card-choice {
+      border: 1px solid rgba(197, 204, 224, 0.92);
+      border-radius: 26px;
+      padding: 22px 22px 20px;
+      background: linear-gradient(180deg, #fff 0%, #fff9fb 100%);
+      text-align: left;
+      transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .plan-card-choice:hover {
+      transform: translateY(-2px);
+      border-color: rgba(165, 74, 123, 0.42);
+      box-shadow: 0 16px 26px rgba(111, 34, 70, 0.1);
+    }
+
+    .plan-card-choice.selected {
+      border-color: rgba(165, 74, 123, 0.84);
+      background: linear-gradient(180deg, rgba(245, 232, 238, 0.98) 0%, rgba(255, 255, 255, 1) 100%);
+      box-shadow: 0 18px 30px rgba(165, 74, 123, 0.14);
+    }
+
+    .plan-card-choice.selected::after {
+      top: 18px;
+      right: 18px;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, var(--onboarding-brand-deep) 0%, var(--onboarding-brand) 100%);
+      color: #fff;
+      font-size: 0.8rem;
+      box-shadow: 0 10px 20px rgba(165, 74, 123, 0.22);
+    }
+
+    .plan-tier {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 74px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(165, 74, 123, 0.1);
+      color: var(--onboarding-brand);
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    .plan-choice-name {
+      font-size: 1.2rem;
+      margin-bottom: 8px;
+      color: #18132f;
+    }
+
+    .plan-choice-price {
+      font-size: 2.1rem;
+      color: var(--onboarding-brand);
+      margin-bottom: 10px;
+    }
+
+    .plan-choice-price .mo {
+      font-size: 0.88rem;
+      color: #727b91;
+    }
+
+    .plan-choice-desc {
+      margin-bottom: 14px;
+      color: #5e6780;
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+
+    .plan-feature-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 8px;
+    }
+
+    .plan-feature-list li {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      font-size: 0.84rem;
+      color: #2d3140;
+      line-height: 1.5;
+    }
+
+    .plan-feature-list li::before {
+      content: '✓';
+      color: var(--onboarding-brand);
+      font-weight: 800;
+      margin-top: 1px;
+      flex-shrink: 0;
+    }
+
+    .plan-enterprise-note {
+      display: none;
+      margin-top: 16px;
+      border-radius: 22px;
+      padding: 18px 20px;
+      background: linear-gradient(160deg, rgba(78, 31, 53, 0.98) 0%, rgba(122, 47, 82, 0.98) 100%);
+      color: #fff1f6;
+    }
+
+    .plan-enterprise-note a {
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .signup-summary-card {
+      border-radius: 24px;
+      padding: 18px 18px 20px;
+      background: linear-gradient(180deg, #fff 0%, #fff8fa 100%);
+      border: 1px solid rgba(206, 209, 233, 0.9);
+      margin-bottom: 16px;
+    }
+
+    .signup-summary-card h4 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+      color: #1b1632;
+    }
+
+    .summary-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(226, 229, 241, 0.92);
+      font-size: 0.88rem;
+      color: #4f5970;
+    }
+
+    .summary-line:last-child {
+      border-bottom: none;
+    }
+
+    .summary-line strong {
+      color: #19142f;
+      font-weight: 800;
+    }
+
+    .signup-side-panel .form-group:last-child,
+    .signup-main-panel .form-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .signup-side-panel .form-group {
+      margin-bottom: 16px;
+    }
+
+    .signup-side-panel input,
+    .signup-side-panel select,
+    .signup-main-panel input,
+    .signup-main-panel select,
+    .signup-main-panel textarea {
+      border-radius: 16px;
+      border-width: 1px;
+      padding: 13px 15px;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+    }
+
+    .signup-choice-stack {
+      display: grid;
+      gap: 10px;
+    }
+
+    .signup-check {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.74);
+      border: 1px solid rgba(216, 220, 237, 0.95);
+      color: #363d52;
+      font-size: 0.87rem;
+      line-height: 1.45;
+    }
+
+    .signup-check input {
+      width: auto;
+      margin: 2px 0 0;
+      accent-color: var(--onboarding-brand);
+    }
+
+    .signup-stage-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(229, 232, 241, 0.92);
+    }
+
+    .signup-stage-footer-note {
+      color: #69738a;
+      font-size: 0.9rem;
+      max-width: 44ch;
+    }
+
+    .signup-stage-footer-note a {
+      color: var(--onboarding-brand);
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .signup-cta {
+      min-width: 220px;
+      justify-content: center;
+      border: none;
+      border-radius: 18px;
+      padding: 16px 26px;
+      background: linear-gradient(135deg, var(--onboarding-brand-deep) 0%, var(--onboarding-brand-strong) 50%, #be6b93 100%);
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 800;
+      box-shadow: 0 20px 34px rgba(165, 74, 123, 0.28);
+    }
+
+    .signup-cta:hover {
+      filter: brightness(1.05);
+      transform: translateY(-1px);
+    }
+
+    .signup-secondary-cta {
+      min-width: 150px;
+      border-radius: 16px;
+    }
+
+    .signup-form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .signup-form-grid .full {
+      grid-column: 1 / -1;
+    }
+
+    .signup-microcopy {
+      display: grid;
+      gap: 10px;
+      margin-top: 18px;
+      color: #6b7590;
+      font-size: 0.88rem;
+    }
+
+    .signup-microcopy strong {
+      color: #221a40;
+    }
+
+    .signup-payment-card {
+      padding: 18px;
+      border-radius: 22px;
+      background: linear-gradient(180deg, #4e1f35 0%, #6f2246 100%);
+      color: #fff1f6;
+      margin-bottom: 16px;
+    }
+
+    .signup-payment-card h4 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+      color: #fff;
+    }
+
+    .signup-payment-card p {
+      margin: 0;
+      color: rgba(255, 241, 246, 0.78);
+      font-size: 0.88rem;
+      line-height: 1.55;
+    }
+
+    .signup-success-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+      gap: 22px;
+      align-items: start;
+    }
+
+    .signup-success-card,
+    .signup-success-next {
+      border-radius: 28px;
+      border: 1px solid rgba(219, 223, 237, 0.95);
+      background: #fff;
+      box-shadow: 0 14px 30px rgba(55, 40, 93, 0.06);
+      padding: 28px;
+    }
+
+    .signup-success-card .success-icon {
+      margin-bottom: 14px;
+    }
+
+    .signup-success-next ul {
+      margin: 14px 0 0;
+      padding-left: 18px;
+      color: #5f6880;
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 1080px) {
+      .signup-stage-header,
+      .signup-stage-body,
+      .signup-success-layout,
+      .signup-intro {
+        grid-template-columns: 1fr;
+      }
+
+      .signup-side-panel {
+        position: static;
+      }
+    }
+
+    @media (max-width: 820px) {
+      .wizard-steps {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .signup-progress::before {
+        display: none;
+      }
+
+      .plan-cards-grid.signup-plan-grid,
+      .signup-form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .signup-form-grid .full {
+        grid-column: auto;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .signup-page {
+        padding: 24px 16px 56px;
+      }
+
+      .signup-stage {
+        border-radius: 26px;
+        padding: 20px;
+      }
+
+      .signup-stage-footer {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .signup-cta,
+      .signup-secondary-cta {
+        width: 100%;
+      }
+
+      .wizard-steps {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
-<body>
+<body class="signup-onboarding">
+  <div id="nav-placeholder"></div>
 
-<div id="nav-placeholder"></div>
-
-<div class="wizard-wrap">
-
-  <!-- Title -->
-  <div class="text-center" style="margin-bottom:36px;">
-    <h1 style="font-size:1.6rem;font-weight:800;margin:0 0 6px;" data-i18n="su.title">Create your account</h1>
-    <p style="color:var(--text-muted);font-size:0.92rem;margin:0;" data-i18n="su.subtitle">14-day free trial. No credit card required.</p>
-  </div>
-
-  <!-- Step indicators -->
-  <div class="wizard-steps" id="wizard-steps">
-    <div class="step-item active" id="step-ind-1">
-      <div class="step-dot">1</div>
-      <div class="step-label" data-i18n="su.s1">Plan</div>
-    </div>
-    <div class="step-item" id="step-ind-2">
-      <div class="step-dot">2</div>
-        <div class="plan-card-choice" data-plan="core" onclick="selectPlan('core')">
-          <div class="plan-choice-name">Core</div>
-          <div class="plan-choice-price" data-plan-price="core">€29<span class="mo">/user/mo</span></div>
-      <div class="step-label" data-i18n="su.s2">Restaurant</div>
-    </div>
-    <div class="step-item" id="step-ind-3">
-      <div class="step-dot">3</div>
-          <div class="plan-choice-price" data-plan-price="commerce">€69<span class="mo">/user/mo</span></div>
-    </div>
-    <div class="step-item" id="step-ind-4">
-      <div class="step-dot">✓</div>
-      <div class="step-label" data-i18n="su.s4">Done</div>
-    </div>
-          <div class="plan-choice-price" data-plan-price="growth">€99<span class="mo">/user/mo</span></div>
-
-  <!-- ── STEP 1: Plan selection ── -->
-  <div class="wizard-panel active" id="step-panel-1">
-    <div class="card-box card-box-lg">
-      <p style="font-size:0.92rem;font-weight:600;margin-bottom:16px;" data-i18n="su.plan_label">Choose your plan</p>
-          <div class="plan-choice-price" data-plan-price="enterprise" style="font-size:1rem;padding-top:4px;" data-i18n="price.custom">Custom</div>
-      <div class="plan-cards-grid">
-
-        <div class="plan-card-choice selected" data-plan="core" onclick="selectPlan('core')">
-          <div class="plan-choice-name">Core</div>
-          <div class="plan-choice-price">€29<span class="mo" data-i18n="price.per_mo">/mo</span></div>
-          <div class="plan-choice-desc" data-i18n="price.core_desc">Everything a new restaurant needs to go live.</div>
+  <main class="signup-page">
+    <div class="signup-shell">
+      <section class="signup-intro">
+        <div>
+          <div class="signup-kicker">RestaurantOS onboarding</div>
+          <h1>Create your workspace with zero visual chaos.</h1>
+          <p>One clear path from plan selection to launch. No vertical clutter, no black footer interruption, no hidden CTA below the fold.</p>
         </div>
+        <aside class="signup-side-note">
+          <strong>14-day guided trial</strong>
+          <span>Choose a plan, create the operating account, review the payment preview, and open your admin + board in one flow.</span>
+        </aside>
+      </section>
 
-        <div class="plan-card-choice" data-plan="commerce" onclick="selectPlan('commerce')">
-
-      <div data-signup-summary></div>
-          <div class="plan-choice-name">Commerce</div>
-          <div class="plan-choice-price">€69<span class="mo" data-i18n="price.per_mo">/mo</span></div>
-          <div class="plan-choice-desc" data-i18n="price.com_desc">Full table, order, and payment control.</div>
+      <section class="signup-progress">
+        <div class="wizard-steps" id="wizard-steps">
+          <div class="step-item active" id="step-ind-1">
+            <div class="step-dot">1</div>
+            <div class="step-copy">
+              <div class="step-caption">Step 1</div>
+              <div class="step-label">Choose plan</div>
+              <div class="step-detail">Select the operating tier and preview the commercial setup.</div>
+            </div>
+          </div>
+          <div class="step-item" id="step-ind-2">
+            <div class="step-dot">2</div>
+            <div class="step-copy">
+              <div class="step-caption">Step 2</div>
+              <div class="step-label">Create account</div>
+              <div class="step-detail">Enter restaurant profile and define the first admin login.</div>
+            </div>
+          </div>
+          <div class="step-item" id="step-ind-3">
+            <div class="step-dot">3</div>
+            <div class="step-copy">
+              <div class="step-caption">Step 3</div>
+              <div class="step-label">Payment preview</div>
+              <div class="step-detail">Lock your subdomain, review charges, and confirm activation.</div>
+            </div>
+          </div>
+          <div class="step-item" id="step-ind-4">
+            <div class="step-dot">✓</div>
+            <div class="step-copy">
+              <div class="step-caption">Step 4</div>
+              <div class="step-label">Completed</div>
+              <div class="step-detail">Open admin, board, and the public site preview immediately.</div>
+            </div>
+          </div>
         </div>
+      </section>
 
-        <div class="plan-card-choice" data-plan="growth" onclick="selectPlan('growth')">
+      <section class="wizard-panel active" id="step-panel-1">
+        <div class="signup-stage">
+          <div class="signup-stage-header">
+            <div>
+              <span class="signup-stage-tag">Step 1 · Choose plan</span>
+              <h2>Pick the operating model you can actually launch this week.</h2>
+              <p>Choose the commercial tier, define your initial staff footprint, and preview the demo payment summary before you move into account creation.</p>
+            </div>
+            <div class="signup-stage-pill">
+              <strong>Clean content area</strong>
+              <span>Everything for this step sits inside one white container. The CTA stays in sight. The footer is intentionally removed from the onboarding flow.</span>
+            </div>
+          </div>
 
-      <div class="form-row">
-        <div class="form-group">
-          <label for="f-admin-name">Admin / Owner Name</label>
-          <input id="f-admin-name" type="text" placeholder="Owner name" autocomplete="name" />
-          <div class="form-error">Admin name is required.</div>
+          <div class="signup-stage-body">
+            <div class="signup-main-panel">
+              <div class="signup-panel-title">
+                <h3>Operating plans</h3>
+                <span data-i18n="su.plan_hint">Recommended left to right</span>
+              </div>
+
+              <div class="plan-cards-grid signup-plan-grid">
+                <div class="plan-card-choice selected" data-plan="core" onclick="selectPlan('core')">
+                  <div class="plan-tier" data-i18n="price.core_name">Online</div>
+                  <div class="plan-choice-name" data-i18n="price.core_name">Online</div>
+                  <div class="plan-choice-price" data-plan-price="core">EUR29<span class="mo">/active user/mo</span></div>
+                  <div class="plan-choice-desc" data-i18n="price.core_desc">So guests can find you and book a table.</div>
+                  <ul class="plan-feature-list">
+                    <li data-i18n="su.plan_core_f1">Restaurant website and online booking form</li>
+                    <li data-i18n="su.plan_core_f2">Contact page and bookings in one place</li>
+                    <li data-i18n="su.plan_core_f3">Hosting and standard domain setup included</li>
+                  </ul>
+                </div>
+
+                <div class="plan-card-choice" data-plan="commerce" onclick="selectPlan('commerce')">
+                  <div class="plan-tier" data-i18n="price.com_name">Service</div>
+                  <div class="plan-choice-name" data-i18n="price.com_name">Service</div>
+                  <div class="plan-choice-price" data-plan-price="commerce">EUR59<span class="mo">/active user/mo</span></div>
+                  <div class="plan-choice-desc" data-i18n="price.com_desc">For restaurants that need POS, service flow, and a German-standard checkout.</div>
+                  <ul class="plan-feature-list">
+                    <li data-i18n="su.plan_com_f1">Everything in Online, plus restaurant POS</li>
+                    <li data-i18n="su.plan_com_f2">Booking board, reminders, walk-ins, and staff PIN login</li>
+                    <li data-i18n="su.plan_com_f3">German-standard cash register flow, with TSE as add-on</li>
+                  </ul>
+                </div>
+
+                <div class="plan-card-choice" data-plan="growth" onclick="selectPlan('growth')">
+                  <div class="plan-tier" data-i18n="price.grow_name">Repeat Guests</div>
+                  <div class="plan-choice-name" data-i18n="price.grow_name">Repeat Guests</div>
+                  <div class="plan-choice-price" data-plan-price="growth">EUR89<span class="mo">/active user/mo</span></div>
+                  <div class="plan-choice-desc" data-i18n="price.grow_desc">For restaurants that want SMS marketing and loyal-guest management built in.</div>
+                  <ul class="plan-feature-list">
+                    <li data-i18n="su.plan_grow_f1">Everything in Service, plus SMS marketing</li>
+                    <li data-i18n="su.plan_grow_f2">Loyal guest segments, return offers, and follow-up</li>
+                    <li data-i18n="su.plan_grow_f3">Built for restaurants that want more repeat guests</li>
+                  </ul>
+                </div>
+
+                <div class="plan-card-choice" data-plan="enterprise" onclick="selectPlan('enterprise')">
+                  <div class="plan-tier" data-i18n="price.ent_name">Groups</div>
+                  <div class="plan-choice-name" data-i18n="price.ent_name">Groups</div>
+                  <div class="plan-choice-price" data-plan-price="enterprise">Custom</div>
+                  <div class="plan-choice-desc" data-i18n="price.ent_desc">For multi-location operations, custom integration needs, and a managed onboarding track.</div>
+                  <ul class="plan-feature-list">
+                    <li data-i18n="su.plan_ent_f1">Everything in Repeat Guests, plus multi-site rollout</li>
+                    <li data-i18n="su.plan_ent_f2">Dedicated onboarding and SLA discussions</li>
+                    <li data-i18n="su.plan_ent_f3">Manual pricing and integration scoping</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="plan-enterprise-note" id="enterprise-note">
+                Enterprise onboarding is handled manually so you do not get pushed through a generic trial flow. <a href="/platform/contact.html">Contact sales</a> and we will map rollout, integrations, and pricing with you directly.
+              </div>
+            </div>
+
+            <aside class="signup-side-panel">
+              <div class="signup-panel-title">
+                <h4 data-i18n="su.side_title">Workspace configuration</h4>
+                <span data-i18n="su.side_live">Live preview</span>
+              </div>
+
+              <div class="signup-summary-card">
+                <h4 data-i18n="su.initial_title">Initial setup</h4>
+                <div class="form-group">
+                  <label for="f-staff-users" data-i18n="su.users_label">Expected active users</label>
+                  <input id="f-staff-users" type="number" min="1" value="3" />
+                  <div class="form-hint" data-i18n="su.users_hint">Used for recurring billing and staffing assumptions.</div>
+                </div>
+                <div class="form-group">
+                  <label for="f-template">Website template</label>
+                  <select id="f-template">
+                    <option value="minimal">Minimal</option>
+                    <option value="modern" selected>Modern</option>
+                    <option value="premium">Premium</option>
+                  </select>
+                  <div class="form-hint">This controls the first website style seeded for your tenant.</div>
+                </div>
+              </div>
+
+              <div class="signup-summary-card">
+                <h4 data-i18n="su.options_title">Demo invoice options</h4>
+                <div class="signup-choice-stack">
+                  <label class="signup-check"><input id="f-extra-setup" type="checkbox" checked /> <span data-i18n="su.extra_setup">Include one-time setup package for onboarding, import, and go-live preparation.</span></label>
+                  <label class="signup-check"><input id="f-extra-tse" type="checkbox" /> <span data-i18n="su.extra_tse">Include TSE package for German fiscal compliance needs.</span></label>
+                  <label class="signup-check"><input id="f-extra-support" type="checkbox" /> <span data-i18n="su.extra_support">Include monthly IT support retainer for hands-on operational support.</span></label>
+                </div>
+                <div class="form-hint" data-i18n="su.options_hint">Hosting, platform maintenance, and standard domain setup are already included. SMS usage is billed separately only when you use it.</div>
+              </div>
+
+              <div class="signup-summary-card">
+                <h4 data-i18n="su.commercial_title">Commercial summary</h4>
+                <div class="summary-line"><span data-i18n="su.summary_trial_label">Trial</span><strong data-i18n="su.summary_trial_value">14 days</strong></div>
+                <div class="summary-line"><span data-i18n="su.summary_launch_label">Launch mode</span><strong data-i18n="su.summary_launch_value">Demo paid</strong></div>
+                <div class="summary-line"><span data-i18n="su.summary_activation_label">Activation style</span><strong data-i18n="su.summary_activation_value">Admin + board preview</strong></div>
+                <div data-signup-summary></div>
+              </div>
+            </aside>
+          </div>
+
+          <div class="signup-stage-footer">
+            <div class="signup-stage-footer-note" data-i18n-html="su.footer_note">Need a custom rollout with multiple sites, migration planning, or a German compliance review first? <a href="/platform/contact.html">Talk to sales</a>.</div>
+            <button class="btn signup-cta" onclick="wizardNext()" data-i18n="su.continue_cta">Continue to account setup</button>
+          </div>
         </div>
-        <div class="form-group">
-          <label for="f-admin-pin">Admin PIN (4 digits)</label>
-          <input id="f-admin-pin" type="password" inputmode="numeric" maxlength="4" placeholder="1234" autocomplete="one-time-code" />
-          <div class="form-error">Admin PIN must be 4 digits.</div>
-          <div class="form-hint">This PIN lets you test-login to the admin and staff app immediately.</div>
+      </section>
+
+      <section class="wizard-panel" id="step-panel-2">
+        <div class="signup-stage">
+          <div class="signup-stage-header">
+            <div>
+              <span class="signup-stage-tag">Step 2 · Create account</span>
+              <h2>Define the restaurant identity and the first operator login.</h2>
+              <p>This is the operational profile we use to provision your company, seed the workspace, and prepare the first admin access.</p>
+            </div>
+            <div class="signup-stage-pill">
+              <strong>Why here?</strong>
+              <span>Restaurant profile and admin PIN belong together. You should not have to hunt across multiple vertical sections to finish a basic account setup.</span>
+            </div>
+          </div>
+
+          <div class="signup-main-panel">
+            <div class="signup-form-grid">
+              <div class="full form-group">
+                <label for="f-name" data-i18n="su.name_label">Restaurant name</label>
+                <input id="f-name" type="text" data-i18n-placeholder="su.name_ph" placeholder="e.g. Trattoria Roma" autocomplete="organization" />
+                <div class="form-error">Restaurant name is required.</div>
+              </div>
+
+              <div class="full form-group">
+                <label for="f-address" data-i18n="su.addr_label">Address</label>
+                <input id="f-address" type="text" data-i18n-placeholder="su.addr_ph" placeholder="Street, city" autocomplete="street-address" />
+              </div>
+
+              <div class="form-group">
+                <label for="f-country" data-i18n="su.country_label">Country</label>
+                <select id="f-country">
+                  <option value="DE" selected>Germany</option>
+                  <option value="AT">Austria</option>
+                  <option value="CH">Switzerland</option>
+                  <option value="VN">Vietnam</option>
+                  <option value="US">United States</option>
+                  <option value="GB">United Kingdom</option>
+                  <option value="FR">France</option>
+                  <option value="IT">Italy</option>
+                  <option value="ES">Spain</option>
+                  <option value="NL">Netherlands</option>
+                  <option value="OTHER">Other</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="f-admin-name">Admin / Owner Name</label>
+                <input id="f-admin-name" type="text" placeholder="Owner name" autocomplete="name" />
+                <div class="form-error">Admin name is required.</div>
+              </div>
+
+              <div class="form-group">
+                <label for="f-admin-pin">Admin PIN (4 digits)</label>
+                <input id="f-admin-pin" type="password" inputmode="numeric" maxlength="4" placeholder="1234" autocomplete="one-time-code" />
+                <div class="form-error">Admin PIN must be 4 digits.</div>
+                <div class="form-hint">This PIN unlocks the admin and staff app immediately after provisioning.</div>
+              </div>
+
+              <div class="form-group">
+                <label for="f-password">Password preview</label>
+                <input id="f-password" type="password" placeholder="Optional for future login expansion" autocomplete="new-password" />
+                <div class="form-error">Password must be at least 8 characters.</div>
+                <div class="form-hint">Restaurant OS currently uses the admin PIN for immediate trial access.</div>
+              </div>
+            </div>
+
+            <div class="signup-microcopy">
+              <div><strong>German-machine logic:</strong> first set the operating entity, then define who controls it.</div>
+              <div>Your next step will lock the public subdomain and show the payment preview before activation.</div>
+            </div>
+          </div>
+
+          <div class="signup-stage-footer">
+            <button class="btn btn-ghost signup-secondary-cta" onclick="goStep(1)">Back</button>
+            <button class="btn signup-cta" onclick="wizardNext()">Continue to payment</button>
+          </div>
         </div>
-      </div>
-          <div class="plan-choice-name">Growth</div>
-          <div class="plan-choice-price">€99<span class="mo" data-i18n="price.per_mo">/mo</span></div>
-          <div class="plan-choice-desc" data-i18n="price.grow_desc">CRM, loyalty, and marketing for growing restaurants.</div>
+      </section>
+
+      <section class="wizard-panel" id="step-panel-3">
+        <div class="signup-stage">
+          <div class="signup-stage-header">
+            <div>
+              <span class="signup-stage-tag">Step 3 · Payment preview</span>
+              <h2>Reserve the subdomain, attach the owner contact, and review the launch invoice.</h2>
+              <p>This step keeps payment and activation details in one horizontal decision zone so the final CTA stays obvious.</p>
+            </div>
+            <div class="signup-stage-pill">
+              <strong>What happens next?</strong>
+              <span>The current flow uses a demo payment completion path and provisions your tenant immediately. Stripe checkout is the next hardening step.</span>
+            </div>
+          </div>
+
+          <div class="signup-stage-body">
+            <div class="signup-main-panel">
+              <div class="signup-form-grid">
+                <div class="form-group full">
+                  <label for="f-email" data-i18n="su.email_label">Owner email</label>
+                  <input id="f-email" type="email" data-i18n-placeholder="su.email_ph" placeholder="you@yourrestaurant.com" autocomplete="email" />
+                  <div class="form-error">Valid email is required.</div>
+                </div>
+
+                <div class="form-group">
+                  <label for="f-phone" data-i18n="su.phone_label">Phone (optional)</label>
+                  <input id="f-phone" type="tel" placeholder="+49 123 456789" autocomplete="tel" />
+                </div>
+
+                <div class="form-group">
+                  <label for="f-subdomain" data-i18n="su.sub_label">Your Restaurant OS URL</label>
+                  <div class="subdomain-input-row">
+                    <input id="f-subdomain" type="text" placeholder="my-restaurant" maxlength="30" oninput="this.value=this.value.toLowerCase();checkSubdomain(this.value)" />
+                    <div class="subdomain-suffix">.restaurantos.app</div>
+                  </div>
+                  <div class="form-error">Subdomain is required.</div>
+                  <div class="subdomain-status" id="subdomain-status"></div>
+                  <div class="form-hint" data-i18n="su.sub_hint">Guests see this URL when booking online. Lowercase letters, numbers, and hyphens only.</div>
+                </div>
+
+                <div class="form-group full" style="display:flex;gap:10px;align-items:flex-start;">
+                  <input id="f-agree" type="checkbox" style="width:auto;margin-top:3px;flex-shrink:0;accent-color:#a54a7b;" />
+                  <label for="f-agree" style="font-weight:400;font-size:0.9rem;cursor:pointer;line-height:1.6;">
+                    <span data-i18n="su.agree_pre">I agree to the</span>
+                    <a href="/platform/legal/terms.html" target="_blank" data-i18n="su.agree_terms">Terms & Conditions</a>
+                    <span data-i18n="su.agree_and">and</span>
+                    <a href="/platform/legal/privacy.html" target="_blank" data-i18n="su.agree_priv">Privacy Policy</a>
+                  </label>
+                </div>
+              </div>
+
+              <div class="alert alert-error" id="signup-error" style="display:none;"></div>
+            </div>
+
+            <aside class="signup-side-panel">
+              <div class="signup-payment-card">
+                <h4>Payment visibility first</h4>
+                <p>We keep the invoice preview, due-today amount, and recurring estimate in view so there is no drop-off caused by hidden pricing or buried CTAs.</p>
+              </div>
+              <div class="signup-summary-card">
+                <h4>Activation summary</h4>
+                <div data-signup-summary></div>
+              </div>
+            </aside>
+          </div>
+
+          <div class="signup-stage-footer">
+            <button class="btn btn-ghost signup-secondary-cta" onclick="goStep(2)">Back</button>
+            <button class="btn signup-cta" id="btn-submit" onclick="wizardNext()">Create trial workspace</button>
+          </div>
         </div>
+      </section>
 
+      <section class="wizard-panel" id="step-panel-4">
+        <div class="signup-stage">
+          <div class="signup-stage-header">
+            <div>
+              <span class="signup-stage-tag">Step 4 · Completed</span>
+              <h2>Your trial workspace is provisioned.</h2>
+              <p>Everything you need to visualize the system is now in one place: admin preview, live board preview, and the public site URL.</p>
+            </div>
+            <div class="signup-stage-pill">
+              <strong>Clear handoff</strong>
+              <span>Instead of dumping the user into a footer-heavy page, this screen gives the next operational actions directly.</span>
+            </div>
+          </div>
 
-      <div class="form-row">
-        <div class="form-group">
-          <label for="f-staff-users">Expected active staff users</label>
-          <input id="f-staff-users" type="number" min="1" value="3" />
+          <div class="signup-success-layout">
+            <div class="signup-success-card text-center">
+              <div class="success-icon">✉️</div>
+              <div class="success-title" data-i18n="su.ok_title">Workspace ready</div>
+              <p class="success-body" id="success-body"></p>
+              <p class="success-note" data-i18n="su.ok_note">Save the preview links below and continue your verification inside admin and board.</p>
+            </div>
+            <div class="signup-success-next">
+              <h3 style="margin:0 0 8px;font-size:1.05rem;color:#1c1633;">Recommended next actions</h3>
+              <ul>
+                <li>Open the admin preview and verify the seeded company settings.</li>
+                <li>Open the booking board and test a live staff login with the seeded PIN.</li>
+                <li>Visit the public URL to review the initial website and booking entry point.</li>
+              </ul>
+              <div class="divider"></div>
+              <a href="/platform/" class="btn btn-outline btn-block">Back to homepage</a>
+            </div>
+          </div>
         </div>
-        <div class="form-group">
-          <label for="f-template">Website template</label>
-          <select id="f-template">
-            <option value="minimal">Minimal</option>
-            <option value="modern" selected>Modern</option>
-            <option value="premium">Premium</option>
-          </select>
-        </div>
-      </div>
-        <div class="plan-card-choice" data-plan="enterprise" onclick="selectPlan('enterprise')">
-      <div class="alert alert-info">
-        <strong>Demo payment options</strong><br>
-        Choose the add-ons you want to include in the invoice preview. This test flow will create the account and mark payment as demo-paid.
-      </div>
-
-      <div class="form-group" style="display:grid;gap:8px;">
-        <label style="position:static !important;width:auto !important;height:auto !important;margin:0 !important;clip:auto !important;white-space:normal !important;overflow:visible !important;font-weight:400;">
-          <input id="f-extra-setup" type="checkbox" checked /> Include one-time setup package
-        </label>
-        <label style="position:static !important;width:auto !important;height:auto !important;margin:0 !important;clip:auto !important;white-space:normal !important;overflow:visible !important;font-weight:400;">
-          <input id="f-extra-tse" type="checkbox" /> Include TSE monthly package
-        </label>
-        <label style="position:static !important;width:auto !important;height:auto !important;margin:0 !important;clip:auto !important;white-space:normal !important;overflow:visible !important;font-weight:400;">
-          <input id="f-extra-support" type="checkbox" /> Include monthly IT support retainer
-        </label>
-      </div>
-
-      <div data-signup-summary></div>
-
-      <!-- Enterprise note -->
-      <div class="success-icon">✅</div>
-      <div class="success-title">Demo signup completed</div>
-        <a href="/platform/contact.html" style="margin-left:8px;font-weight:600;" data-i18n="su.ent_link">Contact sales →</a>
-      </div>
-
-      <p class="success-note" data-i18n="su.ok_note">
-        The link expires in 24 hours. Check your spam folder if you don't see it.
-      </p>
-      <hr class="divider" />
-      <p style="font-size:0.85rem;color:var(--text-muted);">
-        <a href="/platform/" style="color:var(--brand);">← Back to homepage</a>
-      </p>
-        <button class="btn btn-primary" onclick="wizardNext()" data-i18n="su.next">Continue</button>
-      </div>
-
-      <p style="margin-top:20px;text-align:center;font-size:0.82rem;color:var(--text-muted);">
-        Already have an account? <a href="#" style="color:var(--brand);" data-i18n="nav.login">Log in</a>
-      </p>
+      </section>
     </div>
-  </div>
+  </main>
 
-  <!-- ── STEP 2: Restaurant info ── -->
-  <div class="wizard-panel" id="step-panel-2">
-    <div class="card-box">
+  <script src="/platform/platform.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const params = new URLSearchParams(window.location.search);
+      const plan = params.get('plan');
+      if (plan) selectPlan(plan);
 
-      <div class="form-group">
-        <label for="f-name" data-i18n="su.name_label">Restaurant name</label>
-        <input id="f-name" type="text" data-i18n-placeholder="su.name_ph" placeholder="e.g. Trattoria Roma" autocomplete="organization" />
-        <div class="form-error">Restaurant name is required.</div>
-      </div>
+      const enterpriseNote = document.getElementById('enterprise-note');
+      if (enterpriseNote) {
+        enterpriseNote.style.display = state.plan === 'enterprise' ? 'block' : 'none';
+      }
 
-      <div class="form-group">
-        <label for="f-address" data-i18n="su.addr_label">Address</label>
-        <input id="f-address" type="text" data-i18n-placeholder="su.addr_ph" placeholder="Street, city" autocomplete="street-address" />
-      </div>
+      document.querySelectorAll('.plan-card-choice').forEach((card) => {
+        card.addEventListener('click', () => {
+          if (!enterpriseNote) return;
+          enterpriseNote.style.display = state.plan === 'enterprise' ? 'block' : 'none';
+        });
+      });
 
-      <div class="form-group">
-        <label for="f-country" data-i18n="su.country_label">Country</label>
-        <select id="f-country">
-          <option value="DE" selected>Germany</option>
-          <option value="AT">Austria</option>
-          <option value="CH">Switzerland</option>
-          <option value="VN">Vietnam</option>
-          <option value="US">United States</option>
-          <option value="GB">United Kingdom</option>
-          <option value="FR">France</option>
-          <option value="IT">Italy</option>
-          <option value="ES">Spain</option>
-          <option value="NL">Netherlands</option>
-          <option value="OTHER">Other</option>
-        </select>
-      </div>
-
-      <div style="display:flex;justify-content:space-between;gap:12px;">
-        <button class="btn btn-ghost" onclick="goStep(1)" data-i18n="su.back">Back</button>
-        <button class="btn btn-primary" onclick="wizardNext()" data-i18n="su.next">Continue</button>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- ── STEP 3: Account details ── -->
-  <div class="wizard-panel" id="step-panel-3">
-    <div class="card-box">
-
-      <div class="form-group">
-        <label for="f-email" data-i18n="su.email_label">Owner email</label>
-        <input id="f-email" type="email" data-i18n-placeholder="su.email_ph" placeholder="you@yourrestaurant.com" autocomplete="email" />
-        <div class="form-error">Valid email is required.</div>
-      </div>
-
-      <div class="form-group">
-        <label for="f-phone" data-i18n="su.phone_label">Phone (optional)</label>
-        <input id="f-phone" type="tel" placeholder="+49 123 456789" autocomplete="tel" />
-      </div>
-
-      <div class="form-group">
-        <label for="f-subdomain" data-i18n="su.sub_label">Your Restaurant OS URL</label>
-        <div class="subdomain-input-row">
-          <input id="f-subdomain" type="text" placeholder="my-restaurant" maxlength="30"
-                 oninput="this.value=this.value.toLowerCase();checkSubdomain(this.value)" />
-          <div class="subdomain-suffix">.restaurantos.app</div>
-        </div>
-        <div class="form-error">Subdomain is required.</div>
-        <div class="subdomain-status" id="subdomain-status"></div>
-        <div class="form-hint" data-i18n="su.sub_hint">Guests see this URL when booking online. Lowercase letters, numbers, and hyphens only.</div>
-      </div>
-
-      <div class="form-group">
-        <label for="f-password" data-i18n="su.pass_label">Password</label>
-        <input id="f-password" type="password" placeholder="••••••••" autocomplete="new-password" />
-        <div class="form-error">Password must be at least 8 characters.</div>
-        <div class="form-hint" data-i18n="su.pass_hint">Minimum 8 characters.</div>
-      </div>
-
-      <div class="form-group" style="display:flex;gap:10px;align-items:flex-start;">
-        <input id="f-agree" type="checkbox" style="width:auto;margin-top:3px;flex-shrink:0;" />
-        <label for="f-agree" style="font-weight:400;font-size:0.87rem;cursor:pointer;">
-          <span data-i18n="su.agree_pre">I agree to the</span>
-          <a href="/platform/legal/terms.html" target="_blank" data-i18n="su.agree_terms">Terms & Conditions</a>
-          <span data-i18n="su.agree_and">and</span>
-          <a href="/platform/legal/privacy.html" target="_blank" data-i18n="su.agree_priv">Privacy Policy</a>
-        </label>
-      </div>
-
-      <div class="alert alert-error" id="signup-error" style="display:none;"></div>
-
-      <div style="display:flex;justify-content:space-between;gap:12px;">
-        <button class="btn btn-ghost" onclick="goStep(2)" data-i18n="su.back">Back</button>
-        <button class="btn btn-primary" id="btn-submit" onclick="wizardNext()" data-i18n="su.submit">Create account</button>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- ── STEP 4: Success ── -->
-  <div class="wizard-panel" id="step-panel-4">
-    <div class="card-box text-center">
-      <div class="success-icon">✉️</div>
-      <div class="success-title" data-i18n="su.ok_title">Check your email!</div>
-      <p class="success-body" id="success-body" style="color:var(--text-muted);font-size:0.95rem;margin-bottom:12px;">
-        <!-- filled by JS -->
-      </p>
-      <p class="success-note" data-i18n="su.ok_note">
-        The link expires in 24 hours. Check your spam folder if you don't see it.
-      </p>
-      <hr class="divider" />
-      <p style="font-size:0.85rem;color:var(--text-muted);">
-        <a href="/platform/" style="color:var(--brand);">← Back to homepage</a>
-      </p>
-    </div>
-  </div>
-
-</div><!-- /wizard-wrap -->
-
-<div id="footer-placeholder"></div>
-
-<script src="/platform/platform.js"></script>
-<script>
-  // Pre-select plan from URL query param
-  document.addEventListener('DOMContentLoaded', () => {
-    const params = new URLSearchParams(window.location.search);
-    const plan = params.get('plan');
-    if (plan) selectPlan(plan);
-
-    // Show enterprise note when enterprise card is selected
-    const cards = document.querySelectorAll('.plan-card-choice');
-    cards.forEach(c => c.addEventListener('click', () => {
-      const note = document.getElementById('enterprise-note');
-      if (note) note.style.display = state.plan === 'enterprise' ? 'block' : 'none';
-    }));
-  });
-</script>
+      updateSignupPricingSummary();
+    });
+  </script>
 </body>
 </html>

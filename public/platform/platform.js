@@ -5,7 +5,43 @@
 
 // ── Language system ──────────────────────────────────
 
-let ROS_LANG = localStorage.getItem('ros-lang') || 'en';
+const SUPPORTED_ROS_LANGS = ['en', 'de', 'vi'];
+
+function normalizeRosLang(lang) {
+  if (!lang || typeof lang !== 'string') return null;
+  const normalized = lang.toLowerCase();
+  if (normalized.startsWith('de')) return 'de';
+  if (normalized.startsWith('vi')) return 'vi';
+  if (normalized.startsWith('en')) return 'en';
+  return null;
+}
+
+function getStoredRosLang() {
+  try {
+    return normalizeRosLang(localStorage.getItem('ros-lang'));
+  } catch {
+    return null;
+  }
+}
+
+function getBrowserRosLang() {
+  if (typeof navigator === 'undefined') return 'en';
+  const browserLangs = Array.isArray(navigator.languages) && navigator.languages.length
+    ? navigator.languages
+    : [navigator.language, navigator.userLanguage, navigator.browserLanguage];
+  for (const lang of browserLangs) {
+    const resolved = normalizeRosLang(lang);
+    if (resolved) return resolved;
+  }
+  return 'en';
+}
+
+function getPreferredRosLang() {
+  return getStoredRosLang() || getBrowserRosLang();
+}
+
+let ROS_LANG = getPreferredRosLang();
+window.getPreferredRosLang = getPreferredRosLang;
 
 const T = {
   en: {
@@ -15,11 +51,37 @@ const T = {
     'nav.contact':        'Contact',
     'nav.login':          'Log in',
     'nav.signup':         'Start free trial',
+    'log.title':          'Choose your login surface',
+    'log.subtitle':       'Restaurant OS uses different entry points for platform operators, tenant admins, and staff. Pick the right surface first, then continue with your PIN on the next screen.',
+    'log.role_platform':  'Platform operator',
+    'log.role_platform_desc': 'Pricing, signups, and operator console',
+    'log.role_tenant':    'Restaurant admin',
+    'log.role_tenant_desc': 'Company settings, staff, and integrations',
+    'log.role_board':     'Booking board',
+    'log.role_board_desc': 'Front-of-house live board and staff PIN access',
+    'log.ctx_platform_title': 'Open the platform operator console',
+    'log.ctx_platform_desc': 'Use this if you manage SaaS pricing, inbound signups, and operator follow-up.',
+    'log.ctx_tenant_title': 'Open the tenant admin console',
+    'log.ctx_tenant_desc': 'Use this for restaurant-level setup, staff management, website settings, and operational configuration.',
+    'log.ctx_board_title': 'Open the booking board',
+    'log.ctx_board_desc': 'Use this for host stand operations, live bookings, and staff-side actions during service.',
+    'log.company_label':  'Company ID',
+    'log.company_hint':   'Required on localhost and workers.dev preview hosts.',
+    'log.slug_label':     'Workspace subdomain',
+    'log.slug_hint':      'Optional in single-domain mode. Example: esskultur-main',
+    'log.local_note':     'Local preview needs company_id to resolve the tenant context.',
+    'log.remote_note':    'If your tenant uses a subdomain, enter it here. Otherwise the current host will be used.',
+    'log.platform_note':  'Platform operator access does not need tenant context. You will enter the operator PIN on the next screen.',
+    'log.continue_platform': 'Continue to platform admin',
+    'log.continue_tenant': 'Continue to restaurant admin',
+    'log.continue_board': 'Continue to booking board',
+    'log.cancel':         'Cancel',
+    'log.err_company':    'Enter a valid company ID to continue on this host.',
 
     // Hero
     'hero.badge':         '🍽️ Restaurant OS — Built for modern restaurants',
     'hero.title':         'Run your restaurant,\nnot your software',
-    'hero.subtitle':      'From online bookings to POS to your own website — everything your restaurant needs, on one Cloudflare-powered platform.',
+    'hero.subtitle':      'From online bookings to staff operations to your own website — everything your restaurant needs in one system.',
     'hero.cta1':          'Start free 14-day trial',
     'hero.cta2':          'See pricing',
     'hero.m1':            'No credit card required',
@@ -47,40 +109,56 @@ const T = {
     // Pricing
     'price.tag':          'Pricing',
     'price.h2':           'Simple, transparent pricing',
-    'price.sub':          'Start with Core and grow into what you need. No hidden fees.',
+    'price.sub':          'Pay per active user. Choose the operating result your restaurant needs.',
+    'price.core_name':    'Online',
+    'price.com_name':     'Service',
+    'price.grow_name':    'Repeat Guests',
+    'price.ent_name':     'Groups',
     'price.popular':      'Most popular',
     'price.cta':          'Start free trial',
     'price.cta_ent':      'Contact us',
-    'price.core_desc':    'Everything a new restaurant needs to go live.',
-    'price.com_desc':     'Full table, order, and payment control.',
-    'price.grow_desc':    'CRM, loyalty, and marketing for growing restaurants.',
+    'price.core_desc':    'So guests can find you and book a table.',
+    'price.com_desc':     'For restaurants that need POS, service flow, and a German-standard checkout.',
+    'price.grow_desc':    'For restaurants that want SMS marketing and loyal-guest management built in.',
     'price.ent_desc':     'Multi-location, custom integrations, dedicated SLA support.',
-    'price.core_f1':      'Restaurant website (3 templates)',
-    'price.core_f2':      'Contact form',
-    'price.core_f3':      'Online booking form',
-    'price.core_f4':      'Booking email notifications',
-    'price.core_f5':      'Basic admin dashboard',
-    'price.core_f6':      'Website builder starter setup',
-    'price.com_f1':       'Everything in Core',
-    'price.com_f2':       'Onsite booking + walk-ins',
-    'price.com_f3':       'Booking board + stage management',
-    'price.com_f4':       'SMS notifications + staff PIN app',
-    'price.com_f5':       'POS + payment methods: cash, PayPal, debit/credit card, Apple Pay',
-    'price.com_f6':       'Stripe can be one configured payment gateway + TSE',
-    'price.grow_f1':      'Everything in Commerce',
-    'price.grow_f2':      'CRM: guest profiles + history',
-    'price.grow_f3':      'Loyalty program',
-    'price.grow_f4':      'Marketing automation',
-    'price.grow_f5':      'SEO tools',
-    'price.ent_f1':       'Everything in Growth',
+    'price.core_f1':      'Restaurant website',
+    'price.core_f2':      'Online booking form',
+    'price.core_f3':      'Contact and info page',
+    'price.core_f4':      'Bookings in one place',
+    'price.core_f5':      'Hosting included',
+    'price.core_f6':      'Standard domain setup included',
+    'price.com_f1':       'Everything in Online',
+    'price.com_f2':       'Restaurant POS',
+    'price.com_f3':       'Live booking board, reminders, and confirmations',
+    'price.com_f4':       'Fast staff PIN login and walk-ins',
+    'price.com_f5':       'German-standard cash register workflow',
+    'price.com_f6':       'TSE available as add-on for German compliance',
+    'price.grow_f1':      'Everything in Service',
+    'price.grow_f2':      'SMS marketing for previous guests',
+    'price.grow_f3':      'Loyal guest profiles and segments',
+    'price.grow_f4':      'Simple win-back campaigns',
+    'price.grow_f5':      'Repeat-guest overview and follow-up',
+    'price.ent_f1':       'Everything in Repeat Guests',
     'price.ent_f2':       'Multi-location support',
     'price.ent_f3':       'Custom integrations API',
     'price.ent_f4':       'Dedicated onboarding + SLA',
-    'price.per_mo':       '/mo',
+    'price.per_mo':       '/active user/mo',
     'price.custom':       'Custom',
+    'price.extras_title': 'Included vs add-ons',
+    'price.included_title': 'Included in every plan',
+    'price.included_body': 'Hosting, platform maintenance, SSL, and standard domain setup if you need one.',
+    'price.setup_title':  'One-time onboarding',
+    'price.sms_title':    'SMS delivery',
+    'price.tse_title':    'German fiscal compliance',
+    'price.support_title': 'IT support',
+    'price.note':         'Billed per active user. Included: hosting, platform maintenance, and standard domain setup. Add-ons only apply for SMS usage, TSE, onboarding, and optional IT support.',
+    'price.setup_value':  '{amount} one-time setup',
+    'price.sms_value':    'Usage-based, only if you send SMS reminders or campaigns.',
+    'price.tse_value':    '{amount}/month TSE package',
+    'price.support_value': '{hourly}/hour IT support or {monthly}/month retainer',
 
     // Footer
-    'footer.tagline':     'Restaurant OS — purpose-built for modern restaurant operations. Cloudflare-native, real-time, multi-tenant.',
+    'footer.tagline':     'Restaurant OS — purpose-built for modern restaurant operations. Real-time and built for multi-tenant operations.',
     'footer.product':     'Product',
     'footer.legal':       'Legal',
     'footer.support':     'Support',
@@ -129,6 +207,48 @@ const T = {
     'su.ok_note':         'The link expires in 24 hours. Check your spam folder if you don\'t see it within a few minutes.',
     'su.ent_note':        'For Enterprise plans, contact us directly.',
     'su.ent_link':        'Contact sales →',
+    'su.plan_hint':       'Recommended left to right',
+    'su.plan_core_f1':    'Restaurant website and online booking form',
+    'su.plan_core_f2':    'Contact page and bookings in one place',
+    'su.plan_core_f3':    'Hosting and standard domain setup included',
+    'su.plan_com_f1':     'Everything in Online, plus restaurant POS',
+    'su.plan_com_f2':     'Booking board, reminders, walk-ins, and staff PIN login',
+    'su.plan_com_f3':     'German-standard cash register flow, with TSE as add-on',
+    'su.plan_grow_f1':    'Everything in Service, plus SMS marketing',
+    'su.plan_grow_f2':    'Loyal guest segments, return offers, and follow-up',
+    'su.plan_grow_f3':    'Built for restaurants that want more repeat guests',
+    'su.plan_ent_f1':     'Everything in Repeat Guests, plus multi-site rollout',
+    'su.plan_ent_f2':     'Dedicated onboarding and SLA discussions',
+    'su.plan_ent_f3':     'Manual pricing and integration scoping',
+    'su.side_title':      'Workspace configuration',
+    'su.side_live':       'Live preview',
+    'su.initial_title':   'Initial setup',
+    'su.users_label':     'Expected active users',
+    'su.users_hint':      'Used for recurring billing and staffing assumptions.',
+    'su.options_title':   'Demo invoice options',
+    'su.extra_setup':     'Include one-time setup package for onboarding, import, and go-live preparation.',
+    'su.extra_tse':       'Include TSE package for German fiscal compliance needs.',
+    'su.extra_support':   'Include monthly IT support retainer for hands-on operational support.',
+    'su.options_hint':    'Hosting, platform maintenance, and standard domain setup are already included. SMS usage is billed separately only when you use it.',
+    'su.commercial_title': 'Commercial summary',
+    'su.summary_trial_label': 'Trial',
+    'su.summary_launch_label': 'Launch mode',
+    'su.summary_activation_label': 'Activation style',
+    'su.summary_trial_value': '14 days',
+    'su.summary_launch_value': 'Demo paid',
+    'su.summary_activation_value': 'Admin + board preview',
+    'su.footer_note':     'Need a custom rollout with multiple sites, migration planning, or a German compliance review first? <a href="/platform/contact.html">Talk to sales</a>.',
+    'su.continue_cta':    'Continue to account setup',
+    'su.summary_demo_title': 'Demo payment review',
+    'su.summary_plan_label': 'Plan',
+    'su.summary_users_label': 'Active users',
+    'su.summary_included_label': 'Included',
+    'su.summary_included_value': 'Hosting + standard domain setup',
+    'su.summary_sms_label': 'SMS usage',
+    'su.summary_sms_value': 'Billed separately if used',
+    'su.summary_monthly_label': 'Recurring monthly estimate',
+    'su.summary_today_label': 'Due today in demo mode',
+    'su.summary_enterprise': 'Enterprise pricing is handled manually via contact.',
 
     // Contact
     'ct.title':           'Contact us',
@@ -152,10 +272,36 @@ const T = {
     'nav.contact':        'Kontakt',
     'nav.login':          'Anmelden',
     'nav.signup':         'Kostenlos testen',
+    'log.title':          'Anmeldebereich wählen',
+    'log.subtitle':       'Restaurant OS hat unterschiedliche Einstiege für Plattform-Operatoren, Mandanten-Admins und Service-Mitarbeiter. Wähle zuerst den passenden Bereich und gib den PIN dann auf der nächsten Ansicht ein.',
+    'log.role_platform':  'Plattform-Operator',
+    'log.role_platform_desc': 'Preise, Signups und Operator-Konsole',
+    'log.role_tenant':    'Restaurant-Admin',
+    'log.role_tenant_desc': 'Firmeneinstellungen, Mitarbeiter und Integrationen',
+    'log.role_board':     'Buchungsboard',
+    'log.role_board_desc': 'Live-Board im Service und PIN-Zugang für Mitarbeiter',
+    'log.ctx_platform_title': 'Plattform-Operator-Konsole öffnen',
+    'log.ctx_platform_desc': 'Nutze diesen Einstieg für SaaS-Preise, eingehende Signups und Operator-Nachverfolgung.',
+    'log.ctx_tenant_title': 'Mandanten-Admin-Konsole öffnen',
+    'log.ctx_tenant_desc': 'Nutze diesen Einstieg für Restaurant-Setup, Mitarbeiterverwaltung, Website-Einstellungen und operative Konfiguration.',
+    'log.ctx_board_title': 'Buchungsboard öffnen',
+    'log.ctx_board_desc': 'Nutze diesen Einstieg für Host-Stand, Live-Buchungen und Service-Aktionen während des Betriebs.',
+    'log.company_label':  'Company ID',
+    'log.company_hint':   'Erforderlich auf localhost und workers.dev-Preview-Hosts.',
+    'log.slug_label':     'Workspace-Subdomain',
+    'log.slug_hint':      'Optional im Single-Domain-Modus. Beispiel: esskultur-main',
+    'log.local_note':     'In der lokalen Vorschau wird company_id benötigt, um den Mandantenkontext aufzulösen.',
+    'log.remote_note':    'Wenn dein Mandant eine Subdomain nutzt, trage sie hier ein. Andernfalls wird der aktuelle Host verwendet.',
+    'log.platform_note':  'Der Zugang für Plattform-Operatoren braucht keinen Mandantenkontext. Den Operator-PIN gibst du auf der nächsten Ansicht ein.',
+    'log.continue_platform': 'Weiter zur Plattform-Admin',
+    'log.continue_tenant': 'Weiter zur Restaurant-Admin',
+    'log.continue_board': 'Weiter zum Buchungsboard',
+    'log.cancel':         'Abbrechen',
+    'log.err_company':    'Gib eine gültige Company ID ein, um auf diesem Host fortzufahren.',
 
     'hero.badge':         '🍽️ Restaurant OS — Für moderne Restaurants',
     'hero.title':         'Führe dein Restaurant,\nnicht deine Software',
-    'hero.subtitle':      'Von Online-Reservierungen bis POS bis zur eigenen Website — alles auf einer Cloudflare-Plattform.',
+    'hero.subtitle':      'Von Online-Reservierungen über Service-Abläufe bis zur eigenen Website — alles, was Ihr Restaurant in einem System braucht.',
     'hero.cta1':          '14 Tage kostenlos testen',
     'hero.cta2':          'Preise ansehen',
     'hero.m1':            'Keine Kreditkarte erforderlich',
@@ -181,39 +327,55 @@ const T = {
 
     'price.tag':          'Preise',
     'price.h2':           'Einfache, transparente Preise',
-    'price.sub':          'Starte mit Core und wachse in das, was du brauchst. Keine versteckten Gebühren.',
+    'price.sub':          'Abrechnung pro aktivem Mitarbeiter, aber gekauft wird das Ergebnis. Hosting und Standard-Domain-Setup sind inklusive.',
+    'price.core_name':    'Online',
+    'price.com_name':     'Service',
+    'price.grow_name':    'Stammgäste',
+    'price.ent_name':     'Gruppen',
     'price.popular':      'Beliebteste Wahl',
     'price.cta':          'Kostenlos starten',
     'price.cta_ent':      'Kontaktieren',
-    'price.core_desc':    'Alles, was ein neues Restaurant zum Start braucht.',
-    'price.com_desc':     'Volle Tisch-, Bestell- und Zahlungskontrolle.',
-    'price.grow_desc':    'CRM, Treueprogramm und Marketing für wachsende Restaurants.',
+    'price.core_desc':    'Damit Gäste Sie finden und reservieren können.',
+    'price.com_desc':     'Für Restaurants, die POS, Service-Abläufe und Kassenstandard nach deutschem Standard brauchen.',
+    'price.grow_desc':    'Für Restaurants, die SMS-Marketing und Stammgast-Management integriert haben wollen.',
     'price.ent_desc':     'Mehrere Standorte, individuelle Integrationen, dedizierter SLA-Support.',
-    'price.core_f1':      'Restaurant-Website (3 Vorlagen)',
-    'price.core_f2':      'Kontaktformular',
-    'price.core_f3':      'Online-Buchungsformular',
-    'price.core_f4':      'Buchungsbenachrichtigungen per E-Mail',
-    'price.core_f5':      'Basis-Admin-Dashboard',
-    'price.core_f6':      'Starter-Setup für den Website Builder',
-    'price.com_f1':       'Alles aus Core',
-    'price.com_f2':       'Vor-Ort-Buchungen + Walk-ins',
-    'price.com_f3':       'Buchungs-Board + Status-Verwaltung',
-    'price.com_f4':       'SMS-Benachrichtigungen + Mitarbeiter-PIN-App',
-    'price.com_f5':       'POS + Zahlarten: Bar, PayPal, EC-/Debitkarte, Kreditkarte, Apple Pay',
-    'price.com_f6':       'Stripe als optionales Gateway + TSE',
-    'price.grow_f1':      'Alles aus Commerce',
-    'price.grow_f2':      'CRM: Gastprofile + Buchungshistorie',
-    'price.grow_f3':      'Treueprogramm',
-    'price.grow_f4':      'Marketing-Automatisierung',
-    'price.grow_f5':      'SEO-Tools',
-    'price.ent_f1':       'Alles aus Growth',
+    'price.core_f1':      'Restaurant-Website',
+    'price.core_f2':      'Online-Reservierung',
+    'price.core_f3':      'Kontakt- und Infoseite',
+    'price.core_f4':      'Alle Buchungen an einem Ort',
+    'price.core_f5':      'Hosting inklusive',
+    'price.core_f6':      'Standard-Domain-Setup inklusive',
+    'price.com_f1':       'Alles aus Online',
+    'price.com_f2':       'Restaurant-POS',
+    'price.com_f3':       'Live-Booking-Board, Erinnerungen und Bestätigungen',
+    'price.com_f4':       'Schneller Mitarbeiter-PIN-Login und Walk-ins',
+    'price.com_f5':       'Kassenablauf nach deutschem Standard',
+    'price.com_f6':       'TSE als Add-on für deutsche Fiskal-Compliance',
+    'price.grow_f1':      'Alles aus Service',
+    'price.grow_f2':      'SMS-Marketing für frühere Gäste',
+    'price.grow_f3':      'Stammgast-Profile und Segmente',
+    'price.grow_f4':      'Einfache Win-back-Kampagnen',
+    'price.grow_f5':      'Überblick und Nachverfolgung wiederkehrender Gäste',
+    'price.ent_f1':       'Alles aus Stammgäste',
     'price.ent_f2':       'Multi-Standort-Unterstützung',
     'price.ent_f3':       'Individuelle Integrations-API',
     'price.ent_f4':       'Dediziertes Onboarding + SLA',
-    'price.per_mo':       '/Monat',
+    'price.per_mo':       '/aktiver Nutzer/Monat',
     'price.custom':       'Individuell',
+    'price.extras_title': 'Inklusive vs. Add-ons',
+    'price.included_title': 'In jedem Paket enthalten',
+    'price.included_body': 'Hosting, Plattform-Wartung, SSL und Standard-Domain-Setup, falls benötigt.',
+    'price.setup_title':  'Einmaliges Onboarding',
+    'price.sms_title':    'SMS-Versand',
+    'price.tse_title':    'Deutsche Fiskal-Compliance',
+    'price.support_title': 'IT-Support',
+    'price.note':         'Abrechnung pro aktivem Nutzer. Inklusive: Hosting, Plattform-Wartung und Standard-Domain-Setup. Add-ons fallen nur für SMS-Nutzung, TSE, Onboarding und optionalen IT-Support an.',
+    'price.setup_value':  '{amount} einmaliges Setup',
+    'price.sms_value':    'Nutzungsbasiert, nur wenn Sie SMS-Erinnerungen oder Kampagnen senden.',
+    'price.tse_value':    '{amount}/Monat TSE-Paket',
+    'price.support_value': '{hourly}/Stunde IT-Support oder {monthly}/Monat Retainer',
 
-    'footer.tagline':     'Restaurant OS — speziell für den modernen Restaurantbetrieb. Cloudflare-nativ, in Echtzeit, mandantenfähig.',
+    'footer.tagline':     'Restaurant OS — speziell für den modernen Restaurantbetrieb. In Echtzeit und mandantenfähig aufgebaut.',
     'footer.product':     'Produkt',
     'footer.legal':       'Rechtliches',
     'footer.support':     'Support',
@@ -261,6 +423,48 @@ const T = {
     'su.ok_note':         'Der Link läuft nach 24 Stunden ab. Prüfe ggf. deinen Spam-Ordner.',
     'su.ent_note':        'Für Enterprise-Pläne bitte direkt kontaktieren.',
     'su.ent_link':        'Vertrieb kontaktieren →',
+    'su.plan_hint':       'Von links nach rechts empfohlen',
+    'su.plan_core_f1':    'Restaurant-Website und Online-Reservierung',
+    'su.plan_core_f2':    'Kontaktseite und Buchungen an einem Ort',
+    'su.plan_core_f3':    'Hosting und Standard-Domain-Setup inklusive',
+    'su.plan_com_f1':     'Alles aus Online, plus Restaurant-POS',
+    'su.plan_com_f2':     'Booking-Board, Erinnerungen, Walk-ins und Mitarbeiter-PIN-Login',
+    'su.plan_com_f3':     'Kassenablauf nach deutschem Standard, TSE als Add-on',
+    'su.plan_grow_f1':    'Alles aus Service, plus SMS-Marketing',
+    'su.plan_grow_f2':    'Stammgast-Segmente, Rückkehr-Angebote und Nachverfolgung',
+    'su.plan_grow_f3':    'Für Restaurants, die mehr wiederkehrende Gäste wollen',
+    'su.plan_ent_f1':     'Alles aus Stammgäste, plus Multi-Standort-Rollout',
+    'su.plan_ent_f2':     'Dediziertes Onboarding und SLA-Abstimmung',
+    'su.plan_ent_f3':     'Manuelle Preis- und Integrationsplanung',
+    'su.side_title':      'Workspace-Konfiguration',
+    'su.side_live':       'Live-Vorschau',
+    'su.initial_title':   'Ersteinrichtung',
+    'su.users_label':     'Erwartete aktive Nutzer',
+    'su.users_hint':      'Wird für laufende Abrechnung und Personalplanung verwendet.',
+    'su.options_title':   'Demo-Rechnungsoptionen',
+    'su.extra_setup':     'Einmaliges Setup-Paket für Onboarding, Import und Go-live-Vorbereitung einschließen.',
+    'su.extra_tse':       'TSE-Paket für deutsche Fiskal-Compliance einschließen.',
+    'su.extra_support':   'Monatlichen IT-Support-Retainer für operative Unterstützung einschließen.',
+    'su.options_hint':    'Hosting, Plattform-Wartung und Standard-Domain-Setup sind bereits enthalten. SMS-Nutzung wird nur bei tatsächlicher Nutzung berechnet.',
+    'su.commercial_title': 'Kommerzielle Übersicht',
+    'su.summary_trial_label': 'Testphase',
+    'su.summary_launch_label': 'Startmodus',
+    'su.summary_activation_label': 'Aktivierungsart',
+    'su.summary_trial_value': '14 Tage',
+    'su.summary_launch_value': 'Demo bezahlt',
+    'su.summary_activation_value': 'Admin + Board-Vorschau',
+    'su.footer_note':     'Sie brauchen zuerst einen individuellen Rollout mit mehreren Standorten, Migrationsplanung oder eine deutsche Compliance-Prüfung? <a href="/platform/contact.html">Vertrieb kontaktieren</a>.',
+    'su.continue_cta':    'Weiter zur Konto-Einrichtung',
+    'su.summary_demo_title': 'Demo-Zahlungsübersicht',
+    'su.summary_plan_label': 'Paket',
+    'su.summary_users_label': 'Aktive Nutzer',
+    'su.summary_included_label': 'Inklusive',
+    'su.summary_included_value': 'Hosting + Standard-Domain-Setup',
+    'su.summary_sms_label': 'SMS-Nutzung',
+    'su.summary_sms_value': 'Wird separat berechnet, falls genutzt',
+    'su.summary_monthly_label': 'Monatliche Schätzung',
+    'su.summary_today_label': 'Heute fällig im Demo-Modus',
+    'su.summary_enterprise': 'Enterprise-Preise werden manuell über Kontakt abgewickelt.',
 
     'ct.title':           'Kontakt',
     'ct.subtitle':        'Fragen zu Preisen, Demo-Anfragen oder Support — schreib uns.',
@@ -283,10 +487,36 @@ const T = {
     'nav.contact':        'Liên hệ',
     'nav.login':          'Đăng nhập',
     'nav.signup':         'Dùng thử miễn phí',
+    'log.title':          'Chọn đúng cổng đăng nhập',
+    'log.subtitle':       'Restaurant OS có các điểm vào khác nhau cho operator của nền tảng, admin nhà hàng và nhân viên vận hành. Hãy chọn đúng bối cảnh trước, rồi nhập PIN ở màn hình kế tiếp.',
+    'log.role_platform':  'Operator nền tảng',
+    'log.role_platform_desc': 'Giá dịch vụ, signup và operator console',
+    'log.role_tenant':    'Admin nhà hàng',
+    'log.role_tenant_desc': 'Cấu hình công ty, nhân sự và tích hợp',
+    'log.role_board':     'Booking board',
+    'log.role_board_desc': 'Bảng FOH trực tiếp và truy cập nhân viên bằng PIN',
+    'log.ctx_platform_title': 'Mở operator console của nền tảng',
+    'log.ctx_platform_desc': 'Dùng mục này khi bạn quản lý giá SaaS, signup đi vào hệ thống và quy trình follow-up của operator.',
+    'log.ctx_tenant_title': 'Mở trang admin của nhà hàng',
+    'log.ctx_tenant_desc': 'Dùng mục này cho thiết lập cấp nhà hàng, quản lý nhân sự, cấu hình website và vận hành.',
+    'log.ctx_board_title': 'Mở booking board',
+    'log.ctx_board_desc': 'Dùng mục này cho host stand, booking thời gian thực và thao tác phía nhân viên trong ca.',
+    'log.company_label':  'Company ID',
+    'log.company_hint':   'Bắt buộc trên localhost và host preview workers.dev.',
+    'log.slug_label':     'Subdomain workspace',
+    'log.slug_hint':      'Tùy chọn trong chế độ single-domain. Ví dụ: esskultur-main',
+    'log.local_note':     'Bản local preview cần company_id để xác định đúng tenant context.',
+    'log.remote_note':    'Nếu tenant của bạn dùng subdomain riêng, hãy nhập tại đây. Nếu không, hệ thống sẽ dùng host hiện tại.',
+    'log.platform_note':  'Truy cập operator nền tảng không cần tenant context. Bạn sẽ nhập operator PIN ở màn hình kế tiếp.',
+    'log.continue_platform': 'Tiếp tục tới platform admin',
+    'log.continue_tenant': 'Tiếp tục tới admin nhà hàng',
+    'log.continue_board': 'Tiếp tục tới booking board',
+    'log.cancel':         'Hủy',
+    'log.err_company':    'Hãy nhập company ID hợp lệ để tiếp tục trên host này.',
 
     'hero.badge':         '🍽️ Restaurant OS — Xây dựng cho nhà hàng hiện đại',
     'hero.title':         'Vận hành nhà hàng,\nkhông phải phần mềm',
-    'hero.subtitle':      'Từ đặt bàn trực tuyến đến POS đến website riêng — tất cả những gì nhà hàng bạn cần, trên một nền tảng Cloudflare.',
+    'hero.subtitle':      'Từ đặt bàn trực tuyến đến vận hành nhân viên và website riêng — tất cả những gì nhà hàng bạn cần trong một hệ thống.',
     'hero.cta1':          'Dùng thử 14 ngày miễn phí',
     'hero.cta2':          'Xem bảng giá',
     'hero.m1':            'Không cần thẻ tín dụng',
@@ -312,39 +542,55 @@ const T = {
 
     'price.tag':          'Bảng giá',
     'price.h2':           'Giá đơn giản, minh bạch',
-    'price.sub':          'Bắt đầu với Core và mở rộng theo nhu cầu. Không phí ẩn.',
+    'price.sub':          'Tính theo mỗi nhân sự đang hoạt động, nhưng thứ bạn mua là kết quả. Hosting và thiết lập domain tiêu chuẩn đã bao gồm.',
+    'price.core_name':    'Online',
+    'price.com_name':     'Vận hành',
+    'price.grow_name':    'Khách quay lại',
+    'price.ent_name':     'Chuỗi',
     'price.popular':      'Phổ biến nhất',
     'price.cta':          'Bắt đầu dùng thử',
     'price.cta_ent':      'Liên hệ chúng tôi',
-    'price.core_desc':    'Mọi thứ một nhà hàng mới cần để bắt đầu.',
-    'price.com_desc':     'Kiểm soát hoàn toàn bàn, đơn hàng và thanh toán.',
-    'price.grow_desc':    'CRM, chương trình thân thiết và marketing cho nhà hàng phát triển.',
+    'price.core_desc':    'Để khách tìm thấy bạn và đặt bàn được.',
+    'price.com_desc':     'Cho nhà hàng cần POS, vận hành phục vụ và máy tính tiền theo tiêu chuẩn Đức.',
+    'price.grow_desc':    'Cho nhà hàng muốn có SMS marketing và quản lý khách thân thiết ngay trong hệ thống.',
     'price.ent_desc':     'Nhiều chi nhánh, tích hợp tùy chỉnh, hỗ trợ SLA chuyên biệt.',
-    'price.core_f1':      'Website nhà hàng (3 mẫu)',
-    'price.core_f2':      'Form liên hệ',
-    'price.core_f3':      'Form đặt bàn online',
-    'price.core_f4':      'Thông báo đặt bàn qua email',
-    'price.core_f5':      'Dashboard quản trị cơ bản',
-    'price.core_f6':      'Thiết lập khởi đầu cho website builder',
-    'price.com_f1':       'Tất cả từ Core',
-    'price.com_f2':       'Đặt bàn tại chỗ + walk-in',
-    'price.com_f3':       'Bảng đặt bàn + quản lý giai đoạn',
-    'price.com_f4':       'Thông báo SMS + app PIN cho nhân viên',
-    'price.com_f5':       'POS + phương thức thanh toán: tiền mặt, PayPal, thẻ ghi nợ/tín dụng, Apple Pay',
-    'price.com_f6':       'Stripe là một gateway tùy chọn + TSE',
-    'price.grow_f1':      'Tất cả từ Commerce',
-    'price.grow_f2':      'CRM: hồ sơ khách + lịch sử',
-    'price.grow_f3':      'Chương trình khách hàng thân thiết',
-    'price.grow_f4':      'Tự động hóa marketing',
-    'price.grow_f5':      'Công cụ SEO',
-    'price.ent_f1':       'Tất cả từ Growth',
+    'price.core_f1':      'Website cho nhà hàng',
+    'price.core_f2':      'Form đặt bàn online',
+    'price.core_f3':      'Trang liên hệ và thông tin',
+    'price.core_f4':      'Booking về một nơi',
+    'price.core_f5':      'Đã bao gồm hosting',
+    'price.core_f6':      'Đã bao gồm thiết lập domain tiêu chuẩn',
+    'price.com_f1':       'Bao gồm toàn bộ gói Online',
+    'price.com_f2':       'POS cho nhà hàng',
+    'price.com_f3':       'Booking board, nhắc lịch và xác nhận',
+    'price.com_f4':       'PIN nhanh cho nhân viên và xử lý khách walk-in',
+    'price.com_f5':       'Máy tính tiền theo tiêu chuẩn Đức',
+    'price.com_f6':       'Có thể thêm TSE cho nhu cầu tuân thủ tại Đức',
+    'price.grow_f1':      'Bao gồm toàn bộ gói Vận hành',
+    'price.grow_f2':      'SMS marketing cho khách cũ',
+    'price.grow_f3':      'Hồ sơ và phân nhóm khách thân thiết',
+    'price.grow_f4':      'Kịch bản win-back đơn giản',
+    'price.grow_f5':      'Theo dõi và chăm sóc khách quay lại',
+    'price.ent_f1':       'Bao gồm toàn bộ gói Khách quay lại',
     'price.ent_f2':       'Hỗ trợ nhiều chi nhánh',
     'price.ent_f3':       'API tích hợp tùy chỉnh',
     'price.ent_f4':       'Onboarding & SLA chuyên biệt',
-    'price.per_mo':       '/tháng',
+    'price.per_mo':       '/người dùng hoạt động/tháng',
     'price.custom':       'Liên hệ',
+    'price.extras_title': 'Bao gồm và add-on',
+    'price.included_title': 'Bao gồm trong mọi gói',
+    'price.included_body': 'Hosting, bảo trì nền tảng, SSL và cấu hình domain tiêu chuẩn nếu cần.',
+    'price.setup_title':  'Onboarding một lần',
+    'price.sms_title':    'Gửi SMS',
+    'price.tse_title':    'Tuân thủ tài chính tại Đức',
+    'price.support_title': 'Hỗ trợ IT',
+    'price.note':         'Tính phí theo số người dùng hoạt động. Đã bao gồm hosting, bảo trì nền tảng và cấu hình domain tiêu chuẩn. Add-on chỉ áp dụng cho SMS, TSE, onboarding và hỗ trợ IT nếu chọn thêm.',
+    'price.setup_value':  '{amount} phí setup một lần',
+    'price.sms_value':    'Tính theo sử dụng, chỉ khi bạn gửi SMS nhắc lịch hoặc chiến dịch.',
+    'price.tse_value':    '{amount}/tháng cho gói TSE',
+    'price.support_value': '{hourly}/giờ hỗ trợ IT hoặc {monthly}/tháng gói retainer',
 
-    'footer.tagline':     'Restaurant OS — xây dựng riêng cho vận hành nhà hàng hiện đại. Cloudflare-native, thời gian thực, đa người dùng.',
+    'footer.tagline':     'Restaurant OS — xây dựng riêng cho vận hành nhà hàng hiện đại. Theo thời gian thực và hỗ trợ nhiều tenant.',
     'footer.product':     'Sản phẩm',
     'footer.legal':       'Pháp lý',
     'footer.support':     'Hỗ trợ',
@@ -392,6 +638,48 @@ const T = {
     'su.ok_note':         'Link hết hạn sau 24 giờ. Kiểm tra thư mục spam nếu không thấy trong vài phút.',
     'su.ent_note':        'Đối với gói Enterprise, vui lòng liên hệ trực tiếp.',
     'su.ent_link':        'Liên hệ bộ phận kinh doanh →',
+    'su.plan_hint':       'Nên chọn từ trái sang phải',
+    'su.plan_core_f1':    'Website nhà hàng và form booking online',
+    'su.plan_core_f2':    'Trang liên hệ và toàn bộ booking trong một nơi',
+    'su.plan_core_f3':    'Đã bao gồm hosting và cấu hình domain tiêu chuẩn',
+    'su.plan_com_f1':     'Bao gồm toàn bộ gói Online, cộng thêm POS nhà hàng',
+    'su.plan_com_f2':     'Booking board, nhắc lịch, walk-in và PIN cho nhân viên',
+    'su.plan_com_f3':     'Máy tính tiền tiêu chuẩn Đức, TSE chọn thêm khi cần',
+    'su.plan_grow_f1':    'Bao gồm toàn bộ gói Vận hành, cộng thêm SMS marketing',
+    'su.plan_grow_f2':    'Phân nhóm khách thân thiết, ưu đãi quay lại và chăm sóc tiếp nối',
+    'su.plan_grow_f3':    'Dành cho nhà hàng muốn tăng khách quay lại',
+    'su.plan_ent_f1':     'Bao gồm toàn bộ gói Khách quay lại, cộng thêm rollout đa chi nhánh',
+    'su.plan_ent_f2':     'Onboarding riêng và thảo luận SLA',
+    'su.plan_ent_f3':     'Báo giá và scope tích hợp theo nhu cầu',
+    'su.side_title':      'Cấu hình workspace',
+    'su.side_live':       'Xem trước trực tiếp',
+    'su.initial_title':   'Thiết lập ban đầu',
+    'su.users_label':     'Số người dùng hoạt động dự kiến',
+    'su.users_hint':      'Dùng để ước tính phí định kỳ và nhu cầu nhân sự.',
+    'su.options_title':   'Tùy chọn hóa đơn demo',
+    'su.extra_setup':     'Bao gồm gói setup một lần cho onboarding, import và chuẩn bị go-live.',
+    'su.extra_tse':       'Bao gồm gói TSE cho nhu cầu tuân thủ tài chính tại Đức.',
+    'su.extra_support':   'Bao gồm gói hỗ trợ IT hàng tháng cho vận hành thực tế.',
+    'su.options_hint':    'Hosting, bảo trì nền tảng và cấu hình domain tiêu chuẩn đã được bao gồm. SMS chỉ tính phí khi thực sự sử dụng.',
+    'su.commercial_title': 'Tóm tắt thương mại',
+    'su.summary_trial_label': 'Dùng thử',
+    'su.summary_launch_label': 'Chế độ triển khai',
+    'su.summary_activation_label': 'Kiểu kích hoạt',
+    'su.summary_trial_value': '14 ngày',
+    'su.summary_launch_value': 'Demo có phí',
+    'su.summary_activation_value': 'Xem trước admin + board',
+    'su.footer_note':     'Nếu bạn cần rollout nhiều chi nhánh, kế hoạch migration hoặc rà soát compliance tại Đức trước, <a href="/platform/contact.html">hãy nói chuyện với sales</a>.',
+    'su.continue_cta':    'Tiếp tục sang tạo tài khoản',
+    'su.summary_demo_title': 'Xem trước thanh toán demo',
+    'su.summary_plan_label': 'Gói',
+    'su.summary_users_label': 'Người dùng hoạt động',
+    'su.summary_included_label': 'Đã bao gồm',
+    'su.summary_included_value': 'Hosting + cấu hình domain tiêu chuẩn',
+    'su.summary_sms_label': 'Chi phí SMS',
+    'su.summary_sms_value': 'Tính riêng nếu có sử dụng',
+    'su.summary_monthly_label': 'Ước tính hàng tháng',
+    'su.summary_today_label': 'Cần trả hôm nay ở chế độ demo',
+    'su.summary_enterprise': 'Giá gói Enterprise được xử lý thủ công qua liên hệ.',
 
     'ct.title':           'Liên hệ chúng tôi',
     'ct.subtitle':        'Câu hỏi về giá, yêu cầu demo hoặc hỗ trợ — gửi tin nhắn cho chúng tôi.',
@@ -415,6 +703,12 @@ function t(key) {
   return T[ROS_LANG]?.[key] || T['en']?.[key] || key;
 }
 
+function tFormat(key, values = {}) {
+  return String(t(key)).replace(/\{(\w+)\}/g, (_, token) => {
+    return Object.prototype.hasOwnProperty.call(values, token) ? String(values[token]) : `{${token}}`;
+  });
+}
+
 function applyLang() {
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.dataset.i18n;
@@ -435,12 +729,268 @@ function applyLang() {
     b.classList.toggle('active', b.dataset.lang === ROS_LANG);
   });
   document.documentElement.lang = ROS_LANG;
+  updateLoginModalCopy();
+  applyPlatformPlansToPage();
+  updateSignupPricingSummary();
 }
 
 function setLang(lang) {
-  ROS_LANG = lang;
-  localStorage.setItem('ros-lang', lang);
+  ROS_LANG = normalizeRosLang(lang) || 'en';
+  try {
+    localStorage.setItem('ros-lang', ROS_LANG);
+  } catch {
+    // Ignore storage failures and keep the session language in memory.
+  }
   applyLang();
+}
+
+function getPlanNameKey(planId) {
+  if (planId === 'core') return 'price.core_name';
+  if (planId === 'commerce') return 'price.com_name';
+  if (planId === 'growth') return 'price.grow_name';
+  if (planId === 'enterprise') return 'price.ent_name';
+  return null;
+}
+
+const LOGIN_ROLE_CONFIG = Object.freeze({
+  platform: {
+    path: '/platform/admin.html',
+    titleKey: 'log.ctx_platform_title',
+    descKey: 'log.ctx_platform_desc',
+    noteKey: 'log.platform_note',
+    ctaKey: 'log.continue_platform',
+  },
+  tenant: {
+    path: '/admin',
+    titleKey: 'log.ctx_tenant_title',
+    descKey: 'log.ctx_tenant_desc',
+    noteKey: 'log.local_note',
+    ctaKey: 'log.continue_tenant',
+  },
+  board: {
+    path: '/board',
+    titleKey: 'log.ctx_board_title',
+    descKey: 'log.ctx_board_desc',
+    noteKey: 'log.local_note',
+    ctaKey: 'log.continue_board',
+  }
+});
+
+let rosLoginRole = null;
+
+function getRequestedCompanyIdFromLocation() {
+  try {
+    const raw = String(new URLSearchParams(window.location.search || '').get('company_id') || '').trim();
+    const value = Number(raw || 0);
+    return Number.isInteger(value) && value > 0 ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function platformHostRequiresCompanyIdQuery() {
+  const host = String(window.location.hostname || '').toLowerCase();
+  return host === 'localhost' || host === '127.0.0.1' || host === '[::1]' || host.includes('workers.dev');
+}
+
+function sanitizeWorkspaceSlug(raw) {
+  return String(raw || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function getWorkspaceBaseHostname() {
+  const host = String(window.location.hostname || '').toLowerCase();
+  return host.startsWith('www.') ? host.slice(4) : host;
+}
+
+function getDefaultLoginRole() {
+  const path = String(window.location.pathname || '').toLowerCase();
+  if (path.startsWith('/platform/admin')) return 'platform';
+  return 'tenant';
+}
+
+function getLoginRoleConfig(role) {
+  return LOGIN_ROLE_CONFIG[role] || LOGIN_ROLE_CONFIG[getDefaultLoginRole()];
+}
+
+function renderLoginModal() {
+  return `
+<div class="login-modal" id="ros-login-modal" hidden>
+  <div class="login-modal-backdrop" onclick="closeLoginModal()"></div>
+  <div class="login-modal-panel" role="dialog" aria-modal="true" aria-labelledby="login-modal-title">
+    <button type="button" class="login-modal-close" aria-label="Close" onclick="closeLoginModal()">×</button>
+    <div class="login-modal-head">
+      <div class="section-tag" data-i18n="nav.login">Log in</div>
+      <h2 id="login-modal-title" data-i18n="log.title">Choose your login surface</h2>
+      <p class="text-muted" data-i18n="log.subtitle">Restaurant OS uses different entry points for platform operators, tenant admins, and staff. Pick the right surface first, then continue with your PIN on the next screen.</p>
+    </div>
+
+    <div class="login-role-grid">
+      <button type="button" class="login-role-card" data-login-role="platform" onclick="selectLoginRole('platform')">
+        <strong data-i18n="log.role_platform">Platform operator</strong>
+        <span data-i18n="log.role_platform_desc">Pricing, signups, and operator console</span>
+      </button>
+      <button type="button" class="login-role-card" data-login-role="tenant" onclick="selectLoginRole('tenant')">
+        <strong data-i18n="log.role_tenant">Restaurant admin</strong>
+        <span data-i18n="log.role_tenant_desc">Company settings, staff, and integrations</span>
+      </button>
+      <button type="button" class="login-role-card" data-login-role="board" onclick="selectLoginRole('board')">
+        <strong data-i18n="log.role_board">Booking board</strong>
+        <span data-i18n="log.role_board_desc">Front-of-house live board and staff PIN access</span>
+      </button>
+    </div>
+
+    <div class="login-context-card">
+      <h3 id="login-context-title"></h3>
+      <p class="text-muted" id="login-context-desc"></p>
+
+      <div class="login-context-grid">
+        <div class="form-group" id="login-company-group">
+          <label for="login-company-id" data-i18n="log.company_label">Company ID</label>
+          <input id="login-company-id" type="number" min="1" step="1" placeholder="1" />
+          <div class="form-hint" data-i18n="log.company_hint">Required on localhost and workers.dev preview hosts.</div>
+        </div>
+
+        <div class="form-group" id="login-subdomain-group">
+          <label for="login-subdomain" data-i18n="log.slug_label">Workspace subdomain</label>
+          <input id="login-subdomain" type="text" data-i18n-placeholder="log.slug_hint" placeholder="Optional in single-domain mode. Example: esskultur-main" />
+          <div class="form-hint" data-i18n="log.slug_hint">Optional in single-domain mode. Example: esskultur-main</div>
+        </div>
+      </div>
+
+      <div class="alert alert-info login-context-note" id="login-context-note"></div>
+      <div class="alert alert-error" id="login-module-error" style="display:none;"></div>
+    </div>
+
+    <div class="login-modal-actions">
+      <button type="button" class="btn btn-ghost" data-i18n="log.cancel" onclick="closeLoginModal()">Cancel</button>
+      <button type="button" class="btn btn-primary" id="login-continue-btn" onclick="continueLogin()">Continue</button>
+    </div>
+  </div>
+</div>`;
+}
+
+function syncLoginInputs() {
+  const companyInput = document.getElementById('login-company-id');
+  const requestedCompanyId = getRequestedCompanyIdFromLocation();
+  if (companyInput && requestedCompanyId && !companyInput.value) {
+    companyInput.value = String(requestedCompanyId);
+  }
+}
+
+function clearLoginModuleError() {
+  const errorEl = document.getElementById('login-module-error');
+  if (!errorEl) return;
+  errorEl.style.display = 'none';
+  errorEl.textContent = '';
+}
+
+function showLoginModuleError(message) {
+  const errorEl = document.getElementById('login-module-error');
+  if (!errorEl) return;
+  errorEl.textContent = message;
+  errorEl.style.display = 'block';
+}
+
+function updateLoginModalCopy() {
+  const role = rosLoginRole || getDefaultLoginRole();
+  const config = getLoginRoleConfig(role);
+  const needsCompanyId = platformHostRequiresCompanyIdQuery();
+  const isPlatformRole = role === 'platform';
+
+  document.querySelectorAll('.login-role-card').forEach((card) => {
+    card.classList.toggle('active', card.dataset.loginRole === role);
+  });
+
+  const titleEl = document.getElementById('login-context-title');
+  if (titleEl) titleEl.textContent = t(config.titleKey);
+
+  const descEl = document.getElementById('login-context-desc');
+  if (descEl) descEl.textContent = t(config.descKey);
+
+  const noteEl = document.getElementById('login-context-note');
+  if (noteEl) {
+    noteEl.textContent = isPlatformRole ? t('log.platform_note') : t(needsCompanyId ? 'log.local_note' : 'log.remote_note');
+    noteEl.style.display = 'block';
+  }
+
+  const companyGroup = document.getElementById('login-company-group');
+  if (companyGroup) {
+    companyGroup.style.display = !isPlatformRole && needsCompanyId ? 'block' : 'none';
+  }
+
+  const subdomainGroup = document.getElementById('login-subdomain-group');
+  if (subdomainGroup) {
+    subdomainGroup.style.display = !isPlatformRole && !needsCompanyId ? 'block' : 'none';
+  }
+
+  const continueBtn = document.getElementById('login-continue-btn');
+  if (continueBtn) continueBtn.textContent = t(config.ctaKey);
+}
+
+function selectLoginRole(role) {
+  rosLoginRole = LOGIN_ROLE_CONFIG[role] ? role : getDefaultLoginRole();
+  clearLoginModuleError();
+  updateLoginModalCopy();
+}
+
+function openLoginModal(role) {
+  const modal = document.getElementById('ros-login-modal');
+  if (!modal) return;
+
+  rosLoginRole = LOGIN_ROLE_CONFIG[role] ? role : (rosLoginRole || getDefaultLoginRole());
+  syncLoginInputs();
+  clearLoginModuleError();
+  updateLoginModalCopy();
+  modal.hidden = false;
+  modal.classList.add('open');
+  document.body.classList.add('login-modal-open');
+
+  const focusTarget = rosLoginRole === 'platform'
+    ? document.getElementById('login-continue-btn')
+    : (platformHostRequiresCompanyIdQuery() ? document.getElementById('login-company-id') : document.getElementById('login-subdomain'));
+  focusTarget?.focus();
+}
+
+function closeLoginModal() {
+  const modal = document.getElementById('ros-login-modal');
+  if (!modal) return;
+  modal.hidden = true;
+  modal.classList.remove('open');
+  document.body.classList.remove('login-modal-open');
+  clearLoginModuleError();
+}
+
+function continueLogin() {
+  const role = rosLoginRole || getDefaultLoginRole();
+  const config = getLoginRoleConfig(role);
+  if (role === 'platform') {
+    window.location.assign(new URL(config.path, window.location.origin).toString());
+    return;
+  }
+
+  const targetUrl = new URL(config.path, window.location.origin);
+  const needsCompanyId = platformHostRequiresCompanyIdQuery();
+
+  if (needsCompanyId) {
+    const companyId = Number.parseInt(String(document.getElementById('login-company-id')?.value || '').trim(), 10);
+    if (!Number.isInteger(companyId) || companyId <= 0) {
+      showLoginModuleError(t('log.err_company'));
+      document.getElementById('login-company-id')?.focus();
+      return;
+    }
+    targetUrl.searchParams.set('company_id', String(companyId));
+  } else {
+    const slug = sanitizeWorkspaceSlug(document.getElementById('login-subdomain')?.value || '');
+    if (slug) {
+      targetUrl.hostname = `${slug}.${getWorkspaceBaseHostname()}`;
+    }
+  }
+
+  window.location.assign(targetUrl.toString());
 }
 
 // ── Shared nav render ─────────────────────────────────
@@ -453,7 +1003,7 @@ function renderNav() {
     <li><a href="/platform/#features" data-i18n="nav.features">Features</a></li>
     <li><a href="/platform/#pricing"  data-i18n="nav.pricing">Pricing</a></li>
     <li><a href="/platform/contact.html" data-i18n="nav.contact">Contact</a></li>
-    <li><a href="#" data-i18n="nav.login">Log in</a></li>
+    <li><a href="/platform/admin.html" data-i18n="nav.login" onclick="openLoginModal(); return false;">Log in</a></li>
     <li><a href="/platform/signup.html" class="btn-nav-cta" data-i18n="nav.signup">Start free trial</a></li>
   </ul>
   <div class="nav-lang">
@@ -589,18 +1139,25 @@ function applyPlatformPlansToPage() {
         el.textContent = t('price.custom');
         return;
       }
-      el.innerHTML = `${euro(plan.priceEurPerUserMonthly)}<span class="mo">/user/mo</span>`;
+      el.innerHTML = `${euro(plan.priceEurPerUserMonthly)}<span class="mo">${t('price.per_mo')}</span>`;
     });
   }
 
   const setupEl = document.getElementById('platform-extra-setup');
+  const smsEl = document.getElementById('platform-extra-sms');
   const tseEl = document.getElementById('platform-extra-tse');
   const supportEl = document.getElementById('platform-extra-support');
   const noteEl = document.getElementById('platform-pricing-note');
-  if (setupEl) setupEl.textContent = `${euro(platformPlansData.extras?.oneTimeSetupFeeEur)} one-time setup`;
-  if (tseEl) tseEl.textContent = `${euro(platformPlansData.extras?.tseMonthlyFeeEur)}/month TSE package`;
-  if (supportEl) supportEl.textContent = `${euro(platformPlansData.extras?.itSupportHourlyEur)}/hour IT support or ${euro(platformPlansData.extras?.itSupportMonthlyRetainerEur)}/month retainer`;
-  if (noteEl) noteEl.textContent = platformPlansData.pricingNote || '';
+  if (setupEl) setupEl.textContent = tFormat('price.setup_value', { amount: euro(platformPlansData.extras?.oneTimeSetupFeeEur) });
+  if (smsEl) smsEl.textContent = t('price.sms_value');
+  if (tseEl) tseEl.textContent = tFormat('price.tse_value', { amount: euro(platformPlansData.extras?.tseMonthlyFeeEur) });
+  if (supportEl) {
+    supportEl.textContent = tFormat('price.support_value', {
+      hourly: euro(platformPlansData.extras?.itSupportHourlyEur),
+      monthly: euro(platformPlansData.extras?.itSupportMonthlyRetainerEur)
+    });
+  }
+  if (noteEl) noteEl.textContent = t('price.note');
 }
 
 function getSelectedPlanData() {
@@ -619,7 +1176,7 @@ function updateSignupPricingSummary() {
 
   if (!plan || plan.priceEurPerUserMonthly == null || !platformPlansData?.extras) {
     summaryEls.forEach((summaryEl) => {
-      summaryEl.innerHTML = `<div class="alert alert-info">Enterprise pricing is handled manually via contact.</div>`;
+      summaryEl.innerHTML = `<div class="alert alert-info">${t('su.summary_enterprise')}</div>`;
     });
     return;
   }
@@ -630,13 +1187,16 @@ function updateSignupPricingSummary() {
   const support = includeSupport ? Number(platformPlansData.extras.itSupportMonthlyRetainerEur || 0) : 0;
 
   summaryEls.forEach((summaryEl) => {
+    const planLabel = t(getPlanNameKey(plan.id) || '') || plan.name;
     summaryEl.innerHTML = `
       <div class="alert alert-info" style="margin-top:6px;">
-        <strong>Demo payment review</strong><br>
-        Plan: ${plan.name}<br>
-        Active staff users: ${users}<br>
-        Recurring monthly estimate: ${euro(base + tse + support)}<br>
-        Due today in demo mode: ${euro(setup)}
+        <strong>${t('su.summary_demo_title')}</strong><br>
+        ${t('su.summary_plan_label')}: ${planLabel}<br>
+        ${t('su.summary_users_label')}: ${users}<br>
+        ${t('su.summary_included_label')}: ${t('su.summary_included_value')}<br>
+        ${t('su.summary_sms_label')}: ${t('su.summary_sms_value')}<br>
+        ${t('su.summary_monthly_label')}: ${euro(base + tse + support)}<br>
+        ${t('su.summary_today_label')}: ${euro(setup)}
       </div>
     `;
   });
@@ -798,6 +1358,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const footerEl = document.getElementById('footer-placeholder');
   if (navEl)    navEl.outerHTML    = renderNav();
   if (footerEl) footerEl.outerHTML = renderFooter();
+  if (!document.getElementById('ros-login-modal')) {
+    document.body.insertAdjacentHTML('beforeend', renderLoginModal());
+  }
   applyLang();
   loadPlatformPlans();
 

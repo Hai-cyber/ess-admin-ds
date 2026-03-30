@@ -58,19 +58,24 @@ ess-admin-ds/
 
 ## 🎯 Current Status
 
-**Phase 1: Booking System Stabilization** (NOW → Q2 2026)
+**Phase 1: Booking + Platform Entry** (NOW → Q2 2026, ~85% complete)
 
-- ✅ Booking form working
-- ✅ Booking board (realtime board with table layout)
-- ✅ Staff app (PIN login, stage management)
-- 🔄 Admin UI (setup wizard under development)
-- 🔄 Multi-tenant infrastructure (finalization)
+- ✅ Platform home, plans, contact form, and SaaS admin dashboard working locally
+- ✅ Self-service signup provisions organization + company + admin PIN user
+- ✅ Booking board, staff app, onsite booking create, and stage updates verified locally
+- ✅ Platform login/signup/pricing copy now supports EN/DE/VI browser-driven localization with contextual login routing
+- 🔄 Admin UI / go-live setup still incomplete
+- 🔄 Founder/KC OTP runtime still blocked locally by missing Twilio credentials
+- 🔄 Stripe checkout and tenant website runtime binding still pending
 
-**Verified** (March 2026 E2E tests):
-- Online booking → Board → Staff notifications (real-time SSE)
+**Verified** (2026-03-30 local runtime + tests):
+- Platform site + signup provisioning live on localhost
+- Platform landing/signup pricing updates live: Service POS + German checkout, Repeat Guests SMS + loyal guest messaging
+- Public booking form renders; localhost `company_id` override submit works
 - Staff create booking from board → all systems updated
 - Stage transitions (pending → confirmed → arrived → done)
 - Per-tenant data isolation working
+- Vitest: 19/21 passing (2 founder/KC failures due Twilio credentials)
 
 ---
 
@@ -106,9 +111,8 @@ npm run deploy           # Deploy to Cloudflare
 ```bash
 npm run check:tenant:failopen   # Verify no hardcoded fallback tenants
 npm run check:tenant:sql        # Verify all SQL queries filter by tenant_id
+npm run ci:verify               # Test suite + tenant guard checks
 npm run ci                      # Full CI checks (structure + tenant isolation + tests)
-npm run check:cp-all            # Run all checkpoint verifications
-npm run check:cp-booking-mvp    # Run specific checkpoint (booking MVP)
 ```
 
 ### Checkpoints
@@ -126,10 +130,7 @@ See [CHECKPOINTS.md](./CHECKPOINTS.md) for 8 verification checkpoints across all
 | **CP-7: Odoo Removed** | ❌ Phase 4 | Zero Odoo in critical path |
 | **CP-8: Growth** | ❌ Phase 5 | Loyalty, shop, 50+ restaurants |
 
-**Run all checkpoints**:
-```bash
-npm run check:cp-all
-```
+Manual runtime verification currently complements the automated scripts above.
 
 ### Environment
 

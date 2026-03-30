@@ -48,11 +48,11 @@ Everything in Commerce +
 
 ---
 
-### Tier 4 — Enterprise (Custom)
+### Tier 4 — Groups (Custom)
 
 **For multi-location groups**
 
-Everything in Growth +
+Everything in Repeat Guests +
 - Multi-location management
 - Advanced role hierarchy
 - Custom integrations

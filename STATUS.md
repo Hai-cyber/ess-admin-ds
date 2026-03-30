@@ -2,9 +2,9 @@
 
 **Purpose**: Real-time snapshot of project state. Update before/after every session.
 
-**Last Updated**: 2026-03-22 (TODAY)  
+**Last Updated**: 2026-03-30  
 **By**: AI Agent  
-**Next Update**: 2026-03-29 (or sooner if major change)
+**Next Update**: 2026-04-01 (or sooner if major change)
 
 ---
 
@@ -13,16 +13,16 @@
 ### Phase
 **Phase 1: Booking + Platform Entry (85% complete)**
 - ETA: April 15, 2026
-- Status: 🟡 ON TRACK (remaining: Stripe checkout wiring + tenant website template rendering)
+- Status: 🟡 ON TRACK (remaining: Stripe checkout wiring + tenant website template rendering + founder/KC OTP runtime fix)
 
 ### Overall Progress
 ```
 █████████░ 85%
 
 Completed: 85%
-In Progress: 10% (SaaS billing/payment finalization)
-Blocked: 0%
-Not Started: 5%
+In Progress: 10% (platform billing/founder flow finalization)
+Blocked: 5% (founder/KC OTP delivery in local runtime)
+Not Started: 0%
 ```
 
 ---
@@ -32,7 +32,7 @@ Not Started: 5%
 - [x] Tenant isolation (CP-1) — verified no data leaks
 - [x] Booking MVP (CP-2) — form, board, SSE working
 - [x] All documentation redesigned (Restaurant OS vision)
-- [x] 10 Checkpoints defined with verification scripts (includes CP-10 platform site + self-service signup)
+- [x] 10 checkpoints defined; current verification uses Vitest + tenant guard checks + manual smoke tests
 - [x] 6 Contract systems created (API, Data, Module, Integration, Security, Error)
 - [x] Authentication (PIN login)
 - [x] Tenant guard middleware
@@ -42,12 +42,16 @@ Not Started: 5%
 - [x] SaaS Admin split from Restaurant Admin (separate route + APIs)
 - [x] Tier redesign live: Core basic, Commerce operational add-ons
 - [x] Tenant billing automation hook: billable staff count updates recurring amount
+- [x] Local runtime verified on 2026-03-30 for health, platform routes, signup provisioning, tenant board, staff auth, admin config/staff, booking create, and booking stage updates
+- [x] Platform marketing/login/signup polish shipped locally: contextual login modal, browser-language auto-detect, localized pricing/extras copy, and onboarding redesign
 
 **Evidence**:
-- E2E tests passing ✅
-- Booking form live ✅
-- Board real-time ✅
-- Checkpoints verified ✅
+- Local live verification on 2026-03-30 ✅
+- Vitest: 19/21 passing ✅
+- Booking form render + localhost booking submission verified ✅
+- Board and stage updates verified live ✅
+- Platform home + signup copy verified locally after pricing/i18n updates ✅
+- Known failures isolated to founder/KC OTP delivery paths ⚠️
 
 ---
 
@@ -59,15 +63,20 @@ Not Started: 5%
 - [x] SaaS Admin: pricing editor + signup CRM-lite + lead follow-up
 - [x] Restaurant Admin: billing/domain/payment section + staff management
 - [x] Demo payment summary on signup + live provisioning
+- [x] Staff-created onsite bookings persist and stage updates round-trip locally
+- [x] Platform landing/signup now present localized plan messaging for Online, Service, Repeat Guests, and Groups
+- [x] Included-vs-add-ons pricing block and signup commercial summary now follow the active browser/UI language
 
 **What needs work** (next 3-4 days):
 - [ ] Stripe test checkout flow (replace demo-paid simulation)
 - [ ] Tenant public website templates consume Website Builder Studio settings
 - [ ] Tenant custom domain connection workflow (DNS + validation)
 - [ ] Tenant payment method onboarding UX (Stripe + manual modes)
+- [ ] Founder/KC OTP delivery path needs working Twilio credentials or a dedicated local stub
+- [ ] Document the local-dev caveat: Turnstile bypass only applies on localhost/workers.dev, not Host-header tenant simulation
 
 **Current dependency**:
-- Stripe test credentials + payment workflow final decision
+- Stripe test credentials + Twilio credentials (or explicit local OTP stub)
 - ETA: Mar 31
 
 **Where it lives**:
@@ -79,8 +88,8 @@ Not Started: 5%
 
 **How to test**:
 ```bash
-   npm run check:cp-admin-setup
-   npm run deploy
+npm test
+npx wrangler dev --config wrangler.jsonc
 ```
 
 ---
@@ -106,25 +115,19 @@ All other phases (2-5) planned, not started:
 
 ## 🚨 Blockers (Current)
 
-### Blocker 1: Admin UI Component Refactoring
-- **Issue**: Setup wizard form patterns not matching contract spec
-- **Impact**: Blocks CP-3 completion (60% → can't go higher)
-- **ETA Fix**: Mar 31
+### Blocker 1: Founder/KC OTP Runtime
+- **Issue**: Founder/KC registration returns 500 on the supported localhost path because Twilio credentials are not configured
+- **Impact**: 2 Vitest failures and no end-to-end OTP verification in local runtime
+- **ETA Fix**: As soon as Twilio test credentials or a local stub are configured
 - **Owner**: @dev-lead
-- **Action Item**: Approve new component designs by Mar 24
+- **Action Item**: Decide whether local OTP should require live Twilio or use a development stub
 
-### Blocker 2: Stripe Staging Setup (Not urgent)
-- **Issue**: Staging needs real Stripe test account for CP-6
-- **Impact**: Phase 3 testing delayed
-- **ETA Fix**: Jul 15 (Phase 3 start)
-- **Owner**: @infra-lead
-- **Action Item**: Schedule Stripe Connect setup meeting
-
-### No Critical Blockers ✅
-- All Phase 1 architecture solid
-- All contracts defined
-- All checkpoints defined (including CP-9 future readiness)
-- Ready to ship CP-3 by Mar 31
+### Blocker 2: Platform Billing + Website Runtime Binding
+- **Issue**: Stripe checkout is not wired and tenant website-builder fields are not yet bound to public tenant pages at runtime
+- **Impact**: CP-10 remains partial, not ship-ready
+- **ETA Fix**: Mar 31 onward
+- **Owner**: @dev-lead
+- **Action Item**: Wire Stripe test checkout and bind public website templates to settings
 
 ---
 
@@ -158,9 +161,9 @@ PHASE 1 TOTAL                                        85%
 - All green ✅
 
 ### Quality ✅
-- Test coverage: 95%+ for completed modules
+- Runtime tests: 19/21 passing locally
 - No hardcoded secrets ✅
-- All queries filter by tenant_id ✅
+- Query guards and company scoping checks in place ✅
 - Tenants isolated (verified) ✅
 
 ### Documentation ✅
@@ -182,14 +185,14 @@ PHASE 1 TOTAL                                        85%
 **Priority 1** (Must do):
 - [ ] Wire Stripe test checkout for signup and recurring invoices
 - [ ] Connect Website Builder Studio fields to tenant public templates
-- [ ] Validate custom domain + tenant payment setup UX
+- [ ] Configure or stub Twilio so founder/KC OTP works in local runtime and tests
 - **Owner**: @dev-lead
 - **Time**: 3-4 days
-- **Blocker**: Component refactoring approval (by Mar 24)
+- **Blocker**: External credentials / final local-dev behavior decisions
 
 **Priority 2** (Should do):
 - [ ] Document all admin endpoints
-- [ ] Verify against API_CONTRACTS.md
+- [ ] Document the local verification path (`company_id` override on localhost vs tenant-host simulation)
 - **Owner**: @qa
 - **Time**: 1 day
 
