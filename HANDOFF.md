@@ -25,7 +25,7 @@
 - [x] Decision records (DECISIONS.md)
 - [x] Legacy reference policy formalized (Founder/KC retained as reference assets)
 
-#### Implementation (85%)
+#### Implementation (88%)
 - [x] Tenant isolation (CP-1) ✅ VERIFIED
 - [x] Booking MVP (CP-2) ✅ VERIFIED
 - [x] Booking form live
@@ -36,6 +36,10 @@
 - [x] Local runtime verified for platform home/plans/contact, signup provisioning, board, admin config, staff auth, booking create, and stage updates
 - [x] Vitest baseline: 19/21 passing
 - [x] Platform UX/copy pass shipped locally: signup redesign, contextual login modal, browser-language detection, and localized pricing/add-on messaging
+- [x] Website master runtime preview shipped in `public/website-master/` with a universal tenant template, preset-driven content, and runtime-shaped source payload examples
+- [x] Website master now wires booking, contact, and founder/KC membership forms to current runtime endpoints with automatic preview-safe tenant injection
+- [x] New public contact route `/api/contact/create` stores website-originated submissions in the existing `contacts` table
+- [x] Active local runtime verification on port `8790` confirmed website master render, booking create/readback, and founder register/verify persistence
 - [ ] Founder/KC OTP runtime still fails locally without Twilio credentials
 - [ ] Admin UI setup wizard / go-live flow still incomplete (75% complete)
 
@@ -59,14 +63,15 @@
 - [x] Tenant signup endpoint provisions organization/company/admin staff user
 - [x] Platform landing and signup pricing copy now reflects Service POS/German checkout and Repeat Guests SMS/loyal-guest positioning in EN/DE/VI
 - [x] Included/add-on pricing notes and signup commercial summary are now language-aware instead of hardcoded English
+- [x] Website master preview can consume runtime-shaped website settings and preview tenant/company context without hardcoded tenant pages
 - [ ] Restaurant config form (email/phone/hours/areas)
 - [ ] Staff PIN setup
 - [ ] Payment integration setup
 - [ ] "Go Live" verification
 
-**What's blocked**: final UX completion plus founder/KC OTP runtime depending on Twilio credentials
+**What's blocked**: final UX completion, website publish/domain workflow completion, plus founder/KC OTP runtime depending on Twilio credentials
 
-**Entry points**: `src/index.js`, `public/admin.html`, `public/platform/admin.html`
+**Entry points**: `src/index.js`, `public/admin.html`, `public/platform/admin.html`, `public/website-master/index.html`
 
 ---
 
@@ -93,7 +98,7 @@
 
 ## 🎯 Current Phase: Phase 1 (Booking System)
 
-**Status**: 85% complete  
+**Status**: 88% complete  
 **ETA**: April 15, 2026  
 **Owner**: Development team
 
@@ -102,8 +107,8 @@
 | CP-1: Tenant Isolation | ✅ DONE | E2E_TEST_SUMMARY.md | None |
 | CP-2: Booking MVP | ✅ DONE | Local runtime verified on 2026-03-30 | None |
 | CP-3: Admin UI Setup | 🔄 75% | Admin routes/UI live; go-live flow still incomplete | UX completion |
-| CP-10: Platform Site + Self-Service Signup | 🔄 80% | Platform home/contact/admin/signup verified live; localized pricing/login/signup polish shipped locally | Stripe + website runtime binding + Twilio for founder/KC |
-| **Phase 1 Total** | **🔄 85%** | — | **Platform/founder finalization** |
+| CP-10: Platform Site + Self-Service Signup | 🔄 90% | Platform home/contact/admin/signup verified live; localized pricing/login/signup polish shipped locally; website master preview runtime wired and smoke-tested | Stripe + publish/domain workflow + Twilio for founder/KC |
+| **Phase 1 Total** | **🔄 88%** | — | **Platform/founder finalization** |
 
 ---
 
@@ -129,9 +134,10 @@
 - Owner: QA
 - Verification path: `npm test` + `wrangler dev --config wrangler.jsonc` + manual smoke tests
 
-**Task 3**: Document admin API endpoints
-- Verify all endpoints match API_CONTRACTS.md
-- Test with real data
+**Task 3**: Complete website publish/domain workflow
+- Bind Website Builder Studio admin fields into the publish path beyond the current master preview adapter
+- Publish tenant website output/assets and validate custom-domain serving
+- Re-test `/api/contact/create` on a freshly reloaded worker because the active `8790` runtime did not expose the new source route during smoke test
 - Time estimate: Half day
 
 **Task 4**: Fix founder/KC OTP local runtime
@@ -186,22 +192,16 @@
 ```
 /src/
 ├── index.js                -- Main Worker entry
-├── modules/
-│   ├── auth/              -- PIN login (✅ DONE)
-│   ├── booking/           -- Reservations (✅ DONE)
-│   ├── notifications/     -- SSE & SMS (✅ DONE)
-│   ├── admin/             -- Setup wizard (🔄 60%)
-│   ├── pos/               -- (📋 Phase 3)
-│   ├── payment/           -- (📋 Phase 3)
-│   └── ...
-├── utils/
-│   ├── tenant-guard.js    -- Tenant isolation middleware
-│   ├── db.js              -- D1 helpers
-│   └── ...
-└── tests/
-    ├── tenant-isolation.spec.js
-    ├── booking.spec.js
-    └── ...
+├── db/                     -- D1 access helpers
+├── utils/                  -- Tenant/runtime helpers
+└── ...
+
+/public/
+├── admin.html             -- Restaurant admin UI
+├── platform/              -- SaaS platform pages/admin
+├── booking-form.html      -- Public booking entry
+├── founder-form.html      -- Founder/KC legacy-compatible entry
+└── website-master/        -- Universal website master preview + schema/presets/examples
 ```
 
 ### Key Files to Know
@@ -227,7 +227,7 @@
 
 2. **Understand context 10 min**:
    - We're building Restaurant OS (vertical SaaS for restaurants)
-   - Currently in Phase 1 (Booking system) at 75% complete
+   - Currently in Phase 1 (Booking system) at 88% complete
    - Using Cloudflare Workers + D1 (no Odoo in critical path)
    - Multi-tenant system (restaurants = tenants)
 
@@ -261,14 +261,14 @@ Checkpoint Completion:
 ┌─────────────────────────────────────┐
 │ CP-1: Tenant Isolation  ████████ 100% ✅
 │ CP-2: Booking MVP       ████████ 100% ✅
-│ CP-3: Admin UI Setup    ████░░░░  60% 🔄
+│ CP-3: Admin UI Setup    ██████░░  75% 🔄
 │ CP-4: Staff Mobile      ░░░░░░░░   0% 📋
 │ CP-5: POS System        ░░░░░░░░   0% 📋
 │ CP-6: Payment           ░░░░░░░░   0% 📋
 │ CP-7: Odoo Removed      ░░░░░░░░   0% ❌
 │ CP-8: Growth Features   ░░░░░░░░   0% ❌
 └─────────────────────────────────────┘
-Phase 1 Overall: 75%
+Phase 1 Overall: 88%
 On track for Apr 15 GA? YES
 ```
 
@@ -298,18 +298,25 @@ Performance:
 
 ### Current Blockers
 
-**Blocker 1**: Admin UI component refactoring
-- **What**: Setup wizard form components need rebuild
-- **Why**: Current design doesn't match contract spec
-- **Impact**: CP-3 blocked (60% → 90%)
+**Blocker 1**: Admin UI go-live completion
+- **What**: Setup wizard still needs the last config, payment, and go-live screens
+- **Why**: Core routes exist, but the operator finish path is still incomplete
+- **Impact**: CP-3 blocked (75% → 100%)
 - **ETA**: Mar 31
 - **Owner**: @dev-lead
-- **Resolution**: Approve component redesign by Mar 24
+- **Resolution**: Finish admin form flow and validate with a full self-serve tenant go-live pass
 
 **Blocker 2**: Stripe test account setup
 - **What**: Staging needs real Stripe test account
 - **Why**: Payment endpoint can't be tested with mocks only
 - **Impact**: CP-6 (Phase 3) testing delayed
+**Blocker 3**: Website publish/domain flow completion
+- **What**: Website master runtime preview is working, but publish-to-storage and custom-domain serving are not complete yet
+- **Why**: Current implementation proves rendering/runtime wiring, not the full go-live delivery pipeline
+- **Impact**: CP-10 remains partial
+- **ETA**: Mar 31
+- **Owner**: @dev-lead
+- **Resolution**: Bind Website Builder Studio settings into publish output, reload worker, and validate custom-domain path plus `/api/contact/create`
 - **ETA**: Will be resolved by Phase 3 start (Aug 1)
 - **Owner**: @infra-lead
 - **Resolution**: Set up Stripe Connect in staging by Jul 15

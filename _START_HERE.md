@@ -17,7 +17,7 @@
 ### "I need to understand the project RIGHT NOW"
 → Read **[QUICKSTART.md](./QUICKSTART.md)** (5 min)
 
-Summary: You're building Restaurant OS (vertical SaaS). Phase 1 (Booking + Platform Entry) is 85% done. Admin UI and founder/KC runtime hardening remain. That's it.
+Summary: You're building Restaurant OS (vertical SaaS). Phase 1 (Booking + Platform Entry) is 88% done. Admin UI, website publish/domain completion, Stripe, and founder/KC runtime hardening remain.
 
 ### "I need to know what's blocked / what to work on?"
 → Read **[STATUS.md](./STATUS.md)** (3 min)
@@ -174,9 +174,9 @@ Multi-tenant system = restaurants are isolated. One restaurant can't see another
 ## 📊 Current Status (Right Now)
 
 **Phase**: 1 of 5 (Booking System)  
-**Progress**: 85% complete  
+**Progress**: 88% complete  
 **ETA**: April 15, 2026  
-**Status**: 🟡 ON TRACK (remaining: Stripe wiring, website runtime binding, founder/KC OTP local fix)
+**Status**: 🟡 ON TRACK (remaining: Stripe wiring, website publish/domain workflow, founder/KC OTP local fix)
 
 **What's done**:
 - ✅ Tenant isolation (verified)
@@ -185,15 +185,17 @@ Multi-tenant system = restaurants are isolated. One restaurant can't see another
 - ✅ Real-time notifications (SSE)
 - ✅ Platform site, SaaS admin, and self-service signup verified locally on 2026-03-30
 - ✅ Platform login/signup/pricing experience now includes browser-language auto-detect, contextual login, and localized pricing/add-on messaging
+- ✅ Website master preview now exists under `public/website-master/` with preset-driven content, runtime form wiring, and automatic preview tenant injection
 
 **What's in progress** (your focus):
 - 🔄 Admin UI setup wizard (75% complete)
+- 🔄 Tenant website publish/domain workflow after the delivered master preview/runtime adapter
 - 🔄 Founder/KC OTP runtime hardening
 
 **What's next**:
 1. Complete admin UI (3-4 days)
-2. Fix founder/KC OTP local runtime and rerun tests
-3. Beta with 2-3 restaurants (1 week)
+2. Finish website publish/domain workflow and re-verify the new public contact route on a fresh worker reload
+3. Fix founder/KC OTP local runtime and rerun tests
 
 **For full details** → Read [STATUS.md](./STATUS.md)
 

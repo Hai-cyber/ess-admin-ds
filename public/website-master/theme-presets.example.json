@@ -1,0 +1,386 @@
+{
+  "theme-basic-a": {
+    "hero_image": "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=1800&q=80",
+    "story_paragraphs": [
+      "A direct homepage for restaurants that need clear dishes, clear prices, and fast action.",
+      "Use this preset for local family dining, takeaway-first operators, and neighborhood value concepts."
+    ],
+    "menu_sections": [
+      {
+        "label": "Beliebt",
+        "title": "Best Sellers",
+        "items": [
+          { "name": "Chicken Schnitzel", "description": "Potato salad, lemon, cucumber relish.", "price": "15,90 EUR" },
+          { "name": "Currywurst Teller", "description": "House curry sauce, fries, slaw.", "price": "11,90 EUR" }
+        ]
+      },
+      {
+        "label": "Mittag",
+        "title": "Lunch Combos",
+        "items": [
+          { "name": "Pasta + Soft Drink", "description": "Fast lunch pairing for office traffic.", "price": "13,50 EUR" },
+          { "name": "Burger + Fries", "description": "Entry combo for repeat guests.", "price": "14,90 EUR" }
+        ]
+      },
+      {
+        "label": "Dessert",
+        "title": "Sweet Finish",
+        "items": [
+          { "name": "Apple Crumble", "description": "Warm vanilla sauce, oat crumble.", "price": "6,90 EUR" },
+          { "name": "Cheesecake Slice", "description": "Berry compote, sour cream finish.", "price": "5,90 EUR" }
+        ]
+      }
+    ],
+    "category_cards": [
+      { "label": "Combos", "title": "Lunch traffic", "body": "Designed to convert busy daytime office flow.", "tone": "brand" },
+      { "label": "Family", "title": "Sharing picks", "body": "Comfort dishes and simple bundles for families.", "tone": "default" },
+      { "label": "Takeaway", "title": "Fast handoff", "body": "Short menu architecture for phone and walk-in orders.", "tone": "surface" }
+    ],
+    "membership_rewards": [
+      { "label": "Reward 01", "title": "Lunch card stamps" },
+      { "label": "Reward 02", "title": "Birthday dessert note" },
+      { "label": "Reward 03", "title": "Family dinner coupons" }
+    ],
+    "signature_items": [
+      { "name": "Chicken Schnitzel", "price": "15,90 EUR", "description": "Golden crust, potato salad, lemon.", "image": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=80" },
+      { "name": "Grilled Sausage Plate", "price": "12,80 EUR", "description": "Mustard jus, fries, pickled cabbage.", "image": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=900&q=80" },
+      { "name": "House Burger", "price": "13,90 EUR", "description": "Beef patty, cheddar, crispy onions.", "image": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=900&q=80" }
+    ]
+  },
+  "theme-basic-b": {
+    "hero_image": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1800&q=80",
+    "story_paragraphs": [
+      "A warmer, more food-forward variant of the basic preset with visible comfort and shareability.",
+      "Good for pizza, pasta, and casual evening concepts with stronger photography."
+    ],
+    "menu_sections": [
+      {
+        "label": "Pizza",
+        "title": "Stone Oven",
+        "items": [
+          { "name": "Margherita", "description": "San Marzano tomato, basil, mozzarella.", "price": "12,50 EUR" },
+          { "name": "Salami Piccante", "description": "Spicy salami, chili oil, provolone.", "price": "14,90 EUR" }
+        ]
+      },
+      {
+        "label": "Pasta",
+        "title": "Quick Favorites",
+        "items": [
+          { "name": "Penne Arrabbiata", "description": "Tomato sauce, chili, parsley.", "price": "11,90 EUR" },
+          { "name": "Lasagne Classica", "description": "Slow beef ragu, bechamel, parmesan.", "price": "14,50 EUR" }
+        ]
+      },
+      {
+        "label": "Drinks",
+        "title": "Easy Pairings",
+        "items": [
+          { "name": "House Spritz", "description": "Orange, prosecco, bitter herbs.", "price": "7,50 EUR" },
+          { "name": "Flat White", "description": "Micro-roasted espresso blend.", "price": "4,80 EUR" }
+        ]
+      }
+    ],
+    "category_cards": [
+      { "label": "Pizza", "title": "Shareable classics", "body": "Designed for quick scanning and family decisions.", "tone": "brand" },
+      { "label": "Pasta", "title": "Comfort lane", "body": "Strong repeat-order dishes with broad appeal.", "tone": "default" },
+      { "label": "Apero", "title": "Add-on margin", "body": "Simple beverage add-ons to lift basket size.", "tone": "surface" }
+    ],
+    "membership_rewards": [
+      { "label": "Reward 01", "title": "Pizza preview drops" },
+      { "label": "Reward 02", "title": "Seasonal pasta alerts" },
+      { "label": "Reward 03", "title": "Table-for-four perks" }
+    ],
+    "signature_items": [
+      { "name": "Margherita Pizza", "price": "12,50 EUR", "description": "Stone baked, basil, mozzarella.", "image": "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=900&q=80" },
+      { "name": "Lasagne Classica", "price": "14,50 EUR", "description": "Slow ragu, creamy bechamel.", "image": "https://images.unsplash.com/photo-1619895092538-128341789043?auto=format&fit=crop&w=900&q=80" },
+      { "name": "Burrata Salad", "price": "11,90 EUR", "description": "Tomatoes, basil, olive oil.", "image": "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=900&q=80" }
+    ]
+  },
+  "theme-luxury-a": {
+    "hero_image": "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=1800&q=80",
+    "story_paragraphs": [
+      "This preset opens with atmosphere, then narrows into a composed menu and a confident booking invitation.",
+      "Built for chef-led dining rooms, destination restaurants, and occasion traffic with higher table value."
+    ],
+    "menu_sections": [
+      {
+        "label": "Vorspeisen",
+        "title": "Opening Course",
+        "items": [
+          { "name": "Burrata & Heirloom Tomatoes", "description": "Basil oil, sourdough crunch, sea salt flakes.", "price": "12,90 EUR" },
+          { "name": "Beef Carpaccio", "description": "Parmesan, lemon dressing, rocket.", "price": "14,50 EUR" }
+        ]
+      },
+      {
+        "label": "Hauptgerichte",
+        "title": "Main Dishes",
+        "items": [
+          { "name": "Sea Bass Fillet", "description": "Braised fennel, citrus beurre blanc, herb potatoes.", "price": "27,50 EUR" },
+          { "name": "Dry Aged Ribeye", "description": "Pepper jus, seasonal greens, crispy potatoes.", "price": "34,00 EUR" }
+        ]
+      },
+      {
+        "label": "Dessert & Bar",
+        "title": "Finish",
+        "items": [
+          { "name": "Pistachio Tiramisu", "description": "Mascarpone, espresso soak, pistachio crunch.", "price": "8,90 EUR" },
+          { "name": "House Negroni", "description": "Red vermouth, gin, blood orange.", "price": "11,50 EUR" }
+        ]
+      }
+    ],
+    "category_cards": [
+      { "label": "Tasting", "title": "Occasion dining", "body": "Short premium curation designed around reservation intent.", "tone": "brand" },
+      { "label": "Wine", "title": "Pairing rhythm", "body": "Digital room for sommelier recommendations and upsell.", "tone": "default" },
+      { "label": "Private", "title": "Chef table", "body": "Private dining and event leads without changing the page shell.", "tone": "surface" }
+    ],
+    "membership_rewards": [
+      { "label": "Reward 01", "title": "Priority booking windows" },
+      { "label": "Reward 02", "title": "Chef table invite drops" },
+      { "label": "Reward 03", "title": "Member-only tasting menus" }
+    ],
+    "signature_items": [
+      { "name": "Truffle Tagliatelle", "price": "18,90 EUR", "description": "Parmesan cream, roasted mushrooms, black truffle.", "image": "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=900&q=80" },
+      { "name": "Sea Bass Fillet", "price": "27,50 EUR", "description": "Citrus beurre blanc, fennel, herb potatoes.", "image": "https://images.unsplash.com/photo-1541544741938-0af808871cc0?auto=format&fit=crop&w=900&q=80" },
+      { "name": "Pistachio Tiramisu", "price": "8,90 EUR", "description": "Mascarpone cream, pistachio crumble.", "image": "https://images.unsplash.com/photo-1563805042-7684c019e1cb?auto=format&fit=crop&w=900&q=80" }
+    ]
+  },
+  "theme-luxury-b": {
+    "hero_image": "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1800&q=80",
+    "story_paragraphs": [
+      "A darker, more metropolitan luxury preset with stronger evening mood and cocktail emphasis.",
+      "Suitable for lounges, modern steakhouses, and intimate destination concepts."
+    ],
+    "menu_sections": [
+      {
+        "label": "Raw & Small Plates",
+        "title": "Opening",
+        "items": [
+          { "name": "Yellowtail Crudo", "description": "Citrus oil, green chili, dill.", "price": "16,90 EUR" },
+          { "name": "Oyster Selection", "description": "Lemon, shallot vinegar, tabasco.", "price": "18,50 EUR" }
+        ]
+      },
+      {
+        "label": "Fire",
+        "title": "Main Course",
+        "items": [
+          { "name": "Coal Grilled Ribeye", "description": "Pepper jus, smoked onion, cress.", "price": "36,00 EUR" },
+          { "name": "Lobster Linguine", "description": "Shellfish butter, parsley, chili.", "price": "31,50 EUR" }
+        ]
+      },
+      {
+        "label": "Bar",
+        "title": "Late Finish",
+        "items": [
+          { "name": "Espresso Martini", "description": "Vodka, espresso, coffee liqueur.", "price": "12,50 EUR" },
+          { "name": "Dark Chocolate Mousse", "description": "Sea salt, olive oil, cacao nibs.", "price": "9,50 EUR" }
+        ]
+      }
+    ],
+    "category_cards": [
+      { "label": "Bar", "title": "Late-evening value", "body": "A stronger cocktail lane for dinner-to-bar transitions.", "tone": "brand" },
+      { "label": "Fire", "title": "Premium mains", "body": "Steak, shellfish, and high-ticket anchors.", "tone": "default" },
+      { "label": "Events", "title": "Private room leads", "body": "Suitable for private dinners and brand-hosted evenings.", "tone": "surface" }
+    ],
+    "membership_rewards": [
+      { "label": "Reward 01", "title": "After-hours reservation slots" },
+      { "label": "Reward 02", "title": "Cocktail menu previews" },
+      { "label": "Reward 03", "title": "Guestlist priority" }
+    ],
+    "signature_items": [
+      { "name": "Coal Grilled Ribeye", "price": "36,00 EUR", "description": "Pepper jus, smoked onion, cress.", "image": "https://images.unsplash.com/photo-1558030006-450675393462?auto=format&fit=crop&w=900&q=80" },
+      { "name": "Lobster Linguine", "price": "31,50 EUR", "description": "Shellfish butter, parsley, chili.", "image": "https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?auto=format&fit=crop&w=900&q=80" },
+      { "name": "Espresso Martini", "price": "12,50 EUR", "description": "Late-night bar signature.", "image": "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=900&q=80" }
+    ]
+  },
+  "theme-minimal-a": {
+    "hero_image": "https://images.unsplash.com/photo-1466978913421-dad2ebd01d17?auto=format&fit=crop&w=1800&q=80",
+    "story_paragraphs": [
+      "This preset puts editorial calm first: fewer dishes, more whitespace, stronger narrative.",
+      "Use it for owner-story brands, modern neighborhood rooms, and quieter positioning."
+    ],
+    "menu_sections": [
+      {
+        "label": "Seasonal",
+        "title": "Kitchen Notes",
+        "items": [
+          { "name": "Roasted Carrot Tart", "description": "Goat curd, dill, brown butter crumb.", "price": "13,20 EUR" },
+          { "name": "Spring Greens Soup", "description": "Herb oil, creme fraiche, rye toast.", "price": "9,40 EUR" }
+        ]
+      },
+      {
+        "label": "Main",
+        "title": "Quiet Highlights",
+        "items": [
+          { "name": "Market Fish", "description": "Celeriac puree, leek, lemon sauce.", "price": "25,90 EUR" },
+          { "name": "Handmade Gnocchi", "description": "Peas, mint, parmesan broth.", "price": "18,40 EUR" }
+        ]
+      },
+      {
+        "label": "Coffee",
+        "title": "Close",
+        "items": [
+          { "name": "Olive Oil Cake", "description": "Citrus syrup, mascarpone.", "price": "7,20 EUR" },
+          { "name": "Filter Coffee", "description": "Single-origin house roast.", "price": "4,60 EUR" }
+        ]
+      }
+    ],
+    "category_cards": [
+      { "label": "Seasonal", "title": "Low-noise curation", "body": "Small, readable menu groupings without visual crowding.", "tone": "brand" },
+      { "label": "Story", "title": "Founder voice", "body": "Editorial space for sourcing, values, and neighborhood context.", "tone": "default" },
+      { "label": "Coffee", "title": "After-meal calm", "body": "A quieter upsell path for coffee and dessert.", "tone": "surface" }
+    ],
+    "membership_rewards": [
+      { "label": "Reward 01", "title": "Preview supper notes" },
+      { "label": "Reward 02", "title": "Quiet table releases" },
+      { "label": "Reward 03", "title": "Seasonal menu letters" }
+    ],
+    "signature_items": [
+      { "name": "Market Fish", "price": "25,90 EUR", "description": "Celeriac puree, leek, lemon sauce.", "image": "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&w=900&q=80" },
+      { "name": "Handmade Gnocchi", "price": "18,40 EUR", "description": "Peas, mint, parmesan broth.", "image": "https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?auto=format&fit=crop&w=900&q=80" },
+      { "name": "Olive Oil Cake", "price": "7,20 EUR", "description": "Citrus syrup, mascarpone.", "image": "https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=900&q=80" }
+    ]
+  },
+  "theme-minimal-b": {
+    "hero_image": "https://images.unsplash.com/photo-1498654896293-37aacf113fd9?auto=format&fit=crop&w=1800&q=80",
+    "story_paragraphs": [
+      "A brighter minimal preset with brunch and coffee energy, but still guided by clean editorial spacing.",
+      "Ideal for cafe-restaurants, all-day rooms, and modern urban hospitality brands."
+    ],
+    "menu_sections": [
+      {
+        "label": "Brunch",
+        "title": "Morning Plates",
+        "items": [
+          { "name": "Poached Eggs & Sourdough", "description": "Spinach, hollandaise, chili butter.", "price": "13,80 EUR" },
+          { "name": "Granola Bowl", "description": "Seasonal fruit, yogurt, seeds.", "price": "9,60 EUR" }
+        ]
+      },
+      {
+        "label": "Lunch",
+        "title": "Midday",
+        "items": [
+          { "name": "Roasted Chicken Sandwich", "description": "Aioli, herbs, leaf salad.", "price": "14,20 EUR" },
+          { "name": "Miso Aubergine Plate", "description": "Rice, sesame greens, pickles.", "price": "16,50 EUR" }
+        ]
+      },
+      {
+        "label": "Coffee & Bake",
+        "title": "House Favourites",
+        "items": [
+          { "name": "Flat White", "description": "Balanced chocolate roast.", "price": "4,80 EUR" },
+          { "name": "Lemon Loaf", "description": "Yogurt crumb, glaze.", "price": "5,20 EUR" }
+        ]
+      }
+    ],
+    "category_cards": [
+      { "label": "Brunch", "title": "Daypart clarity", "body": "Sections built around a lighter daytime guest journey.", "tone": "brand" },
+      { "label": "Cafe", "title": "Repeat traffic", "body": "Works well for recurring local guest routines.", "tone": "default" },
+      { "label": "Bake", "title": "Impulse add-ons", "body": "Simple pastry and beverage upsell surface.", "tone": "surface" }
+    ],
+    "membership_rewards": [
+      { "label": "Reward 01", "title": "Brunch booking alerts" },
+      { "label": "Reward 02", "title": "Coffee tasting drops" },
+      { "label": "Reward 03", "title": "Local guest perks" }
+    ],
+    "signature_items": [
+      { "name": "Poached Eggs & Sourdough", "price": "13,80 EUR", "description": "Spinach, hollandaise, chili butter.", "image": "https://images.unsplash.com/photo-1482049016688-2d3e1b311543?auto=format&fit=crop&w=900&q=80" },
+      { "name": "Miso Aubergine Plate", "price": "16,50 EUR", "description": "Rice, sesame greens, pickles.", "image": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=900&q=80" },
+      { "name": "Flat White", "price": "4,80 EUR", "description": "Balanced house espresso.", "image": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=900&q=80" }
+    ]
+  },
+  "theme-diner-a": {
+    "hero_image": "https://images.unsplash.com/photo-1561758033-d89a9ad46330?auto=format&fit=crop&w=1800&q=80",
+    "story_paragraphs": [
+      "This preset is built for urgency: stronger contrast, louder bundles, and immediate order intent.",
+      "Use it for burgers, wraps, fried chicken, pizza slices, and fast-casual storefronts."
+    ],
+    "menu_sections": [
+      {
+        "label": "Burger",
+        "title": "Top Sellers",
+        "items": [
+          { "name": "Smash Burger", "description": "Double beef, cheddar, onions, pickles.", "price": "12,90 EUR" },
+          { "name": "Chicken Crunch Burger", "description": "Buttermilk chicken, slaw, spicy mayo.", "price": "11,90 EUR" }
+        ]
+      },
+      {
+        "label": "Combos",
+        "title": "Order Faster",
+        "items": [
+          { "name": "Burger + Fries + Drink", "description": "Main combo for high-speed ordering.", "price": "15,90 EUR" },
+          { "name": "Wrap + Drink", "description": "Compact lunch conversion set.", "price": "13,20 EUR" }
+        ]
+      },
+      {
+        "label": "Shakes",
+        "title": "Add More",
+        "items": [
+          { "name": "Vanilla Shake", "description": "Thick house shake.", "price": "5,50 EUR" },
+          { "name": "Loaded Fries", "description": "Cheese sauce, jalapenos, onions.", "price": "6,90 EUR" }
+        ]
+      }
+    ],
+    "category_cards": [
+      { "label": "Burger", "title": "Fast movers", "body": "Primary category for direct homepage conversion.", "tone": "brand" },
+      { "label": "Wraps", "title": "Lunch picks", "body": "Compact, easy-to-scan choices for quick decisions.", "tone": "default" },
+      { "label": "Shakes", "title": "Basket lift", "body": "High-margin add-ons built into the page flow.", "tone": "surface" }
+    ],
+    "membership_rewards": [
+      { "label": "Reward 01", "title": "Combo coupons" },
+      { "label": "Reward 02", "title": "New burger drops" },
+      { "label": "Reward 03", "title": "Late-night deals" }
+    ],
+    "signature_items": [
+      { "name": "Smash Burger", "price": "12,90 EUR", "description": "Double beef, cheddar, onions.", "image": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=900&q=80" },
+      { "name": "Chicken Crunch Burger", "price": "11,90 EUR", "description": "Buttermilk chicken, slaw, spicy mayo.", "image": "https://images.unsplash.com/photo-1606755962773-d324e0a13086?auto=format&fit=crop&w=900&q=80" },
+      { "name": "Loaded Fries", "price": "6,90 EUR", "description": "Cheese sauce, jalapenos, onions.", "image": "https://images.unsplash.com/photo-1576107232684-1279f390859f?auto=format&fit=crop&w=900&q=80" }
+    ]
+  },
+  "theme-diner-b": {
+    "hero_image": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=1800&q=80",
+    "story_paragraphs": [
+      "A brighter fast-food variant with heavier orange-yellow energy and stronger family combo logic.",
+      "Works well for pizza slices, fried snacks, and youth-oriented takeaway brands."
+    ],
+    "menu_sections": [
+      {
+        "label": "Pizza Slices",
+        "title": "Grab & Go",
+        "items": [
+          { "name": "Pepperoni Slice", "description": "Mozzarella, pepperoni, chili flakes.", "price": "4,50 EUR" },
+          { "name": "Cheese Slice", "description": "Tomato sauce, mozzarella, basil.", "price": "3,90 EUR" }
+        ]
+      },
+      {
+        "label": "Snack Box",
+        "title": "Bundles",
+        "items": [
+          { "name": "3 Slices + Drink", "description": "Value set for quick checkout.", "price": "11,90 EUR" },
+          { "name": "Hot Wings Box", "description": "Wings, fries, dipping sauce.", "price": "13,50 EUR" }
+        ]
+      },
+      {
+        "label": "Sweet & Drink",
+        "title": "Add On",
+        "items": [
+          { "name": "Churro Bites", "description": "Cinnamon sugar, chocolate dip.", "price": "5,20 EUR" },
+          { "name": "Cherry Cola", "description": "Cold bottled soda.", "price": "3,20 EUR" }
+        ]
+      }
+    ],
+    "category_cards": [
+      { "label": "Slices", "title": "Counter-speed ordering", "body": "Visible categories for instant decisions and upsell.", "tone": "brand" },
+      { "label": "Snack Box", "title": "Combo driven", "body": "Pair main items with drink and side in one block.", "tone": "default" },
+      { "label": "Sweet", "title": "Impulse dessert", "body": "Short add-on surface near the end of the page.", "tone": "surface" }
+    ],
+    "membership_rewards": [
+      { "label": "Reward 01", "title": "Student combo codes" },
+      { "label": "Reward 02", "title": "Weekend slice deals" },
+      { "label": "Reward 03", "title": "Friends bundle alerts" }
+    ],
+    "signature_items": [
+      { "name": "Pepperoni Slice", "price": "4,50 EUR", "description": "Mozzarella, pepperoni, chili flakes.", "image": "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=900&q=80" },
+      { "name": "Hot Wings Box", "price": "13,50 EUR", "description": "Wings, fries, dipping sauce.", "image": "https://images.unsplash.com/photo-1562967916-eb82221dfb36?auto=format&fit=crop&w=900&q=80" },
+      { "name": "Churro Bites", "price": "5,20 EUR", "description": "Cinnamon sugar, chocolate dip.", "image": "https://images.unsplash.com/photo-1626804475297-41608ea09aeb?auto=format&fit=crop&w=900&q=80" }
+    ]
+  }
+}

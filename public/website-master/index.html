@@ -1,0 +1,1395 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RestaurantOS Master Template</title>
+  <meta name="description" content="Universal restaurant website master template for RestaurantOS.app" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            heading: ['var(--font-heading)', 'serif'],
+            body: ['var(--font-body)', 'sans-serif']
+          },
+          colors: {
+            brand: 'var(--primary-color)',
+            accent: 'var(--accent-color)',
+            surface: 'var(--surface-color)',
+            ink: 'var(--text-color)',
+            muted: 'var(--muted-color)'
+          },
+          boxShadow: {
+            brand: '0 24px 60px rgba(15, 23, 42, 0.16)'
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&family=Oswald:wght@500;600;700&display=swap');
+
+    :root {
+      --primary-color: #8b1e3f;
+      --secondary-color: #f6efe8;
+      --accent-color: #d97706;
+      --surface-color: #fffdf9;
+      --surface-strong: #fff6ef;
+      --text-color: #1f2937;
+      --muted-color: #6b7280;
+      --border-color: rgba(31, 41, 55, 0.12);
+      --font-heading: 'Playfair Display';
+      --font-body: 'Inter';
+      --radius-lg: 30px;
+      --radius-md: 22px;
+      --radius-sm: 16px;
+      --hero-image: url('https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1600&q=80');
+      --section-spacing: 5rem;
+      --container-width: 1200px;
+    }
+
+    body {
+      font-family: var(--font-body), sans-serif;
+      color: var(--text-color);
+      background:
+        radial-gradient(circle at top left, rgba(139, 30, 63, 0.14), transparent 34%),
+        linear-gradient(180deg, #fffaf5 0%, var(--surface-color) 42%, #fff8f0 100%);
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0.45)),
+        radial-gradient(circle at center, rgba(255, 255, 255, 0.2) 0, rgba(255, 255, 255, 0) 60%);
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .shell {
+      width: min(100% - 2rem, var(--container-width));
+      margin: 0 auto;
+    }
+
+    .glass-panel {
+      background: rgba(255, 255, 255, 0.82);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border-color);
+      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
+    }
+
+    .section-shell {
+      border-radius: var(--radius-lg);
+      overflow: clip;
+    }
+
+    .paper-menu {
+      background:
+        linear-gradient(180deg, rgba(255, 250, 242, 0.98) 0%, rgba(248, 239, 226, 0.98) 100%);
+      border: 1px solid rgba(120, 53, 15, 0.12);
+      box-shadow: 0 18px 45px rgba(120, 53, 15, 0.12);
+    }
+
+    .paper-menu::before {
+      content: '';
+      position: absolute;
+      inset: 14px;
+      border: 1px dashed rgba(120, 53, 15, 0.16);
+      border-radius: 22px;
+      pointer-events: none;
+    }
+
+    .theme-chip {
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(10px);
+    }
+
+    .motif-note {
+      display: none;
+    }
+
+    .form-feedback[data-state="success"] {
+      color: #166534;
+    }
+
+    .form-feedback[data-state="error"] {
+      color: #b91c1c;
+    }
+
+    .form-feedback[data-state="pending"] {
+      color: var(--muted-color);
+    }
+
+    .sr-only-shell {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .feature-switch {
+      display: block;
+    }
+
+    body[data-tier="basic"] .has-booking,
+    body[data-tier="basic"] .has-member-portal,
+    body[data-tier="basic"] .has-shopping-cart {
+      display: none !important;
+    }
+
+    body[data-tier="plus"] .has-member-portal {
+      display: none !important;
+    }
+
+    .floating-cart {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      z-index: 40;
+    }
+
+    .theme-basic-a,
+    .theme-basic-b {
+      --font-heading: 'Inter';
+      --font-body: 'Inter';
+      --primary-color: #b45309;
+      --secondary-color: #fff3df;
+      --accent-color: #dc2626;
+      --surface-color: #fffaf2;
+      --surface-strong: #fff0da;
+      --hero-image: url('https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=1600&q=80');
+    }
+
+    .theme-basic-b {
+      --primary-color: #92400e;
+      --accent-color: #ea580c;
+      --hero-image: url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1600&q=80');
+    }
+
+    .theme-luxury-a,
+    .theme-luxury-b {
+      --font-heading: 'Playfair Display';
+      --font-body: 'Inter';
+      --primary-color: #6b1028;
+      --secondary-color: #f4ece5;
+      --accent-color: #d4a373;
+      --surface-color: #fffaf6;
+      --surface-strong: #f8efe8;
+      --hero-image: url('https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1600&q=80');
+    }
+
+    .theme-luxury-b {
+      --primary-color: #0f172a;
+      --accent-color: #c08457;
+      --surface-color: #fbf6ef;
+      --hero-image: url('https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1600&q=80');
+    }
+
+    .theme-minimal-a,
+    .theme-minimal-b {
+      --font-heading: 'Inter';
+      --font-body: 'Inter';
+      --primary-color: #111827;
+      --secondary-color: #f5f6f8;
+      --accent-color: #2563eb;
+      --surface-color: #ffffff;
+      --surface-strong: #f8fafc;
+      --hero-image: url('https://images.unsplash.com/photo-1466978913421-dad2ebd01d17?auto=format&fit=crop&w=1600&q=80');
+    }
+
+    .theme-minimal-b {
+      --accent-color: #14b8a6;
+      --hero-image: url('https://images.unsplash.com/photo-1498654896293-37aacf113fd9?auto=format&fit=crop&w=1600&q=80');
+    }
+
+    .theme-diner-a,
+    .theme-diner-b {
+      --font-heading: 'Oswald';
+      --font-body: 'Inter';
+      --primary-color: #b91c1c;
+      --secondary-color: #fff1e8;
+      --accent-color: #f97316;
+      --surface-color: #fffaf7;
+      --surface-strong: #ffeedd;
+      --hero-image: url('https://images.unsplash.com/photo-1561758033-d89a9ad46330?auto=format&fit=crop&w=1600&q=80');
+    }
+
+    .theme-diner-b {
+      --primary-color: #c2410c;
+      --accent-color: #eab308;
+      --hero-image: url('https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=1600&q=80');
+    }
+
+    body[class*="theme-luxury"] .hero-layout {
+      min-height: 86vh;
+    }
+
+    body[class*="theme-luxury"] .hero-scene {
+      min-height: 88vh;
+    }
+
+    body[class*="theme-luxury"] .hero-copy {
+      max-width: 46rem;
+    }
+
+    body[class*="theme-luxury"] .motif-luxury {
+      display: block;
+    }
+
+    body[class*="theme-minimal"] .hero-grid {
+      grid-template-columns: 1.15fr 0.85fr;
+    }
+
+    body[class*="theme-minimal"] .motif-minimal {
+      display: block;
+    }
+
+    body[class*="theme-minimal"] .hero-scene {
+      min-height: 72vh;
+    }
+
+    body[class*="theme-minimal"] .hero-overlay {
+      background: linear-gradient(90deg, rgba(255, 255, 255, 0.96) 0%, rgba(255, 255, 255, 0.88) 46%, rgba(255, 255, 255, 0.22) 100%);
+    }
+
+    body[class*="theme-minimal"] .signature-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    body[class*="theme-basic"] .signature-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    body[class*="theme-basic"] .motif-basic {
+      display: block;
+    }
+
+    body[class*="theme-basic"] .hero-scene {
+      min-height: 62vh;
+    }
+
+    body[class*="theme-basic"] .hero-overlay {
+      background: linear-gradient(180deg, rgba(255, 250, 242, 0.92) 0%, rgba(255, 250, 242, 0.74) 60%, rgba(255, 255, 255, 0.2) 100%);
+    }
+
+    body[class*="theme-diner"] .signature-grid,
+    body[class*="theme-diner"] .category-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    body[class*="theme-diner"] .motif-diner {
+      display: block;
+    }
+
+    body[class*="theme-diner"] .hero-overlay {
+      background: linear-gradient(90deg, rgba(123, 18, 18, 0.88) 0%, rgba(185, 28, 28, 0.7) 44%, rgba(249, 115, 22, 0.22) 100%);
+    }
+
+    body[class*="theme-diner"] .hero-copy,
+    body[class*="theme-diner"] .hero-copy p,
+    body[class*="theme-diner"] .hero-copy h1 {
+      color: #fff7ed;
+    }
+
+    body[class*="theme-diner"] .theme-chip {
+      border-color: rgba(255, 247, 237, 0.18);
+      color: #fff7ed;
+    }
+
+    @media (max-width: 1024px) {
+      body[class*="theme-minimal"] .hero-grid,
+      body[class*="theme-basic"] .signature-grid,
+      body[class*="theme-diner"] .signature-grid,
+      body[class*="theme-diner"] .category-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .hero-grid,
+      .signature-grid,
+      .category-grid,
+      .story-grid,
+      .footer-grid,
+      body[class*="theme-basic"] .signature-grid,
+      body[class*="theme-minimal"] .signature-grid,
+      body[class*="theme-diner"] .signature-grid,
+      body[class*="theme-diner"] .category-grid {
+        grid-template-columns: 1fr !important;
+      }
+
+      .floating-cart {
+        right: 14px;
+        left: 14px;
+        bottom: 14px;
+      }
+    }
+  </style>
+</head>
+<body class="theme-luxury-a" data-theme="luxury-a" data-tier="premium">
+  <!--
+    RESTAURANTOS MASTER TEMPLATE
+
+    Recommended control model:
+    1. body class="theme-[variant]" controls visual style.
+    2. body data-tier="basic|plus|premium" controls feature visibility.
+    3. JSON data is injected into placeholders via data-bind attributes.
+    4. tenant_id is injected into links/forms via data-tenant-field or hidden inputs.
+
+    THEME VARIANTS TO USE:
+    - theme-basic-a   / theme-basic-b
+    - theme-luxury-a  / theme-luxury-b
+    - theme-minimal-a / theme-minimal-b
+    - theme-diner-a   / theme-diner-b
+  -->
+
+  <!-- Floating cart: hidden automatically on basic tier -->
+  <div class="has-shopping-cart floating-cart feature-switch">
+    <button class="w-full rounded-2xl border border-white/40 bg-[color:var(--primary-color)] px-5 py-4 text-left text-white shadow-brand md:w-auto">
+      <div class="flex items-center justify-between gap-4">
+        <div>
+          <p class="text-xs uppercase tracking-[0.24em] text-white/70">Warenkorb</p>
+          <p class="text-lg font-bold">2 Artikel · 24,80 EUR</p>
+        </div>
+        <span class="rounded-full bg-white/15 px-3 py-1 text-sm font-semibold">Checkout</span>
+      </div>
+    </button>
+  </div>
+
+  <header class="sticky top-0 z-30 border-b border-black/5 bg-white/80 backdrop-blur-xl">
+    <div class="shell flex items-center justify-between gap-4 py-4">
+      <a href="#home" class="flex items-center gap-3">
+        <div class="grid h-12 w-12 place-items-center rounded-2xl bg-[color:var(--primary-color)] text-lg font-black text-white">R</div>
+        <div>
+          <p class="font-heading text-xl font-bold" data-bind="restaurant.name">Restaurant Aluna</p>
+          <p class="text-sm text-[color:var(--muted-color)]" data-bind="restaurant.tagline">Modern dining in Berlin</p>
+        </div>
+      </a>
+
+      <nav class="hidden items-center gap-6 text-sm font-semibold text-[color:var(--text-color)] lg:flex">
+        <a href="#home">Home</a>
+        <a href="#menu">Menu</a>
+        <a href="#reservation">Reservation</a>
+        <a href="#about">About Us</a>
+        <a href="#contact">Contact Us</a>
+      </nav>
+
+      <div class="flex items-center gap-3">
+        <button class="has-member-portal feature-switch hidden rounded-full border border-black/10 px-4 py-2 text-sm font-semibold text-[color:var(--text-color)] md:inline-flex">
+          Member Login
+        </button>
+        <a href="#reservation" class="rounded-full bg-[color:var(--primary-color)] px-5 py-3 text-sm font-bold text-white shadow-brand" data-bind="restaurant.primaryCta">
+          Reservieren
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="pb-28">
+    <!--
+      MAIN CONTENT MASTER REGION
+
+      COPILOT FILL GUIDE BY THEME:
+
+      BASIC A/B:
+      - Keep cards simple and dense.
+      - Focus on 6 signature dishes on the homepage.
+      - Big food images, clear prices, and a direct "Call to order" CTA.
+      - Do not surface booking or cart on basic tier.
+
+      LUXURY A/B:
+      - Use full-screen hero with a strong visual and emotional slogan.
+      - Keep typography elegant with serif emphasis.
+      - Booking form should sit directly below the hero.
+      - Fewer elements, more visual drama.
+
+      MINIMAL A/B:
+      - Use asymmetry and generous whitespace.
+      - Signature dishes should breathe more.
+      - Add a visible restaurant story/editorial section.
+      - Keep the structure clean and directional.
+
+      DINER A/B:
+      - Push strong colors and dense merchandising.
+      - Show category blocks like Burger, Pizza, Drinks.
+      - Cart should be loud and always visible.
+      - Prioritize ordering flow over atmosphere.
+    -->
+
+    <section id="home" class="shell pt-8">
+      <div class="section-shell hero-layout glass-panel">
+        <div class="hero-scene relative overflow-hidden">
+          <img src="https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=1800&q=80" alt="Restaurant exterior and dining room" class="absolute inset-0 h-full w-full object-cover" data-bind-attr="src:hero.image" />
+          <div class="hero-overlay absolute inset-0 bg-gradient-to-r from-black/58 via-black/34 to-black/10"></div>
+          <div class="relative flex min-h-[72vh] flex-col justify-between px-6 py-8 md:px-10 md:py-10 lg:px-14 lg:py-14">
+            <div class="hero-copy max-w-3xl text-white">
+              <p class="mb-4 inline-flex theme-chip rounded-full px-4 py-2 text-xs font-bold uppercase tracking-[0.24em]">
+                RestaurantOS Master Theme
+              </p>
+              <h1 class="font-heading text-5xl font-black leading-[0.95] md:text-6xl" data-bind="hero.headline">
+                Der Genuss des Augenblicks
+              </h1>
+              <p class="mt-6 max-w-2xl text-lg leading-8 text-white/82" data-bind="hero.subheadline">
+                Seasonal cuisine, elegant atmosphere, and a digital guest experience that works for every tier.
+              </p>
+            </div>
+
+            <div class="flex flex-wrap gap-4">
+              <a href="#reservation" class="rounded-full bg-[color:var(--primary-color)] px-6 py-4 text-sm font-bold uppercase tracking-[0.18em] text-white" data-bind="hero.primaryCta">
+                Tisch buchen
+              </a>
+              <a href="#menu" class="rounded-full border border-white/20 bg-white/14 px-6 py-4 text-sm font-bold uppercase tracking-[0.18em] text-white" data-bind="hero.secondaryCta">
+                Speisekarte ansehen
+              </a>
+            </div>
+
+            <div class="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
+              <div class="grid gap-4 sm:grid-cols-3">
+                <div class="theme-chip rounded-3xl p-4 text-white">
+                  <p class="text-xs uppercase tracking-[0.22em] text-white/70">City</p>
+                  <p class="mt-2 text-lg font-bold" data-bind="restaurant.city">Berlin Mitte</p>
+                </div>
+                <div class="theme-chip rounded-3xl p-4 text-white">
+                  <p class="text-xs uppercase tracking-[0.22em] text-white/70">Cuisine</p>
+                  <p class="mt-2 text-lg font-bold" data-bind="restaurant.cuisine">Modern European</p>
+                </div>
+                <div class="theme-chip rounded-3xl p-4 text-white">
+                  <p class="text-xs uppercase tracking-[0.22em] text-white/70">Phone</p>
+                  <p class="mt-2 text-lg font-bold" data-bind="restaurant.phone">+49 30 123456</p>
+                </div>
+              </div>
+
+              <div class="motif-note motif-luxury max-w-md rounded-[28px] border border-white/16 bg-black/28 p-6 text-white/88 shadow-brand">
+                <p class="text-xs uppercase tracking-[0.2em] text-white/62">Luxury homepage motive</p>
+                <p class="mt-3 text-base leading-8">Full scenic hero, refined slogan, and a controlled booking CTA. This is the premium visual language for fine dining and destination restaurants.</p>
+              </div>
+
+              <div class="motif-note motif-basic max-w-md rounded-[28px] bg-white/86 p-6 text-[color:var(--text-color)] shadow-brand">
+                <p class="text-xs uppercase tracking-[0.2em] text-[color:var(--primary-color)]">Basic homepage motive</p>
+                <p class="mt-3 text-base leading-8 text-[color:var(--muted-color)]">Homepage should convert quickly with visible prices, big dish images, and direct call-to-order behavior. Signature cards below are the main selling surface.</p>
+              </div>
+
+              <div class="motif-note motif-minimal max-w-md rounded-[28px] bg-white/86 p-6 text-[color:var(--text-color)] shadow-brand">
+                <p class="text-xs uppercase tracking-[0.2em] text-[color:var(--primary-color)]">Minimal homepage motive</p>
+                <p class="mt-3 text-base leading-8 text-[color:var(--muted-color)]">Use editorial whitespace, a calm story-led opening, and fewer but stronger dish highlights. The page should feel designed, not crowded.</p>
+              </div>
+
+              <div class="motif-note motif-diner max-w-md rounded-[28px] border border-white/16 bg-black/24 p-6 text-white/88 shadow-brand">
+                <p class="text-xs uppercase tracking-[0.2em] text-white/62">Diner homepage motive</p>
+                <p class="mt-3 text-base leading-8">Use louder urgency, stronger contrast, and direct order intent. Categories and the floating cart become part of the homepage conversion flow.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Signature section: this is the key content area for Basic themes. -->
+    <section id="menu" class="shell pt-8" style="margin-top: var(--section-spacing);">
+      <div class="section-shell glass-panel px-6 py-8 md:px-10 md:py-10">
+        <div class="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p class="text-xs font-bold uppercase tracking-[0.24em] text-[color:var(--primary-color)]">Homepage Signatures</p>
+            <h2 class="mt-3 font-heading text-4xl font-black">Signature dishes for basic and modern homepage feeds</h2>
+          </div>
+          <p class="max-w-2xl text-base leading-7 text-[color:var(--muted-color)]">
+            On basic themes this is the front-page sales wall. On minimal themes it becomes a curated selection with more breathing room. Luxury can keep it shorter. Diner themes should lean more on categories below.
+          </p>
+        </div>
+
+        <div id="signature-grid" class="signature-grid grid gap-6 lg:grid-cols-3"></div>
+      </div>
+    </section>
+
+    <!-- Menu page feed: styled like a printed paper menu for classic restaurant expectations. -->
+    <section class="shell pt-8" style="margin-top: var(--section-spacing);">
+      <div class="section-shell glass-panel px-6 py-8 md:px-10 md:py-10">
+        <div class="mb-8 max-w-3xl">
+          <p class="text-xs font-bold uppercase tracking-[0.24em] text-[color:var(--primary-color)]">Menu Page Feed</p>
+          <h2 class="mt-3 font-heading text-4xl font-black">A paper-style menu section for German restaurant expectations</h2>
+          <p class="mt-4 text-base leading-8 text-[color:var(--muted-color)]">This block is the default “Speisekarte” page feed. It should feel structured, legible, and trustworthy, like a printed menu brought into a cleaner digital format.</p>
+        </div>
+
+        <div id="paper-menu-grid" class="grid gap-6 lg:grid-cols-3"></div>
+      </div>
+    </section>
+
+    <!-- Category merchandising: extra important for diner themes and shopping tiers. -->
+    <section class="shell pt-8" style="margin-top: var(--section-spacing);">
+      <div class="section-shell glass-panel px-6 py-8 md:px-10 md:py-10">
+        <div class="mb-8 max-w-3xl">
+          <p class="text-xs font-bold uppercase tracking-[0.24em] text-[color:var(--primary-color)]">Category Modules</p>
+          <h2 class="mt-3 font-heading text-4xl font-black">Pre-built menu blocks for fast onboarding</h2>
+        </div>
+        <div id="category-grid" class="category-grid grid gap-6 lg:grid-cols-3"></div>
+      </div>
+    </section>
+
+    <!-- Story block: especially useful for minimal themes. -->
+    <section id="about" class="shell pt-8" style="margin-top: var(--section-spacing);">
+      <div class="section-shell glass-panel px-6 py-8 md:px-10 md:py-10">
+        <div class="story-grid grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+          <div class="space-y-4">
+            <p class="text-xs font-bold uppercase tracking-[0.24em] text-[color:var(--primary-color)]">Our Story</p>
+            <h2 class="font-heading text-4xl font-black" data-bind="story.title">A modern restaurant with a strong neighborhood soul.</h2>
+          </div>
+          <div id="story-paragraphs" class="space-y-5 text-base leading-8 text-[color:var(--muted-color)]"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Booking switch: hidden on basic tier, visible on higher tiers. -->
+    <section id="reservation" class="shell has-booking feature-switch pt-8" style="margin-top: var(--section-spacing);">
+      <div class="section-shell glass-panel px-6 py-8 md:px-10 md:py-10">
+        <div class="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
+          <div class="space-y-5">
+            <p class="text-xs font-bold uppercase tracking-[0.24em] text-[color:var(--primary-color)]">Booking Module</p>
+            <h2 class="font-heading text-4xl font-black">Reservation form with automatic tenant injection</h2>
+            <p class="text-base leading-8 text-[color:var(--muted-color)]">
+              Keep this entire section wrapped in <strong>class="has-booking"</strong>. For higher tiers it renders. For basic tier it disappears without breaking the layout.
+            </p>
+          </div>
+
+          <form class="rounded-[28px] border border-black/5 bg-white p-6 shadow-sm" data-tenant-form="booking" method="post">
+            <input type="hidden" name="tenant_id" value="demo-tenant-001" data-tenant-field="tenant_id" data-bind-attr="value:tenant.id" />
+            <input type="hidden" name="company_id" value="101" data-tenant-field="company_id" />
+            <input type="hidden" name="cf_token" value="" data-turnstile-token="booking" />
+            <div class="grid gap-4 md:grid-cols-2">
+              <label class="text-sm font-semibold text-[color:var(--text-color)]">
+                Name
+                <input class="mt-2 w-full rounded-2xl border border-black/10 px-4 py-3 outline-none" type="text" name="name" placeholder="Max Mustermann" required />
+              </label>
+              <label class="text-sm font-semibold text-[color:var(--text-color)]">
+                Phone
+                <input class="mt-2 w-full rounded-2xl border border-black/10 px-4 py-3 outline-none" type="tel" name="phone" placeholder="+49 30 123456" required />
+              </label>
+              <label class="text-sm font-semibold text-[color:var(--text-color)]">
+                Email
+                <input class="mt-2 w-full rounded-2xl border border-black/10 px-4 py-3 outline-none" type="email" name="email" placeholder="gast@example.de" />
+              </label>
+              <label class="text-sm font-semibold text-[color:var(--text-color)]">
+                Date
+                <input class="mt-2 w-full rounded-2xl border border-black/10 px-4 py-3 outline-none" type="date" name="date" required />
+              </label>
+              <label class="text-sm font-semibold text-[color:var(--text-color)]">
+                Time
+                <input class="mt-2 w-full rounded-2xl border border-black/10 px-4 py-3 outline-none" type="time" name="time" required />
+              </label>
+              <label class="text-sm font-semibold text-[color:var(--text-color)]">
+                Guests
+                <select class="mt-2 w-full rounded-2xl border border-black/10 px-4 py-3 outline-none" name="pax" required>
+                  <option value="2">2 guests</option>
+                  <option value="4">4 guests</option>
+                  <option value="6">6 guests</option>
+                  <option value="8">8 guests</option>
+                </select>
+              </label>
+              <label class="text-sm font-semibold text-[color:var(--text-color)]">
+                Area
+                <select class="mt-2 w-full rounded-2xl border border-black/10 px-4 py-3 outline-none" name="area">
+                  <option value="indoor">Indoor</option>
+                  <option value="garden">Garden</option>
+                  <option value="outdoor">Outdoor</option>
+                  <option value="bar">Bar</option>
+                </select>
+              </label>
+            </div>
+            <div class="mt-4" data-turnstile-mount="booking"></div>
+            <button class="mt-5 w-full rounded-full bg-[color:var(--primary-color)] px-5 py-4 text-sm font-bold uppercase tracking-[0.16em] text-white">
+              Book now
+            </button>
+            <p class="form-feedback mt-4 text-sm leading-7" data-form-feedback="booking"></p>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- Member portal switch: hidden unless premium tier. -->
+    <section class="shell has-member-portal feature-switch pt-8" style="margin-top: var(--section-spacing);">
+      <div class="section-shell glass-panel px-6 py-8 md:px-10 md:py-10">
+        <div class="grid gap-8 lg:grid-cols-[1fr_1fr] lg:items-center">
+          <div>
+            <p class="text-xs font-bold uppercase tracking-[0.24em] text-[color:var(--primary-color)]">Membership Feed</p>
+            <h2 class="mt-3 font-heading text-4xl font-black">Founder-style membership variant for premium restaurants</h2>
+            <p class="mt-4 text-base leading-8 text-[color:var(--muted-color)]">
+              Keep this region wrapped in <strong>class="has-member-portal"</strong>. This block is the website-facing variant of the Founder/KC idea: members join, verify consent, and receive rewards, previews, or privileged booking access.
+            </p>
+          </div>
+          <div class="grid gap-5">
+            <form class="rounded-[28px] border border-black/5 bg-white p-6 shadow-sm" data-tenant-form="membership-register" method="post">
+              <input type="hidden" name="tenant_id" value="demo-tenant-001" data-tenant-field="tenant_id" data-bind-attr="value:tenant.id" />
+              <input type="hidden" name="company_id" value="101" data-tenant-field="company_id" />
+              <input type="hidden" name="cf_token" value="" data-turnstile-token="membership-register" />
+              <input type="hidden" name="x_studio_opt_in_text" value="Ich stimme der Verifizierung sowie dem Erhalt von Info, Updates und Rewards per SMS/WhatsApp zu." data-membership-optin />
+              <input type="hidden" name="x_studio_membership_type" value="Founder" data-membership-type />
+              <label class="sr-only-shell" aria-hidden="true">
+                Leave this field empty
+                <input type="text" name="hp_confirm_data" tabindex="-1" autocomplete="off" />
+              </label>
+              <div class="grid gap-4 md:grid-cols-2">
+                <input class="rounded-2xl border border-black/10 px-4 py-3 outline-none" type="text" name="name" placeholder="Vorname" required />
+                <input class="rounded-2xl border border-black/10 px-4 py-3 outline-none" type="tel" name="phone" placeholder="+49 17X XXXXXXX" required />
+                <input class="rounded-2xl border border-black/10 px-4 py-3 outline-none md:col-span-2" type="email" name="email" placeholder="gast@example.de" />
+                <label class="md:col-span-2 flex items-start gap-3 rounded-2xl bg-[color:var(--surface-strong)] px-4 py-4 text-sm leading-7 text-[color:var(--muted-color)]">
+                  <input type="checkbox" class="mt-1" name="consent_sms" value="1" checked required />
+                  <span>Ich stimme der Verifizierung sowie dem Erhalt von Info, Updates und Rewards per SMS/WhatsApp zu.</span>
+                </label>
+                <label class="md:col-span-2 flex items-start gap-3 rounded-2xl bg-[color:var(--surface-strong)] px-4 py-4 text-sm leading-7 text-[color:var(--muted-color)]">
+                  <input type="checkbox" class="mt-1" name="consent_terms" value="1" checked required />
+                  <span>Ich akzeptiere Datenschutz und Teilnahmebedingungen fuer dieses Mitgliedschaftsprogramm.</span>
+                </label>
+                <input type="hidden" name="x_studio_founder_terms_accepted" value="1" data-membership-terms />
+                <button class="md:col-span-2 rounded-full bg-[color:var(--text-color)] px-5 py-4 text-sm font-bold uppercase tracking-[0.16em] text-white">
+                  Mitglied werden
+                </button>
+              </div>
+              <div class="mt-4" data-turnstile-mount="membership-register"></div>
+              <p class="form-feedback mt-4 text-sm leading-7" data-form-feedback="membership-register"></p>
+            </form>
+
+            <form class="rounded-[28px] border border-black/5 bg-white p-6 shadow-sm" data-tenant-form="membership-verify" method="post" hidden>
+              <input type="hidden" name="tenant_id" value="demo-tenant-001" data-tenant-field="tenant_id" data-bind-attr="value:tenant.id" />
+              <input type="hidden" name="company_id" value="101" data-tenant-field="company_id" />
+              <input type="hidden" name="phone" value="" data-membership-phone />
+              <div class="space-y-4">
+                <div>
+                  <p class="text-xs font-bold uppercase tracking-[0.2em] text-[color:var(--primary-color)]">OTP Verify</p>
+                  <p class="mt-2 text-sm leading-7 text-[color:var(--muted-color)]">Nach erfolgreicher Registrierung hier den 6-stelligen Code eingeben.</p>
+                </div>
+                <input class="w-full rounded-2xl border border-black/10 px-4 py-3 outline-none" type="text" name="otp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="123456" required />
+                <button class="w-full rounded-full bg-[color:var(--primary-color)] px-5 py-4 text-sm font-bold uppercase tracking-[0.16em] text-white">
+                  OTP bestaetigen
+                </button>
+                <p class="form-feedback text-sm leading-7" data-form-feedback="membership-verify"></p>
+              </div>
+            </form>
+
+            <div id="membership-rewards-grid" class="grid gap-4 md:grid-cols-3"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="contact" class="shell pt-8" style="margin-top: var(--section-spacing);">
+      <div class="section-shell glass-panel px-6 py-8 md:px-10 md:py-10">
+        <div class="grid gap-8 lg:grid-cols-[0.85fr_1.15fr]">
+          <div>
+            <p class="text-xs font-bold uppercase tracking-[0.24em] text-[color:var(--primary-color)]">Contact</p>
+            <h2 class="mt-3 font-heading text-4xl font-black">Contact page feed with legal-safe business details and a real form</h2>
+            <p class="mt-4 text-base leading-8 text-[color:var(--muted-color)]">
+              This region can be wired to your pre-built contact form module, map block, or WhatsApp CTA without changing the page shell.
+            </p>
+          </div>
+          <div class="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
+            <div class="grid gap-4">
+              <div class="rounded-[28px] border border-black/5 bg-white p-6">
+                <p class="text-xs uppercase tracking-[0.18em] text-[color:var(--muted-color)]">Address</p>
+                <p class="mt-3 text-lg font-bold" data-bind="restaurant.address">Rosenthaler Strasse 12, 10119 Berlin</p>
+              </div>
+              <div class="rounded-[28px] border border-black/5 bg-white p-6">
+                <p class="text-xs uppercase tracking-[0.18em] text-[color:var(--muted-color)]">Contact</p>
+                <p class="mt-3 text-lg font-bold" data-bind="restaurant.email">hello@restaurantaluna.de</p>
+                <p class="mt-2 text-base text-[color:var(--muted-color)]" data-bind="restaurant.phone">+49 30 123456</p>
+              </div>
+              <div class="rounded-[28px] border border-black/5 bg-white p-6">
+                <p class="text-xs uppercase tracking-[0.18em] text-[color:var(--muted-color)]">Hours</p>
+                <p class="mt-3 text-base leading-8 text-[color:var(--text-color)]">Mon-Thu 17:00-23:00<br />Fri-Sat 12:00-00:00<br />Sun closed</p>
+              </div>
+            </div>
+
+            <form class="rounded-[28px] border border-black/5 bg-white p-6 shadow-sm" data-tenant-form="contact" method="post">
+              <input type="hidden" name="tenant_id" value="demo-tenant-001" data-tenant-field="tenant_id" data-bind-attr="value:tenant.id" />
+              <input type="hidden" name="company_id" value="101" data-tenant-field="company_id" />
+              <div class="grid gap-4 md:grid-cols-2">
+                <label class="text-sm font-semibold text-[color:var(--text-color)]">
+                  Name
+                  <input class="mt-2 w-full rounded-2xl border border-black/10 px-4 py-3 outline-none" type="text" name="name" placeholder="Max Mustermann" required />
+                </label>
+                <label class="text-sm font-semibold text-[color:var(--text-color)]">
+                  Email
+                  <input class="mt-2 w-full rounded-2xl border border-black/10 px-4 py-3 outline-none" type="email" name="email" placeholder="gast@example.de" />
+                </label>
+                <label class="text-sm font-semibold text-[color:var(--text-color)]">
+                  Phone
+                  <input class="mt-2 w-full rounded-2xl border border-black/10 px-4 py-3 outline-none" type="tel" name="phone" placeholder="+49 30 123456" />
+                </label>
+                <label class="text-sm font-semibold text-[color:var(--text-color)] md:col-span-2">
+                  Subject
+                  <input class="mt-2 w-full rounded-2xl border border-black/10 px-4 py-3 outline-none" type="text" name="subject" placeholder="Anfrage Event, Reservierung oder Rueckruf" />
+                </label>
+                <label class="text-sm font-semibold text-[color:var(--text-color)] md:col-span-2">
+                  Message
+                  <textarea class="mt-2 min-h-[180px] w-full rounded-2xl border border-black/10 px-4 py-3 outline-none" name="message" placeholder="Guten Tag, ich moechte gerne..." required></textarea>
+                </label>
+              </div>
+              <button class="mt-5 rounded-full bg-[color:var(--primary-color)] px-5 py-4 text-sm font-bold uppercase tracking-[0.16em] text-white">
+                Nachricht senden
+              </button>
+              <p class="form-feedback mt-4 text-sm leading-7" data-form-feedback="contact"></p>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="shell pt-8" style="margin-top: var(--section-spacing);">
+      <div class="section-shell glass-panel px-6 py-8 md:px-10 md:py-10">
+        <div class="mb-8 max-w-3xl">
+          <p class="text-xs font-bold uppercase tracking-[0.24em] text-[color:var(--primary-color)]">Theme Market Fit</p>
+          <h2 class="mt-3 font-heading text-4xl font-black">How each market motive should behave</h2>
+        </div>
+        <div id="market-fit-grid" class="grid gap-6 lg:grid-cols-4"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t border-black/5 bg-white/90 py-10 backdrop-blur-xl">
+    <div class="shell footer-grid grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
+      <div>
+        <p class="font-heading text-2xl font-black" data-bind="restaurant.name">Restaurant Aluna</p>
+        <p class="mt-3 max-w-xl text-sm leading-7 text-[color:var(--muted-color)]">
+          <span data-bind="footer.copy">Copyright 2026 Restaurant Aluna. All rights reserved.</span>
+        </p>
+      </div>
+      <nav class="flex flex-wrap gap-5 text-sm font-semibold text-[color:var(--text-color)]">
+        <a href="/terms.html">T&amp;C</a>
+        <a href="/privacy.html">Privacy Policy</a>
+        <a href="/impressum.html">Impressum</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script>
+    /*
+      RUNTIME-SHAPED SOURCE PAYLOAD
+
+      This object intentionally mirrors the current RestaurantOS runtime better
+      than the display model above. The adapter below converts the source shape
+      into the visual bindings used in the HTML.
+
+      Recommended publish flow:
+      1. Build source JSON from D1/company/settings/module flags.
+      2. Write JSON next to the published tenant site in R2.
+      3. Inject it server-side or at build time into this master template.
+      4. Let normalizeTemplateSource() derive the final view model.
+    */
+    window.RESTAURANT_TEMPLATE_SOURCE = {
+      tenant: {
+        id: 'tenant-berlin-001',
+        company_id: 101,
+        theme: 'theme-luxury-a',
+        tier: 'premium',
+        content_preset: 'theme-luxury-a'
+      },
+      theme_presets_url: './theme-presets.example.json',
+      company: {
+        name: 'Restaurant Aluna',
+        city: 'Berlin Mitte',
+        cuisine: 'Modern European',
+        phone: '+49 30 123456',
+        email: 'hello@restaurantaluna.de',
+        address: 'Rosenthaler Strasse 12, 10119 Berlin'
+      },
+      settings: {
+        site_template: 'premium',
+        site_tagline: 'Modern dining in Berlin',
+        site_hero_title: 'Der Genuss des Augenblicks',
+        site_hero_subtitle: 'Seasonal cuisine, elegant atmosphere, and a digital guest experience that works for every tier.',
+        site_about_title: 'A modern restaurant with a strong neighborhood soul.',
+        site_about_body: 'This block is intentionally editorial. Minimal themes should lean heavily on this region, while luxury themes can shorten it and let the photography carry more emotion.',
+        site_primary_cta_text: 'Tisch buchen',
+        site_secondary_cta_text: 'Speisekarte ansehen',
+        site_accent_color: '#8b1e3f',
+        turnstile_site_key: '1x00000000000000000000AA',
+        booking_email: 'booking@restaurantaluna.de',
+        custom_domain: 'restaurantaluna.de',
+        standard_contact_link: '/kontakt',
+        founder_program_label: 'Founding Table',
+        founder_membership_type: 'Founder',
+        founder_redirect_link: '/founder-form.html',
+        privacy_link: '/privacy.html',
+        founder_terms_link: '/terms.html'
+      },
+      modules: {
+        module_booking_management: true,
+        module_membership_management: true,
+        module_marketing_management: true,
+        module_digital_management: true,
+        module_loyalty_rewards: true,
+        module_contact_crm: true
+      },
+      legal: {
+        terms_url: '/terms.html',
+        privacy_url: '/privacy.html',
+        impressum_url: '/impressum.html'
+      },
+      social: {
+        instagram: 'https://instagram.com/restaurantaluna',
+        facebook: 'https://facebook.com/restaurantaluna',
+        tiktok: '',
+        google_business: ''
+      },
+      content: {
+        hero_image: 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=1600&q=80',
+        footer_copy: 'Copyright 2026 Restaurant Aluna. All rights reserved.',
+        story_paragraphs: [
+          'In 2016, two friends reopened a quiet Berlin corner restaurant with one idea: less noise, better ingredients, and service that feels composed from the first welcome to the final espresso.',
+          'Today the kitchen still works with a small seasonal menu, local suppliers, and a dining room designed to feel calm, warm, and unmistakably intentional.'
+        ]
+      },
+      signature_items: []
+    };
+
+    const DEFAULT_MARKET_FIT = [
+      {
+        label: 'Basic',
+        title: 'Price-first conversion',
+        body: 'Homepage must show signature dishes early, clear prices, and fast CTA. Suitable for takeaway, local family restaurants, and budget-first operators.'
+      },
+      {
+        label: 'Luxury',
+        title: 'Atmosphere-first conversion',
+        body: 'A large scenic hero, concise refined copy, and an immediate booking invitation. Suitable for upscale dining, chef-led concepts, and occasion traffic.'
+      },
+      {
+        label: 'Minimal',
+        title: 'Design-first trust',
+        body: 'Editorial storytelling, more whitespace, and fewer stronger cards. Suitable for modern neighborhood restaurants and owner-story brands.'
+      },
+      {
+        label: 'Diner',
+        title: 'Order-first urgency',
+        body: 'Dense category blocks, strong colors, direct cart behavior, and bundle-oriented merchandising. Suitable for burgers, pizza, wraps, and fast-casual concepts.'
+      }
+    ];
+
+    function escapeHtml(value) {
+      return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function getValueByPath(source, path) {
+      return String(path || '')
+        .split('.')
+        .reduce((accumulator, segment) => {
+          if (accumulator == null) return undefined;
+          if (/^\d+$/.test(segment)) return accumulator[Number(segment)];
+          return accumulator[segment];
+        }, source);
+    }
+
+    function applyBindings(data) {
+      document.querySelectorAll('[data-bind]').forEach((element) => {
+        const value = getValueByPath(data, element.dataset.bind);
+        if (value != null) element.textContent = value;
+      });
+
+      document.querySelectorAll('[data-bind-attr]').forEach((element) => {
+        const [attributeName, path] = String(element.dataset.bindAttr || '').split(':');
+        if (!attributeName || !path) return;
+        const value = getValueByPath(data, path);
+        if (value != null) element.setAttribute(attributeName.trim(), value);
+      });
+    }
+
+    function normalizeTheme(themeRaw, fallback = 'theme-luxury-a') {
+      const normalized = String(themeRaw || '').trim().toLowerCase();
+      const allowed = new Set([
+        'theme-basic-a',
+        'theme-basic-b',
+        'theme-luxury-a',
+        'theme-luxury-b',
+        'theme-minimal-a',
+        'theme-minimal-b',
+        'theme-diner-a',
+        'theme-diner-b'
+      ]);
+      return allowed.has(normalized) ? normalized : fallback;
+    }
+
+    function normalizeTier(source) {
+      const explicit = String(source?.tenant?.tier || '').trim().toLowerCase();
+      if (explicit === 'basic' || explicit === 'plus' || explicit === 'premium') return explicit;
+
+      const modules = source?.modules || {};
+      if (!modules.module_booking_management && !modules.module_membership_management) return 'basic';
+      if (modules.module_booking_management && !modules.module_membership_management) return 'plus';
+      return 'premium';
+    }
+
+    function deepMerge(base, override) {
+      if (Array.isArray(base) || Array.isArray(override)) {
+        return Array.isArray(override) ? override.slice() : Array.isArray(base) ? base.slice() : [];
+      }
+
+      const result = { ...(base || {}) };
+      Object.entries(override || {}).forEach(([key, value]) => {
+        if (
+          value &&
+          typeof value === 'object' &&
+          !Array.isArray(value) &&
+          result[key] &&
+          typeof result[key] === 'object' &&
+          !Array.isArray(result[key])
+        ) {
+          result[key] = deepMerge(result[key], value);
+        } else {
+          result[key] = value;
+        }
+      });
+      return result;
+    }
+
+    async function loadThemePresets(source) {
+      if (window.RESTAURANT_THEME_PRESETS && typeof window.RESTAURANT_THEME_PRESETS === 'object') {
+        return window.RESTAURANT_THEME_PRESETS;
+      }
+
+      const presetUrl = String(source?.theme_presets_url || './theme-presets.example.json').trim();
+      if (!presetUrl) return {};
+
+      try {
+        const response = await fetch(presetUrl, { cache: 'no-store' });
+        if (!response.ok) return {};
+        return await response.json();
+      } catch {
+        return {};
+      }
+    }
+
+    function resolveThemePreset(source, theme, presets) {
+      const presetKey = String(source?.tenant?.content_preset || theme || '').trim();
+      const exact = presets?.[presetKey];
+      if (exact) return exact;
+
+      const familyMatch = String(theme || '').match(/^theme-([a-z]+)-/);
+      const familyKey = familyMatch ? `theme-${familyMatch[1]}` : '';
+      return familyKey ? presets?.[familyKey] || {} : {};
+    }
+
+    function normalizeTemplateSource(source, presets = {}) {
+      const company = source?.company || {};
+      const settings = source?.settings || {};
+      const theme = normalizeTheme(source?.tenant?.theme);
+      const presetContent = resolveThemePreset(source, theme, presets);
+      const content = deepMerge(presetContent, source?.content || {});
+      const signatureItems = Array.isArray(source?.signature_items) && source.signature_items.length
+        ? source.signature_items
+        : Array.isArray(content.signature_items)
+          ? content.signature_items
+          : [];
+
+      return {
+        tenant: {
+          id: source?.tenant?.id || String(source?.tenant?.company_id || 'tenant-demo'),
+          companyId: Number(source?.tenant?.company_id || 0) || null,
+          theme
+        },
+        restaurant: {
+          name: company.name || 'Restaurant Name',
+          tagline: settings.site_tagline || 'Restaurant tagline',
+          city: company.city || 'Berlin',
+          cuisine: company.cuisine || 'Restaurant Cuisine',
+          phone: company.phone || '+49 30 000000',
+          email: company.email || settings.booking_email || 'info@example.de',
+          address: company.address || 'Street 1, 10115 Berlin',
+          primaryCta: settings.site_primary_cta_text || 'Reservieren'
+        },
+        hero: {
+          headline: settings.site_hero_title || 'Welcome to our restaurant',
+          subheadline: settings.site_hero_subtitle || 'Book a table, explore our menu, and discover what makes us special.',
+          image: content.hero_image || 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=1600&q=80',
+          primaryCta: settings.site_primary_cta_text || 'Book a table',
+          secondaryCta: settings.site_secondary_cta_text || 'View menu'
+        },
+        story: {
+          title: settings.site_about_title || 'About us',
+          body: settings.site_about_body || 'Tell guests what your restaurant is about, what style of cuisine you serve, and why they should visit.',
+          paragraphs: Array.isArray(content.story_paragraphs) ? content.story_paragraphs : []
+        },
+        menuSections: Array.isArray(content.menu_sections) ? content.menu_sections : [],
+        categoryCards: Array.isArray(content.category_cards) ? content.category_cards : [],
+        membershipRewards: Array.isArray(content.membership_rewards) ? content.membership_rewards : [],
+        marketFit: Array.isArray(content.market_fit) && content.market_fit.length ? content.market_fit : DEFAULT_MARKET_FIT,
+        membership: {
+          programLabel: settings.founder_program_label || 'Founder Club',
+          membershipType: settings.founder_membership_type || 'Founder',
+          redirectLink: settings.founder_redirect_link || '',
+          optInText: 'Ich stimme der Verifizierung sowie dem Erhalt von Info, Updates und Rewards per SMS/WhatsApp zu.',
+          turnstileSiteKey: settings.turnstile_site_key || ''
+        },
+        footer: {
+          copy: content.footer_copy || `Copyright 2026 ${company.name || 'Restaurant'}. All rights reserved.`
+        },
+        signatureItems: signatureItems
+      };
+    }
+
+    function renderSignatureGrid(items) {
+      const container = document.getElementById('signature-grid');
+      if (!container) return;
+      container.innerHTML = (items || []).map((item) => `
+        <article class="overflow-hidden rounded-[28px] border border-black/5 bg-white shadow-sm">
+          <img src="${escapeHtml(item.image || '')}" alt="${escapeHtml(item.name || 'Signature item')}" class="h-56 w-full object-cover" />
+          <div class="space-y-3 p-6">
+            <div class="flex items-start justify-between gap-4">
+              <h3 class="font-heading text-2xl font-bold">${escapeHtml(item.name || 'Signature dish')}</h3>
+              <span class="rounded-full bg-[color:var(--surface-strong)] px-3 py-1 text-sm font-bold">${escapeHtml(item.price || '')}</span>
+            </div>
+            <p class="text-sm leading-7 text-[color:var(--muted-color)]">${escapeHtml(item.description || '')}</p>
+            <button class="w-full rounded-full bg-[color:var(--text-color)] px-4 py-3 text-sm font-bold text-white">Call to order</button>
+          </div>
+        </article>
+      `).join('');
+    }
+
+    function renderPaperMenu(sections) {
+      const container = document.getElementById('paper-menu-grid');
+      if (!container) return;
+      container.innerHTML = (sections || []).map((section) => `
+        <article class="paper-menu relative rounded-[30px] p-8">
+          <p class="text-xs font-bold uppercase tracking-[0.22em] text-[color:var(--primary-color)]">${escapeHtml(section.label || '')}</p>
+          <h3 class="mt-4 font-heading text-3xl font-black">${escapeHtml(section.title || '')}</h3>
+          <div class="mt-8 space-y-6 text-sm">
+            ${(section.items || []).map((item, index, list) => `
+              <div class="${index < list.length - 1 ? 'border-b border-dashed border-black/10 pb-4' : ''}">
+                <div class="flex items-start justify-between gap-4">
+                  <div>
+                    <p class="text-lg font-bold">${escapeHtml(item.name || '')}</p>
+                    <p class="mt-2 leading-7 text-[color:var(--muted-color)]">${escapeHtml(item.description || '')}</p>
+                  </div>
+                  <span class="font-bold">${escapeHtml(item.price || '')}</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </article>
+      `).join('');
+    }
+
+    function renderStoryParagraphs(story) {
+      const container = document.getElementById('story-paragraphs');
+      if (!container) return;
+      const paragraphs = [];
+      if (story?.body) paragraphs.push(story.body);
+      (story?.paragraphs || []).forEach((paragraph) => {
+        if (paragraph && paragraph !== story.body) paragraphs.push(paragraph);
+      });
+      container.innerHTML = paragraphs.map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join('');
+    }
+
+    function renderCategoryCards(cards) {
+      const container = document.getElementById('category-grid');
+      if (!container) return;
+      container.innerHTML = (cards || []).map((card) => `
+        <div class="rounded-[28px] ${card.tone === 'brand' ? 'bg-[color:var(--primary-color)] text-white' : card.tone === 'surface' ? 'bg-[color:var(--surface-strong)]' : 'bg-white'} p-6">
+          <p class="text-sm font-semibold uppercase tracking-[0.2em] ${card.tone === 'brand' ? 'text-white/78' : 'text-[color:var(--primary-color)]'}">${escapeHtml(card.label || '')}</p>
+          <p class="mt-4 text-3xl font-black">${escapeHtml(card.title || '')}</p>
+          <p class="mt-4 text-sm leading-7 ${card.tone === 'brand' ? 'text-white/82' : 'text-[color:var(--muted-color)]'}">${escapeHtml(card.body || '')}</p>
+        </div>
+      `).join('');
+    }
+
+    function renderMembershipRewards(items) {
+      const container = document.getElementById('membership-rewards-grid');
+      if (!container) return;
+      container.innerHTML = (items || []).map((item, index) => `
+        <div class="rounded-[24px] bg-white p-5 shadow-sm border border-black/5">
+          <p class="text-xs uppercase tracking-[0.18em] text-[color:var(--primary-color)]">${escapeHtml(item.label || `Reward ${String(index + 1).padStart(2, '0')}`)}</p>
+          <p class="mt-3 text-lg font-bold">${escapeHtml(item.title || '')}</p>
+        </div>
+      `).join('');
+    }
+
+    function renderMarketFit(items) {
+      const container = document.getElementById('market-fit-grid');
+      if (!container) return;
+      container.innerHTML = (items || []).map((item) => `
+        <article class="rounded-[28px] bg-white p-6 border border-black/5 shadow-sm">
+          <p class="text-xs font-bold uppercase tracking-[0.2em] text-[color:var(--primary-color)]">${escapeHtml(item.label || '')}</p>
+          <h3 class="mt-3 text-2xl font-black">${escapeHtml(item.title || '')}</h3>
+          <p class="mt-4 text-sm leading-7 text-[color:var(--muted-color)]">${escapeHtml(item.body || '')}</p>
+        </article>
+      `).join('');
+    }
+
+    function isPreviewOverrideHost(hostname) {
+      const normalized = String(hostname || '').trim().toLowerCase();
+      return normalized === 'localhost' || normalized === '127.0.0.1' || normalized === '[::1]' || normalized.endsWith('.workers.dev');
+    }
+
+    function resolveTenantRuntimeContext(source, viewModel) {
+      const params = new URLSearchParams(window.location.search);
+      const companyIdRaw = params.get('company_id') || source?.tenant?.company_id || viewModel?.tenant?.companyId || '';
+      const companyId = Number(companyIdRaw);
+      const programRaw = String(params.get('program') || '').trim().toLowerCase();
+      return {
+        tenantId: String(params.get('tenant_id') || viewModel?.tenant?.id || source?.tenant?.id || '').trim(),
+        companyId: Number.isInteger(companyId) && companyId > 0 ? companyId : null,
+        shouldInjectCompanyQuery: isPreviewOverrideHost(window.location.hostname),
+        membershipProgram: programRaw === 'kc' ? 'kc' : 'founder'
+      };
+    }
+
+    function buildTenantAwareUrl(path, tenantContext) {
+      const target = new URL(path, window.location.origin);
+      if (tenantContext.shouldInjectCompanyQuery && tenantContext.companyId) {
+        target.searchParams.set('company_id', String(tenantContext.companyId));
+      }
+      if (tenantContext.tenantId) {
+        target.searchParams.set('tenant_id', tenantContext.tenantId);
+      }
+      return target.toString();
+    }
+
+    function setFormFeedback(formKey, state, message) {
+      const node = document.querySelector(`[data-form-feedback="${formKey}"]`);
+      if (!node) return;
+      node.dataset.state = state || '';
+      node.textContent = message || '';
+    }
+
+    function toPlainObject(formData) {
+      const result = {};
+      for (const [key, value] of formData.entries()) {
+        if (value === '' || value == null) continue;
+        result[key] = value;
+      }
+      return result;
+    }
+
+    function applyTenantContextToDom(tenantContext, viewModel) {
+      document.querySelectorAll('[data-tenant-field="tenant_id"]').forEach((element) => {
+        element.value = tenantContext.tenantId || viewModel?.tenant?.id || '';
+      });
+      document.querySelectorAll('[data-tenant-field="company_id"]').forEach((element) => {
+        element.value = tenantContext.companyId || '';
+      });
+
+      const membershipType = String(viewModel?.membership?.membershipType || 'Founder').trim() || 'Founder';
+      document.querySelectorAll('[data-membership-type]').forEach((element) => {
+        element.value = tenantContext.membershipProgram === 'kc' ? 'KC' : membershipType;
+      });
+      document.querySelectorAll('[data-membership-optin]').forEach((element) => {
+        element.value = viewModel?.membership?.optInText || '';
+      });
+      document.querySelectorAll('[data-membership-terms]').forEach((element) => {
+        element.value = tenantContext.membershipProgram === 'kc' ? '0' : '1';
+      });
+    }
+
+    function configureFormActions(tenantContext) {
+      const bookingForm = document.querySelector('[data-tenant-form="booking"]');
+      if (bookingForm) bookingForm.action = buildTenantAwareUrl('/api/bookings/create', tenantContext);
+
+      const contactForm = document.querySelector('[data-tenant-form="contact"]');
+      if (contactForm) contactForm.action = buildTenantAwareUrl('/api/contact/create', tenantContext);
+
+      const registerPath = tenantContext.membershipProgram === 'kc' ? '/api/kc/register' : '/api/founder/register';
+      const verifyPath = tenantContext.membershipProgram === 'kc' ? '/api/kc/verify' : '/api/founder/verify';
+      const registerForm = document.querySelector('[data-tenant-form="membership-register"]');
+      const verifyForm = document.querySelector('[data-tenant-form="membership-verify"]');
+      if (registerForm) registerForm.action = buildTenantAwareUrl(registerPath, tenantContext);
+      if (verifyForm) verifyForm.action = buildTenantAwareUrl(verifyPath, tenantContext);
+    }
+
+    function bootstrapTurnstile(siteKey) {
+      const renderWidgets = () => {
+        if (!siteKey || !window.turnstile) return false;
+        document.querySelectorAll('[data-turnstile-mount]').forEach((mount) => {
+          if (mount.dataset.turnstileRendered === 'true') return;
+          const formKey = mount.dataset.turnstileMount;
+          const tokenField = document.querySelector(`[data-turnstile-token="${formKey}"]`);
+          window.turnstile.render(mount, {
+            sitekey: siteKey,
+            callback(token) {
+              if (tokenField) tokenField.value = token;
+            },
+            'expired-callback'() {
+              if (tokenField) tokenField.value = '';
+            },
+            'error-callback'() {
+              if (tokenField) tokenField.value = '';
+            }
+          });
+          mount.dataset.turnstileRendered = 'true';
+        });
+        return true;
+      };
+
+      if (renderWidgets()) return;
+
+      let attempts = 0;
+      const timer = window.setInterval(() => {
+        attempts += 1;
+        if (renderWidgets() || attempts > 20) {
+          window.clearInterval(timer);
+        }
+      }, 300);
+    }
+
+    async function submitFormData(formKey, form) {
+      const response = await fetch(form.action, {
+        method: 'POST',
+        body: new FormData(form)
+      });
+      const payload = await response.json().catch(() => ({}));
+      return { response, payload };
+    }
+
+    async function submitJsonForm(formKey, form) {
+      const payloadBody = toPlainObject(new FormData(form));
+      const response = await fetch(form.action, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payloadBody)
+      });
+      const payload = await response.json().catch(() => ({}));
+      return { response, payload };
+    }
+
+    function attachFormHandlers(viewModel, tenantContext) {
+      const bookingForm = document.querySelector('[data-tenant-form="booking"]');
+      if (bookingForm) {
+        bookingForm.addEventListener('submit', async (event) => {
+          event.preventDefault();
+          setFormFeedback('booking', 'pending', 'Booking is being submitted...');
+          const { response, payload } = await submitFormData('booking', bookingForm);
+          if (!response.ok || !payload?.ok) {
+            setFormFeedback('booking', 'error', payload?.error || 'Booking submission failed.');
+            return;
+          }
+          bookingForm.reset();
+          const redirectSuffix = payload?.redirect_url ? ` Redirect: ${payload.redirect_url}` : '';
+          setFormFeedback('booking', 'success', `Booking submitted successfully.${redirectSuffix}`);
+        });
+      }
+
+      const contactForm = document.querySelector('[data-tenant-form="contact"]');
+      if (contactForm) {
+        contactForm.addEventListener('submit', async (event) => {
+          event.preventDefault();
+          setFormFeedback('contact', 'pending', 'Message is being sent...');
+          const { response, payload } = await submitJsonForm('contact', contactForm);
+          if (!response.ok || !payload?.ok) {
+            setFormFeedback('contact', 'error', payload?.message || payload?.error || 'Message submission failed.');
+            return;
+          }
+          contactForm.reset();
+          applyTenantContextToDom(tenantContext, viewModel);
+          setFormFeedback('contact', 'success', payload?.message || 'Message received.');
+        });
+      }
+
+      const membershipRegisterForm = document.querySelector('[data-tenant-form="membership-register"]');
+      const membershipVerifyForm = document.querySelector('[data-tenant-form="membership-verify"]');
+      if (membershipRegisterForm && membershipVerifyForm) {
+        membershipRegisterForm.addEventListener('submit', async (event) => {
+          event.preventDefault();
+          setFormFeedback('membership-register', 'pending', 'Registration is being sent...');
+          const { response, payload } = await submitJsonForm('membership-register', membershipRegisterForm);
+          if (!response.ok || payload?.status !== 'success') {
+            setFormFeedback('membership-register', 'error', payload?.message || payload?.error || 'Registration failed.');
+            return;
+          }
+          const phone = String(new FormData(membershipRegisterForm).get('phone') || '').trim();
+          membershipVerifyForm.hidden = false;
+          const verifyPhone = membershipVerifyForm.querySelector('[data-membership-phone]');
+          if (verifyPhone) verifyPhone.value = phone;
+          setFormFeedback('membership-register', 'success', payload?.message || 'Registration received. Please enter the OTP code.');
+        });
+
+        membershipVerifyForm.addEventListener('submit', async (event) => {
+          event.preventDefault();
+          setFormFeedback('membership-verify', 'pending', 'OTP is being verified...');
+          const { response, payload } = await submitJsonForm('membership-verify', membershipVerifyForm);
+          if (!response.ok || payload?.status !== 'success') {
+            setFormFeedback('membership-verify', 'error', payload?.message || payload?.error || 'OTP verification failed.');
+            return;
+          }
+          setFormFeedback('membership-verify', 'success', payload?.message || 'OTP verified successfully.');
+          if (viewModel?.membership?.redirectLink) {
+            window.setTimeout(() => {
+              window.location.href = viewModel.membership.redirectLink;
+            }, 900);
+          }
+        });
+      }
+    }
+
+    function applyRuntimeControls(source) {
+      const body = document.body;
+      const theme = normalizeTheme(source?.tenant?.theme);
+      const tier = normalizeTier(source);
+      const settings = source?.settings || {};
+      const legal = source?.legal || {};
+
+      body.classList.remove(
+        'theme-basic-a',
+        'theme-basic-b',
+        'theme-luxury-a',
+        'theme-luxury-b',
+        'theme-minimal-a',
+        'theme-minimal-b',
+        'theme-diner-a',
+        'theme-diner-b'
+      );
+      body.classList.add(theme);
+      body.dataset.theme = theme.replace(/^theme-/, '');
+      body.dataset.tier = tier;
+
+      if (settings.site_accent_color) {
+        document.documentElement.style.setProperty('--primary-color', settings.site_accent_color);
+      }
+
+      if (legal.terms_url) {
+        const termsLink = document.querySelector('footer a[href="/terms.html"]');
+        if (termsLink) termsLink.href = legal.terms_url;
+      }
+      if (legal.privacy_url) {
+        const privacyLink = document.querySelector('footer a[href="/privacy.html"]');
+        if (privacyLink) privacyLink.href = legal.privacy_url;
+      }
+      if (legal.impressum_url) {
+        const impressumLink = document.querySelector('footer a[href="/impressum.html"]');
+        if (impressumLink) impressumLink.href = legal.impressum_url;
+      }
+    }
+
+    async function initTemplate() {
+      const themePresets = await loadThemePresets(window.RESTAURANT_TEMPLATE_SOURCE);
+      const templateViewModel = normalizeTemplateSource(window.RESTAURANT_TEMPLATE_SOURCE, themePresets);
+      const tenantContext = resolveTenantRuntimeContext(window.RESTAURANT_TEMPLATE_SOURCE, templateViewModel);
+
+      applyRuntimeControls(window.RESTAURANT_TEMPLATE_SOURCE);
+      applyBindings(templateViewModel);
+      renderSignatureGrid(templateViewModel.signatureItems);
+      renderPaperMenu(templateViewModel.menuSections);
+      renderStoryParagraphs(templateViewModel.story);
+      renderCategoryCards(templateViewModel.categoryCards);
+      renderMembershipRewards(templateViewModel.membershipRewards);
+      renderMarketFit(templateViewModel.marketFit);
+      applyTenantContextToDom(tenantContext, templateViewModel);
+      configureFormActions(tenantContext);
+      bootstrapTurnstile(templateViewModel.membership.turnstileSiteKey);
+      attachFormHandlers(templateViewModel, tenantContext);
+    }
+
+    initTemplate();
+  </script>
+</body>
+</html>

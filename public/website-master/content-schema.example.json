@@ -1,0 +1,73 @@
+{
+  "tenant": {
+    "id": "tenant-berlin-001",
+    "company_id": 101,
+    "theme": "theme-luxury-a",
+    "tier": "premium",
+    "content_preset": "theme-luxury-a"
+  },
+  "theme_presets_url": "./theme-presets.example.json",
+  "settings": {
+    "site_hero_title": "String",
+    "site_hero_subtitle": "String",
+    "site_about_title": "String",
+    "site_about_body": "String",
+    "site_primary_cta_text": "String",
+    "site_secondary_cta_text": "String",
+    "site_accent_color": "#8b1e3f",
+    "turnstile_site_key": "1x00000000000000000000AA",
+    "founder_program_label": "String",
+    "founder_membership_type": "Founder",
+    "founder_redirect_link": "/founder-form.html"
+  },
+  "content": {
+    "hero_image": "https://images.example.com/hero.jpg",
+    "footer_copy": "Copyright 2026 Restaurant Name. All rights reserved.",
+    "story_paragraphs": [
+      "Paragraph one.",
+      "Paragraph two."
+    ],
+    "menu_sections": [
+      {
+        "label": "Vorspeisen",
+        "title": "Starters",
+        "items": [
+          {
+            "name": "Dish name",
+            "description": "Dish description",
+            "price": "12,90 EUR"
+          }
+        ]
+      }
+    ],
+    "category_cards": [
+      {
+        "label": "Burger",
+        "title": "Fast movers",
+        "body": "Compact block description",
+        "tone": "brand"
+      }
+    ],
+    "membership_rewards": [
+      {
+        "label": "Reward 01",
+        "title": "Priority booking windows"
+      }
+    ],
+    "market_fit": [
+      {
+        "label": "Luxury",
+        "title": "Atmosphere-first conversion",
+        "body": "Short positioning description"
+      }
+    ],
+    "signature_items": [
+      {
+        "name": "Truffle Pasta",
+        "price": "18,90 EUR",
+        "description": "Fresh pasta, black truffle cream, aged parmesan.",
+        "image": "https://images.example.com/signature.jpg"
+      }
+    ]
+  }
+}

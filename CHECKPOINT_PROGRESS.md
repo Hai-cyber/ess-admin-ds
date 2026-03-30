@@ -3,22 +3,22 @@
 **Purpose**: Track checkpoint completion as you move through phases. Update this weekly.
 
 **Last Updated**: 2026-03-30  
-**Current Phase**: Phase 1 (Booking + Platform Entry) — 85% complete
+**Current Phase**: Phase 1 (Booking + Platform Entry) — 88% complete
 
 ---
 
 ## Phase 1: Booking System + Platform Entry
 
 **ETA**: Q2 2026  
-**Status**: ⏳ IN PROGRESS (85% complete)
+**Status**: ⏳ IN PROGRESS (88% complete)
 
 | Checkpoint | Component | Status | Evidence | Owner | ETA |
 |-----------|-----------|--------|----------|-------|-----|
 | CP-1 | Tenant Isolation | ✅ DONE | E2E_TEST_SUMMARY.md | Team | ✅ Done |
 | CP-2 | Booking MVP | ✅ DONE | Local runtime verified: booking form render, board, staff-create, booking list, stage updates | Team | ✅ Done |
-| CP-3 | Admin UI Setup | ⏳ 75% | Tenant admin refined, billing/domain/payment section active | @dev-lead | Mar 31 |
-| CP-10 | Platform Site + Self-Service Signup | ⏳ 80% | Live runtime verified: platform pages, SaaS admin dashboard, contact form, signup provisioning | @dev-lead | Mar 31 |
-| **Phase 1 Total** | — | **85%** | — | — | **Apr 15** |
+| CP-3 | Admin UI Setup | ⏳ 75% | Tenant admin refined, billing/domain/payment section active; final go-live path still pending | @dev-lead | Mar 31 |
+| CP-10 | Platform Site + Self-Service Signup | ⏳ 90% | Live runtime verified: platform pages, SaaS admin dashboard, contact form, signup provisioning, website-master preview render, booking, and founder smoke tests on active port `8790` | @dev-lead | Mar 31 |
+| **Phase 1 Total** | — | **88%** | — | — | **Apr 15** |
 
 ### CP-1 Evidence ✅
 
@@ -48,14 +48,17 @@
 ✅ Signup endpoint provisions organization/company/admin staff user
 ✅ Platform contact form and admin dashboard verified live locally
 ✅ Demo payment flow and billable staff auto-recalc hook implemented
+✅ Website master preview delivered with theme presets, schema examples, runtime adapter, and tenant injection
+✅ Website-style booking flow and founder verify flow confirmed on active local runtime port `8790`
 ⏳ Real Stripe checkout wiring still pending
-⏳ Tenant website templates still need runtime binding to website-builder fields
+⏳ Tenant website publish/custom-domain workflow still pending beyond the current preview/runtime adapter
+⏳ `/api/contact/create` source route still needs smoke-test verification on a freshly reloaded worker
 ⏳ Founder/KC OTP runtime blocked locally by missing Twilio credentials
 ```
 
-**Blockers**: Stripe test credentials, tenant website runtime binding, and Twilio credentials or a local OTP stub
+**Blockers**: Stripe test credentials, website publish/domain completion, worker reload for the new contact route, and Twilio credentials or a local OTP stub
 
-**Next**: Wire Stripe test checkout + connect tenant templates to website-builder runtime settings + fix founder/KC OTP local runtime path
+**Next**: Wire Stripe test checkout + complete tenant website publish/domain flow + reload worker and verify `/api/contact/create` + fix founder/KC OTP local runtime path
 
 ---
 

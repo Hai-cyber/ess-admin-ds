@@ -58,15 +58,16 @@ ess-admin-ds/
 
 ## 🎯 Current Status
 
-**Phase 1: Booking + Platform Entry** (NOW → Q2 2026, ~85% complete)
+**Phase 1: Booking + Platform Entry** (NOW → Q2 2026, ~88% complete)
 
 - ✅ Platform home, plans, contact form, and SaaS admin dashboard working locally
 - ✅ Self-service signup provisions organization + company + admin PIN user
 - ✅ Booking board, staff app, onsite booking create, and stage updates verified locally
 - ✅ Platform login/signup/pricing copy now supports EN/DE/VI browser-driven localization with contextual login routing
+- ✅ Website master preview shipped with dynamic theme presets, schema examples, runtime tenant adapter, and form wiring for booking/contact/membership
 - 🔄 Admin UI / go-live setup still incomplete
 - 🔄 Founder/KC OTP runtime still blocked locally by missing Twilio credentials
-- 🔄 Stripe checkout and tenant website runtime binding still pending
+- 🔄 Stripe checkout and tenant website publish/domain workflow still pending
 
 **Verified** (2026-03-30 local runtime + tests):
 - Platform site + signup provisioning live on localhost
@@ -87,7 +88,7 @@ ess-admin-ds/
 | **Booking** | ✅ | Online reservations, stage management |
 | **POS** | 🔄 | Table management, orders, kitchen display |
 | **Payment** | 🔄 | Stripe integration, transaction handling |
-| **Website** | ✅ | Template builder, menu, booking form |
+| **Website** | ✅ | Master template preview, menu, booking/contact/membership wiring |
 | **Admin** | 🔄 | Settings, staff management, reporting |
 | **Notifications** | ✅ | Real-time SSE, SMS, email delivery |
 | **Marketing** (Phase 5) | ❌ | Campaigns, discounts, loyalty |

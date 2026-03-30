@@ -11,17 +11,17 @@
 ## 🎯 Current State (Right Now)
 
 ### Phase
-**Phase 1: Booking + Platform Entry (85% complete)**
+**Phase 1: Booking + Platform Entry (88% complete)**
 - ETA: April 15, 2026
-- Status: 🟡 ON TRACK (remaining: Stripe checkout wiring + tenant website template rendering + founder/KC OTP runtime fix)
+- Status: 🟡 ON TRACK (remaining: Stripe checkout wiring + tenant website publish/domain workflow + founder/KC OTP runtime fix)
 
 ### Overall Progress
 ```
-█████████░ 85%
+█████████░ 88%
 
-Completed: 85%
-In Progress: 10% (platform billing/founder flow finalization)
-Blocked: 5% (founder/KC OTP delivery in local runtime)
+Completed: 88%
+In Progress: 8% (platform billing/admin/domain finalization)
+Blocked: 4% (founder/KC OTP delivery in local runtime)
 Not Started: 0%
 ```
 
@@ -44,6 +44,10 @@ Not Started: 0%
 - [x] Tenant billing automation hook: billable staff count updates recurring amount
 - [x] Local runtime verified on 2026-03-30 for health, platform routes, signup provisioning, tenant board, staff auth, admin config/staff, booking create, and booking stage updates
 - [x] Platform marketing/login/signup polish shipped locally: contextual login modal, browser-language auto-detect, localized pricing/extras copy, and onboarding redesign
+- [x] Website master preview shipped under `public/website-master/` with dynamic theme presets, content schema examples, and runtime-shaped tenant payload examples
+- [x] Website master forms now wire to live runtime endpoints for booking, contact, and founder/KC membership flows with automatic `company_id` and `tenant_id` preview injection
+- [x] Public contact API route added at `/api/contact/create` for website-originated submissions stored in `contacts`
+- [x] Local verification on active runtime port `8790` confirmed website master render, booking create/readback, and founder register/verify persistence
 
 **Evidence**:
 - Local live verification on 2026-03-30 ✅
@@ -51,13 +55,16 @@ Not Started: 0%
 - Booking form render + localhost booking submission verified ✅
 - Board and stage updates verified live ✅
 - Platform home + signup copy verified locally after pricing/i18n updates ✅
+- Website master preview verified at `/website-master/index.html?company_id=1` on the active local runtime ✅
+- Booking API verified from website-style payload on `8790`; founder verify completed and persisted in local D1 ✅
+- Contact route exists in source but still needs verification on a freshly reloaded local worker because the active `8790` runtime did not expose the new route during smoke test ⚠️
 - Known failures isolated to founder/KC OTP delivery paths ⚠️
 
 ---
 
-## 🔄 In Progress (15%)
+## 🔄 In Progress (12%)
 
-### Finalization Track (Platform + Billing) (70% → ship-ready)
+### Finalization Track (Platform + Billing) (78% → ship-ready)
 
 **What works**:
 - [x] SaaS Admin: pricing editor + signup CRM-lite + lead follow-up
@@ -66,14 +73,18 @@ Not Started: 0%
 - [x] Staff-created onsite bookings persist and stage updates round-trip locally
 - [x] Platform landing/signup now present localized plan messaging for Online, Service, Repeat Guests, and Groups
 - [x] Included-vs-add-ons pricing block and signup commercial summary now follow the active browser/UI language
+- [x] Website master preview consumes external theme/content presets and runtime-shaped tenant source payloads
+- [x] Website master preview can submit booking, contact, and membership forms against current runtime APIs with preview-safe tenant injection
 
 **What needs work** (next 3-4 days):
 - [ ] Stripe test checkout flow (replace demo-paid simulation)
-- [ ] Tenant public website templates consume Website Builder Studio settings
+- [ ] Connect Website Builder Studio admin fields to persisted publish flow for tenant websites (beyond the current master preview/runtime adapter)
+- [ ] Publish tenant website output + assets to deployment storage and validate custom-domain serving path
 - [ ] Tenant custom domain connection workflow (DNS + validation)
 - [ ] Tenant payment method onboarding UX (Stripe + manual modes)
 - [ ] Founder/KC OTP delivery path needs working Twilio credentials or a dedicated local stub
 - [ ] Document the local-dev caveat: Turnstile bypass only applies on localhost/workers.dev, not Host-header tenant simulation
+- [ ] Re-run `/api/contact/create` smoke test against a freshly reloaded worker to confirm the new public contact route on the active dev runtime
 
 **Current dependency**:
 - Stripe test credentials + Twilio credentials (or explicit local OTP stub)
@@ -122,12 +133,12 @@ All other phases (2-5) planned, not started:
 - **Owner**: @dev-lead
 - **Action Item**: Decide whether local OTP should require live Twilio or use a development stub
 
-### Blocker 2: Platform Billing + Website Runtime Binding
-- **Issue**: Stripe checkout is not wired and tenant website-builder fields are not yet bound to public tenant pages at runtime
+### Blocker 2: Platform Billing + Website Publish Path
+- **Issue**: Stripe checkout is not wired and tenant website publishing/custom-domain flow is not yet completed beyond the working website-master preview/runtime adapter
 - **Impact**: CP-10 remains partial, not ship-ready
 - **ETA Fix**: Mar 31 onward
 - **Owner**: @dev-lead
-- **Action Item**: Wire Stripe test checkout and bind public website templates to settings
+- **Action Item**: Wire Stripe test checkout and finish tenant website publish/domain workflow
 
 ---
 
@@ -145,9 +156,9 @@ CP-6: Payment       📋 PLANNED   TBD      Aug 1        0%
 CP-7: Odoo Removed  ❌ PLANNED   TBD      Jan 1        0%
 CP-8: Growth        ❌ PLANNED   TBD      Apr 1        0%
 CP-9: Founder/KC    📋 PLANNED   TBD      Future       0%
-CP-10: Platform+SU  🔄 TESTING   @dev-L   Mar 31      80%
+CP-10: Platform+SU  🔄 TESTING   @dev-L   Mar 31      90%
 ─────────────────────────────────────────────────────────────
-PHASE 1 TOTAL                                        85%
+PHASE 1 TOTAL                                        88%
 ```
 
 ---
@@ -184,8 +195,9 @@ PHASE 1 TOTAL                                        85%
 
 **Priority 1** (Must do):
 - [ ] Wire Stripe test checkout for signup and recurring invoices
-- [ ] Connect Website Builder Studio fields to tenant public templates
+- [ ] Finish tenant website publish/domain workflow on top of the delivered website-master preview adapter
 - [ ] Configure or stub Twilio so founder/KC OTP works in local runtime and tests
+- [ ] Reload dev worker and confirm `/api/contact/create` on the active local runtime
 - **Owner**: @dev-lead
 - **Time**: 3-4 days
 - **Blocker**: External credentials / final local-dev behavior decisions
@@ -251,12 +263,24 @@ PHASE 1 TOTAL                                        85%
 
 ## 📝 Recent Changes (This Session)
 
-**What changed today** (Mar 22):
+**What changed today** (Mar 30):
 
 1. ✅ Redesigned all documentation
    - PRODUCT.md + BUSINESS_MODEL.md created
    - ARCHITECTURE.md expanded
    - ROADMAP.md detailed
+2. ✅ Shipped website master preview runtime
+   - Added `public/website-master/index.html` universal template
+   - Added theme preset, content schema, and tenant payload example JSON files
+   - Wired booking/contact/membership forms to runtime endpoints with automatic preview tenant injection
+3. ✅ Added public contact ingestion route
+   - Added `/api/contact/create` in `src/index.js`
+   - Stores website-originated messages in `contacts`
+4. ✅ Verified local runtime flows on active port `8790`
+   - Website master preview render OK
+   - Booking create/readback OK
+   - Founder register/verify persistence OK
+   - Contact route still requires verification on a fresh worker reload
 
 2. ✅ Created checkpoint system
    - CHECKPOINTS.md (8 checkpoints)

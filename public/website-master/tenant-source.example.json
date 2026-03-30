@@ -1,0 +1,66 @@
+{
+  "tenant": {
+    "id": "tenant-berlin-001",
+    "company_id": 101,
+    "theme": "theme-luxury-a",
+    "tier": "premium",
+    "content_preset": "theme-luxury-a"
+  },
+  "theme_presets_url": "./theme-presets.example.json",
+  "company": {
+    "name": "Restaurant Aluna",
+    "city": "Berlin Mitte",
+    "cuisine": "Modern European",
+    "phone": "+49 30 123456",
+    "email": "hello@restaurantaluna.de",
+    "address": "Rosenthaler Strasse 12, 10119 Berlin"
+  },
+  "settings": {
+    "site_template": "premium",
+    "site_tagline": "Modern dining in Berlin",
+    "site_hero_title": "Der Genuss des Augenblicks",
+    "site_hero_subtitle": "Seasonal cuisine, elegant atmosphere, and a digital guest experience that works for every tier.",
+    "site_about_title": "A modern restaurant with a strong neighborhood soul.",
+    "site_about_body": "This block is intentionally editorial. Minimal themes should lean heavily on this region, while luxury themes can shorten it and let the photography carry more emotion.",
+    "site_primary_cta_text": "Tisch buchen",
+    "site_secondary_cta_text": "Speisekarte ansehen",
+    "site_accent_color": "#8b1e3f",
+    "turnstile_site_key": "1x00000000000000000000AA",
+    "booking_email": "booking@restaurantaluna.de",
+    "custom_domain": "restaurantaluna.de",
+    "standard_contact_link": "/kontakt",
+    "founder_program_label": "Founding Table",
+    "founder_membership_type": "Founder",
+    "founder_redirect_link": "/founder-form.html",
+    "privacy_link": "/privacy.html",
+    "founder_terms_link": "/terms.html"
+  },
+  "modules": {
+    "module_booking_management": true,
+    "module_membership_management": true,
+    "module_marketing_management": true,
+    "module_digital_management": true,
+    "module_loyalty_rewards": true,
+    "module_contact_crm": true
+  },
+  "legal": {
+    "terms_url": "/terms.html",
+    "privacy_url": "/privacy.html",
+    "impressum_url": "/impressum.html"
+  },
+  "social": {
+    "instagram": "https://instagram.com/restaurantaluna",
+    "facebook": "https://facebook.com/restaurantaluna",
+    "tiktok": "",
+    "google_business": ""
+  },
+  "content": {
+    "hero_image": "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=1600&q=80",
+    "footer_copy": "Copyright 2026 Restaurant Aluna. All rights reserved.",
+    "story_paragraphs": [
+      "In 2016, two friends reopened a quiet Berlin corner restaurant with one idea: less noise, better ingredients, and service that feels composed from the first welcome to the final espresso.",
+      "Today the kitchen still works with a small seasonal menu, local suppliers, and a dining room designed to feel calm, warm, and unmistakably intentional."
+    ]
+  },
+  "signature_items": []
+}

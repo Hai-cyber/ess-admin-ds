@@ -2488,6 +2488,79 @@ export default {
         return new Response(reservieungPage, {
           headers: { "Content-Type": "text/html; charset=utf-8" }
         });
+
+              if (url.pathname === "/api/contact/create" && request.method === "POST") {
+                return runTenantRoute(async ({ companyId }) => {
+                  try {
+                    const contentType = (request.headers.get('content-type') || '').toLowerCase();
+                    let getField = (_key, _fallback = '') => '';
+
+                    if (contentType.includes('application/json')) {
+                      const body = await request.json().catch(() => ({}));
+                      getField = (key, fallback = '') => {
+                        const value = body?.[key];
+                        return String(value == null ? fallback : value).trim();
+                      };
+                    } else {
+                      const formData = await request.formData();
+                      getField = (key, fallback = '') => {
+                        const value = formData.get(key);
+                        return String(value == null ? fallback : value).trim();
+                      };
+                    }
+
+                    const name = getField('name');
+                    const emailRaw = getField('email');
+                    const email = normalizeOptionalEmail(emailRaw);
+                    const phone = getField('phone');
+                    const subject = getField('subject');
+                    const message = getField('message');
+
+                    if (!name || !message) {
+                      return Response.json({ ok: false, code: 'validation_failed', message: 'Name and message are required.' }, { status: 400 });
+                    }
+
+                    if (emailRaw && !email) {
+                      return Response.json({ ok: false, code: 'validation_failed', message: 'Please provide a valid email address.' }, { status: 400 });
+                    }
+
+                    const now = new Date().toISOString();
+                    const contactId = `contact_${companyId}_${Date.now()}`;
+
+                    await env.DB.prepare(`
+                      INSERT INTO contacts (
+                        id, company_id, name, email, phone, subject, message,
+                        is_meaningful, summary, status, pushed_to_gmail,
+                        submitted_at, processed_at, processed_by, notes
+                      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    `).bind(
+                      contactId,
+                      companyId,
+                      name,
+                      email || null,
+                      phone || null,
+                      subject || null,
+                      message,
+                      1,
+                      null,
+                      'new',
+                      0,
+                      now,
+                      null,
+                      null,
+                      'website_master_public_form'
+                    ).run();
+
+                    return Response.json({
+                      ok: true,
+                      contactId,
+                      message: 'Message received.'
+                    });
+                  } catch (e) {
+                    return Response.json({ ok: false, error: e.message }, { status: 500 });
+                  }
+                });
+              }
       });
     }
 
