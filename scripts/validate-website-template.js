@@ -15,11 +15,12 @@ const SUPPORTED_THEMES = new Set([
 ]);
 
 const SUPPORTED_TIERS = new Set(['basic', 'plus', 'premium']);
-const FIXED_PAGES = ['home', 'menu', 'reservation', 'about', 'contact', 'career', 'founder'];
+const FIXED_PAGES = ['home', 'menu', 'shop', 'reservation', 'about', 'contact', 'career', 'founder'];
 const FIXED_PAGE_SET = new Set(FIXED_PAGES);
 const SECTION_COPY_KEYS = new Set([
   'homeSignatures',
   'menu',
+  'shop',
   'menuCategories',
   'reservation',
   'contact',

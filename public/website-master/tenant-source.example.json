@@ -47,6 +47,7 @@
     "labels": {
       "home": "Startseite",
       "menu": "Speisekarten",
+      "shop": "Shop",
       "reservation": "Reservieren",
       "about": "Standorte",
       "contact": "Kontakt",
@@ -63,11 +64,12 @@
     "page_visibility": {
       "home": { "show_in_nav": true, "show_on_home": true },
       "menu": { "show_in_nav": true, "show_on_home": false },
+      "shop": { "show_in_nav": true, "show_on_home": false },
       "reservation": { "show_in_nav": true, "show_on_home": false },
       "about": { "show_in_nav": true, "show_on_home": false },
-      "contact": { "show_in_nav": true, "show_on_home": false },
+      "contact": { "show_in_nav": false, "show_on_home": false },
       "career": { "show_in_nav": true, "show_on_home": false },
-      "founder": { "show_in_nav": true, "show_on_home": false }
+      "founder": { "show_in_nav": false, "show_on_home": false }
     },
     "header_contact_label": "Kontakt",
     "header_reserve_label": "Reservieren"

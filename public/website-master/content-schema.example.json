@@ -13,6 +13,7 @@
   "fixed_pages": [
     "home",
     "menu",
+    "shop",
     "reservation",
     "about",
     "contact",
@@ -83,6 +84,7 @@
     "allowed_label_keys": [
       "home",
       "menu",
+      "shop",
       "reservation",
       "about",
       "contact",
@@ -92,6 +94,7 @@
     "allowed_section_copy_keys": [
       "homeSignatures",
       "menu",
+      "shop",
       "menuCategories",
       "reservation",
       "contact",

@@ -306,6 +306,7 @@ The following page keys are fixed and must never change:
 
 - `home`
 - `menu`
+- `shop`
 - `reservation`
 - `about`
 - `contact`
@@ -321,6 +322,7 @@ Tenant-facing labels may change, but page keys remain stable.
   "labels": {
     "home": "Home",
     "menu": "Menus",
+    "shop": "Shop",
     "reservation": "Reservations",
     "about": "About",
     "contact": "Contact",
@@ -331,11 +333,12 @@ Tenant-facing labels may change, but page keys remain stable.
   "page_visibility": {
     "home": { "show_in_nav": true, "show_on_home": true },
     "menu": { "show_in_nav": true, "show_on_home": false },
+    "shop": { "show_in_nav": true, "show_on_home": false },
     "reservation": { "show_in_nav": true, "show_on_home": false },
     "about": { "show_in_nav": true, "show_on_home": false },
-    "contact": { "show_in_nav": true, "show_on_home": false },
+    "contact": { "show_in_nav": false, "show_on_home": false },
     "career": { "show_in_nav": true, "show_on_home": false },
-    "founder": { "show_in_nav": true, "show_on_home": false }
+    "founder": { "show_in_nav": false, "show_on_home": false }
   },
   "header_contact_label": "Contact",
   "header_reserve_label": "Reserve"
@@ -351,7 +354,7 @@ Tenant-facing labels may change, but page keys remain stable.
 ### Fallback rules
 
 - missing label -> use default English label
-- missing page visibility entry -> `show_in_nav: true`, `show_on_home: false`
+- missing page visibility entry -> `show_in_nav: true`, `show_on_home: false`, except `contact` and `founder`, which default hidden in nav
 - missing header labels -> default `Contact` and `Reserve`
 
 ### Hard rule
@@ -459,6 +462,7 @@ Supported `section_copy` keys:
 
 - `homeSignatures`
 - `menu`
+- `shop`
 - `menuCategories`
 - `reservation`
 - `contact`
@@ -547,6 +551,7 @@ The current generated site uses a fixed page set:
 
 - `index.html` -> `home`
 - `menu.html` -> `menu`
+- `shop.html` -> `shop`
 - `reservation.html` -> `reservation`
 - `about.html` -> `about`
 - `contact.html` -> `contact`

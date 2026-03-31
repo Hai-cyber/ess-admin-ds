@@ -8,7 +8,7 @@
 
 ---
 
-## 📊 CURRENT PROJECT STATUS (As of 2026-03-30)
+## 📊 CURRENT PROJECT STATUS (As of 2026-04-01)
 
 ### ✅ What's Complete
 
@@ -25,7 +25,7 @@
 - [x] Decision records (DECISIONS.md)
 - [x] Legacy reference policy formalized (Founder/KC retained as reference assets)
 
-#### Implementation (88%)
+#### Implementation (89%)
 - [x] Tenant isolation (CP-1) ✅ VERIFIED
 - [x] Booking MVP (CP-2) ✅ VERIFIED
 - [x] Booking form live
@@ -98,7 +98,7 @@
 
 ## 🎯 Current Phase: Phase 1 (Booking System)
 
-**Status**: 88% complete  
+**Status**: 89% complete  
 **ETA**: April 15, 2026  
 **Owner**: Development team
 
@@ -107,8 +107,8 @@
 | CP-1: Tenant Isolation | ✅ DONE | E2E_TEST_SUMMARY.md | None |
 | CP-2: Booking MVP | ✅ DONE | Local runtime verified on 2026-03-30 | None |
 | CP-3: Admin UI Setup | 🔄 75% | Admin routes/UI live; go-live flow still incomplete | UX completion |
-| CP-10: Platform Site + Self-Service Signup | 🔄 90% | Platform home/contact/admin/signup verified live; localized pricing/login/signup polish shipped locally; website master preview runtime wired and smoke-tested | Stripe + publish/domain workflow + Twilio for founder/KC |
-| **Phase 1 Total** | **🔄 88%** | — | **Platform/founder finalization** |
+| CP-10: Platform Site + Self-Service Signup | 🔄 92% | Platform home/contact/admin/signup verified live; localized pricing/login/signup polish shipped locally; website master preview runtime wired and smoke-tested; fixed-skin website contract and validator added | Stripe + publish/domain workflow + Twilio for founder/KC |
+| **Phase 1 Total** | **🔄 89%** | — | **Platform/founder finalization** |
 
 ---
 

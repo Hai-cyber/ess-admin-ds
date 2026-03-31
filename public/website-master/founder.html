@@ -198,11 +198,8 @@
     }
 
     body[data-tier="basic"] .has-booking,
-    body[data-tier="basic"] .has-member-portal {
-      display: none !important;
-    }
-
-    body[data-tier="plus"] .has-member-portal {
+    body[data-tier="basic"] .has-member-portal,
+    body[data-tier="basic"] .has-service-tier {
       display: none !important;
     }
 
@@ -358,6 +355,10 @@
       font-size: 0.74rem;
     }
 
+    body.theme-luxury-a .luxury-two-header-info {
+      display: none;
+    }
+
     body.theme-luxury-a footer {
       background: #49535f;
       color: rgba(255, 255, 255, 0.86);
@@ -452,6 +453,10 @@
     body.theme-luxury-a #contact > .luxury-page-shell > div,
     body.theme-luxury-a #career > .luxury-page-shell > div {
       gap: 2rem;
+    }
+
+    body.theme-luxury-a #contact > .luxury-page-shell > div {
+      grid-template-columns: 1fr;
     }
 
     body.theme-luxury-a #menu .section-shell {
@@ -2308,9 +2313,9 @@
       <nav data-primary-nav class="hidden items-center gap-6 text-sm font-semibold text-[color:var(--text-color)] lg:flex">
         <a href="index.html?page=home" class="page-tab rounded-full px-4 py-2" data-page-link="home" data-nav-label="home">Home</a>
         <a href="menu.html?page=menu" class="page-tab rounded-full px-4 py-2" data-page-link="menu" data-nav-label="menu">Menu</a>
+        <a href="shop.html?page=shop" class="page-tab rounded-full px-4 py-2" data-page-link="shop" data-nav-label="shop">Shop</a>
         <a href="reservation.html?page=reservation" class="page-tab rounded-full px-4 py-2" data-page-link="reservation" data-nav-label="reservation">Reservation</a>
         <a href="about.html?page=about" class="page-tab rounded-full px-4 py-2" data-page-link="about" data-nav-label="about">About Us</a>
-        <a href="contact.html?page=contact" class="page-tab rounded-full px-4 py-2" data-page-link="contact" data-nav-label="contact">Contact Us</a>
         <a href="career.html?page=career" class="page-tab rounded-full px-4 py-2" data-page-link="career" data-nav-label="career">Career</a>
         <a href="founder.html?page=founder" class="page-tab rounded-full px-4 py-2" data-page-link="founder" data-nav-label="founder">Founder</a>
       </nav>
@@ -2333,9 +2338,9 @@
       <div data-mobile-nav class="shell flex gap-2 overflow-x-auto py-3 text-sm font-semibold">
         <a href="index.html?page=home" class="page-tab whitespace-nowrap rounded-full px-4 py-2" data-page-link="home" data-nav-label="home">Home</a>
         <a href="menu.html?page=menu" class="page-tab whitespace-nowrap rounded-full px-4 py-2" data-page-link="menu" data-nav-label="menu">Menu</a>
+        <a href="shop.html?page=shop" class="page-tab whitespace-nowrap rounded-full px-4 py-2" data-page-link="shop" data-nav-label="shop">Shop</a>
         <a href="reservation.html?page=reservation" class="page-tab whitespace-nowrap rounded-full px-4 py-2" data-page-link="reservation" data-nav-label="reservation">Reservation</a>
         <a href="about.html?page=about" class="page-tab whitespace-nowrap rounded-full px-4 py-2" data-page-link="about" data-nav-label="about">About Us</a>
-        <a href="contact.html?page=contact" class="page-tab whitespace-nowrap rounded-full px-4 py-2" data-page-link="contact" data-nav-label="contact">Contact Us</a>
         <a href="career.html?page=career" class="page-tab whitespace-nowrap rounded-full px-4 py-2" data-page-link="career" data-nav-label="career">Career</a>
         <a href="founder.html?page=founder" class="page-tab whitespace-nowrap rounded-full px-4 py-2" data-page-link="founder" data-nav-label="founder">Founder</a>
       </div>
@@ -2421,6 +2426,26 @@
           <h2 class="mt-3 font-heading text-4xl font-black" data-section-copy="menuCategories.title">Pre-built menu blocks for fast onboarding</h2>
         </div>
         <div id="category-grid" class="category-grid grid gap-6 lg:grid-cols-2"></div>
+      </div>
+    </section>
+
+    <section id="shop" class="shell has-service-tier feature-switch pt-8" style="margin-top: var(--section-spacing);" data-page-panel="shop">
+      <div class="section-shell glass-panel luxury-page-shell px-6 py-8 md:px-10 md:py-10">
+        <div class="grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
+          <div class="luxury-flat-panel">
+            <p class="text-xs font-bold uppercase tracking-[0.24em] text-[color:var(--primary-color)]" data-section-copy="shop.eyebrow">Shop</p>
+            <h2 class="mt-3 font-heading text-4xl font-black" data-section-copy="shop.title">A universal shop page for retail drops, take-home items, and highlighted offers</h2>
+            <p class="mt-4 text-base leading-8 text-[color:var(--muted-color)]" data-section-copy="shop.body">
+              Service tier and up can use this page as a soft-commerce surface without changing the main restaurant story. Feature dishes, bottled products, gift cards, or seasonal bundles here.
+            </p>
+            <div class="mt-8 flex flex-wrap gap-3">
+              <a href="menu.html?page=menu" class="rounded-full bg-[color:var(--primary-color)] px-5 py-3 text-sm font-bold text-white luxury-action-link" data-page-link="menu">Open menu</a>
+              <a href="reservation.html?page=reservation" class="rounded-full border border-black/10 px-5 py-3 text-sm font-bold text-[color:var(--text-color)] luxury-action-link" data-page-link="reservation">Reserve a table</a>
+            </div>
+          </div>
+          <div id="shop-feature-grid" class="grid gap-4 md:grid-cols-2"></div>
+        </div>
+        <div class="mt-8 grid gap-4 md:grid-cols-3" id="shop-category-grid"></div>
       </div>
     </section>
 
@@ -2745,6 +2770,7 @@
         labels: {
           home: 'Home',
           menu: 'Menus',
+          shop: 'Shop',
           reservation: 'Reservations',
           about: 'Spaces',
           contact: 'Contact',
@@ -2760,10 +2786,12 @@
         page_visibility: {
           home: { show_in_nav: true, show_on_home: true },
           menu: { show_in_nav: true, show_on_home: false },
+          shop: { show_in_nav: true, show_on_home: false },
           reservation: { show_in_nav: true, show_on_home: false },
           about: { show_in_nav: true, show_on_home: false },
-          contact: { show_in_nav: true, show_on_home: false },
-          career: { show_in_nav: true, show_on_home: false }
+          contact: { show_in_nav: false, show_on_home: false },
+          career: { show_in_nav: true, show_on_home: false },
+          founder: { show_in_nav: false, show_on_home: false }
         },
         header_contact_label: 'Contact',
         header_reserve_label: 'Reserve'
@@ -2948,7 +2976,7 @@
       }
     ];
 
-    const WEBSITE_PAGE_KEYS = ['home', 'menu', 'reservation', 'about', 'contact', 'career', 'founder'];
+    const WEBSITE_PAGE_KEYS = ['home', 'menu', 'shop', 'reservation', 'about', 'contact', 'career', 'founder'];
     const WEBSITE_PAGE_ALIASES = {
       'home-signatures': 'home',
       'menu-categories': 'menu',
@@ -2958,6 +2986,7 @@
     const WEBSITE_PAGE_CONFIG = {
       home: { file: 'index.html', title: 'Home' },
       menu: { file: 'menu.html', title: 'Menu' },
+      shop: { file: 'shop.html', title: 'Shop' },
       reservation: { file: 'reservation.html', title: 'Reservation' },
       about: { file: 'about.html', title: 'About' },
       contact: { file: 'contact.html', title: 'Contact' },
@@ -3025,7 +3054,12 @@
     };
 
     function normalizeLanguage(rawLanguage, fallback = 'en') {
-      return 'en';
+      const normalizedFallback = String(fallback || 'en').trim().toLowerCase().slice(0, 2) || 'en';
+      const normalized = String(rawLanguage || '').trim().toLowerCase().replace(/_/g, '-');
+      if (!normalized) return normalizedFallback;
+      const shortCode = normalized.split('-')[0];
+      if (Object.prototype.hasOwnProperty.call(LANGUAGE_DICTIONARIES, shortCode)) return shortCode;
+      return normalizedFallback;
     }
 
     function getLanguageDictionary(viewModel) {
@@ -3086,8 +3120,10 @@
     function normalizePageVisibility(rawVisibility = {}) {
       return WEBSITE_PAGE_KEYS.reduce((accumulator, pageKey) => {
         const raw = rawVisibility?.[pageKey] || {};
+        let defaultShowInNav = true;
+        if (pageKey === 'contact' || pageKey === 'founder') defaultShowInNav = false;
         accumulator[pageKey] = {
-          showInNav: pageKey === 'home' ? true : pageKey === 'founder' ? raw.show_in_nav === true : raw.show_in_nav !== false,
+          showInNav: pageKey === 'home' ? true : typeof raw.show_in_nav === 'boolean' ? raw.show_in_nav : defaultShowInNav,
           showOnHome: pageKey === 'home' ? true : Boolean(raw.show_on_home)
         };
         return accumulator;
@@ -3104,6 +3140,7 @@
 
       const pathname = String(window.location.pathname || '').toLowerCase();
       if (pathname.endsWith('/menu.html')) return 'menu';
+      if (pathname.endsWith('/shop.html')) return 'shop';
       if (pathname.endsWith('/reservation.html')) return 'reservation';
       if (pathname.endsWith('/about.html')) return 'about';
       if (pathname.endsWith('/contact.html')) return 'contact';
@@ -3141,7 +3178,8 @@
       const pageVisibility = viewModel?.navigation?.pageVisibility || normalizePageVisibility();
       document.querySelectorAll('[data-nav-label]').forEach((element) => {
         const targetPage = normalizePageKey(element.dataset.pageLink || element.getAttribute('href'));
-        const isVisible = pageVisibility?.[targetPage]?.showInNav !== false;
+        const pageState = pageVisibility?.[targetPage] || {};
+        const isVisible = pageState.enabled !== false && pageState.showInNav !== false;
         element.classList.toggle('is-hidden', !isVisible);
         element.hidden = !isVisible;
       });
@@ -3149,17 +3187,21 @@
 
     function setActivePage(pageKey, viewModel) {
       const activePage = normalizePageKey(pageKey);
-      document.body.dataset.activePage = activePage;
+      const requestedState = viewModel?.navigation?.pageVisibility?.[activePage] || {};
+      const resolvedActivePage = requestedState.enabled === false ? 'home' : activePage;
+      document.body.dataset.activePage = resolvedActivePage;
       const pageVisibility = viewModel?.navigation?.pageVisibility || normalizePageVisibility();
       document.querySelectorAll('[data-page-panel]').forEach((element) => {
         const panelPage = normalizePageKey(element.id || element.dataset.pagePanel);
-        const embedOnHome = activePage === 'home' && panelPage !== 'home' && Boolean(pageVisibility?.[panelPage]?.showOnHome);
-        element.classList.toggle('is-active', panelPage === activePage || embedOnHome);
+        const panelState = pageVisibility?.[panelPage] || {};
+        const pageEnabled = panelState.enabled !== false;
+        const embedOnHome = resolvedActivePage === 'home' && panelPage !== 'home' && pageEnabled && Boolean(panelState.showOnHome);
+        element.classList.toggle('is-active', pageEnabled && (panelPage === resolvedActivePage || embedOnHome));
         element.setAttribute('data-home-embedded', embedOnHome ? 'true' : 'false');
       });
-      configurePageLinks(activePage, viewModel);
+      configurePageLinks(resolvedActivePage, viewModel);
       window.scrollTo(0, 0);
-      return activePage;
+      return resolvedActivePage;
     }
 
     function updateDocumentTitle(viewModel, activePage) {
@@ -3286,17 +3328,19 @@
         en: {
           home: 'Home',
           menu: 'Menu',
+          shop: 'Shop',
           reservation: 'Reservations',
           about: 'About',
           contact: 'Contact',
-          career: 'Careers',
           contactButton: 'Contact',
+          reserveButton: 'Reserve',
           career: 'Careers',
           founder: 'Founder',
         },
         de: {
           home: 'Startseite',
           menu: 'Speisekarte',
+          shop: 'Shop',
           reservation: 'Reservierung',
           about: 'Uber uns',
           contact: 'Kontakt',
@@ -3307,6 +3351,19 @@
         }
       };
       const languageTexts = languageFallbacks[language] || languageFallbacks.en;
+      const defaultSectionCopy = {
+        shop: language === 'de'
+          ? {
+              eyebrow: 'Shop',
+              title: 'Ein universeller Shop fur Produkte, Gutscheine und kuratierte Angebote',
+              body: 'Service-Tier und hoher konnen hier Retail-Drops, Feinkost, Geschenkideen oder saisonale Bundles zeigen, ohne die Kernstruktur der Website zu verandern.'
+            }
+          : {
+              eyebrow: 'Shop',
+              title: 'A universal shop for products, gift cards, and curated offers',
+              body: 'Service tier and up can use this page for retail drops, pantry items, gift cards, or seasonal bundles without changing the core website structure.'
+            }
+      };
       const presetContent = resolveThemePreset(source, theme, presets);
       const content = deepMerge(presetContent, source?.content || {});
       const preferThemePreviewContent = Boolean(themeOverride);
@@ -3314,10 +3371,30 @@
         if (preferThemePreviewContent) return presetValue || sourceValue || fallbackValue;
         return sourceValue || presetValue || fallbackValue;
       };
-      const founderVisible = tier === 'premium' && Boolean(source?.modules?.module_membership_management);
+      const founderEnabled = tier !== 'basic' && Boolean(source?.modules?.module_membership_management);
+      const shopEnabled = tier !== 'basic';
       const pageVisibility = normalizePageVisibility(source?.navigation?.page_visibility);
       if (!Object.prototype.hasOwnProperty.call(source?.navigation?.page_visibility || {}, 'founder')) {
-        pageVisibility.founder.showInNav = founderVisible;
+        pageVisibility.founder.showInNav = false;
+      }
+      if (!Object.prototype.hasOwnProperty.call(source?.navigation?.page_visibility || {}, 'shop')) {
+        pageVisibility.shop.showInNav = shopEnabled;
+      }
+      pageVisibility.home.enabled = true;
+      pageVisibility.menu.enabled = true;
+      pageVisibility.shop.enabled = shopEnabled;
+      pageVisibility.reservation.enabled = true;
+      pageVisibility.about.enabled = true;
+      pageVisibility.contact.enabled = true;
+      pageVisibility.career.enabled = true;
+      pageVisibility.founder.enabled = founderEnabled;
+      if (!founderEnabled) {
+        pageVisibility.founder.showInNav = false;
+        pageVisibility.founder.showOnHome = false;
+      }
+      if (!shopEnabled) {
+        pageVisibility.shop.showInNav = false;
+        pageVisibility.shop.showOnHome = false;
       }
       const signatureItems = Array.isArray(source?.signature_items) && source.signature_items.length
         ? source.signature_items
@@ -3371,6 +3448,7 @@
           labels: {
             home: source?.navigation?.labels?.home || languageTexts.home,
             menu: source?.navigation?.labels?.menu || languageTexts.menu,
+            shop: source?.navigation?.labels?.shop || languageTexts.shop,
             reservation: source?.navigation?.labels?.reservation || languageTexts.reservation,
             about: source?.navigation?.labels?.about || languageTexts.about,
             contact: source?.navigation?.labels?.contact || languageTexts.contact,
@@ -3398,7 +3476,7 @@
         footer: {
           copy: content.footer_copy || `Copyright 2026 ${company.name || 'Restaurant'}. All rights reserved.`
         },
-        sectionCopy: content.section_copy || {},
+        sectionCopy: deepMerge(defaultSectionCopy, content.section_copy || {}),
         signatureItems: signatureItems,
         locationCards: Array.isArray(content.location_cards) ? content.location_cards : [],
         journalFeatureImage: content.journal_feature_image || '',
@@ -4371,12 +4449,75 @@
       const secondaryNav = document.getElementById('secondary-nav');
       if (!secondaryNav) return;
       const items = Array.isArray(viewModel?.navigation?.secondaryItems) ? viewModel.navigation.secondaryItems : [];
-      secondaryNav.innerHTML = items.map((item) => {
+      const pageVisibility = viewModel?.navigation?.pageVisibility || {};
+      const visibleItems = items.filter((item) => {
+        if (!item?.page) return true;
+        const pageState = pageVisibility[item.page] || {};
+        return pageState.enabled !== false && pageState.showInNav !== false;
+      });
+      secondaryNav.innerHTML = visibleItems.map((item) => {
         const label = escapeHtml(item?.label || 'Link');
         const href = item?.page ? buildPageUrl(item.page) : escapeHtml(item?.href || '#');
         return `<a href="${href}" class="subnav-link">${label}</a>`;
       }).join('');
-      secondaryNav.parentElement.parentElement.style.display = items.length ? '' : 'none';
+      secondaryNav.parentElement.parentElement.style.display = visibleItems.length ? '' : 'none';
+    }
+
+    function renderShopPage(viewModel) {
+      const featureGrid = document.getElementById('shop-feature-grid');
+      const categoryGrid = document.getElementById('shop-category-grid');
+      if (!featureGrid || !categoryGrid) return;
+
+      const featureItems = Array.isArray(viewModel?.signatureItems) && viewModel.signatureItems.length
+        ? viewModel.signatureItems.slice(0, 4)
+        : Array.isArray(viewModel?.menuLinkCards)
+          ? viewModel.menuLinkCards.slice(0, 4).map((card) => ({
+              name: card.title,
+              price: card.cta_label,
+              description: card.body,
+              image: card.image
+            }))
+          : [];
+      const categoryItems = Array.isArray(viewModel?.categoryCards) ? viewModel.categoryCards.slice(0, 3) : [];
+
+      if (isLuxuryOneTheme()) {
+        featureGrid.innerHTML = featureItems.map((item) => `
+          <article class="luxury-flat-panel overflow-hidden p-0">
+            ${item.image ? `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.name || 'Shop highlight')}" class="h-52 w-full object-cover" />` : ''}
+            <div class="p-6">
+              <p class="text-xs font-semibold uppercase tracking-[0.28em] text-[color:var(--primary-color)]">${escapeHtml(item.price || 'Featured')}</p>
+              <h3 class="mt-3 font-heading text-3xl font-semibold text-[color:var(--text-color)]">${escapeHtml(item.name || '')}</h3>
+              <p class="mt-4 text-sm leading-8 text-[color:var(--muted-color)]">${escapeHtml(item.description || '')}</p>
+            </div>
+          </article>
+        `).join('');
+        categoryGrid.innerHTML = categoryItems.map((item) => `
+          <article class="luxury-flat-panel p-6">
+            <p class="text-xs font-semibold uppercase tracking-[0.28em] text-[color:var(--primary-color)]">${escapeHtml(item.label || '')}</p>
+            <h3 class="mt-3 font-heading text-2xl font-semibold text-[color:var(--text-color)]">${escapeHtml(item.title || '')}</h3>
+            <p class="mt-4 text-sm leading-8 text-[color:var(--muted-color)]">${escapeHtml(item.body || '')}</p>
+          </article>
+        `).join('');
+        return;
+      }
+
+      featureGrid.innerHTML = featureItems.map((item) => `
+        <article class="rounded-[28px] overflow-hidden border border-black/5 bg-white shadow-sm">
+          ${item.image ? `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.name || 'Shop highlight')}" class="h-48 w-full object-cover" />` : ''}
+          <div class="p-6">
+            <p class="text-xs font-bold uppercase tracking-[0.18em] text-[color:var(--primary-color)]">${escapeHtml(item.price || 'Featured')}</p>
+            <h3 class="mt-3 text-2xl font-black text-[color:var(--text-color)]">${escapeHtml(item.name || '')}</h3>
+            <p class="mt-4 text-sm leading-7 text-[color:var(--muted-color)]">${escapeHtml(item.description || '')}</p>
+          </div>
+        </article>
+      `).join('');
+      categoryGrid.innerHTML = categoryItems.map((item) => `
+        <article class="rounded-[24px] ${item.tone === 'brand' ? 'bg-[color:var(--primary-color)] text-white' : 'bg-white'} border border-black/5 p-6 shadow-sm">
+          <p class="text-xs font-bold uppercase tracking-[0.18em] ${item.tone === 'brand' ? 'text-white/78' : 'text-[color:var(--primary-color)]'}">${escapeHtml(item.label || '')}</p>
+          <h3 class="mt-3 text-xl font-black ${item.tone === 'brand' ? 'text-white' : 'text-[color:var(--text-color)]'}">${escapeHtml(item.title || '')}</h3>
+          <p class="mt-4 text-sm leading-7 ${item.tone === 'brand' ? 'text-white/82' : 'text-[color:var(--muted-color)]'}">${escapeHtml(item.body || '')}</p>
+        </article>
+      `).join('');
     }
 
     function renderCareerPage(viewModel) {
@@ -4721,6 +4862,7 @@
       renderPaperMenu(templateViewModel.menuSections, themeFamily);
       renderStoryParagraphs(templateViewModel.story);
       renderCategoryCards(templateViewModel.categoryCards, themeFamily);
+      renderShopPage(templateViewModel);
       renderMembershipRewards(templateViewModel.membershipRewards, themeFamily);
       renderCareerPage(templateViewModel);
       renderMarketFit(templateViewModel.marketFit, themeFamily);
