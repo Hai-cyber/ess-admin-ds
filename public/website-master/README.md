@@ -2,12 +2,50 @@
 
 This folder contains the universal tenant website master source.
 
+The preview now behaves like a multi-page tenant website and the folder now includes real page files:
+
+- `#home`: landing page and homepage signatures
+- `#menu`: menu feed and menu categories
+- `#reservation`: reservation form and membership upsell blocks
+- `#about`: story and market-fit content
+- `#contact`: contact details and contact form
+- `#career`: hiring page and open-role cards
+
+Page files exposed in this folder:
+
+- `index.html`
+- `menu.html`
+- `reservation.html`
+- `about.html`
+- `contact.html`
+- `career.html`
+
+The top navigation now links between those actual files, while theme, tier, labels, logo, text, and images are expected to come from the backend payload or tenant source JSON.
+
 ## Files
 
-- `index.html`: single-file master template
+- `index.html`: home page entry for the master template
+- `menu.html`: menu page entry
+- `reservation.html`: reservation page entry
+- `about.html`: about/story page entry
+- `contact.html`: contact page entry
+- `career.html`: career page entry
 - `tenant-source.example.json`: runtime-shaped example payload for build/publish
 - `content-schema.example.json`: content contract for theme/demo sections
 - `theme-presets.example.json`: theme-family and exact-theme content presets
+
+## Built-in page keys
+
+Keep the technical page keys stable even if the tenant-facing labels change:
+
+- `home`
+- `menu`
+- `reservation`
+- `about`
+- `contact`
+- `career`
+
+The navigation labels can be localized or renamed per tenant, but the internal page keys should stay fixed so preview, publishing, and routing remain predictable.
 
 ## Control model
 
@@ -24,6 +62,27 @@ This folder contains the universal tenant website master source.
   - `basic`
   - `plus`
   - `premium`
+
+Additional tenant-copyable content now supported in the master payload:
+
+- `branding.logo_image`
+- `navigation.labels.home|menu|reservation|about|contact|career`
+- `navigation.page_visibility.<page>.show_in_nav`
+- `navigation.page_visibility.<page>.show_on_home`
+- `navigation.secondary_items[]`
+- `navigation.header_contact_label`
+- `navigation.header_reserve_label`
+- `career.eyebrow`
+- `career.title`
+- `career.body`
+- `career.cta_label`
+- `career.cta_href`
+- `career.roles[]`
+
+The intended behavior for built-in pages is:
+
+- If `show_in_nav` is `true`, the page stays as its own tab/page for a cleaner, less distracting flow.
+- If `show_in_nav` is `false` and `show_on_home` is `true`, that page feed is embedded into Home so the tenant can keep a long-form landing page without exposing another tab.
 
 ## Feature switches
 
@@ -69,9 +128,9 @@ These module flags already exist and can drive tier derivation if `tenant.tier` 
 1. Load company + settings + module flags from D1.
 2. Choose a content preset from `theme-presets.example.json` or generate a tenant-specific variant using `content-schema.example.json`.
 3. Assemble a `tenant-source.json` payload in this shape.
-4. Inject the payload into `index.html` at publish time.
-5. Render a tenant-specific output file.
-6. Store the output under an R2 prefix like `sites/{company_id}/current/index.html`.
+4. Inject the payload into the page entries at publish time.
+5. Render a tenant-specific page set: `index.html`, `menu.html`, `reservation.html`, `about.html`, `contact.html`, `career.html`.
+6. Store the output under an R2 prefix like `sites/{company_id}/current/`.
 7. Store images/assets under `sites/{company_id}/assets/...`.
 
 ## Runtime-connected form actions

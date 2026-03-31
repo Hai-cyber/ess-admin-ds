@@ -8,32 +8,72 @@
   },
   "theme_presets_url": "./theme-presets.example.json",
   "company": {
-    "name": "Restaurant Aluna",
-    "city": "Berlin Mitte",
-    "cuisine": "Modern European",
-    "phone": "+49 30 123456",
-    "email": "hello@restaurantaluna.de",
-    "address": "Rosenthaler Strasse 12, 10119 Berlin"
+    "name": "Brasserie Maison Elise",
+    "city": "Berlin",
+    "cuisine": "French Brasserie",
+    "phone": "+49 30 4081 2710",
+    "email": "bonjour@maisonelise.de",
+    "address": "Passauer Strasse 18, 10789 Berlin"
   },
   "settings": {
     "site_template": "premium",
-    "site_tagline": "Modern dining in Berlin",
-    "site_hero_title": "Der Genuss des Augenblicks",
-    "site_hero_subtitle": "Seasonal cuisine, elegant atmosphere, and a digital guest experience that works for every tier.",
-    "site_about_title": "A modern restaurant with a strong neighborhood soul.",
-    "site_about_body": "This block is intentionally editorial. Minimal themes should lean heavily on this region, while luxury themes can shorten it and let the photography carry more emotion.",
-    "site_primary_cta_text": "Tisch buchen",
+    "site_tagline": "Franzosische Brasseriekuche mit Berliner Gelassenheit.",
+    "site_hero_title": "Brasserie Maison Elise",
+    "site_hero_subtitle": "Eine moderne Brasserie fur Lunch, Dinner und besondere Anlasse - mit saisonalen Menus, warmer Servicehaltung und urbaner Eleganz.",
+    "site_about_title": "Bienvenue, liebe Gaste.",
+    "site_about_body": "Maison Elise verbindet die Offenheit einer klassischen Brasserie mit einer ruhigen, modernen Handschrift. Zwischen Lunch, Apero und Dinner entsteht ein Haus fur wiederkehrende Lieblingsmomente.",
+    "site_primary_cta_text": "Reservieren",
     "site_secondary_cta_text": "Speisekarte ansehen",
-    "site_accent_color": "#8b1e3f",
+    "site_accent_color": "#2f3a20",
     "turnstile_site_key": "1x00000000000000000000AA",
-    "booking_email": "booking@restaurantaluna.de",
-    "custom_domain": "restaurantaluna.de",
+    "booking_email": "booking@maisonelise.de",
+    "custom_domain": "maisonelise.de",
     "standard_contact_link": "/kontakt",
-    "founder_program_label": "Founding Table",
-    "founder_membership_type": "Founder",
+    "founder_program_label": "Maison Circle",
+    "founder_membership_type": "Maison Circle",
     "founder_redirect_link": "/founder-form.html",
     "privacy_link": "/privacy.html",
     "founder_terms_link": "/terms.html"
+  },
+  "navigation": {
+    "labels": {
+      "home": "Startseite",
+      "menu": "Speisekarten",
+      "reservation": "Reservieren",
+      "about": "Standorte",
+      "contact": "Kontakt",
+      "career": "Karriere"
+    },
+    "secondary_items": [
+      { "page": "about", "label": "Unsere Restaurants" },
+      { "href": "#", "label": "Maison Journal" },
+      { "page": "career", "label": "Jobs & Karriere" },
+      { "href": "#", "label": "Instagram" },
+      { "page": "contact", "label": "Kontakt" }
+    ],
+    "page_visibility": {
+      "home": { "show_in_nav": true, "show_on_home": true },
+      "menu": { "show_in_nav": true, "show_on_home": false },
+      "reservation": { "show_in_nav": true, "show_on_home": false },
+      "about": { "show_in_nav": true, "show_on_home": false },
+      "contact": { "show_in_nav": true, "show_on_home": false },
+      "career": { "show_in_nav": true, "show_on_home": false }
+    },
+    "header_contact_label": "Kontakt",
+    "header_reserve_label": "Reservieren"
+  },
+  "career": {
+    "eyebrow": "Jobs & Karriere",
+    "title": "Arbeiten in einer Brasserie mit Haltung, Tempo und Gastlichkeit",
+    "body": "Kuche, Service, Bar und Eventorganisation finden hier einen ruhigen, hochwertigen Auftritt statt einer reinen Stellenliste ohne Markencharakter.",
+    "cta_label": "Offene Positionen ansehen",
+    "cta_href": "contact.html?page=contact",
+    "roles": [
+      { "title": "Chef de Partie", "location": "Berlin", "type": "Vollzeit", "body": "Verantworte deinen Posten mit Präzision, Ruhe und Sinn fur saisonale Brasseriekuche." },
+      { "title": "Gastgeber:in", "location": "Munchen", "type": "Teilzeit", "body": "Prage den ersten Eindruck des Hauses und begleite den Reservierungsfluss mit Haltung und Leichtigkeit." },
+      { "title": "Event & Private Dining", "location": "Konstanz", "type": "Vollzeit", "body": "Ubersetze private Anlasse und besondere Abende in einen klaren, hochwertigen Serviceablauf." },
+      { "title": "Service Professional", "location": "Berlin", "type": "Vollzeit", "body": "Trage eine moderne Brasserie-Erfahrung von Begrußung bis Espresso mit ruhiger Professionalitat." }
+    ]
   },
   "modules": {
     "module_booking_management": true,
@@ -49,17 +89,130 @@
     "impressum_url": "/impressum.html"
   },
   "social": {
-    "instagram": "https://instagram.com/restaurantaluna",
-    "facebook": "https://facebook.com/restaurantaluna",
+    "instagram": "https://instagram.com/maisonelise",
+    "facebook": "https://facebook.com/maisonelise",
     "tiktok": "",
     "google_business": ""
   },
   "content": {
-    "hero_image": "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=1600&q=80",
-    "footer_copy": "Copyright 2026 Restaurant Aluna. All rights reserved.",
+    "hero_image": "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1600&q=80",
+    "footer_copy": "Copyright 2026 Brasserie Maison Elise. All rights reserved.",
     "story_paragraphs": [
-      "In 2016, two friends reopened a quiet Berlin corner restaurant with one idea: less noise, better ingredients, and service that feels composed from the first welcome to the final espresso.",
-      "Today the kitchen still works with a small seasonal menu, local suppliers, and a dining room designed to feel calm, warm, and unmistakably intentional."
+      "Maison Elise ist eine moderne Brasserie fur Gaste, die mittags leicht, abends stilvoll und zu besonderen Anlassen mit Ruhe genießen wollen.",
+      "Zwischen Lunch, Apero und Dinner entsteht ein Haus mit saisonaler Karte, warmer Servicehaltung und einer klaren urbanen Eleganz."
+    ],
+    "location_cards": [
+      {
+        "label": "Berlin",
+        "title": "Direkt vis-a-vis dem KaDeWe",
+        "body": "Eine urbane Brasserie fur Lunch, Date Night und elegante Dinner in bewegter City-Lage.",
+        "image": "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=1200&q=80",
+        "primary_href": "about.html?page=about",
+        "primary_label": "Zum Restaurant",
+        "secondary_href": "menu.html?page=menu",
+        "secondary_label": "Zur Speisekarte"
+      },
+      {
+        "label": "Munchen",
+        "title": "Brasserie mit ruhigem Abendrhythmus",
+        "body": "Mehr Nachbarschaft, mehr Stammgaste, mehr Raum fur Anlassdinner und lange Abende.",
+        "image": "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=1200&q=80",
+        "primary_href": "about.html?page=about",
+        "primary_label": "Zum Restaurant",
+        "secondary_href": "menu.html?page=menu",
+        "secondary_label": "Zur Speisekarte"
+      },
+      {
+        "label": "Konstanz",
+        "title": "Altstadt, Anlass und Wochenende",
+        "body": "Ein warmerer, etwas entschleunigter Standort fur Feiern, Besuche und besondere Reservierungen.",
+        "image": "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1200&q=80",
+        "primary_href": "about.html?page=about",
+        "primary_label": "Zum Restaurant",
+        "secondary_href": "menu.html?page=menu",
+        "secondary_label": "Zur Speisekarte"
+      }
+    ],
+    "journal_feature_image": "https://images.unsplash.com/photo-1541544741938-0af808871cc0?auto=format&fit=crop&w=1800&q=80",
+    "journal_cards": [
+      {
+        "title": "Guide Michelin empfiehlt: Maison-Rezepte als Kochbuch",
+        "body": "Rezepte aus der Brasserie fur Gaste, die die Handschrift des Hauses mit nach Hause nehmen mochten.",
+        "image": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=900&q=80"
+      },
+      {
+        "title": "Wir feiern 10 Jahre Brasserie-Kultur",
+        "body": "Ein Abend voller großer Gesten, langjähriger Gaste und kleiner Geschichten aus Service und Kuche.",
+        "image": "https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=900&q=80"
+      },
+      {
+        "title": "Die französische Kuche: der Gipfel der Kochkunst",
+        "body": "Bouillabaisse, klassische Saucen und moderne Leichtigkeit - eine Spurensuche durch unsere Karte.",
+        "image": "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=900&q=80"
+      }
+    ],
+    "team_image": "https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=1800&q=80",
+    "menu_link_cards": [
+      {
+        "label": "Mittag",
+        "title": "La Table Dressée",
+        "body": "Leichter Lunch, saisonal und prazise komponiert.",
+        "image": "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=900&q=80",
+        "href": "menu.html?page=menu",
+        "cta_label": "Lunch Menu"
+      },
+      {
+        "label": "Dinner",
+        "title": "Maison Klassiker",
+        "body": "Bouillabaisse, Bourguignon und Signature-Gerichte des Hauses.",
+        "image": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=80",
+        "href": "menu.html?page=menu",
+        "cta_label": "Dinner Menu"
+      },
+      {
+        "label": "Dessert & Bar",
+        "title": "Ausklang",
+        "body": "Desserts, Apero und kleine Rituale fur den Abschluss des Abends.",
+        "image": "https://images.unsplash.com/photo-1563805042-7684c019e1cb?auto=format&fit=crop&w=900&q=80",
+        "href": "menu.html?page=menu",
+        "cta_label": "Dessert & Bar"
+      }
+    ],
+    "section_copy": {
+      "homeSignatures": {
+        "eyebrow": "La Table Dressée",
+        "title": "Saisonale Signaturen fur Lunch und Dinner",
+        "body": "Ein kuratierter Einstieg in die Handschrift der Kuche: französische Brasserie-Klassiker, leichter interpretiert und fur einen urbanen Tagesrhythmus komponiert."
+      },
+      "menu": {
+        "eyebrow": "Speisekarten",
+        "title": "Unsere Menus fur Mittag, Abend und den kleinen Anlass dazwischen",
+        "body": "Die Karte bleibt bewusst fokussiert: saisonale Gerichte, klare Handschrift, starke Wiedererkennbarkeit und genug Raum fur Specials, Pairings und Anlassdinner."
+      },
+      "menuCategories": {
+        "eyebrow": "Standorte & Anlasse",
+        "title": "Drei Nutzungsszenen fur dieselbe Brasserie-DNA"
+      },
+      "reservation": {
+        "eyebrow": "Reservieren",
+        "title": "Tischanfragen fur Lunch, Dinner und besondere Abende",
+        "body": "Vom schnellen Business Lunch bis zum gesetzten Dinner: die digitale Reservierung soll so ruhig und hochwertig wirken wie der eigentliche Empfang im Restaurant."
+      },
+      "contact": {
+        "eyebrow": "Kontakt",
+        "title": "Wir freuen uns auf Ihre Nachricht",
+        "body": "Fragen zu Reservierungen, Private Dining, Events oder Presseanfragen lassen sich ohne Layoutwechsel direkt im selben Premium-Auftritt abbilden."
+      },
+      "marketFit": {
+        "eyebrow": "Maison Journal",
+        "title": "Neuigkeiten, Auszeichnungen und Einblicke in das Haus"
+      }
+    },
+    "market_fit": [
+      { "label": "Auszeichnungen", "title": "Empfehlungen & Anerkennung", "body": "Raum fur Michelin-, Gault&Millau- oder Pressehinweise, ohne die Ruhe des Auftritts zu verlieren." },
+      { "label": "Journal", "title": "Saisonnotizen aus Kuche und Service", "body": "Neue Karten, kleine Geschichten aus dem Haus und editoriale Inhalte mit starkem Bildcharakter." },
+      { "label": "Instagram", "title": "Visuelle Tagesimpressionen", "body": "Ein kuratierter Feed aus Lunch, Mise en Place, Apero und Dinner, eingebettet in dieselbe Markenwelt." },
+      { "label": "Kontakt", "title": "Newsletter, Events und direkte Anfragen", "body": "Ein stiller Abschluss der Journey: Kontakt, Newsletter und Eventanfragen ohne Kontextbruch." }
     ]
   },
   "signature_items": []

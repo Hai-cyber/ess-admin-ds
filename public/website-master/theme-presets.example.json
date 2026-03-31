@@ -96,73 +96,321 @@
     ]
   },
   "theme-luxury-a": {
-    "hero_image": "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=1800&q=80",
+    "hero_image": "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1800&q=80",
     "story_paragraphs": [
-      "This preset opens with atmosphere, then narrows into a composed menu and a confident booking invitation.",
-      "Built for chef-led dining rooms, destination restaurants, and occasion traffic with higher table value."
+      "Maison Elise ist eine moderne Brasserie fur Gaste, die mittags leicht, abends stilvoll und zu besonderen Anlassen mit Ruhe genießen wollen.",
+      "Zwischen Lunch, Apero und Dinner entsteht ein Haus mit saisonaler Karte, warmer Servicehaltung und einer klaren urbanen Eleganz."
     ],
-    "menu_sections": [
+    "section_copy": {
+      "homeSignatures": {
+        "eyebrow": "La Table Dressée",
+        "title": "Saisonale Signaturen fur Lunch und Dinner",
+        "body": "Ein kuratierter Einstieg in die Handschrift der Kuche: französische Brasserie-Klassiker, leichter interpretiert und fur einen urbanen Tagesrhythmus komponiert."
+      },
+      "menu": {
+        "eyebrow": "Speisekarten",
+        "title": "Unsere Menus fur Mittag, Abend und den kleinen Anlass dazwischen",
+        "body": "Die Karte bleibt bewusst fokussiert: saisonale Gerichte, klare Handschrift, starke Wiedererkennbarkeit und genug Raum fur Specials, Pairings und Anlassdinner."
+      },
+      "menuCategories": {
+        "eyebrow": "Standorte & Anlasse",
+        "title": "Drei Nutzungsszenen fur dieselbe Brasserie-DNA"
+      },
+      "reservation": {
+        "eyebrow": "Reservieren",
+        "title": "Tischanfragen fur Lunch, Dinner und besondere Abende",
+        "body": "Vom schnellen Business Lunch bis zum gesetzten Dinner: die digitale Reservierung soll so ruhig und hochwertig wirken wie der eigentliche Empfang im Restaurant."
+      },
+      "contact": {
+        "eyebrow": "Kontakt",
+        "title": "Wir freuen uns auf Ihre Nachricht",
+        "body": "Fragen zu Reservierungen, Private Dining, Events oder Presseanfragen lassen sich ohne Layoutwechsel direkt im selben Premium-Auftritt abbilden."
+      },
+      "marketFit": {
+        "eyebrow": "Maison Journal",
+        "title": "Neuigkeiten, Auszeichnungen und Einblicke in das Haus"
+      }
+    },
+    "location_cards": [
       {
-        "label": "Vorspeisen",
-        "title": "Opening Course",
-        "items": [
-          { "name": "Burrata & Heirloom Tomatoes", "description": "Basil oil, sourdough crunch, sea salt flakes.", "price": "12,90 EUR" },
-          { "name": "Beef Carpaccio", "description": "Parmesan, lemon dressing, rocket.", "price": "14,50 EUR" }
-        ]
+        "label": "Berlin",
+        "title": "Direkt vis-a-vis dem KaDeWe",
+        "body": "Eine urbane Brasserie fur Lunch, Date Night und elegante Dinner in bewegter City-Lage.",
+        "image": "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=1200&q=80",
+        "primary_href": "about.html?page=about",
+        "primary_label": "Zum Restaurant",
+        "secondary_href": "menu.html?page=menu",
+        "secondary_label": "Zur Speisekarte"
       },
       {
-        "label": "Hauptgerichte",
-        "title": "Main Dishes",
-        "items": [
-          { "name": "Sea Bass Fillet", "description": "Braised fennel, citrus beurre blanc, herb potatoes.", "price": "27,50 EUR" },
-          { "name": "Dry Aged Ribeye", "description": "Pepper jus, seasonal greens, crispy potatoes.", "price": "34,00 EUR" }
-        ]
+        "label": "Munchen",
+        "title": "Brasserie mit ruhigem Abendrhythmus",
+        "body": "Mehr Nachbarschaft, mehr Stammgaste, mehr Raum fur Anlassdinner und lange Abende.",
+        "image": "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=1200&q=80",
+        "primary_href": "about.html?page=about",
+        "primary_label": "Zum Restaurant",
+        "secondary_href": "menu.html?page=menu",
+        "secondary_label": "Zur Speisekarte"
+      },
+      {
+        "label": "Konstanz",
+        "title": "Altstadt, Anlass und Wochenende",
+        "body": "Ein warmerer, etwas entschleunigter Standort fur Feiern, Besuche und besondere Reservierungen.",
+        "image": "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1200&q=80",
+        "primary_href": "about.html?page=about",
+        "primary_label": "Zum Restaurant",
+        "secondary_href": "menu.html?page=menu",
+        "secondary_label": "Zur Speisekarte"
+      }
+    ],
+    "journal_feature_image": "https://images.unsplash.com/photo-1541544741938-0af808871cc0?auto=format&fit=crop&w=1800&q=80",
+    "journal_cards": [
+      {
+        "title": "Guide Michelin empfiehlt: Maison-Rezepte als Kochbuch",
+        "body": "Rezepte aus der Brasserie fur Gaste, die die Handschrift des Hauses mit nach Hause nehmen mochten.",
+        "image": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=900&q=80"
+      },
+      {
+        "title": "Wir feiern 10 Jahre Brasserie-Kultur",
+        "body": "Ein Abend voller großer Gesten, langjähriger Gaste und kleiner Geschichten aus Service und Kuche.",
+        "image": "https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=900&q=80"
+      },
+      {
+        "title": "Die französische Kuche: der Gipfel der Kochkunst",
+        "body": "Bouillabaisse, klassische Saucen und moderne Leichtigkeit - eine Spurensuche durch unsere Karte.",
+        "image": "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=900&q=80"
+      }
+    ],
+    "team_image": "https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=1800&q=80",
+    "menu_link_cards": [
+      {
+        "label": "Mittag",
+        "title": "La Table Dressée",
+        "body": "Leichter Lunch, saisonal und prazise komponiert.",
+        "image": "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=900&q=80",
+        "href": "menu.html?page=menu",
+        "cta_label": "Lunch Menu"
+      },
+      {
+        "label": "Dinner",
+        "title": "Maison Klassiker",
+        "body": "Bouillabaisse, Bourguignon und Signature-Gerichte des Hauses.",
+        "image": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=80",
+        "href": "menu.html?page=menu",
+        "cta_label": "Dinner Menu"
       },
       {
         "label": "Dessert & Bar",
-        "title": "Finish",
+        "title": "Ausklang",
+        "body": "Desserts, Apero und kleine Rituale fur den Abschluss des Abends.",
+        "image": "https://images.unsplash.com/photo-1563805042-7684c019e1cb?auto=format&fit=crop&w=900&q=80",
+        "href": "menu.html?page=menu",
+        "cta_label": "Dessert & Bar"
+      }
+    ],
+    "menu_sections": [
+      {
+        "label": "Midi",
+        "title": "La Table Dressée",
         "items": [
-          { "name": "Pistachio Tiramisu", "description": "Mascarpone, espresso soak, pistachio crunch.", "price": "8,90 EUR" },
-          { "name": "House Negroni", "description": "Red vermouth, gin, blood orange.", "price": "11,50 EUR" }
+          { "name": "Entenrillettes", "description": "Kurbischutney, Brioche und eingelegte Schalotten.", "price": "14,50 EUR" },
+          { "name": "Salat Mesclun", "description": "Couscous, Paprika, Kerne und feine Zitrusvinaigrette.", "price": "12,90 EUR" }
+        ]
+      },
+      {
+        "label": "Soirée",
+        "title": "Maison Klassiker",
+        "items": [
+          { "name": "Bouillabaisse Maison", "description": "Safransud, Fenchel und Sauce Rouille.", "price": "29,00 EUR" },
+          { "name": "Boeuf Bourguignon", "description": "Karotte, Schalotte, Champignon und Kartoffelcreme.", "price": "31,50 EUR" }
+        ]
+      },
+      {
+        "label": "Dessert & Apero",
+        "title": "Ausklang",
+        "items": [
+          { "name": "Creme Brulee", "description": "Orangenzeste, Pistazie und feine Vanille.", "price": "9,50 EUR" },
+          { "name": "Maison Spritz", "description": "Bitterorange, Cremant und Kräuternoten.", "price": "11,00 EUR" }
         ]
       }
     ],
     "category_cards": [
-      { "label": "Tasting", "title": "Occasion dining", "body": "Short premium curation designed around reservation intent.", "tone": "brand" },
-      { "label": "Wine", "title": "Pairing rhythm", "body": "Digital room for sommelier recommendations and upsell.", "tone": "default" },
-      { "label": "Private", "title": "Chef table", "body": "Private dining and event leads without changing the page shell.", "tone": "surface" }
+      { "label": "Berlin", "title": "Lunch nahe KaDeWe", "body": "Urban, direkt, leicht geschäftiger. Ideal fur Business Lunch, Date Night und spontane Reservierungen am Abend.", "tone": "brand" },
+      { "label": "Munchen", "title": "Brasserie im Glockenbach", "body": "Ein Standort mit mehr Nachbarschaftsruhe, klassischem Dinner-Rhythmus und starker Stammgast-Komponente.", "tone": "default" },
+      { "label": "Konstanz", "title": "Altstadt & Anlass", "body": "Warmer, touristischer, etwas entschleunigter - mit Fokus auf Wochenenden, kleine Feiern und lange Abende.", "tone": "surface" }
     ],
     "membership_rewards": [
-      { "label": "Reward 01", "title": "Priority booking windows" },
-      { "label": "Reward 02", "title": "Chef table invite drops" },
-      { "label": "Reward 03", "title": "Member-only tasting menus" }
+      { "label": "Maison Circle", "title": "Früher Zugang zu neuen Menus" },
+      { "label": "Invitation", "title": "Einladungen zu besonderen Dinnern" },
+      { "label": "Preview", "title": "Reservierungsfenster vor dem öffentlichen Start" }
+    ],
+    "market_fit": [
+      { "label": "Auszeichnungen", "title": "Empfehlungen & Anerkennung", "body": "Raum fur Michelin-, Gault&Millau- oder Pressehinweise, ohne die Ruhe des Auftritts zu verlieren." },
+      { "label": "Journal", "title": "Saisonnotizen aus Kuche und Service", "body": "Neue Karten, kleine Geschichten aus dem Haus und editoriale Inhalte mit starkem Bildcharakter." },
+      { "label": "Instagram", "title": "Visuelle Tagesimpressionen", "body": "Ein kuratierter Feed aus Lunch, Mise en Place, Apero und Dinner, eingebettet in dieselbe Markenwelt." },
+      { "label": "Kontakt", "title": "Newsletter, Events und direkte Anfragen", "body": "Ein stiller Abschluss der Journey: Kontakt, Newsletter und Eventanfragen ohne Kontextbruch." }
     ],
     "signature_items": [
-      { "name": "Truffle Tagliatelle", "price": "18,90 EUR", "description": "Parmesan cream, roasted mushrooms, black truffle.", "image": "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=900&q=80" },
-      { "name": "Sea Bass Fillet", "price": "27,50 EUR", "description": "Citrus beurre blanc, fennel, herb potatoes.", "image": "https://images.unsplash.com/photo-1541544741938-0af808871cc0?auto=format&fit=crop&w=900&q=80" },
-      { "name": "Pistachio Tiramisu", "price": "8,90 EUR", "description": "Mascarpone cream, pistachio crumble.", "image": "https://images.unsplash.com/photo-1563805042-7684c019e1cb?auto=format&fit=crop&w=900&q=80" }
+      { "name": "La Table Dressée", "price": "Mittagsmenu", "description": "Leichte Mittagskomposition mit klarer Handschrift, saisonalen Komponenten und französischer Ruhe.", "image": "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=900&q=80" },
+      { "name": "Bouillabaisse Maison", "price": "29,00 EUR", "description": "Kräftiger Safransud, Sauce Rouille und fein abgestimmte Meeresaromen.", "image": "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=900&q=80" },
+      { "name": "Creme Brulee", "price": "9,50 EUR", "description": "Klassischer Abschluss mit karamellisierter Kruste, Orange und Pistazie.", "image": "https://images.unsplash.com/photo-1563805042-7684c019e1cb?auto=format&fit=crop&w=900&q=80" }
     ]
   },
   "theme-luxury-b": {
-    "hero_image": "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1800&q=80",
+    "restaurant_name": "Maison Verenne",
+    "restaurant_tagline": "A cinematic Berlin dining room shaped by shadow, copper, and appetite.",
+    "restaurant_city": "Berlin",
+    "restaurant_cuisine": "Cuisine Francaise & Cocktails",
+    "restaurant_phone": "+49 30 2201 4840",
+    "restaurant_email": "soir@maison-verenne.example",
+    "restaurant_address": "112 Augustufer, 10117 Berlin",
+    "hero_headline": "Cuisine Francaise",
+    "hero_subheadline": "No visible navigation, only a strong house signature: handwritten branding, a monumental monogram, warm plates in dark light, and a dining room that feels remembered before it is fully explained.",
+    "hero_image": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1800&q=80",
+    "story_title": "Le Story",
+    "story_body": "Maison Verenne should feel like an evening invitation rather than a practical interface. The guest sees atmosphere first, then cuisine, then the small number of actions that matter.",
     "story_paragraphs": [
-      "A darker, more metropolitan luxury preset with stronger evening mood and cocktail emphasis.",
-      "Suitable for lounges, modern steakhouses, and intimate destination concepts."
+      "The room is intentionally quiet in its interface language: no visible tabs leading the eye away, only atmosphere, appetite, and a few deliberate pathways into menu, reservation, and contact.",
+      "Copper accents and handwritten gestures soften the dark structure, while food, glassware, and faces hold the light. That contrast is what makes the homepage sell emotionally."
+    ],
+    "hero_monogram": "V",
+    "hero_script_name": "Maison Verenne",
+    "hero_display_title": "Cuisine Francaise",
+    "story_script_label": "Our Story",
+    "story_heading": "A house that leads with mood, then lets food and ritual confirm it",
+    "feature_title": "Dark composition, warm dishes, and a room staged like a memory",
+    "feature_body": "The visual hierarchy stays restrained: oversized monogram, thin copper ornament, white typography, and imagery placed asymmetrically so the page feels composed rather than templated.",
+    "reserve_label": "Make a Reserve",
+    "reserve_heading": "Reserve for dinner, late cocktails, or a longer table worth dressing for",
+    "reserve_body": "The booking area should feel soft and elegant, with enough friction removed that it converts easily while still keeping the tone of a premium evening house.",
+    "closing_script": "Maison Verenne",
+    "closing_heading": "A closing note in white type, copper detail, and the promise of another evening",
+    "closing_body": "Address, opening hours, and reservation paths sit quietly at the end. The brand should linger more than the interface does.",
+    "reserve_stats": [
+      { "value": "150+", "label": "Clients Every Day" },
+      { "value": "180+", "label": "Great Moments" }
+    ],
+    "section_copy": {
+      "homeSignatures": {
+        "eyebrow": "Our Menu",
+        "title": "Three entry points into the same evening",
+        "body": "Menu presentation should feel more like elegant invitation cards than content blocks. Each lane is a promise: aperitif, dinner, and after-dinner rhythm."
+      },
+      "menu": {
+        "eyebrow": "Our Menu",
+        "title": "Minimal, icon-led pathways into the house offer",
+        "body": "Keep the first encounter curated and light. Show only the essence, not the entire information architecture."
+      },
+      "menuCategories": {
+        "eyebrow": "La Maison",
+        "title": "A homepage built from appetite, atmosphere, and reservation intent"
+      },
+      "reservation": {
+        "eyebrow": "Make a Reserve",
+        "title": "A gentle conversion point inside a strong emotional composition",
+        "body": "The user should feel invited, not processed. Keep the booking prompt near imagery so it feels part of the experience rather than an isolated form step."
+      },
+      "contact": {
+        "eyebrow": "Contact",
+        "title": "Address, hours, and direct contact placed quietly at the end",
+        "body": "Like Belmondo, practical information should be visible but never louder than the atmosphere itself."
+      },
+      "marketFit": {
+        "eyebrow": "Maison Journal",
+        "title": "A small editorial layer to deepen the emotional tone"
+      }
+    },
+    "location_cards": [
+      {
+        "label": "Dining room",
+        "title": "A dark room where plates and glassware hold the light",
+        "body": "The architecture is not explained too early. It is felt through shadow, warm tabletops, and an intimate copper line that frames the page like ornament rather than UI.",
+        "image": "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=1200&q=80",
+        "primary_href": "about.html?page=about",
+        "primary_label": "See the house",
+        "secondary_href": "reservation.html?page=reservation",
+        "secondary_label": "Reserve"
+      },
+      {
+        "label": "Cocktail corner",
+        "title": "A second rhythm for guests who begin at the bar",
+        "body": "The site should support the feeling that one can arrive for a drink and remain for dinner, dessert, and a final round without crossing into a different brand language.",
+        "image": "https://images.unsplash.com/photo-1470337458703-46ad1756a187?auto=format&fit=crop&w=1200&q=80",
+        "primary_href": "menu.html?page=menu",
+        "primary_label": "Open menus",
+        "secondary_href": "contact.html?page=contact",
+        "secondary_label": "Private moments"
+      },
+      {
+        "label": "Private table",
+        "title": "A more intimate frame for hosted evenings",
+        "body": "For discreet celebrations, private dinners, and occasions where the tone must remain elegant, controlled, and emotionally rich.",
+        "image": "https://images.unsplash.com/photo-1466978913421-dad2ebd01d17?auto=format&fit=crop&w=1200&q=80",
+        "primary_href": "contact.html?page=contact",
+        "primary_label": "Plan an evening",
+        "secondary_href": "reservation.html?page=reservation",
+        "secondary_label": "Reserve"
+      }
+    ],
+    "journal_feature_image": "https://images.unsplash.com/photo-1515669097368-22e68427d265?auto=format&fit=crop&w=1800&q=80",
+    "journal_cards": [
+      {
+        "title": "Food should glow out of the darkness",
+        "body": "The page composition works when the background withdraws and the warm tones of the dish, candle, and glass become the visual memory.",
+        "image": "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=900&q=80"
+      },
+      {
+        "title": "The homepage is the sales moment",
+        "body": "Not a navigation hub, but the main emotional proof that the place is worth visiting. The brand promise has to land before the user starts comparing options.",
+        "image": "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=900&q=80"
+      },
+      {
+        "title": "Copper detail makes the darkness feel crafted",
+        "body": "Thin ornamental lines and a restrained metallic accent add softness and signature without turning the page into a decorative cliché.",
+        "image": "https://images.unsplash.com/photo-1470337458703-46ad1756a187?auto=format&fit=crop&w=900&q=80"
+      }
+    ],
+    "team_image": "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1800&q=80",
+    "menu_link_cards": [
+      {
+        "label": "Aperitif",
+        "title": "Cocktails & oysters",
+        "body": "A lighter entry into the evening, designed for guests who arrive for one glass and stay for more.",
+        "image": "https://images.unsplash.com/photo-1470337458703-46ad1756a187?auto=format&fit=crop&w=900&q=80",
+        "href": "menu.html?page=menu",
+        "cta_label": "View selection"
+      },
+      {
+        "label": "Dinner",
+        "title": "Cuisine & signature plates",
+        "body": "Main dishes and warmer compositions that give the site its appetite and seriousness.",
+        "image": "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=900&q=80",
+        "href": "menu.html?page=menu",
+        "cta_label": "Open dinner"
+      },
+      {
+        "label": "After Dinner",
+        "title": "Dessert & late pours",
+        "body": "A slower final chapter with darker sweets, polished cocktails, and a more intimate tone.",
+        "image": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=900&q=80",
+        "href": "menu.html?page=menu",
+        "cta_label": "Discover more"
+      }
     ],
     "menu_sections": [
       {
-        "label": "Raw & Small Plates",
+        "label": "Entrée",
         "title": "Opening",
         "items": [
-          { "name": "Yellowtail Crudo", "description": "Citrus oil, green chili, dill.", "price": "16,90 EUR" },
-          { "name": "Oyster Selection", "description": "Lemon, shallot vinegar, tabasco.", "price": "18,50 EUR" }
+          { "name": "Huîtres de Maison", "description": "Citrus, shallot vinaigrette, cracked pepper.", "price": "18,50 EUR" },
+          { "name": "Tartare de Boeuf", "description": "Capers, mustard cream, toasted brioche.", "price": "17,90 EUR" }
         ]
       },
       {
-        "label": "Fire",
+        "label": "Cuisine",
         "title": "Main Course",
         "items": [
-          { "name": "Coal Grilled Ribeye", "description": "Pepper jus, smoked onion, cress.", "price": "36,00 EUR" },
+          { "name": "Canard Roti", "description": "Cherry jus, glazed shallots, pommes fondantes.", "price": "31,00 EUR" },
           { "name": "Lobster Linguine", "description": "Shellfish butter, parsley, chili.", "price": "31,50 EUR" }
         ]
       },
@@ -171,23 +419,29 @@
         "title": "Late Finish",
         "items": [
           { "name": "Espresso Martini", "description": "Vodka, espresso, coffee liqueur.", "price": "12,50 EUR" },
-          { "name": "Dark Chocolate Mousse", "description": "Sea salt, olive oil, cacao nibs.", "price": "9,50 EUR" }
+          { "name": "Mousse au Chocolat", "description": "Sea salt, olive oil, cacao nibs.", "price": "9,50 EUR" }
         ]
       }
     ],
     "category_cards": [
-      { "label": "Bar", "title": "Late-evening value", "body": "A stronger cocktail lane for dinner-to-bar transitions.", "tone": "brand" },
-      { "label": "Fire", "title": "Premium mains", "body": "Steak, shellfish, and high-ticket anchors.", "tone": "default" },
-      { "label": "Events", "title": "Private room leads", "body": "Suitable for private dinners and brand-hosted evenings.", "tone": "surface" }
+      { "label": "Mood", "title": "An emotional homepage first", "body": "Navigation recedes so the brand and atmosphere can carry the first impression.", "tone": "brand" },
+      { "label": "Cuisine", "title": "Food as the warm focal point", "body": "Dishes, drinks, and table light do more persuasive work than interface chrome.", "tone": "default" },
+      { "label": "Reserve", "title": "Small number of clear actions", "body": "Menu, reservation, and contact appear deliberately, never as a crowded set of options.", "tone": "surface" }
     ],
     "membership_rewards": [
-      { "label": "Reward 01", "title": "After-hours reservation slots" },
-      { "label": "Reward 02", "title": "Cocktail menu previews" },
-      { "label": "Reward 03", "title": "Guestlist priority" }
+      { "label": "Evening", "title": "Late reservation preference" },
+      { "label": "Preview", "title": "Seasonal menu first look" },
+      { "label": "House", "title": "Private dining invitations" }
+    ],
+    "market_fit": [
+      { "label": "Positioning", "title": "Belmondo sells feeling before information", "body": "This variant should work best for brands that need to create desire quickly through atmosphere and visual signature." },
+      { "label": "Conversion", "title": "Reservation sits inside the composition", "body": "The booking moment is stronger when it appears near imagery and brand emotion, not as a separate transactional block." },
+      { "label": "Design", "title": "Copper detail, white type, dark stage", "body": "The palette should remain restrained so the imagery and monogram feel expensive rather than loud." },
+      { "label": "Behavior", "title": "Minimal navigation keeps the eye on the homepage", "body": "The concept is meant for places where the homepage itself does most of the persuasion work." }
     ],
     "signature_items": [
-      { "name": "Coal Grilled Ribeye", "price": "36,00 EUR", "description": "Pepper jus, smoked onion, cress.", "image": "https://images.unsplash.com/photo-1558030006-450675393462?auto=format&fit=crop&w=900&q=80" },
-      { "name": "Lobster Linguine", "price": "31,50 EUR", "description": "Shellfish butter, parsley, chili.", "image": "https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?auto=format&fit=crop&w=900&q=80" },
+      { "name": "Canard Roti", "price": "31,00 EUR", "description": "Cherry jus, glazed shallots, pommes fondantes.", "image": "https://images.unsplash.com/photo-1558030006-450675393462?auto=format&fit=crop&w=900&q=80" },
+      { "name": "Huîtres de Maison", "price": "18,50 EUR", "description": "Citrus, shallot vinaigrette, cracked pepper.", "image": "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=900&q=80" },
       { "name": "Espresso Martini", "price": "12,50 EUR", "description": "Late-night bar signature.", "image": "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=900&q=80" }
     ]
   },

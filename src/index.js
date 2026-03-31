@@ -44,6 +44,9 @@ const PLATFORM_PRICING_DEFAULTS = {
 };
 const WEBSITE_BUILDER_DEFAULTS = {
   site_template: 'modern',
+  site_theme_variant: 'theme-luxury-a',
+  site_content_preset: 'theme-luxury-a',
+  site_language: 'en',
   site_tagline: 'Neighborhood restaurant with a modern booking experience.',
   site_hero_title: 'Welcome to our restaurant',
   site_hero_subtitle: 'Book a table, explore our menu, and discover what makes us special.',
@@ -51,8 +54,151 @@ const WEBSITE_BUILDER_DEFAULTS = {
   site_about_body: 'Tell guests what your restaurant is about, what style of cuisine you serve, and why they should visit.',
   site_primary_cta_text: 'Book a table',
   site_secondary_cta_text: 'View menu',
-  site_accent_color: '#A54A7B'
+  site_contact_address: '27 Alder Quay, Berlin 10407',
+  site_accent_color: '#A54A7B',
+  site_branding_json: '{}',
+  site_navigation_json: '{}',
+  site_content_json: '{}',
+  site_career_json: '{}'
 };
+const WEBSITE_THEME_PREVIEW_PROFILES = {
+  'theme-basic-a': {
+    company: {
+      name: 'Common Table',
+      city: 'Berlin',
+      cuisine: 'Casual Grill & Lunch',
+      phone: '+49 30 2201 4810',
+      email: 'hello@common-table.example',
+      address: '18 Lindenhof Passage, 10435 Berlin'
+    },
+    settings: {
+      site_tagline: 'Straightforward neighborhood dining with fast booking and big food cues.',
+      site_hero_title: 'Common Table',
+      site_hero_subtitle: 'A direct, friendly restaurant site built to sell dishes clearly and convert fast.'
+    }
+  },
+  'theme-basic-b': {
+    company: {
+      name: 'Brick & Pepper',
+      city: 'Berlin',
+      cuisine: 'Fire Kitchen',
+      phone: '+49 30 2201 4820',
+      email: 'table@brick-pepper.example',
+      address: '44 Gartenmarkt, 10999 Berlin'
+    },
+    settings: {
+      site_tagline: 'Warm casual food, louder appetite cues, and a practical conversion flow.',
+      site_hero_title: 'Brick & Pepper',
+      site_hero_subtitle: 'Built for hearty dishes, visible value, and a simpler neighborhood sales language.'
+    }
+  },
+  'theme-luxury-a': {
+    company: {
+      name: 'Maison Cendree',
+      city: 'Berlin',
+      cuisine: 'Seasonal Fine Dining',
+      phone: '+49 30 2201 4830',
+      email: 'reservations@maison-cendree.example',
+      address: '7 Monbijou Platz, 10178 Berlin'
+    },
+    settings: {
+      site_tagline: 'Seasonal hospitality with a composed, editorial luxury tone.',
+      site_hero_title: 'Maison Cendree',
+      site_hero_subtitle: 'A quieter luxury expression built around light, space, and a restrained dining-room rhythm.'
+    }
+  },
+  'theme-luxury-b': {
+    company: {
+      name: 'Maison Verenne',
+      city: 'Berlin',
+      cuisine: 'French Dining & Cocktails',
+      phone: '+49 30 2201 4840',
+      email: 'soir@maison-verenne.example',
+      address: '112 Augustufer, 10117 Berlin'
+    },
+    settings: {
+      site_tagline: 'A cinematic evening house shaped by shadow, copper detail, and appetite.',
+      site_hero_title: 'Maison Verenne',
+      site_hero_subtitle: 'An atmosphere-led restaurant concept where the homepage sells emotion first and practical navigation stays quiet.'
+    }
+  },
+  'theme-minimal-a': {
+    company: {
+      name: 'Studio Aster',
+      city: 'Berlin',
+      cuisine: 'Modern Seasonal Plates',
+      phone: '+49 30 2201 4850',
+      email: 'hello@studio-aster.example',
+      address: '39 Linienufer, 10115 Berlin'
+    },
+    settings: {
+      site_tagline: 'Editorial calm, asymmetry, and a modern neighborhood story.',
+      site_hero_title: 'Studio Aster',
+      site_hero_subtitle: 'Built for brands that want a quieter, more directional visual language with more whitespace and narrative.'
+    }
+  },
+  'theme-minimal-b': {
+    company: {
+      name: 'North Vale',
+      city: 'Berlin',
+      cuisine: 'Contemporary Kitchen',
+      phone: '+49 30 2201 4860',
+      email: 'bookings@north-vale.example',
+      address: '53 Helioshof, 10243 Berlin'
+    },
+    settings: {
+      site_tagline: 'Clean structure, restrained typography, and a sharper editorial edge.',
+      site_hero_title: 'North Vale',
+      site_hero_subtitle: 'A minimal concept that trades decorative UI for proportion, image placement, and quiet confidence.'
+    }
+  },
+  'theme-diner-a': {
+    company: {
+      name: 'Lucky Jet Diner',
+      city: 'Berlin',
+      cuisine: 'Burgers, Shakes & Late Bites',
+      phone: '+49 30 2201 4870',
+      email: 'hello@lucky-jet.example',
+      address: '91 Neon Arcade, 10967 Berlin'
+    },
+    settings: {
+      site_tagline: 'Big appetite cues, color, and fast ordering energy.',
+      site_hero_title: 'Lucky Jet Diner',
+      site_hero_subtitle: 'A louder family built for food-first merchandising, category blocks, and high-clarity action paths.'
+    }
+  },
+  'theme-diner-b': {
+    company: {
+      name: 'Turbo Melt',
+      city: 'Berlin',
+      cuisine: 'Street Burgers & Fries',
+      phone: '+49 30 2201 4880',
+      email: 'crew@turbo-melt.example',
+      address: '12 Signal Yard, 12043 Berlin'
+    },
+    settings: {
+      site_tagline: 'Hotter color, denser merchandising, and a stronger impulse-ordering rhythm.',
+      site_hero_title: 'Turbo Melt',
+      site_hero_subtitle: 'Made for louder diner brands that need category visibility and immediate commercial energy.'
+    }
+  }
+};
+const WEBSITE_THEME_FALLBACK_BY_TEMPLATE = {
+  minimal: 'theme-minimal-a',
+  modern: 'theme-basic-a',
+  premium: 'theme-luxury-a'
+};
+const WEBSITE_SUPPORTED_THEME_VARIANTS = new Set([
+  'theme-basic-a',
+  'theme-basic-b',
+  'theme-luxury-a',
+  'theme-luxury-b',
+  'theme-minimal-a',
+  'theme-minimal-b',
+  'theme-diner-a',
+  'theme-diner-b'
+]);
+const WEBSITE_SUPPORTED_LANGUAGES = new Set(['en', 'de']);
 const OPERATIONAL_SETTING_KEYS = [
   'website_url',
   'standard_contact_link',
@@ -98,6 +244,9 @@ const OPERATIONAL_SETTING_KEYS = [
   'kc_terms_link',
   'privacy_link',
   'site_template',
+  'site_theme_variant',
+  'site_content_preset',
+  'site_language',
   'site_tagline',
   'site_hero_title',
   'site_hero_subtitle',
@@ -105,7 +254,12 @@ const OPERATIONAL_SETTING_KEYS = [
   'site_about_body',
   'site_primary_cta_text',
   'site_secondary_cta_text',
-  'site_accent_color'
+  'site_contact_address',
+  'site_accent_color',
+  'site_branding_json',
+  'site_navigation_json',
+  'site_content_json',
+  'site_career_json'
 ];
 const MANAGER_EDITABLE_OPERATIONAL_SETTING_KEYS = new Set([
   'social_instagram_url',
@@ -113,6 +267,9 @@ const MANAGER_EDITABLE_OPERATIONAL_SETTING_KEYS = new Set([
   'social_tiktok_url',
   'social_google_business_url',
   'site_template',
+  'site_theme_variant',
+  'site_content_preset',
+  'site_language',
   'site_tagline',
   'site_hero_title',
   'site_hero_subtitle',
@@ -120,7 +277,12 @@ const MANAGER_EDITABLE_OPERATIONAL_SETTING_KEYS = new Set([
   'site_about_body',
   'site_primary_cta_text',
   'site_secondary_cta_text',
-  'site_accent_color'
+  'site_contact_address',
+  'site_accent_color',
+  'site_branding_json',
+  'site_navigation_json',
+  'site_content_json',
+  'site_career_json'
 ]);
 const MODULE_SETTING_KEYS = [
   'module_membership_management',
@@ -189,6 +351,9 @@ const OPERATIONAL_KEY_DESCRIPTIONS = {
   kc_terms_link: 'Terms path or URL for KC flow',
   privacy_link: 'Privacy policy path or URL for founder/KC flows',
   site_template: 'Public website template choice (minimal, modern, premium)',
+  site_theme_variant: 'Exact tenant website theme variant key (for example theme-luxury-a)',
+  site_content_preset: 'Content preset key used by the website master payload',
+  site_language: 'Public website language code (en or de)',
   site_tagline: 'Short public-facing tagline for the restaurant website',
   site_hero_title: 'Main hero title on the tenant website',
   site_hero_subtitle: 'Hero subtitle on the tenant website',
@@ -196,7 +361,12 @@ const OPERATIONAL_KEY_DESCRIPTIONS = {
   site_about_body: 'About section body text on the tenant website',
   site_primary_cta_text: 'Primary call-to-action label on the tenant website',
   site_secondary_cta_text: 'Secondary call-to-action label on the tenant website',
-  site_accent_color: 'Primary brand accent color for the tenant website'
+  site_contact_address: 'Public contact address shown on the tenant website',
+  site_accent_color: 'Primary brand accent color for the tenant website',
+  site_branding_json: 'JSON overrides for website branding, language, and logo asset references',
+  site_navigation_json: 'JSON overrides for website navigation labels, page visibility, and secondary nav items',
+  site_content_json: 'JSON overrides for website content blocks, images, and section copy',
+  site_career_json: 'JSON overrides for website career page copy and roles'
 };
 const MODULE_KEY_DESCRIPTIONS = {
   module_membership_management: 'Product line: community & membership (Founder/KC forms, OTP, member lifecycle automation)',
@@ -495,6 +665,287 @@ async function getAdminPlatformConfig(env, companyId) {
     company,
     operationalSettings,
     modules
+  };
+}
+
+function safeParseJsonObject(rawValue, fallback = {}) {
+  const text = String(rawValue || '').trim();
+  if (!text) return { ...fallback };
+  try {
+    const parsed = JSON.parse(text);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : { ...fallback };
+  } catch {
+    return { ...fallback };
+  }
+}
+
+function normalizeWebsiteLanguage(rawLanguage) {
+  const normalized = String(rawLanguage || '').trim().toLowerCase();
+  return WEBSITE_SUPPORTED_LANGUAGES.has(normalized) ? normalized : WEBSITE_BUILDER_DEFAULTS.site_language;
+}
+
+function normalizeWebsiteThemeVariant(rawTheme, templateValue = WEBSITE_BUILDER_DEFAULTS.site_template) {
+  const normalized = String(rawTheme || '').trim().toLowerCase();
+  if (WEBSITE_SUPPORTED_THEME_VARIANTS.has(normalized)) return normalized;
+  const templateKey = String(templateValue || '').trim().toLowerCase();
+  return WEBSITE_THEME_FALLBACK_BY_TEMPLATE[templateKey] || WEBSITE_BUILDER_DEFAULTS.site_theme_variant;
+}
+
+function inferWebsiteTierFromModules(modules = {}) {
+  if (!modules.module_booking_management && !modules.module_membership_management) return 'basic';
+  if (modules.module_booking_management && !modules.module_membership_management) return 'plus';
+  return 'premium';
+}
+
+function getDefaultWebsiteLabels(language) {
+  if (language === 'de') {
+    return {
+      home: 'Startseite',
+      menu: 'Speisekarte',
+      reservation: 'Reservierung',
+      about: 'Uber uns',
+      contact: 'Kontakt',
+      career: 'Karriere',
+      contactButton: 'Kontakt',
+      reserveButton: 'Reservieren'
+    };
+  }
+
+  return {
+    home: 'Home',
+    menu: 'Menu',
+    reservation: 'Reservations',
+    about: 'About',
+    contact: 'Contact',
+    career: 'Careers',
+    contactButton: 'Contact',
+    reserveButton: 'Reserve'
+  };
+}
+
+function getDefaultWebsiteSecondaryItems(language) {
+  if (language === 'de') {
+    return [
+      { page: 'about', label: 'Haus & Geschichte' },
+      { page: 'menu', label: 'Speisekarten' },
+      { page: 'career', label: 'Arbeiten mit uns' },
+      { page: 'contact', label: 'Kontakt' }
+    ];
+  }
+
+  return [
+    { page: 'about', label: 'House Story' },
+    { page: 'menu', label: 'Menus' },
+    { page: 'career', label: 'Work With Us' },
+    { page: 'contact', label: 'Contact' }
+  ];
+}
+
+async function getActiveWebsiteMediaAssets(env, companyId) {
+  const result = await env.DB.prepare(`
+    SELECT id, title, alt_text, data_url, tags
+    FROM media_assets
+    WHERE company_id = ? AND is_active = 1
+    ORDER BY updated_at DESC
+    LIMIT 200
+  `).bind(companyId).all();
+
+  return (result.results || []).map((row) => ({
+    id: String(row.id || '').trim(),
+    title: String(row.title || '').trim(),
+    altText: String(row.alt_text || '').trim(),
+    dataUrl: String(row.data_url || '').trim(),
+    tags: (() => {
+      try {
+        const parsed = JSON.parse(String(row.tags || '[]'));
+        return Array.isArray(parsed)
+          ? parsed.map((item) => String(item || '').trim().toLowerCase()).filter(Boolean)
+          : [];
+      } catch {
+        return [];
+      }
+    })()
+  })).filter((asset) => asset.dataUrl);
+}
+
+function findMediaAssetDataUrlByTags(assets, tags) {
+  const normalizedTags = (tags || []).map((tag) => String(tag || '').trim().toLowerCase()).filter(Boolean);
+  if (!normalizedTags.length) return '';
+  const match = (assets || []).find((asset) => normalizedTags.some((tag) => asset.tags.includes(tag)));
+  return match?.dataUrl || '';
+}
+
+function buildWebsiteMediaSlots(assets) {
+  return {
+    logo_image: findMediaAssetDataUrlByTags(assets, ['logo', 'brand-logo']),
+    hero_image: findMediaAssetDataUrlByTags(assets, ['hero', 'home-hero']),
+    team_image: findMediaAssetDataUrlByTags(assets, ['team', 'about-team']),
+    journal_feature_image: findMediaAssetDataUrlByTags(assets, ['journal-feature', 'feature-food']),
+    location_images: [
+      findMediaAssetDataUrlByTags(assets, ['location-1', 'berlin']),
+      findMediaAssetDataUrlByTags(assets, ['location-2', 'munich']),
+      findMediaAssetDataUrlByTags(assets, ['location-3', 'konstanz'])
+    ],
+    journal_images: [
+      findMediaAssetDataUrlByTags(assets, ['journal-1']),
+      findMediaAssetDataUrlByTags(assets, ['journal-2']),
+      findMediaAssetDataUrlByTags(assets, ['journal-3'])
+    ],
+    menu_images: [
+      findMediaAssetDataUrlByTags(assets, ['menu-1']),
+      findMediaAssetDataUrlByTags(assets, ['menu-2']),
+      findMediaAssetDataUrlByTags(assets, ['menu-3'])
+    ]
+  };
+}
+
+function getWebsiteThemePreviewProfile(theme) {
+  const normalizedTheme = normalizeWebsiteThemeVariant(theme, WEBSITE_BUILDER_DEFAULTS.site_template);
+  return WEBSITE_THEME_PREVIEW_PROFILES[normalizedTheme] || null;
+}
+
+async function buildPublicWebsitePayload(env, companyId, currentUrl) {
+  const [{ company, operationalSettings, modules }, assets] = await Promise.all([
+    getAdminPlatformConfig(env, companyId),
+    getActiveWebsiteMediaAssets(env, companyId)
+  ]);
+
+  const settings = operationalSettings || {};
+  const brandingOverrides = safeParseJsonObject(settings.site_branding_json);
+  const navigationOverrides = safeParseJsonObject(settings.site_navigation_json);
+  const contentOverrides = safeParseJsonObject(settings.site_content_json);
+  const careerOverrides = safeParseJsonObject(settings.site_career_json);
+  const requestedPreviewTheme = String(currentUrl?.searchParams?.get('theme') || '').trim();
+  const theme = normalizeWebsiteThemeVariant(requestedPreviewTheme || settings.site_theme_variant || settings.site_template, settings.site_template);
+  const language = normalizeWebsiteLanguage(settings.site_language || brandingOverrides.language_code);
+  const themePreset = String(requestedPreviewTheme || settings.site_content_preset || theme).trim() || theme;
+  const previewProfile = requestedPreviewTheme ? getWebsiteThemePreviewProfile(theme) : null;
+  const mediaSlots = buildWebsiteMediaSlots(assets);
+  const defaultLabels = getDefaultWebsiteLabels(language);
+  const websiteUrl = String(settings.website_url || currentUrl?.origin || '').trim();
+  const contactAddress = String(previewProfile?.company?.address || settings.site_contact_address || '').trim() || '27 Alder Quay, Berlin 10407';
+  const fallbackEmail = String(previewProfile?.company?.email || settings.booking_email || company?.email || '').trim() || 'hello@example.com';
+  const fallbackPhone = String(previewProfile?.company?.phone || company?.phone || '').trim() || '+49 30 5550 2100';
+
+  const content = {
+    ...(contentOverrides || {})
+  };
+
+  if (!content.logo_image && mediaSlots.logo_image) content.logo_image = mediaSlots.logo_image;
+  if (!content.hero_image && mediaSlots.hero_image) content.hero_image = mediaSlots.hero_image;
+  if (!content.team_image && mediaSlots.team_image) content.team_image = mediaSlots.team_image;
+  if (!content.journal_feature_image && mediaSlots.journal_feature_image) content.journal_feature_image = mediaSlots.journal_feature_image;
+
+  if (Array.isArray(content.location_cards)) {
+    content.location_cards = content.location_cards.map((card, index) => ({
+      ...card,
+      image: String(card?.image || '').trim() || mediaSlots.location_images[index] || ''
+    }));
+  }
+
+  if (Array.isArray(content.journal_cards)) {
+    content.journal_cards = content.journal_cards.map((card, index) => ({
+      ...card,
+      image: String(card?.image || '').trim() || mediaSlots.journal_images[index] || ''
+    }));
+  }
+
+  if (Array.isArray(content.menu_link_cards)) {
+    content.menu_link_cards = content.menu_link_cards.map((card, index) => ({
+      ...card,
+      image: String(card?.image || '').trim() || mediaSlots.menu_images[index] || ''
+    }));
+  }
+
+  const navigationLabels = navigationOverrides?.labels && typeof navigationOverrides.labels === 'object'
+    ? navigationOverrides.labels
+    : {};
+  const companyIdText = String(companyId || '').trim();
+
+  return {
+    tenant: {
+      id: String(company?.subdomain || `tenant-${companyIdText}`).trim(),
+      company_id: Number(companyId),
+      theme,
+      tier: inferWebsiteTierFromModules(modules),
+      content_preset: themePreset
+    },
+    theme_presets_url: '/website-master/theme-presets.example.json',
+    company: {
+      name: String(previewProfile?.company?.name || company?.name || 'North & Mercer House').trim(),
+      city: String(brandingOverrides.city || previewProfile?.company?.city || 'Berlin').trim(),
+      cuisine: String(brandingOverrides.cuisine || previewProfile?.company?.cuisine || 'Contemporary European').trim(),
+      phone: fallbackPhone,
+      email: fallbackEmail,
+      address: contactAddress
+    },
+    settings: {
+      site_template: String(settings.site_template || WEBSITE_BUILDER_DEFAULTS.site_template).trim(),
+      site_tagline: String(settings.site_tagline || previewProfile?.settings?.site_tagline || WEBSITE_BUILDER_DEFAULTS.site_tagline).trim(),
+      site_hero_title: String(settings.site_hero_title || previewProfile?.settings?.site_hero_title || WEBSITE_BUILDER_DEFAULTS.site_hero_title).trim(),
+      site_hero_subtitle: String(settings.site_hero_subtitle || previewProfile?.settings?.site_hero_subtitle || WEBSITE_BUILDER_DEFAULTS.site_hero_subtitle).trim(),
+      site_about_title: String(settings.site_about_title || WEBSITE_BUILDER_DEFAULTS.site_about_title).trim(),
+      site_about_body: String(settings.site_about_body || WEBSITE_BUILDER_DEFAULTS.site_about_body).trim(),
+      site_primary_cta_text: String(settings.site_primary_cta_text || defaultLabels.reserveButton).trim(),
+      site_secondary_cta_text: String(settings.site_secondary_cta_text || 'Menu').trim(),
+      site_accent_color: String(settings.site_accent_color || WEBSITE_BUILDER_DEFAULTS.site_accent_color).trim(),
+      site_language: language,
+      booking_email: fallbackEmail,
+      website_url: websiteUrl,
+      custom_domain: String(settings.custom_domain || '').trim(),
+      standard_contact_link: String(settings.standard_contact_link || '').trim(),
+      founder_program_label: String(settings.founder_program_label || 'Circle').trim(),
+      founder_membership_type: String(settings.founder_membership_type || FOUNDER_DEFAULT_MEMBERSHIP_TYPE).trim(),
+      founder_redirect_link: String(settings.founder_redirect_link || '').trim(),
+      privacy_link: String(settings.privacy_link || '/privacy.html').trim(),
+      founder_terms_link: String(settings.founder_terms_link || '/terms.html').trim()
+    },
+    branding: {
+      logo_image: String(brandingOverrides.logo_image || content.logo_image || '').trim(),
+      locale_label: String(brandingOverrides.locale_label || language.toUpperCase()).trim(),
+      language_code: language
+    },
+    navigation: {
+      labels: {
+        home: String(navigationLabels.home || defaultLabels.home).trim(),
+        menu: String(navigationLabels.menu || defaultLabels.menu).trim(),
+        reservation: String(navigationLabels.reservation || defaultLabels.reservation).trim(),
+        about: String(navigationLabels.about || defaultLabels.about).trim(),
+        contact: String(navigationLabels.contact || defaultLabels.contact).trim(),
+        career: String(navigationLabels.career || defaultLabels.career).trim()
+      },
+      secondary_items: Array.isArray(navigationOverrides.secondary_items)
+        ? navigationOverrides.secondary_items
+        : getDefaultWebsiteSecondaryItems(language),
+      page_visibility: navigationOverrides.page_visibility && typeof navigationOverrides.page_visibility === 'object'
+        ? navigationOverrides.page_visibility
+        : {
+          home: { show_in_nav: true, show_on_home: true },
+          menu: { show_in_nav: true, show_on_home: false },
+          reservation: { show_in_nav: true, show_on_home: false },
+          about: { show_in_nav: true, show_on_home: false },
+          contact: { show_in_nav: true, show_on_home: false },
+          career: { show_in_nav: true, show_on_home: false }
+        },
+      header_contact_label: String(navigationOverrides.header_contact_label || defaultLabels.contactButton).trim(),
+      header_reserve_label: String(navigationOverrides.header_reserve_label || defaultLabels.reserveButton).trim()
+    },
+    career: {
+      ...(careerOverrides || {})
+    },
+    modules,
+    legal: {
+      terms_url: String(settings.founder_terms_link || '/terms.html').trim(),
+      privacy_url: String(settings.privacy_link || '/privacy.html').trim(),
+      impressum_url: String(brandingOverrides.impressum_url || '/impressum.html').trim()
+    },
+    social: {
+      instagram: String(settings.social_instagram_url || '').trim(),
+      facebook: String(settings.social_facebook_url || '').trim(),
+      tiktok: String(settings.social_tiktok_url || '').trim(),
+      google_business: String(settings.social_google_business_url || '').trim()
+    },
+    content
   };
 }
 
@@ -883,6 +1334,14 @@ function isLocalDevelopmentHost(url) {
 function isTurnstileBypassHost(url) {
   const hostname = String(url?.hostname || '').trim().toLowerCase();
   return isLocalDevelopmentHost(url) || hostname.includes('workers.dev');
+}
+
+function isWebsiteMasterPreviewPath(pathnameRaw) {
+  const pathname = String(pathnameRaw || '').trim().toLowerCase();
+  return pathname === '/website-master'
+    || pathname === '/website-master/'
+    || pathname.startsWith('/website-master/')
+    || pathname === '/favicon.svg';
 }
 
 function getResolvedTurnstileSiteKey(env, url = null) {
@@ -2058,6 +2517,15 @@ export default {
     const url = new URL(request.url);
     const tenant = getTenantContext(request);
 
+    if (url.pathname === '/website/-master' || url.pathname === '/website/-master/') {
+      return Response.redirect(`${url.origin}/website-master/`, 301);
+    }
+
+    if (url.pathname.startsWith('/website/-master/')) {
+      const redirectPath = url.pathname.replace('/website/-master/', '/website-master/');
+      return Response.redirect(`${url.origin}${redirectPath}${url.search}`, 301);
+    }
+
     // Initialize D1 once per DB binding before handling the first non-static request.
     // This avoids fresh-runtime failures on POST-only flows such as OTP register.
     if (env?.DB && !initializedDatabases.has(env.DB) && !url.pathname.startsWith("/static")) {
@@ -2072,17 +2540,19 @@ export default {
 
     let activeCompanyId = null;
     let activeCompanyResolution = { ok: false, reason: 'unresolved' };
-    try {
-      activeCompanyResolution = await resolveActiveCompanyId(env, tenant, url);
-    } catch (e) {
-      console.warn('Company resolution error:', e?.message || e);
-      activeCompanyResolution = { ok: false, reason: 'resolution_error' };
-    }
+    if (!isWebsiteMasterPreviewPath(url.pathname)) {
+      try {
+        activeCompanyResolution = await resolveActiveCompanyId(env, tenant, url);
+      } catch (e) {
+        console.warn('Company resolution error:', e?.message || e);
+        activeCompanyResolution = { ok: false, reason: 'resolution_error' };
+      }
 
-    if (activeCompanyResolution.ok) {
-      activeCompanyId = activeCompanyResolution.companyId;
-    } else {
-      console.warn('Tenant resolution failed:', activeCompanyResolution.reason);
+      if (activeCompanyResolution.ok) {
+        activeCompanyId = activeCompanyResolution.companyId;
+      } else {
+        console.warn('Tenant resolution failed:', activeCompanyResolution.reason);
+      }
     }
 
     const runTenantRoute = (handler) => requireTenant(handler)({
@@ -2100,6 +2570,18 @@ export default {
         ok: true,
         service: "ess-admin-ds",
         time: new Date().toISOString()
+      });
+    }
+
+    if (url.pathname === "/api/website/payload" && request.method === "GET") {
+      return runTenantRoute(async ({ companyId }) => {
+        try {
+          const source = await buildPublicWebsitePayload(env, companyId, url);
+          return Response.json({ ok: true, companyId, source });
+        } catch (e) {
+          console.error('Website payload GET error:', e);
+          return Response.json({ ok: false, error: e.message }, { status: 500 });
+        }
       });
     }
 
