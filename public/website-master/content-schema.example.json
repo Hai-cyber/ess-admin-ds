@@ -1,4 +1,44 @@
 {
+  "contract_version": "website-template-v1",
+  "supported_themes": [
+    "theme-basic-a",
+    "theme-basic-b",
+    "theme-luxury-a",
+    "theme-luxury-b",
+    "theme-minimal-a",
+    "theme-minimal-b",
+    "theme-diner-a",
+    "theme-diner-b"
+  ],
+  "fixed_pages": [
+    "home",
+    "menu",
+    "reservation",
+    "about",
+    "contact",
+    "career",
+    "founder"
+  ],
+  "editable_surface": {
+    "principle": "bounded-copy-and-media-only",
+    "tenant_may_edit": [
+      "business identity",
+      "business contact details",
+      "navigation labels",
+      "section copy",
+      "menu content",
+      "image slots",
+      "theme selection",
+      "preset selection"
+    ],
+    "tenant_may_not_edit": [
+      "internal page keys",
+      "renderer logic",
+      "payload shape",
+      "section identifiers",
+      "publish pipeline"
+    ]
+  },
   "tenant": {
     "id": "tenant-berlin-001",
     "company_id": 101,
@@ -19,6 +59,45 @@
     "founder_program_label": "String",
     "founder_membership_type": "Founder",
     "founder_redirect_link": "/founder-form.html"
+  },
+  "navigation_contract": {
+    "internal_page_keys_are_fixed": true,
+    "allowed_label_keys": [
+      "home",
+      "menu",
+      "reservation",
+      "about",
+      "contact",
+      "career",
+      "founder"
+    ],
+    "allowed_section_copy_keys": [
+      "homeSignatures",
+      "menu",
+      "menuCategories",
+      "reservation",
+      "contact",
+      "marketFit"
+    ]
+  },
+  "media_slots": {
+    "single": [
+      "hero_image",
+      "journal_feature_image",
+      "team_image"
+    ],
+    "repeatable": [
+      "signature_items[].image",
+      "location_cards[].image",
+      "journal_cards[].image",
+      "menu_link_cards[].image"
+    ],
+    "fallback_order": [
+      "tenant override",
+      "theme preset",
+      "preview profile",
+      "system placeholder"
+    ]
   },
   "content": {
     "hero_image": "https://images.example.com/hero.jpg",

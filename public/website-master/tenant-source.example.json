@@ -1,4 +1,5 @@
 {
+  "contract_version": "website-template-v1",
   "tenant": {
     "id": "tenant-berlin-001",
     "company_id": 101,
@@ -42,13 +43,14 @@
       "reservation": "Reservieren",
       "about": "Standorte",
       "contact": "Kontakt",
-      "career": "Karriere"
+      "career": "Karriere",
+      "founder": "Maison Circle"
     },
     "secondary_items": [
       { "page": "about", "label": "Unsere Restaurants" },
-      { "href": "#", "label": "Maison Journal" },
+      { "href": "/journal", "label": "Maison Journal" },
       { "page": "career", "label": "Jobs & Karriere" },
-      { "href": "#", "label": "Instagram" },
+      { "href": "https://instagram.com/maisonelise", "label": "Instagram" },
       { "page": "contact", "label": "Kontakt" }
     ],
     "page_visibility": {
@@ -57,7 +59,8 @@
       "reservation": { "show_in_nav": true, "show_on_home": false },
       "about": { "show_in_nav": true, "show_on_home": false },
       "contact": { "show_in_nav": true, "show_on_home": false },
-      "career": { "show_in_nav": true, "show_on_home": false }
+      "career": { "show_in_nav": true, "show_on_home": false },
+      "founder": { "show_in_nav": true, "show_on_home": false }
     },
     "header_contact_label": "Kontakt",
     "header_reserve_label": "Reservieren"

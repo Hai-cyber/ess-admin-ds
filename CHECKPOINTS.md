@@ -1221,6 +1221,8 @@ Track progress visually:
 
 **Definition**: `restaurantos.app` is live with marketing content and pricing tiers. A restaurant owner can sign up, verify their email, and land in the Admin setup wizard — without any manual provisioning.
 
+**2026-03-31 update**: The tenant website track is now explicitly locked to a fixed-skin model. The repository includes a canonical website template contract plus a pre-publish validation gate so future tenant versions are created from bounded presets instead of bespoke page structures.
+
 **Prerequisite**: CP-3 (Admin UI Setup) must pass first.
 
 **Verification Script**:
@@ -1291,6 +1293,8 @@ checkPlatformSignup().catch(e => { console.error(e); process.exit(1); });
 - [ ] `POST /api/platform/signup/verify-email` flips status to `trial_active`
 - [ ] After verify, redirect lands restaurant owner at `{subdomain}.restaurantos.app/admin/setup`
 - [ ] Setup wizard completes → tenant website live at `{subdomain}.restaurantos.app`
+- [x] Website template contract exists for fixed page keys, payload shape, media slots, and fallback rules
+- [x] Pre-publish validator exists and rejects invalid tenant website payloads before render/publish
 - [ ] Booking form on tenant website creates bookings in D1 (end-to-end)
 - [ ] Rate limiting active on signup endpoint (5/hour per IP)
 - [ ] Tenant isolation not violated during provisioning

@@ -2,6 +2,17 @@
 
 This folder contains the universal tenant website master source.
 
+This system follows a fixed-skin model:
+
+- we maintain a bounded set of prebuilt skins
+- tenants copy a preset and edit limited content fields
+- tenants do not change the page architecture
+- all skins render the same normalized payload contract
+
+The source-of-truth contract for this model is in `docs/contracts/WEBSITE_TEMPLATE_CONTRACTS.md`.
+
+The pre-publish validation gate is in `docs/contracts/WEBSITE_PUBLISH_VALIDATION.md` and can be run with `npm run validate:website-template`.
+
 The preview now behaves like a multi-page tenant website and the folder now includes real page files:
 
 - `#home`: landing page and homepage signatures
@@ -10,6 +21,7 @@ The preview now behaves like a multi-page tenant website and the folder now incl
 - `#about`: story and market-fit content
 - `#contact`: contact details and contact form
 - `#career`: hiring page and open-role cards
+- `#founder`: premium membership and founder flow
 
 Page files exposed in this folder:
 
@@ -19,6 +31,7 @@ Page files exposed in this folder:
 - `about.html`
 - `contact.html`
 - `career.html`
+- `founder.html`
 
 The top navigation now links between those actual files, while theme, tier, labels, logo, text, and images are expected to come from the backend payload or tenant source JSON.
 
@@ -44,6 +57,7 @@ Keep the technical page keys stable even if the tenant-facing labels change:
 - `about`
 - `contact`
 - `career`
+- `founder`
 
 The navigation labels can be localized or renamed per tenant, but the internal page keys should stay fixed so preview, publishing, and routing remain predictable.
 
@@ -83,6 +97,8 @@ The intended behavior for built-in pages is:
 
 - If `show_in_nav` is `true`, the page stays as its own tab/page for a cleaner, less distracting flow.
 - If `show_in_nav` is `false` and `show_on_home` is `true`, that page feed is embedded into Home so the tenant can keep a long-form landing page without exposing another tab.
+
+This is a bounded system, not a freeform site builder. Tenants may change copy and media inside the contract, but must not change the internal page keys, section model, or renderer shape.
 
 ## Feature switches
 

@@ -2,7 +2,7 @@
 
 **Purpose**: Real-time snapshot of project state. Update before/after every session.
 
-**Last Updated**: 2026-03-30  
+**Last Updated**: 2026-03-31  
 **By**: AI Agent  
 **Next Update**: 2026-04-01 (or sooner if major change)
 
@@ -11,16 +11,16 @@
 ## 🎯 Current State (Right Now)
 
 ### Phase
-**Phase 1: Booking + Platform Entry (88% complete)**
+**Phase 1: Booking + Platform Entry (89% complete)**
 - ETA: April 15, 2026
 - Status: 🟡 ON TRACK (remaining: Stripe checkout wiring + tenant website publish/domain workflow + founder/KC OTP runtime fix)
 
 ### Overall Progress
 ```
-█████████░ 88%
+█████████░ 89%
 
-Completed: 88%
-In Progress: 8% (platform billing/admin/domain finalization)
+Completed: 89%
+In Progress: 7% (platform billing/admin/domain finalization)
 Blocked: 4% (founder/KC OTP delivery in local runtime)
 Not Started: 0%
 ```
@@ -48,6 +48,9 @@ Not Started: 0%
 - [x] Website master forms now wire to live runtime endpoints for booking, contact, and founder/KC membership flows with automatic `company_id` and `tenant_id` preview injection
 - [x] Public contact API route added at `/api/contact/create` for website-originated submissions stored in `contacts`
 - [x] Local verification on active runtime port `8790` confirmed website master render, booking create/readback, and founder register/verify persistence
+- [x] Fixed-skin website template contract added for the 8-skin bounded-customization model
+- [x] Website publish validation contract added for pre-render/pre-publish gating
+- [x] Runnable website payload validator added and verified locally with `npm run validate:website-template`
 
 **Evidence**:
 - Local live verification on 2026-03-30 ✅
@@ -57,6 +60,8 @@ Not Started: 0%
 - Platform home + signup copy verified locally after pricing/i18n updates ✅
 - Website master preview verified at `/website-master/index.html?company_id=1` on the active local runtime ✅
 - Booking API verified from website-style payload on `8790`; founder verify completed and persisted in local D1 ✅
+- Website template contract and publish-validation docs now define the non-bespoke tenant website model ✅
+- `npm run validate:website-template` passes against the publish-ready example payload ✅
 - Contact route exists in source but still needs verification on a freshly reloaded local worker because the active `8790` runtime did not expose the new route during smoke test ⚠️
 - Known failures isolated to founder/KC OTP delivery paths ⚠️
 
@@ -75,10 +80,12 @@ Not Started: 0%
 - [x] Included-vs-add-ons pricing block and signup commercial summary now follow the active browser/UI language
 - [x] Website master preview consumes external theme/content presets and runtime-shaped tenant source payloads
 - [x] Website master preview can submit booking, contact, and membership forms against current runtime APIs with preview-safe tenant injection
+- [x] Fixed-skin contract and publish-validation gate now define the required payload/page/media boundaries for tenant website versions
 
 **What needs work** (next 3-4 days):
 - [ ] Stripe test checkout flow (replace demo-paid simulation)
 - [ ] Connect Website Builder Studio admin fields to persisted publish flow for tenant websites (beyond the current master preview/runtime adapter)
+- [ ] Enforce the new website validator inside the actual publish path, not only as a repo script
 - [ ] Publish tenant website output + assets to deployment storage and validate custom-domain serving path
 - [ ] Tenant custom domain connection workflow (DNS + validation)
 - [ ] Tenant payment method onboarding UX (Stripe + manual modes)
@@ -156,9 +163,9 @@ CP-6: Payment       📋 PLANNED   TBD      Aug 1        0%
 CP-7: Odoo Removed  ❌ PLANNED   TBD      Jan 1        0%
 CP-8: Growth        ❌ PLANNED   TBD      Apr 1        0%
 CP-9: Founder/KC    📋 PLANNED   TBD      Future       0%
-CP-10: Platform+SU  🔄 TESTING   @dev-L   Mar 31      90%
+CP-10: Platform+SU  🔄 TESTING   @dev-L   Mar 31      92%
 ─────────────────────────────────────────────────────────────
-PHASE 1 TOTAL                                        88%
+PHASE 1 TOTAL                                        89%
 ```
 
 ---

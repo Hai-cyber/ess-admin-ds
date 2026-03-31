@@ -2,23 +2,23 @@
 
 **Purpose**: Track checkpoint completion as you move through phases. Update this weekly.
 
-**Last Updated**: 2026-03-30  
-**Current Phase**: Phase 1 (Booking + Platform Entry) — 88% complete
+**Last Updated**: 2026-03-31  
+**Current Phase**: Phase 1 (Booking + Platform Entry) — 89% complete
 
 ---
 
 ## Phase 1: Booking System + Platform Entry
 
 **ETA**: Q2 2026  
-**Status**: ⏳ IN PROGRESS (88% complete)
+**Status**: ⏳ IN PROGRESS (89% complete)
 
 | Checkpoint | Component | Status | Evidence | Owner | ETA |
 |-----------|-----------|--------|----------|-------|-----|
 | CP-1 | Tenant Isolation | ✅ DONE | E2E_TEST_SUMMARY.md | Team | ✅ Done |
 | CP-2 | Booking MVP | ✅ DONE | Local runtime verified: booking form render, board, staff-create, booking list, stage updates | Team | ✅ Done |
 | CP-3 | Admin UI Setup | ⏳ 75% | Tenant admin refined, billing/domain/payment section active; final go-live path still pending | @dev-lead | Mar 31 |
-| CP-10 | Platform Site + Self-Service Signup | ⏳ 90% | Live runtime verified: platform pages, SaaS admin dashboard, contact form, signup provisioning, website-master preview render, booking, and founder smoke tests on active port `8790` | @dev-lead | Mar 31 |
-| **Phase 1 Total** | — | **88%** | — | — | **Apr 15** |
+| CP-10 | Platform Site + Self-Service Signup | ⏳ 92% | Live runtime verified plus fixed-skin website template contract, publish-validation gate, and runnable payload validator added for tenant website versions | @dev-lead | Mar 31 |
+| **Phase 1 Total** | — | **89%** | — | — | **Apr 15** |
 
 ### CP-1 Evidence ✅
 
@@ -50,6 +50,9 @@
 ✅ Demo payment flow and billable staff auto-recalc hook implemented
 ✅ Website master preview delivered with theme presets, schema examples, runtime adapter, and tenant injection
 ✅ Website-style booking flow and founder verify flow confirmed on active local runtime port `8790`
+✅ Fixed-skin website template contract documented for the 8-skin approach
+✅ Pre-publish validation contract documented for tenant website versions
+✅ Runnable validator added: `npm run validate:website-template`
 ⏳ Real Stripe checkout wiring still pending
 ⏳ Tenant website publish/custom-domain workflow still pending beyond the current preview/runtime adapter
 ⏳ `/api/contact/create` source route still needs smoke-test verification on a freshly reloaded worker
@@ -58,7 +61,7 @@
 
 **Blockers**: Stripe test credentials, website publish/domain completion, worker reload for the new contact route, and Twilio credentials or a local OTP stub
 
-**Next**: Wire Stripe test checkout + complete tenant website publish/domain flow + reload worker and verify `/api/contact/create` + fix founder/KC OTP local runtime path
+**Next**: Wire the validator into actual publish flow + complete tenant website publish/domain flow + reload worker and verify `/api/contact/create` + fix founder/KC OTP local runtime path
 
 ---
 

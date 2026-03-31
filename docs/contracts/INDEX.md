@@ -61,6 +61,40 @@ SELECT * FROM bookings WHERE tenant_id = ? AND booking_date = ?
 
 ---
 
+### I'm building or scaling website skins
+
+→ Read [WEBSITE_TEMPLATE_CONTRACTS.md](./WEBSITE_TEMPLATE_CONTRACTS.md)
+
+Then enforce publish gating with [WEBSITE_PUBLISH_VALIDATION.md](./WEBSITE_PUBLISH_VALIDATION.md)
+
+**You'll learn**:
+- The fixed-skin model for tenant websites
+- Which payload fields are editable vs. fixed
+- Stable page keys and section keys
+- Media slot rules and fallback order
+- What a tenant may customize without breaking rendering
+- The validation rules required before publish
+
+**Example**:
+```json
+{
+  "tenant": {
+    "theme": "theme-luxury-b",
+    "tier": "premium",
+    "content_preset": "theme-luxury-b"
+  },
+  "navigation": {
+    "labels": {
+      "menu": "Speisekarte"
+    }
+  }
+}
+```
+
+This changes presentation and copy only. It does not change the internal page model.
+
+---
+
 ### I'm creating a new module
 
 → Read [MODULE_CONTRACTS.md](./MODULE_CONTRACTS.md)
