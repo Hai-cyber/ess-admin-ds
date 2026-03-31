@@ -2,7 +2,7 @@
 
 **Purpose**: Define the fixed-contract model for tenant website generation.
 
-**Principle**: We do not build bespoke websites per customer. We maintain a controlled library of prebuilt skins. Customers may copy a preset, fill in bounded content fields, select a theme, and publish a new version without changing the core page model.
+**Principle**: We do not build bespoke websites per customer. We maintain a controlled library of prebuilt skins. Customers may copy a preset, change presentation content freely, select a theme, and publish a new version without changing the core page model or system logic.
 
 ---
 
@@ -12,7 +12,8 @@ This contract exists to support the operating model below:
 
 - We ship a fixed set of supported website skins.
 - Every skin renders the same payload contract.
-- Customers may edit copy, contact details, hours, menu content, images, and a limited set of navigation labels.
+- Customers may edit all user-visible presentation text, images, logo, theme, background treatment, and button labels.
+- System-owned business identity fields may remain locked even though they render publicly.
 - Customers may not change the page architecture, renderer logic, or data shape.
 - Publishing a new version means: clone preset -> fill content -> choose theme -> validate -> render.
 
@@ -47,25 +48,44 @@ Tier controls feature visibility. Theme controls presentation only.
 
 ### Tenant customization boundary
 
-Allowed:
+#### Locked system surface
 
-- business identity
-- business contact details
-- business hours and booking info
+Not tenant-editable:
+
+- page architecture
+- renderer logic
+- route and page keys
+- form actions and endpoint wiring
+- feature gating by tier or module
+- publish pipeline
+- payload contract keys
+
+#### Locked global business identity
+
+May remain system-managed and not tenant-editable in the content editor:
+
+- `company.name`
+- `company.phone`
+- `company.email`
+- `company.address`
+
+These fields still render publicly, but they are not part of the open content-editing promise.
+
+#### Editable presentation surface
+
+Tenant-editable:
+
+- all user-visible content text
+- section headings and body copy
 - navigation labels
-- section copy
-- menu content
+- CTA labels and button labels
+- form labels, placeholders, helper text, and user-facing feedback copy
+- menu text and merchandising copy
 - images and logos
 - theme selection
+- background image/color treatment
+- background brightness and overlay treatment
 - preset selection
-
-Not allowed:
-
-- adding arbitrary new pages
-- changing internal page keys
-- introducing theme-only payload fields without defaults
-- redefining section structure per tenant
-- changing renderer logic per tenant
 
 ---
 
@@ -94,6 +114,7 @@ Every website version must normalize to this top-level payload shape:
   "company": {},
   "settings": {},
   "branding": {},
+  "appearance": {},
   "navigation": {},
   "career": {},
   "modules": {},
@@ -115,6 +136,7 @@ Every website version must normalize to this top-level payload shape:
 ### Optional top-level objects with fallbacks
 
 - `branding`
+- `appearance`
 - `career`
 - `legal`
 - `social`
@@ -188,7 +210,7 @@ Renderers must consume normalized payload only. They must not depend on raw tena
 
 ## Settings Object
 
-### Canonical editable settings
+### Canonical settings
 
 - `site_template`
 - `site_language`
@@ -212,7 +234,7 @@ Renderers must consume normalized payload only. They must not depend on raw tena
 
 ### Contract rule
 
-These fields may customize copy and business behavior. They may not redefine layout structure.
+These fields support system behavior and selected visible copy. They may not redefine layout structure.
 
 ---
 
@@ -232,6 +254,47 @@ Branding is decorative and informational only. It must never be required for suc
 
 - missing `logo_image` -> render text/monogram fallback
 - missing locale/language labels -> derive from `settings.site_language`
+
+---
+
+## Appearance Object
+
+The `appearance` object is the shared presentation control surface for theme and background behavior.
+
+### Supported fields
+
+- `background_image`
+- `background_color`
+- `background_brightness`
+- `background_overlay_opacity`
+- `background_focal_point`
+
+### Rules
+
+- `tenant.theme` remains the canonical theme switch
+- `appearance` refines presentation without changing structure
+- brightness and overlay values affect presentation only
+
+### Example
+
+```json
+{
+  "appearance": {
+    "background_image": "https://images.example.com/brand-background.jpg",
+    "background_color": "#0f1518",
+    "background_brightness": 72,
+    "background_overlay_opacity": 36,
+    "background_focal_point": "center center"
+  }
+}
+```
+
+### Fallback rules
+
+- missing `background_image` -> theme preset or theme default background
+- missing `background_color` -> theme default surface color
+- missing `background_brightness` -> `100`
+- missing `background_overlay_opacity` -> theme default overlay
 
 ---
 
@@ -349,7 +412,7 @@ Modules do not change theme structure. They only turn capabilities on or off.
 
 ## Content Contract
 
-The `content` object is the main bounded customization surface.
+The `content` object is the main editable text and media surface.
 
 ### Canonical fields
 
@@ -362,12 +425,33 @@ The `content` object is the main bounded customization surface.
 - `team_image`
 - `menu_link_cards[]`
 - `section_copy`
+- `button_copy`
+- `form_copy`
+- `feedback_copy`
 - `menu_sections[]`
 - `category_cards[]`
 - `membership_rewards[]`
 - `market_fit[]`
 - `signature_items[]`
 - `theme_content`
+
+### Editable text rule
+
+All user-visible presentation text should live in editable registries or structured content blocks.
+
+This includes:
+
+- section headings
+- section body copy
+- navigation labels
+- CTA labels
+- button labels
+- form labels
+- placeholders
+- helper text
+- user-facing success and error copy
+
+This does not include locked business identity values unless the product later chooses to expose them.
 
 ### Section copy map
 
@@ -389,6 +473,38 @@ Each section copy block may contain:
 ### Contract rule
 
 Section keys are fixed. Tenants may edit text values but may not add arbitrary section groups.
+
+### UI copy registries
+
+Recommended editable registries:
+
+- `button_copy`
+- `form_copy`
+- `feedback_copy`
+
+These registries exist so button labels and other visible UI strings can be changed without touching renderer structure.
+
+### Example
+
+```json
+{
+  "content": {
+    "button_copy": {
+      "reservation_submit": "Reserve now",
+      "contact_submit": "Send message",
+      "membership_join": "Join now"
+    },
+    "form_copy": {
+      "booking_name_label": "Name",
+      "booking_name_placeholder": "Max Mustermann"
+    },
+    "feedback_copy": {
+      "booking_success": "Thank you. Your reservation request has been sent.",
+      "contact_success": "Your message has been sent successfully."
+    }
+  }
+}
+```
 
 ---
 
@@ -414,6 +530,7 @@ Each skin may present media differently, but all skins pull from the same media 
 - image fields accept absolute URLs or tenant asset URLs
 - renderers must survive empty image slots
 - skins may choose different crops or placement, but never different field names
+- background treatment is controlled centrally through `appearance`, not ad hoc renderer logic
 
 ### Fallback order
 

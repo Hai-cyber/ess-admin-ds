@@ -11,7 +11,7 @@
 This validation gate exists to support the fixed-skin model:
 
 - tenant copies a preset
-- tenant edits bounded content
+- tenant edits presentation content freely
 - system validates the payload
 - system renders the fixed page model
 
@@ -34,6 +34,7 @@ Required checks:
 - supported tier only
 - fixed page keys only
 - known section copy keys only
+- optional appearance fields use valid values
 - media slots use valid paths or URLs
 
 Command:
@@ -47,6 +48,8 @@ npm run validate:website-template
 ### 2. Business completeness validation
 
 Check that the tenant version contains the minimum business information required for a public site.
+
+These values may be system-managed rather than tenant-editable, but they must still be present before publish.
 
 Required checks:
 
@@ -97,6 +100,21 @@ If a media field is present but malformed, publish should fail.
 
 ---
 
+### 5. Appearance validation
+
+Check that presentation controls stay within safe ranges.
+
+Required checks:
+
+- `background_image` is a valid URL or asset path if provided
+- `background_color` is a valid color string if provided
+- `background_brightness` is within allowed range
+- `background_overlay_opacity` is within allowed range
+
+If these values are malformed, publish should fail.
+
+---
+
 ## Operational Checklist
 
 Use this checklist before rendering or publishing a new tenant version.
@@ -108,7 +126,9 @@ Use this checklist before rendering or publishing a new tenant version.
 - [ ] Required contact fields are present
 - [ ] Navigation uses fixed page keys only
 - [ ] Section copy uses known section keys only
+- [ ] Button, form, and feedback copy stay inside known registries
 - [ ] No malformed image URLs or asset paths exist
+- [ ] Background controls use valid values
 - [ ] Menu sections and repeatable cards have valid item shapes
 - [ ] Optional missing data falls back safely in preview
 
@@ -123,6 +143,7 @@ Use this checklist before rendering or publishing a new tenant version.
 - unsupported theme key
 - unsupported tier
 - unknown page keys
+- malformed appearance values
 - malformed URLs in provided media fields
 - missing core business identity fields
 - missing required CTA or contact fields

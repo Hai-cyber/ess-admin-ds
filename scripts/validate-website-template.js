@@ -42,6 +42,10 @@ function isBoolean(value) {
   return typeof value === 'boolean';
 }
 
+function isFiniteNumber(value) {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
 function isUrlLike(value) {
   if (!isNonEmptyString(value)) {
     return false;
@@ -165,6 +169,32 @@ function validatePayload(data, filePath) {
     ].forEach((field) => {
       validateStringField(data, `settings.${field}`, errors, warnings, { required: true });
     });
+  }
+
+  if (isObject(data.appearance)) {
+    if ('background_image' in data.appearance) {
+      validateStringField(data, 'appearance.background_image', errors, warnings, { urlLike: true });
+    }
+    if ('background_color' in data.appearance && !isNonEmptyString(data.appearance.background_color)) {
+      pushIssue(errors, 'error', 'appearance.background_color', 'Expected non-empty color string.');
+    }
+    if ('background_focal_point' in data.appearance && !isNonEmptyString(data.appearance.background_focal_point)) {
+      pushIssue(errors, 'error', 'appearance.background_focal_point', 'Expected non-empty focal point string.');
+    }
+    if ('background_brightness' in data.appearance) {
+      if (!isFiniteNumber(data.appearance.background_brightness)) {
+        pushIssue(errors, 'error', 'appearance.background_brightness', 'Expected numeric brightness value.');
+      } else if (data.appearance.background_brightness < 0 || data.appearance.background_brightness > 100) {
+        pushIssue(errors, 'error', 'appearance.background_brightness', 'Brightness must be between 0 and 100.');
+      }
+    }
+    if ('background_overlay_opacity' in data.appearance) {
+      if (!isFiniteNumber(data.appearance.background_overlay_opacity)) {
+        pushIssue(errors, 'error', 'appearance.background_overlay_opacity', 'Expected numeric overlay opacity value.');
+      } else if (data.appearance.background_overlay_opacity < 0 || data.appearance.background_overlay_opacity > 100) {
+        pushIssue(errors, 'error', 'appearance.background_overlay_opacity', 'Overlay opacity must be between 0 and 100.');
+      }
+    }
   }
 
   if (isObject(data.navigation)) {

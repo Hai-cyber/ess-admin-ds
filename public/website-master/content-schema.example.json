@@ -20,16 +20,27 @@
     "founder"
   ],
   "editable_surface": {
-    "principle": "bounded-copy-and-media-only",
+    "principle": "locked-system-editable-presentation",
     "tenant_may_edit": [
-      "business identity",
-      "business contact details",
+      "all user-visible content text",
       "navigation labels",
       "section copy",
+      "button labels",
+      "form labels and placeholders",
+      "user-facing feedback text",
       "menu content",
       "image slots",
+      "logo",
       "theme selection",
+      "background image",
+      "background brightness",
       "preset selection"
+    ],
+    "system_managed_global_fields": [
+      "company.name",
+      "company.phone",
+      "company.email",
+      "company.address"
     ],
     "tenant_may_not_edit": [
       "internal page keys",
@@ -47,6 +58,13 @@
     "content_preset": "theme-luxury-a"
   },
   "theme_presets_url": "./theme-presets.example.json",
+  "appearance": {
+    "background_image": "https://images.example.com/background.jpg",
+    "background_color": "#10171a",
+    "background_brightness": 72,
+    "background_overlay_opacity": 36,
+    "background_focal_point": "center center"
+  },
   "settings": {
     "site_hero_title": "String",
     "site_hero_subtitle": "String",
@@ -78,6 +96,11 @@
       "reservation",
       "contact",
       "marketFit"
+    ],
+    "allowed_ui_copy_registries": [
+      "button_copy",
+      "form_copy",
+      "feedback_copy"
     ]
   },
   "media_slots": {
@@ -106,6 +129,25 @@
       "Paragraph one.",
       "Paragraph two."
     ],
+    "section_copy": {
+      "homeSignatures": {
+        "eyebrow": "String",
+        "title": "String",
+        "body": "String"
+      }
+    },
+    "button_copy": {
+      "reservation_submit": "Reserve now",
+      "contact_submit": "Send message"
+    },
+    "form_copy": {
+      "booking_name_label": "Name",
+      "booking_name_placeholder": "Max Mustermann"
+    },
+    "feedback_copy": {
+      "booking_success": "Thank you. Your reservation request has been sent.",
+      "contact_success": "Your message has been sent successfully."
+    },
     "menu_sections": [
       {
         "label": "Vorspeisen",

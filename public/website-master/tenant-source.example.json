@@ -8,6 +8,13 @@
     "content_preset": "theme-luxury-a"
   },
   "theme_presets_url": "./theme-presets.example.json",
+  "appearance": {
+    "background_image": "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=1800&q=80",
+    "background_color": "#11161a",
+    "background_brightness": 76,
+    "background_overlay_opacity": 34,
+    "background_focal_point": "center center"
+  },
   "company": {
     "name": "Brasserie Maison Elise",
     "city": "Berlin",
@@ -210,6 +217,21 @@
         "eyebrow": "Maison Journal",
         "title": "Neuigkeiten, Auszeichnungen und Einblicke in das Haus"
       }
+    },
+    "button_copy": {
+      "reservation_submit": "Reservierung senden",
+      "contact_submit": "Nachricht senden",
+      "membership_join": "Maison Circle beitreten"
+    },
+    "form_copy": {
+      "booking_name_label": "Name",
+      "booking_name_placeholder": "Max Mustermann",
+      "contact_subject_label": "Betreff",
+      "contact_message_placeholder": "Guten Tag, ich mochte gerne..."
+    },
+    "feedback_copy": {
+      "booking_success": "Vielen Dank. Ihre Reservierungsanfrage wurde gesendet.",
+      "contact_success": "Ihre Nachricht wurde erfolgreich gesendet."
     },
     "market_fit": [
       { "label": "Auszeichnungen", "title": "Empfehlungen & Anerkennung", "body": "Raum fur Michelin-, Gault&Millau- oder Pressehinweise, ohne die Ruhe des Auftritts zu verlieren." },

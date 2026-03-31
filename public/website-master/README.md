@@ -5,7 +5,7 @@ This folder contains the universal tenant website master source.
 This system follows a fixed-skin model:
 
 - we maintain a bounded set of prebuilt skins
-- tenants copy a preset and edit limited content fields
+- tenants copy a preset and edit presentation content freely
 - tenants do not change the page architecture
 - all skins render the same normalized payload contract
 
@@ -33,7 +33,7 @@ Page files exposed in this folder:
 - `career.html`
 - `founder.html`
 
-The top navigation now links between those actual files, while theme, tier, labels, logo, text, and images are expected to come from the backend payload or tenant source JSON.
+The top navigation now links between those actual files, while theme, tier, labels, logo, text, images, and background presentation controls are expected to come from the backend payload or tenant source JSON.
 
 ## Files
 
@@ -80,6 +80,10 @@ The navigation labels can be localized or renamed per tenant, but the internal p
 Additional tenant-copyable content now supported in the master payload:
 
 - `branding.logo_image`
+- `appearance.background_image`
+- `appearance.background_color`
+- `appearance.background_brightness`
+- `appearance.background_overlay_opacity`
 - `navigation.labels.home|menu|reservation|about|contact|career`
 - `navigation.page_visibility.<page>.show_in_nav`
 - `navigation.page_visibility.<page>.show_on_home`
@@ -92,13 +96,16 @@ Additional tenant-copyable content now supported in the master payload:
 - `career.cta_label`
 - `career.cta_href`
 - `career.roles[]`
+- `content.button_copy.*`
+- `content.form_copy.*`
+- `content.feedback_copy.*`
 
 The intended behavior for built-in pages is:
 
 - If `show_in_nav` is `true`, the page stays as its own tab/page for a cleaner, less distracting flow.
 - If `show_in_nav` is `false` and `show_on_home` is `true`, that page feed is embedded into Home so the tenant can keep a long-form landing page without exposing another tab.
 
-This is a bounded system, not a freeform site builder. Tenants may change copy and media inside the contract, but must not change the internal page keys, section model, or renderer shape.
+This is a bounded system, not a freeform site builder. Tenants may change any user-visible presentation text, media, theme, and background treatment inside the contract, but must not change the internal page keys, section model, business-logic wiring, or renderer shape.
 
 ## Feature switches
 
