@@ -24,13 +24,19 @@
     .badge-lost { background: #fef2f2; color: #b91c1c; }
     .pricing-form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
     .pricing-form .full { grid-column: 1 / -1; }
+    .pricing-plan-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 18px; }
+    .pricing-plan-card { border: 1px solid var(--border); border-radius: 18px; padding: 18px; background: #fafafa; }
+    .pricing-plan-card h3 { margin: 0 0 6px; font-size: 0.98rem; }
+    .pricing-plan-card p { margin: 0 0 14px; color: var(--text-muted); font-size: 0.82rem; }
+    .pricing-plan-card textarea { min-height: 110px; }
+    .pricing-extras-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
     .lead-row { display: grid; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--border); }
     .lead-row:last-child { border-bottom: none; }
     .lead-top { display: flex; justify-content: space-between; gap: 12px; align-items: start; }
     .lead-name { font-weight: 700; }
     .lead-meta { font-size: 0.82rem; color: var(--text-muted); }
     .lead-controls { display: grid; grid-template-columns: 180px 1fr auto; gap: 10px; align-items: start; }
-    @media (max-width: 980px) { .saas-grid { grid-template-columns: 1fr; } .pricing-form { grid-template-columns: 1fr; } .lead-controls { grid-template-columns: 1fr; } }
+    @media (max-width: 980px) { .saas-grid { grid-template-columns: 1fr; } .pricing-form { grid-template-columns: 1fr; } .pricing-plan-grid { grid-template-columns: 1fr; } .pricing-extras-grid { grid-template-columns: 1fr; } .lead-controls { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
@@ -59,11 +65,54 @@
     <div class="saas-grid">
       <div class="saas-card">
         <h2>Platform Pricing</h2>
-        <p class="meta">Global SaaS-side pricing and extra costs for the public marketing website.</p>
-        <div class="pricing-form">
-          <div class="form-group"><label>Online €/active user/month</label><input id="cfg_platform_core_price_per_user" type="number" step="0.01"></div>
-          <div class="form-group"><label>Service €/active user/month</label><input id="cfg_platform_commerce_price_per_user" type="number" step="0.01"></div>
-          <div class="form-group"><label>Repeat Guests €/active user/month</label><input id="cfg_platform_growth_price_per_user" type="number" step="0.01"></div>
+        <p class="meta">Global SaaS-side pricing, tier copy, and public feature bullets used on the marketing website and signup flow.</p>
+        <div class="pricing-plan-grid">
+          <section class="pricing-plan-card">
+            <h3>Online</h3>
+            <p>Website-only tier on a managed subdomain.</p>
+            <div class="pricing-form">
+              <div class="form-group"><label>Display name</label><input id="cfg_platform_core_name" type="text"></div>
+              <div class="form-group"><label>€/active user/month</label><input id="cfg_platform_core_price_per_user" type="number" step="0.01"></div>
+              <div class="form-group full"><label>Description</label><textarea id="cfg_platform_core_description"></textarea></div>
+              <div class="form-group full"><label>Features, one per line</label><textarea id="cfg_platform_core_features"></textarea></div>
+            </div>
+          </section>
+
+          <section class="pricing-plan-card">
+            <h3>Service</h3>
+            <p>POS and service-flow tier.</p>
+            <div class="pricing-form">
+              <div class="form-group"><label>Display name</label><input id="cfg_platform_commerce_name" type="text"></div>
+              <div class="form-group"><label>€/active user/month</label><input id="cfg_platform_commerce_price_per_user" type="number" step="0.01"></div>
+              <div class="form-group full"><label>Description</label><textarea id="cfg_platform_commerce_description"></textarea></div>
+              <div class="form-group full"><label>Features, one per line</label><textarea id="cfg_platform_commerce_features"></textarea></div>
+            </div>
+          </section>
+
+          <section class="pricing-plan-card">
+            <h3>Repeat Guests</h3>
+            <p>CRM and guest retention tier.</p>
+            <div class="pricing-form">
+              <div class="form-group"><label>Display name</label><input id="cfg_platform_growth_name" type="text"></div>
+              <div class="form-group"><label>€/active user/month</label><input id="cfg_platform_growth_price_per_user" type="number" step="0.01"></div>
+              <div class="form-group full"><label>Description</label><textarea id="cfg_platform_growth_description"></textarea></div>
+              <div class="form-group full"><label>Features, one per line</label><textarea id="cfg_platform_growth_features"></textarea></div>
+            </div>
+          </section>
+
+          <section class="pricing-plan-card">
+            <h3>Groups</h3>
+            <p>Enterprise-style multi-site tier. Leave price empty to keep it custom-contact only.</p>
+            <div class="pricing-form">
+              <div class="form-group"><label>Display name</label><input id="cfg_platform_enterprise_name" type="text"></div>
+              <div class="form-group"><label>€/active user/month</label><input id="cfg_platform_enterprise_price_per_user" type="number" step="0.01"></div>
+              <div class="form-group full"><label>Description</label><textarea id="cfg_platform_enterprise_description"></textarea></div>
+              <div class="form-group full"><label>Features, one per line</label><textarea id="cfg_platform_enterprise_features"></textarea></div>
+            </div>
+          </section>
+        </div>
+
+        <div class="pricing-extras-grid">
           <div class="form-group"><label>One-time setup €</label><input id="cfg_platform_setup_fee_once" type="number" step="0.01"></div>
           <div class="form-group"><label>TSE monthly €</label><input id="cfg_platform_tse_fee_monthly" type="number" step="0.01"></div>
           <div class="form-group"><label>IT support hourly €</label><input id="cfg_platform_it_support_hourly" type="number" step="0.01"></div>
@@ -95,8 +144,41 @@
 
   <script src="/platform/platform.js"></script>
   <script>
+    const SAAS_PRICING_KEYS = [
+      'platform_core_name',
+      'platform_core_price_per_user',
+      'platform_core_description',
+      'platform_core_features',
+      'platform_commerce_name',
+      'platform_commerce_price_per_user',
+      'platform_commerce_description',
+      'platform_commerce_features',
+      'platform_growth_name',
+      'platform_growth_price_per_user',
+      'platform_growth_description',
+      'platform_growth_features',
+      'platform_enterprise_name',
+      'platform_enterprise_price_per_user',
+      'platform_enterprise_description',
+      'platform_enterprise_features',
+      'platform_setup_fee_once',
+      'platform_tse_fee_monthly',
+      'platform_it_support_hourly',
+      'platform_it_support_monthly',
+      'platform_price_note'
+    ];
+
     let saasPin = '';
     let saasDashboard = { pricingSettings: {}, signups: [], contacts: [] };
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
 
     function statusBadge(status) {
       const normalized = String(status || 'new').toLowerCase();
@@ -129,16 +211,7 @@
 
     function renderSaasPricing() {
       const settings = saasDashboard.pricingSettings || {};
-      [
-        'platform_core_price_per_user',
-        'platform_commerce_price_per_user',
-        'platform_growth_price_per_user',
-        'platform_setup_fee_once',
-        'platform_tse_fee_monthly',
-        'platform_it_support_hourly',
-        'platform_it_support_monthly',
-        'platform_price_note'
-      ].forEach((key) => {
+      SAAS_PRICING_KEYS.forEach((key) => {
         const input = document.getElementById(`cfg_${key}`);
         if (input) input.value = settings[key] || '';
       });
@@ -202,16 +275,10 @@
 
     async function saveSaasConfig() {
       if (!saasPin) return alert('Load SaaS admin first.');
-      const values = {
-        platform_core_price_per_user: document.getElementById('cfg_platform_core_price_per_user')?.value || '',
-        platform_commerce_price_per_user: document.getElementById('cfg_platform_commerce_price_per_user')?.value || '',
-        platform_growth_price_per_user: document.getElementById('cfg_platform_growth_price_per_user')?.value || '',
-        platform_setup_fee_once: document.getElementById('cfg_platform_setup_fee_once')?.value || '',
-        platform_tse_fee_monthly: document.getElementById('cfg_platform_tse_fee_monthly')?.value || '',
-        platform_it_support_hourly: document.getElementById('cfg_platform_it_support_hourly')?.value || '',
-        platform_it_support_monthly: document.getElementById('cfg_platform_it_support_monthly')?.value || '',
-        platform_price_note: document.getElementById('cfg_platform_price_note')?.value || ''
-      };
+      const values = Object.fromEntries(SAAS_PRICING_KEYS.map((key) => [
+        key,
+        document.getElementById(`cfg_${key}`)?.value || ''
+      ]));
       const res = await fetch('/api/platform/admin/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -1130,10 +1130,30 @@ async function loadPlatformPlans() {
   }
 }
 
+function renderPlanFeatures(listEl, features) {
+  if (!listEl) return;
+  listEl.replaceChildren();
+  (Array.isArray(features) ? features : []).forEach((feature) => {
+    const item = document.createElement('li');
+    item.textContent = String(feature || '').trim();
+    listEl.appendChild(item);
+  });
+}
+
 function applyPlatformPlansToPage() {
   if (!platformPlansData?.plans) return;
 
   for (const plan of platformPlansData.plans) {
+    const nameEls = document.querySelectorAll(`[data-plan-name="${plan.id}"]`);
+    nameEls.forEach((el) => {
+      el.textContent = plan.name || '';
+    });
+
+    const descEls = document.querySelectorAll(`[data-plan-desc="${plan.id}"]`);
+    descEls.forEach((el) => {
+      el.textContent = plan.description || '';
+    });
+
     const priceEls = document.querySelectorAll(`[data-plan-price="${plan.id}"]`);
     priceEls.forEach((el) => {
       if (plan.priceEurPerUserMonthly == null) {
@@ -1141,6 +1161,11 @@ function applyPlatformPlansToPage() {
         return;
       }
       el.innerHTML = `${euro(plan.priceEurPerUserMonthly)}<span class="mo">${t('price.per_mo')}</span>`;
+    });
+
+    const featureEls = document.querySelectorAll(`[data-plan-features="${plan.id}"]`);
+    featureEls.forEach((el) => {
+      renderPlanFeatures(el, plan.features);
     });
   }
 
@@ -1158,7 +1183,7 @@ function applyPlatformPlansToPage() {
       monthly: euro(platformPlansData.extras?.itSupportMonthlyRetainerEur)
     });
   }
-  if (noteEl) noteEl.textContent = t('price.note');
+  if (noteEl) noteEl.textContent = platformPlansData.pricingNote || t('price.note');
 }
 
 function getSelectedPlanData() {
@@ -1188,7 +1213,7 @@ function updateSignupPricingSummary() {
   const support = includeSupport ? Number(platformPlansData.extras.itSupportMonthlyRetainerEur || 0) : 0;
 
   summaryEls.forEach((summaryEl) => {
-    const planLabel = t(getPlanNameKey(plan.id) || '') || plan.name;
+    const planLabel = plan.name || t(getPlanNameKey(plan.id) || '') || plan.id;
     summaryEl.innerHTML = `
       <div class="alert alert-info" style="margin-top:6px;">
         <strong>${t('su.summary_demo_title')}</strong><br>

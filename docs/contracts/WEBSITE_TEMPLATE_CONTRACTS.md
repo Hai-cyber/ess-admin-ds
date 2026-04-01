@@ -13,6 +13,7 @@ This contract exists to support the operating model below:
 - We ship a fixed set of supported website skins.
 - Every skin renders the same payload contract.
 - Customers may edit all user-visible presentation text, images, logo, theme, background treatment, and button labels.
+- Tenants must be able to edit presentation-surface business information in admin, including opening hours and public-facing owner or house information, without seeing or changing technical keys.
 - System-owned business identity fields may remain locked even though they render publicly.
 - Customers may not change the page architecture, renderer logic, or data shape.
 - Publishing a new version means: clone preset -> fill content -> choose theme -> validate -> render.
@@ -55,10 +56,25 @@ Not tenant-editable:
 - page architecture
 - renderer logic
 - route and page keys
+- internal setting keys and payload field keys
 - form actions and endpoint wiring
 - feature gating by tier or module
 - publish pipeline
 - payload contract keys
+
+#### Locked technical-key rule
+
+Tenants may edit values only.
+
+Not exposed as free-edit text in tenant admin:
+
+- internal payload keys such as `navigation.page_visibility.home.show_in_nav`
+- stable section identifiers such as `marketFit` or `reservation`
+- module keys such as `module_booking_management`
+- endpoint paths and form targets
+- theme key internals beyond supported skin selection
+
+Tenant-facing admin should render labels, textareas, image pickers, and structured fields. It should never require the tenant to understand JSON paths, system keys, or renderer-specific field names.
 
 #### Locked global business identity
 
@@ -82,10 +98,27 @@ Tenant-editable:
 - form labels, placeholders, helper text, and user-facing feedback copy
 - menu text and merchandising copy
 - images and logos
+- gallery photos, hero photos, and decorative media slots
+- opening hours and public service-time text
+- public-facing ownership or house information shown on the website
 - theme selection
 - background image/color treatment
 - background brightness and overlay treatment
 - preset selection
+
+#### Tenant admin promise
+
+The restaurant-facing admin should expose a website content editor for the presentation surface above.
+
+That editor should allow the tenant to change:
+
+- text
+- photos
+- button labels
+- opening hours
+- public-facing ownership or house information
+
+That editor should not expose technical keys, payload paths, module toggles, or renderer-only configuration names.
 
 ---
 
@@ -231,6 +264,18 @@ Renderers must consume normalized payload only. They must not depend on raw tena
 - `founder_redirect_link`
 - `privacy_link`
 - `founder_terms_link`
+
+### Opening-hours rule
+
+Opening hours are tenant-editable presentation data.
+
+They are currently used for public-facing display and booking context, but they must remain normalizable for future reuse by:
+
+- shop availability
+- online ordering windows
+- service-mode scheduling
+
+This means the admin UI may present friendly labels and time pickers, but runtime storage should preserve a stable machine-readable schedule surface.
 
 ### Contract rule
 
@@ -453,6 +498,8 @@ This includes:
 - placeholders
 - helper text
 - user-facing success and error copy
+- opening-hours display copy and structured service-time values
+- public-facing ownership or house-information copy
 
 This does not include locked business identity values unless the product later chooses to expose them.
 

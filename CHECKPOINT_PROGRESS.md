@@ -53,6 +53,7 @@
 ✅ Fixed-skin website template contract documented for the 8-skin approach
 ✅ Pre-publish validation contract documented for tenant website versions
 ✅ Runnable validator added: `npm run validate:website-template`
+📌 Proposal added for next working session: build a tenant website content editor in Restaurant Admin so tenants can edit presentation-surface text, photos, button labels, opening hours, and public owner/house information without exposure to technical keys
 ⏳ Real Stripe checkout wiring still pending
 ⏳ Tenant website publish/custom-domain workflow still pending beyond the current preview/runtime adapter
 ⏳ `/api/contact/create` source route still needs smoke-test verification on a freshly reloaded worker
@@ -61,7 +62,7 @@
 
 **Blockers**: Stripe test credentials, website publish/domain completion, worker reload for the new contact route, and Twilio credentials or a local OTP stub
 
-**Next**: Wire the validator into actual publish flow + complete tenant website publish/domain flow + reload worker and verify `/api/contact/create` + fix founder/KC OTP local runtime path
+**Next**: Build the tenant website content editor in Restaurant Admin + wire the validator into actual publish flow + complete tenant website publish/domain flow + reload worker and verify `/api/contact/create` + fix founder/KC OTP local runtime path
 
 ---
 

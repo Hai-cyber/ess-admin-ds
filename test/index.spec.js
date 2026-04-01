@@ -7,21 +7,24 @@ afterEach(() => {
 	vi.restoreAllMocks();
 });
 
-async function readSseChunkWithTimeout(reader, timeoutMs = 1200) {
-	const timeoutPromise = new Promise((_, reject) => {
-		setTimeout(() => reject(new Error('timeout')), timeoutMs);
+function jsonRpcResult(id, result) {
+	return new Response(JSON.stringify({ jsonrpc: '2.0', id, result }), {
+		status: 200,
+		headers: { 'content-type': 'application/json' }
 	});
+}
 
-	try {
-		const result = await Promise.race([reader.read(), timeoutPromise]);
-		if (!result || result.done) return '';
-		return new TextDecoder().decode(result.value || new Uint8Array());
-	} catch (error) {
-		if (String(error?.message || '') === 'timeout') {
-			return null;
-		}
-		throw error;
-	}
+async function upsertCompanySetting(companyId, key, value, description = 'test setting') {
+	const now = new Date().toISOString();
+	await env.DB.prepare(`
+		INSERT INTO settings (company_id, key, value, description, updated_at, updated_by)
+		VALUES (?, ?, ?, ?, ?, ?)
+		ON CONFLICT(company_id, key) DO UPDATE SET
+			value = excluded.value,
+			description = excluded.description,
+			updated_at = excluded.updated_at,
+			updated_by = excluded.updated_by
+	`).bind(companyId, key, value, description, now, 'test').run();
 }
 
 describe('ESSKULTUR worker', () => {
@@ -72,6 +75,23 @@ describe('ESSKULTUR worker', () => {
 		expect(location).toContain('lang=de');
 	});
 
+	it('serves KC form UI wired to KC-specific API endpoints', async () => {
+		await initializeDatabase(env.DB);
+
+		const request = new Request(
+			'http://example.com/founder?program=kc&website_url=https%3A%2F%2Fquan-esskultur.de&program_label=Kollegensclub&membership_type=KC&redirect=https%3A%2F%2Fquan-esskultur.de%2Fcolleague-club&terms_url=https%3A%2F%2Fquan-esskultur.de%2Ffounderpass-terms-conditions&privacy_url=https%3A%2F%2Fquan-esskultur.de%2Fprivacy'
+		);
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(200);
+		const html = await response.text();
+		expect(html).toContain("'/api/kc/register'");
+		expect(html).toContain("'/api/kc/verify'");
+		expect(html).toContain("'/api/kc/resend-otp'");
+	});
+
 	it('accepts KC JSON registration payloads and stores KC consent', async () => {
 		await initializeDatabase(env.DB);
 
@@ -100,7 +120,7 @@ describe('ESSKULTUR worker', () => {
 		});
 
 		const phone = `+49176${Date.now().toString().slice(-8)}`;
-		const request = new Request('http://restaurant1.quan-esskultur.de/api/kc/register', {
+		const request = new Request('http://example.com/api/kc/register?company_id=1', {
 			method: 'POST',
 			headers: {
 				'content-type': 'application/json'
@@ -135,6 +155,802 @@ describe('ESSKULTUR worker', () => {
 		expect(String(customer?.founder_status || '')).toBe('pending_verification');
 		expect(Number(customer?.founder_terms_accepted || 0)).toBe(0);
 		expect(Number(customer?.kc_terms_accepted || 0)).toBe(1);
+	});
+
+	it('treats /api/kc/register as KC even if KC hidden fields are missing', async () => {
+		await initializeDatabase(env.DB);
+		const originalLegacyCreateWebhook = env.ODOO_FOUNDER_CREATE_WEBHOOK;
+		env.ODOO_FOUNDER_CREATE_WEBHOOK = '';
+
+		vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+			const url = typeof input === 'string' ? input : input.url;
+
+			if (url.includes('challenges.cloudflare.com/turnstile')) {
+				return new Response(JSON.stringify({ success: true }), {
+					status: 200,
+					headers: { 'content-type': 'application/json' }
+				});
+			}
+
+			if (url.includes('api.twilio.com/')) {
+				return new Response(JSON.stringify({ sid: 'SM123' }), {
+					status: 200,
+					headers: { 'content-type': 'application/json' }
+				});
+			}
+
+			return new Response('Unhandled mock URL', { status: 500 });
+		});
+
+		try {
+			const phone = `+49179${Date.now().toString().slice(-8)}`;
+			const request = new Request('http://example.com/api/kc/register?company_id=1', {
+				method: 'POST',
+				headers: {
+					'content-type': 'application/json'
+				},
+				body: JSON.stringify({
+					name: 'KC Path Fallback',
+					phone,
+					cf_token: 'turnstile-test-token',
+					consent_sms: 'yes',
+					consent_terms: 'yes'
+				})
+			});
+
+			const ctx = createExecutionContext();
+			const response = await worker.fetch(request, env, ctx);
+			await waitOnExecutionContext(ctx);
+
+			expect(response.status).toBe(200);
+
+			const customer = await env.DB.prepare(
+				`SELECT founder_status, founder_terms_accepted, kc_terms_accepted, notes FROM customers WHERE company_id = ? AND phone = ? LIMIT 1`
+			).bind(1, phone).first();
+
+			expect(String(customer?.founder_status || '')).toBe('pending_verification');
+			expect(Number(customer?.founder_terms_accepted || 0)).toBe(0);
+			expect(Number(customer?.kc_terms_accepted || 0)).toBe(1);
+			expect(String(customer?.notes || '')).toBe('KC Form Registration');
+		} finally {
+			env.ODOO_FOUNDER_CREATE_WEBHOOK = originalLegacyCreateWebhook;
+		}
+	});
+
+	it('switching an existing founder contact to KC keeps only KC consent and KC-managed tags', async () => {
+		await initializeDatabase(env.DB);
+		const phone = `+49178${Date.now().toString().slice(-8)}`;
+		const now = new Date().toISOString();
+		const odooBaseUrl = 'https://odoo-kc-switch.test';
+		let capturedFieldWrite = null;
+		let capturedCategoryIds = null;
+
+		await upsertCompanySetting(1, 'ODOO_BASE_URL', odooBaseUrl, 'test odoo base');
+		await upsertCompanySetting(1, 'ODOO_DB_NAME', 'hais-lab', 'test odoo db');
+		await upsertCompanySetting(1, 'ODOO_LOGIN', 'api@test.local', 'test odoo login');
+		await upsertCompanySetting(1, 'ODOO_API_TOKEN', 'token-test', 'test odoo token');
+
+		await env.DB.prepare(`
+			INSERT INTO customers (
+				id, company_id, phone, name, email,
+				founder_status, founder_level, founder_terms_accepted, kc_terms_accepted,
+				otp_verified, sms_opt_in, opt_in_text, opt_in_timestamp,
+				odoo_register_sync_state, odoo_register_sync_attempts,
+				created_at, updated_at, created_by, updated_by, notes
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`).bind(
+			'customer_kc_switch_test',
+			1,
+			phone,
+			'Existing Founder',
+			'existing-founder@example.com',
+			'live',
+			'trial',
+			1,
+			0,
+			1,
+			1,
+			'test opt in',
+			now,
+			'synced',
+			1,
+			now,
+			now,
+			'test',
+			'test',
+			'Founder Form Registration'
+		).run();
+
+		vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+			const url = typeof input === 'string' ? input : input.url;
+
+			if (url.includes('challenges.cloudflare.com/turnstile')) {
+				return new Response(JSON.stringify({ success: true }), {
+					status: 200,
+					headers: { 'content-type': 'application/json' }
+				});
+			}
+
+			if (url.includes('api.twilio.com/')) {
+				return new Response(JSON.stringify({ sid: 'SM123' }), {
+					status: 200,
+					headers: { 'content-type': 'application/json' }
+				});
+			}
+
+			if (url === `${odooBaseUrl}/jsonrpc`) {
+				const rpcBody = JSON.parse(String(init?.body || '{}'));
+				const params = rpcBody?.params || {};
+				const args = Array.isArray(params.args) ? params.args : [];
+
+				if (params.service === 'common' && params.method === 'authenticate') {
+					return jsonRpcResult(rpcBody.id, 7);
+				}
+
+				if (params.service === 'object' && params.method === 'execute_kw') {
+					const model = String(args[3] || '');
+					const method = String(args[4] || '');
+
+					if (model === 'res.partner' && method === 'fields_get') {
+						return jsonRpcResult(rpcBody.id, {
+							name: { type: 'char' },
+							phone: { type: 'char' },
+							email: { type: 'char' },
+							x_studio_membership_type: { type: 'char' },
+							x_studio_sms_opt_in_1: { type: 'char' },
+							x_studio_opt_in_text: { type: 'text' },
+							x_studio_opt_in_timestamp: { type: 'char' },
+							x_studio_founder_terms_accepted: { type: 'char' },
+							x_studio_kc_terms_accepted: { type: 'char' },
+							x_studio_otp_verified: { type: 'char' },
+							x_studio_founder_status: { type: 'char' },
+							x_studio_founder_level: { type: 'char' },
+							x_studio_last_reminder_date: { type: 'char' },
+							x_studio_total_spent: { type: 'float' },
+							x_number_of_visits: { type: 'integer' },
+							x_studio_notes: { type: 'text' },
+							category_id: { type: 'many2many' }
+						});
+					}
+
+					if (model === 'res.partner' && method === 'search_read') {
+						if (Array.isArray(args?.[5]?.[0]) || Array.isArray(args?.[5])) {
+							return jsonRpcResult(rpcBody.id, [{ id: 88, phone, category_id: [11, 12, 99] }]);
+						}
+						return jsonRpcResult(rpcBody.id, [{ id: 88, phone, category_id: [11, 12, 99] }]);
+					}
+
+					if (model === 'res.partner' && method === 'write') {
+						const values = args?.[6]?.[1] || args?.[5]?.[1] || args?.[5] || {};
+						if (values && values.category_id) {
+							capturedCategoryIds = values.category_id?.[0]?.[2] || [];
+						} else {
+							capturedFieldWrite = values;
+						}
+						return jsonRpcResult(rpcBody.id, true);
+					}
+
+					if (model === 'res.partner' && method === 'read') {
+						return jsonRpcResult(rpcBody.id, [{ id: 88, category_id: [11, 12, 99] }]);
+					}
+
+					if (model === 'res.partner.category' && method === 'search_read') {
+						const domain = args?.[5]?.[0] || args?.[5] || [];
+						const label = String(domain?.[0]?.[2] || '').trim();
+						const idByLabel = {
+							Founder: 11,
+							'Founder Trial': 12,
+							'KC Club': 21,
+							Kollegensclub: 22
+						};
+						const resolvedId = idByLabel[label] || 0;
+						return jsonRpcResult(rpcBody.id, resolvedId ? [{ id: resolvedId }] : []);
+					}
+				}
+
+				return new Response('Unhandled Odoo RPC request', { status: 500 });
+			}
+
+			return new Response('Unhandled mock URL', { status: 500 });
+		});
+
+		const request = new Request('http://example.com/api/founder/register?company_id=1', {
+			method: 'POST',
+			headers: {
+				'content-type': 'application/json'
+			},
+			body: JSON.stringify({
+				name: 'KC Switch Tester',
+				phone,
+				cf_token: 'turnstile-test-token',
+				consent_sms: 'yes',
+				consent_terms: 'yes',
+				program_mode: 'kc',
+				x_studio_kc_terms_accepted: 'yes',
+				x_studio_founder_terms_accepted: 'no',
+				x_studio_membership_type: 'KC',
+				x_studio_notes: 'KC Form Registration'
+			})
+		});
+
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(200);
+
+		const customer = await env.DB.prepare(
+			`SELECT founder_terms_accepted, kc_terms_accepted, founder_status FROM customers WHERE company_id = ? AND phone = ? LIMIT 1`
+		).bind(1, phone).first();
+
+		expect(Number(customer?.founder_terms_accepted || 0)).toBe(0);
+		expect(Number(customer?.kc_terms_accepted || 0)).toBe(1);
+		expect(String(customer?.founder_status || '')).toBe('pending_verification');
+		expect(capturedFieldWrite).toMatchObject({
+			x_studio_membership_type: 'KC',
+			x_studio_founder_terms_accepted: 'no',
+			x_studio_kc_terms_accepted: 'yes'
+		});
+		expect(capturedCategoryIds).toEqual([99, 21, 22]);
+	});
+
+	it('sends a legacy-compatible Odoo contact payload before issuing OTP', async () => {
+		await initializeDatabase(env.DB);
+		let capturedOdooPayload = null;
+		const odooBaseUrl = 'https://odoo-create.test';
+
+		await upsertCompanySetting(1, 'ODOO_BASE_URL', odooBaseUrl, 'test odoo base');
+		await upsertCompanySetting(1, 'ODOO_DB_NAME', 'hais-lab', 'test odoo db');
+		await upsertCompanySetting(1, 'ODOO_LOGIN', 'api@test.local', 'test odoo login');
+		await upsertCompanySetting(1, 'ODOO_API_TOKEN', 'token-test', 'test odoo token');
+
+		vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+			const url = typeof input === 'string' ? input : input.url;
+
+			if (url.includes('challenges.cloudflare.com/turnstile')) {
+				return new Response(JSON.stringify({ success: true }), {
+					status: 200,
+					headers: { 'content-type': 'application/json' }
+				});
+			}
+
+			if (url === `${odooBaseUrl}/jsonrpc`) {
+				const rpcBody = JSON.parse(String(init?.body || '{}'));
+				const params = rpcBody?.params || {};
+				const args = Array.isArray(params.args) ? params.args : [];
+
+				if (params.service === 'common' && params.method === 'authenticate') {
+					return jsonRpcResult(rpcBody.id, 7);
+				}
+
+				if (params.service === 'object' && params.method === 'execute_kw') {
+					const model = String(args[3] || '');
+					const method = String(args[4] || '');
+
+					if (model === 'res.partner' && method === 'fields_get') {
+						return jsonRpcResult(rpcBody.id, {
+							name: { type: 'char' },
+							phone: { type: 'char' },
+							email: { type: 'char' },
+							x_studio_membership_type: { type: 'char' },
+							x_studio_sms_opt_in_1: { type: 'char' },
+							x_studio_opt_in_text: { type: 'text' },
+							x_studio_opt_in_timestamp: { type: 'char' },
+							x_studio_founder_terms_accepted: { type: 'char' },
+							x_studio_kc_terms_accepted: { type: 'char' },
+							x_studio_otp_verified: { type: 'char' },
+							x_studio_founder_status: { type: 'char' },
+							x_studio_founder_level: { type: 'char' },
+							x_studio_last_reminder_date: { type: 'char' },
+							x_studio_total_spent: { type: 'float' },
+							x_number_of_visits: { type: 'integer' },
+							x_studio_notes: { type: 'text' },
+							category_id: { type: 'many2many' }
+						});
+					}
+
+					if (model === 'res.partner' && method === 'search_read') {
+						return jsonRpcResult(rpcBody.id, []);
+					}
+
+					if (model === 'res.partner' && method === 'create') {
+						capturedOdooPayload = args?.[5]?.[0] || null;
+						return jsonRpcResult(rpcBody.id, 501);
+					}
+
+					if (model === 'res.partner' && method === 'read') {
+						return jsonRpcResult(rpcBody.id, [{ id: 501, category_id: [] }]);
+					}
+
+					if (model === 'res.partner' && method === 'write') {
+						return jsonRpcResult(rpcBody.id, true);
+					}
+
+					if (model === 'res.partner.category' && method === 'search_read') {
+						return jsonRpcResult(rpcBody.id, []);
+					}
+
+					if (model === 'res.partner.category' && method === 'create') {
+						return jsonRpcResult(rpcBody.id, 701);
+					}
+				}
+
+				return new Response('Unhandled Odoo RPC request', { status: 500 });
+			}
+
+			if (url.includes('api.twilio.com/')) {
+				return new Response(JSON.stringify({ sid: 'SM123' }), {
+					status: 200,
+					headers: { 'content-type': 'application/json' }
+				});
+			}
+
+			return new Response('Unhandled mock URL', { status: 500 });
+		});
+
+		const phone = `+49175${Date.now().toString().slice(-8)}`;
+		const request = new Request('http://example.com/api/founder/register?company_id=1', {
+			method: 'POST',
+			headers: {
+				'content-type': 'application/json'
+			},
+			body: JSON.stringify({
+				name: 'Founder Payload Test',
+				phone,
+				email: 'founder-payload@example.com',
+				cf_token: 'turnstile-test-token',
+				consent_sms: 'yes',
+				consent_terms: 'yes',
+				x_studio_founder_terms_accepted: 'yes',
+				x_studio_membership_type: 'Founder',
+				x_studio_notes: 'Founder Form Registration'
+			})
+		});
+
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(200);
+		expect(capturedOdooPayload).toMatchObject({
+			name: 'Founder Payload Test',
+			phone,
+			email: 'founder-payload@example.com',
+			x_studio_membership_type: 'Founder',
+			x_studio_sms_opt_in_1: 'yes',
+			x_studio_founder_terms_accepted: 'yes',
+			x_studio_kc_terms_accepted: 'no',
+			x_studio_otp_verified: 'no',
+			x_studio_founder_status: 'Pending Verification',
+			x_studio_founder_level: 'Trial',
+			x_studio_total_spent: 0,
+			x_number_of_visits: 0,
+			x_studio_notes: 'Founder Form Registration'
+		});
+		expect(String(capturedOdooPayload?.x_studio_opt_in_timestamp || '')).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
+
+		const customer = await env.DB.prepare(
+			`SELECT odoo_register_sync_state, odoo_register_sync_attempts FROM customers WHERE company_id = ? AND phone = ? LIMIT 1`
+		).bind(1, phone).first();
+
+		expect(String(customer?.odoo_register_sync_state || '')).toBe('synced');
+		expect(Number(customer?.odoo_register_sync_attempts || 0)).toBe(1);
+	});
+
+	it('uses legacy founder create webhook fallback when direct Odoo API config is unavailable', async () => {
+		await initializeDatabase(env.DB);
+
+		const originalBaseUrl = env.ODOO_BASE_URL;
+		const originalDbName = env.ODOO_DB_NAME;
+		const originalLogin = env.ODOO_LOGIN;
+		const originalApiToken = env.ODOO_API_TOKEN;
+		const originalPassword = env.ODOO_PASSWORD;
+		const originalLegacyCreateWebhook = env.ODOO_FOUNDER_CREATE_WEBHOOK;
+		const legacyCreateWebhook = 'https://legacy-create.test/webhook';
+
+		let legacyWebhookCalled = false;
+
+		env.ODOO_BASE_URL = '';
+		env.ODOO_DB_NAME = '';
+		env.ODOO_LOGIN = '';
+		env.ODOO_API_TOKEN = '';
+		env.ODOO_PASSWORD = '';
+		env.ODOO_FOUNDER_CREATE_WEBHOOK = legacyCreateWebhook;
+
+		try {
+			vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+				const url = typeof input === 'string' ? input : input.url;
+
+				if (url.includes('challenges.cloudflare.com/turnstile')) {
+					return new Response(JSON.stringify({ success: true }), {
+						status: 200,
+						headers: { 'content-type': 'application/json' }
+					});
+				}
+
+				if (url === legacyCreateWebhook) {
+					legacyWebhookCalled = true;
+					return new Response(JSON.stringify({ status: 'success' }), {
+						status: 200,
+						headers: { 'content-type': 'application/json' }
+					});
+				}
+
+				if (url.includes('api.twilio.com/')) {
+					return new Response(JSON.stringify({ sid: 'SM123' }), {
+						status: 200,
+						headers: { 'content-type': 'application/json' }
+					});
+				}
+
+				if (url.includes('/jsonrpc')) {
+					return new Response('Unexpected Odoo JSON-RPC call in webhook fallback test', { status: 500 });
+				}
+
+				return new Response('Unhandled mock URL', { status: 500 });
+			});
+
+			const phone = `+49170${Date.now().toString().slice(-8)}`;
+			const request = new Request('http://example.com/api/founder/register?company_id=1', {
+				method: 'POST',
+				headers: {
+					'content-type': 'application/json'
+				},
+				body: JSON.stringify({
+					name: 'Legacy Fallback Founder',
+					phone,
+					cf_token: 'turnstile-test-token',
+					consent_sms: 'yes',
+					consent_terms: 'yes',
+					x_studio_founder_terms_accepted: 'yes',
+					x_studio_membership_type: 'Founder',
+					x_studio_notes: 'Founder Form Registration'
+				})
+			});
+
+			const ctx = createExecutionContext();
+			const response = await worker.fetch(request, env, ctx);
+			await waitOnExecutionContext(ctx);
+
+			expect(response.status).toBe(200);
+			expect(legacyWebhookCalled).toBe(true);
+
+			const customer = await env.DB.prepare(
+				`SELECT odoo_register_sync_state, odoo_register_sync_attempts FROM customers WHERE company_id = ? AND phone = ? LIMIT 1`
+			).bind(1, phone).first();
+
+			expect(String(customer?.odoo_register_sync_state || '')).toBe('synced');
+			expect(Number(customer?.odoo_register_sync_attempts || 0)).toBe(1);
+		} finally {
+			env.ODOO_BASE_URL = originalBaseUrl;
+			env.ODOO_DB_NAME = originalDbName;
+			env.ODOO_LOGIN = originalLogin;
+			env.ODOO_API_TOKEN = originalApiToken;
+			env.ODOO_PASSWORD = originalPassword;
+			env.ODOO_FOUNDER_CREATE_WEBHOOK = originalLegacyCreateWebhook;
+		}
+	});
+
+	it('retries pending registrations when the first Odoo create sync fails', async () => {
+		await initializeDatabase(env.DB);
+		let createAttempts = 0;
+		const odooBaseUrl = 'https://odoo-retry.test';
+
+		await upsertCompanySetting(1, 'ODOO_BASE_URL', odooBaseUrl, 'test odoo base');
+		await upsertCompanySetting(1, 'ODOO_DB_NAME', 'hais-lab', 'test odoo db');
+		await upsertCompanySetting(1, 'ODOO_LOGIN', 'api@test.local', 'test odoo login');
+		await upsertCompanySetting(1, 'ODOO_API_TOKEN', 'token-test', 'test odoo token');
+
+		vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+			const url = typeof input === 'string' ? input : input.url;
+
+			if (url.includes('challenges.cloudflare.com/turnstile')) {
+				return new Response(JSON.stringify({ success: true }), {
+					status: 200,
+					headers: { 'content-type': 'application/json' }
+				});
+			}
+
+			if (url === `${odooBaseUrl}/jsonrpc`) {
+				const rpcBody = JSON.parse(String(init?.body || '{}'));
+				const params = rpcBody?.params || {};
+				const args = Array.isArray(params.args) ? params.args : [];
+
+				if (params.service === 'common' && params.method === 'authenticate') {
+					return jsonRpcResult(rpcBody.id, 7);
+				}
+
+				if (params.service === 'object' && params.method === 'execute_kw') {
+					const model = String(args[3] || '');
+					const method = String(args[4] || '');
+
+					if (model === 'res.partner' && method === 'fields_get') {
+						return jsonRpcResult(rpcBody.id, {
+							name: { type: 'char' },
+							phone: { type: 'char' },
+							email: { type: 'char' },
+							x_studio_membership_type: { type: 'char' },
+							x_studio_sms_opt_in_1: { type: 'char' },
+							x_studio_opt_in_text: { type: 'text' },
+							x_studio_opt_in_timestamp: { type: 'char' },
+							x_studio_founder_terms_accepted: { type: 'char' },
+							x_studio_kc_terms_accepted: { type: 'char' },
+							x_studio_otp_verified: { type: 'char' },
+							x_studio_founder_status: { type: 'char' },
+							x_studio_founder_level: { type: 'char' },
+							x_studio_last_reminder_date: { type: 'char' },
+							x_studio_total_spent: { type: 'float' },
+							x_number_of_visits: { type: 'integer' },
+							x_studio_notes: { type: 'text' },
+							category_id: { type: 'many2many' }
+						});
+					}
+
+					if (model === 'res.partner' && method === 'search_read') {
+						return jsonRpcResult(rpcBody.id, []);
+					}
+
+					if (model === 'res.partner' && method === 'create') {
+						createAttempts += 1;
+						if (createAttempts === 1) {
+							return new Response('odoo unavailable', { status: 500 });
+						}
+						return jsonRpcResult(rpcBody.id, 601);
+					}
+
+					if (model === 'res.partner' && method === 'read') {
+						return jsonRpcResult(rpcBody.id, [{ id: 601, category_id: [] }]);
+					}
+
+					if (model === 'res.partner' && method === 'write') {
+						return jsonRpcResult(rpcBody.id, true);
+					}
+
+					if (model === 'res.partner.category' && method === 'search_read') {
+						return jsonRpcResult(rpcBody.id, []);
+					}
+
+					if (model === 'res.partner.category' && method === 'create') {
+						return jsonRpcResult(rpcBody.id, 801);
+					}
+				}
+
+				return new Response('Unhandled Odoo RPC request', { status: 500 });
+			}
+
+			if (url.includes('api.twilio.com/')) {
+				return new Response(JSON.stringify({ sid: 'SM123' }), {
+					status: 200,
+					headers: { 'content-type': 'application/json' }
+				});
+			}
+
+			return new Response('Unhandled mock URL', { status: 500 });
+		});
+
+		const phone = `+49174${Date.now().toString().slice(-8)}`;
+		const requestBody = JSON.stringify({
+			name: 'Founder Retry Test',
+			phone,
+			cf_token: 'turnstile-test-token',
+			consent_sms: 'yes',
+			consent_terms: 'yes',
+			x_studio_founder_terms_accepted: 'yes',
+			x_studio_membership_type: 'Founder',
+			x_studio_notes: 'Founder Form Registration'
+		});
+
+		let request = new Request('http://example.com/api/founder/register?company_id=1', {
+			method: 'POST',
+			headers: {
+				'content-type': 'application/json'
+			},
+			body: requestBody
+		});
+
+		let ctx = createExecutionContext();
+		let response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(502);
+		let customer = await env.DB.prepare(
+			`SELECT founder_status, odoo_register_sync_state, odoo_register_sync_attempts FROM customers WHERE company_id = ? AND phone = ? LIMIT 1`
+		).bind(1, phone).first();
+		let otpRecord = await env.DB.prepare(
+			`SELECT otp_code FROM otp_cache WHERE company_id = ? AND phone = ? LIMIT 1`
+		).bind(1, phone).first();
+
+		expect(String(customer?.founder_status || '')).toBe('pending_verification');
+		expect(String(customer?.odoo_register_sync_state || '')).toBe('failed');
+		expect(Number(customer?.odoo_register_sync_attempts || 0)).toBe(1);
+		expect(otpRecord).toBeNull();
+
+		request = new Request('http://example.com/api/founder/register?company_id=1', {
+			method: 'POST',
+			headers: {
+				'content-type': 'application/json'
+			},
+			body: requestBody
+		});
+
+		ctx = createExecutionContext();
+		response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(200);
+		customer = await env.DB.prepare(
+			`SELECT odoo_register_sync_state, odoo_register_sync_attempts FROM customers WHERE company_id = ? AND phone = ? LIMIT 1`
+		).bind(1, phone).first();
+		otpRecord = await env.DB.prepare(
+			`SELECT otp_code FROM otp_cache WHERE company_id = ? AND phone = ? LIMIT 1`
+		).bind(1, phone).first();
+
+		expect(createAttempts).toBe(2);
+		expect(String(customer?.odoo_register_sync_state || '')).toBe('synced');
+		expect(Number(customer?.odoo_register_sync_attempts || 0)).toBe(2);
+		expect(String(otpRecord?.otp_code || '')).toMatch(/^\d{6}$/);
+	});
+
+	it('does not consume OTP when Odoo verify sync fails', async () => {
+		await initializeDatabase(env.DB);
+		const now = new Date().toISOString();
+		let verifyAttempts = 0;
+		const phone = `+49173${Date.now().toString().slice(-8)}`;
+		const odooBaseUrl = 'https://odoo-verify.test';
+
+		await upsertCompanySetting(1, 'ODOO_BASE_URL', odooBaseUrl, 'test odoo base');
+		await upsertCompanySetting(1, 'ODOO_DB_NAME', 'hais-lab', 'test odoo db');
+		await upsertCompanySetting(1, 'ODOO_LOGIN', 'api@test.local', 'test odoo login');
+		await upsertCompanySetting(1, 'ODOO_API_TOKEN', 'token-test', 'test odoo token');
+
+		await env.DB.prepare(`
+			INSERT INTO customers (
+				id, company_id, phone, name, email,
+				founder_status, founder_level, founder_terms_accepted, kc_terms_accepted,
+				otp_verified, sms_opt_in, opt_in_text, opt_in_timestamp,
+				odoo_register_sync_state, odoo_register_sync_attempts,
+				created_at, updated_at, created_by, updated_by, notes
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`).bind(
+			'customer_verify_test',
+			1,
+			phone,
+			'Founder Verify Test',
+			'verify@example.com',
+			'pending_verification',
+			'trial',
+			1,
+			0,
+			0,
+			1,
+			'test opt in',
+			now,
+			'synced',
+			1,
+			now,
+			now,
+			'test',
+			'test',
+			'Founder Form Registration'
+		).run();
+
+		await env.DB.prepare(`
+			INSERT INTO otp_cache (
+				id, company_id, phone, otp_code, expires_at,
+				created_at, attempts, last_attempt, verified
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`).bind(
+			'otp_verify_test',
+			1,
+			phone,
+			'123456',
+			new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+			now,
+			0,
+			now,
+			0
+		).run();
+
+		vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+			const url = typeof input === 'string' ? input : input.url;
+
+			if (url === `${odooBaseUrl}/jsonrpc`) {
+				const rpcBody = JSON.parse(String(init?.body || '{}'));
+				const params = rpcBody?.params || {};
+				const args = Array.isArray(params.args) ? params.args : [];
+
+				if (params.service === 'common' && params.method === 'authenticate') {
+					return jsonRpcResult(rpcBody.id, 7);
+				}
+
+				if (params.service === 'object' && params.method === 'execute_kw') {
+					const model = String(args[3] || '');
+					const method = String(args[4] || '');
+
+					if (model === 'res.partner' && method === 'fields_get') {
+						return jsonRpcResult(rpcBody.id, {
+							phone: { type: 'char' },
+							x_studio_membership_type: { type: 'char' },
+							x_studio_founder_status: { type: 'char' },
+							x_studio_otp_verified: { type: 'char' },
+							updated_at: { type: 'char' }
+						});
+					}
+
+					if (model === 'res.partner' && method === 'search_read') {
+						return jsonRpcResult(rpcBody.id, [{ id: 42, phone }]);
+					}
+
+					if (model === 'res.partner' && method === 'write') {
+						verifyAttempts += 1;
+						if (verifyAttempts === 1) {
+							return new Response('verify unavailable', { status: 500 });
+						}
+						return jsonRpcResult(rpcBody.id, true);
+					}
+				}
+
+				return new Response('Unhandled Odoo RPC request', { status: 500 });
+			}
+
+			if (url.includes('api.twilio.com/')) {
+				return new Response(JSON.stringify({ sid: 'SM123' }), {
+					status: 200,
+					headers: { 'content-type': 'application/json' }
+				});
+			}
+
+			return new Response('Unhandled mock URL', { status: 500 });
+		});
+
+		let request = new Request('http://example.com/api/founder/verify?company_id=1', {
+			method: 'POST',
+			headers: {
+				'content-type': 'application/json'
+			},
+			body: JSON.stringify({ phone, otp: '123456' })
+		});
+
+		let ctx = createExecutionContext();
+		let response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(502);
+		let customer = await env.DB.prepare(
+			`SELECT founder_status, otp_verified FROM customers WHERE company_id = ? AND phone = ? LIMIT 1`
+		).bind(1, phone).first();
+		let otpRecord = await env.DB.prepare(
+			`SELECT verified FROM otp_cache WHERE company_id = ? AND phone = ? LIMIT 1`
+		).bind(1, phone).first();
+
+		expect(String(customer?.founder_status || '')).toBe('pending_verification');
+		expect(Number(customer?.otp_verified || 0)).toBe(0);
+		expect(Number(otpRecord?.verified || 0)).toBe(0);
+
+		request = new Request('http://example.com/api/founder/verify?company_id=1', {
+			method: 'POST',
+			headers: {
+				'content-type': 'application/json'
+			},
+			body: JSON.stringify({ phone, otp: '123456' })
+		});
+
+		ctx = createExecutionContext();
+		response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(200);
+		customer = await env.DB.prepare(
+			`SELECT founder_status, otp_verified FROM customers WHERE company_id = ? AND phone = ? LIMIT 1`
+		).bind(1, phone).first();
+		otpRecord = await env.DB.prepare(
+			`SELECT verified FROM otp_cache WHERE company_id = ? AND phone = ? LIMIT 1`
+		).bind(1, phone).first();
+
+		expect(verifyAttempts).toBe(2);
+		expect(String(customer?.founder_status || '')).toBe('live');
+		expect(Number(customer?.otp_verified || 0)).toBe(1);
+		expect(Number(otpRecord?.verified || 0)).toBe(1);
 	});
 
 	it('allows founder re-registration for configured test exception phone', async () => {
@@ -222,7 +1038,7 @@ describe('ESSKULTUR worker', () => {
 			'pre-existing founder'
 		).run();
 
-		const request = new Request('http://restaurant1.quan-esskultur.de/api/founder/register', {
+		const request = new Request('http://example.com/api/founder/register?company_id=1', {
 			method: 'POST',
 			headers: {
 				'content-type': 'application/json'
@@ -290,7 +1106,7 @@ describe('ESSKULTUR worker', () => {
 			).run();
 		}
 
-		const request = new Request('http://restaurant1.quan-esskultur.de/founder?program=kc', {
+		const request = new Request('http://example.com/founder?program=kc', {
 			redirect: 'manual'
 		});
 		const ctx = createExecutionContext();
@@ -311,10 +1127,26 @@ describe('ESSKULTUR worker', () => {
 		expect(redirected.searchParams.get('privacy_url')).toBe('https://tenant.example/data-privacy');
 	});
 
+	it('renders neutral community headline for shared founder and KC forms', async () => {
+		await initializeDatabase(env.DB);
+
+		const request = new Request('http://example.com/founder-form?program=kc&lang=en&website_url=https://tenant.example&program_label=Colleague%20Club&membership_type=KC&redirect=https://tenant.example/colleague-club&terms_url=https://tenant.example/club-terms&privacy_url=https://tenant.example/data-privacy');
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(200);
+		const html = await response.text();
+		expect(html).toContain('Join the Community');
+		expect(html).toContain('Membership');
+		expect(html).not.toContain('KANTON Founder');
+		expect(html).not.toContain('Activate Founder Access');
+	});
+
 	it('allows manager role to manage social settings but not full company profile', async () => {
 		await initializeDatabase(env.DB);
 
-		const getReq = new Request('http://restaurant1.quan-esskultur.de/api/admin/platform-config?pin=8888');
+		const getReq = new Request('http://example.com/api/admin/platform-config?pin=8888');
 		let ctx = createExecutionContext();
 		const getRes = await worker.fetch(getReq, env, ctx);
 		await waitOnExecutionContext(ctx);
@@ -324,7 +1156,7 @@ describe('ESSKULTUR worker', () => {
 			`SELECT value FROM settings WHERE company_id = ? AND key = ? LIMIT 1`
 		).bind(1, 'business_hours_open').first();
 
-		const socialPostReq = new Request('http://restaurant1.quan-esskultur.de/api/admin/platform-config', {
+		const socialPostReq = new Request('http://example.com/api/admin/platform-config', {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify({
@@ -355,7 +1187,7 @@ describe('ESSKULTUR worker', () => {
 		).bind(1, 'business_hours_open').first();
 		expect(String(afterBusinessHours?.value || '')).toBe(String(beforeBusinessHours?.value || ''));
 
-		const deniedCompanyPostReq = new Request('http://restaurant1.quan-esskultur.de/api/admin/platform-config', {
+		const deniedCompanyPostReq = new Request('http://example.com/api/admin/platform-config', {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify({
@@ -373,473 +1205,12 @@ describe('ESSKULTUR worker', () => {
 		await waitOnExecutionContext(ctx);
 		expect(deniedCompanyPostRes.status).toBe(403);
 
-		const mediaGetReq = new Request('http://restaurant1.quan-esskultur.de/api/admin/media-assets?pin=8888');
+		const mediaGetReq = new Request('http://example.com/api/admin/media-assets?pin=8888');
 		ctx = createExecutionContext();
 		const mediaGetRes = await worker.fetch(mediaGetReq, env, ctx);
 		await waitOnExecutionContext(ctx);
 		expect(mediaGetRes.status).toBe(200);
 	});
-
-	it('enforces tenant isolation for same staff PIN and booking reads by subdomain', async () => {
-		await initializeDatabase(env.DB);
-
-		const company1CreateReq = new Request('http://restaurant1.quan-esskultur.de/api/test/booking/create', {
-			method: 'POST',
-			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({
-				name: 'Tenant One Guest',
-				phone: '+491701111111',
-				date: '2026-12-31',
-				time: '18:00',
-				pax: 2,
-				area: 'indoor'
-			})
-		});
-
-		let ctx = createExecutionContext();
-		const company1CreateRes = await worker.fetch(company1CreateReq, env, ctx);
-		await waitOnExecutionContext(ctx);
-		expect(company1CreateRes.status).toBe(200);
-		const company1CreateBody = await company1CreateRes.json();
-		expect(company1CreateBody.ok).toBe(true);
-
-		const company2CreateReq = new Request('http://restaurant2.quan-esskultur.de/api/test/booking/create', {
-			method: 'POST',
-			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({
-				name: 'Tenant Two Guest',
-				phone: '+491702222222',
-				date: '2026-12-31',
-				time: '19:00',
-				pax: 3,
-				area: 'outdoor'
-			})
-		});
-
-		ctx = createExecutionContext();
-		const company2CreateRes = await worker.fetch(company2CreateReq, env, ctx);
-		await waitOnExecutionContext(ctx);
-		expect(company2CreateRes.status).toBe(200);
-		const company2CreateBody = await company2CreateRes.json();
-		expect(company2CreateBody.ok).toBe(true);
-
-		const company1BookingsReq = new Request('http://restaurant1.quan-esskultur.de/api/bookings');
-		ctx = createExecutionContext();
-		const company1BookingsRes = await worker.fetch(company1BookingsReq, env, ctx);
-		await waitOnExecutionContext(ctx);
-		expect(company1BookingsRes.status).toBe(200);
-		const company1BookingsBody = await company1BookingsRes.json();
-		expect(company1BookingsBody.companyId).toBe(1);
-		expect(Array.isArray(company1BookingsBody.data)).toBe(true);
-		expect(company1BookingsBody.data.some((b) => b.id === company1CreateBody.bookingId)).toBe(true);
-		expect(company1BookingsBody.data.some((b) => b.id === company2CreateBody.bookingId)).toBe(false);
-
-		const company2BookingsReq = new Request('http://restaurant2.quan-esskultur.de/api/bookings');
-		ctx = createExecutionContext();
-		const company2BookingsRes = await worker.fetch(company2BookingsReq, env, ctx);
-		await waitOnExecutionContext(ctx);
-		expect(company2BookingsRes.status).toBe(200);
-		const company2BookingsBody = await company2BookingsRes.json();
-		expect(company2BookingsBody.companyId).toBe(2);
-		expect(Array.isArray(company2BookingsBody.data)).toBe(true);
-		expect(company2BookingsBody.data.some((b) => b.id === company2CreateBody.bookingId)).toBe(true);
-		expect(company2BookingsBody.data.some((b) => b.id === company1CreateBody.bookingId)).toBe(false);
-
-		const samePinCompany1Req = new Request('http://restaurant1.quan-esskultur.de/api/staff/auth?pin=1111');
-		ctx = createExecutionContext();
-		const samePinCompany1Res = await worker.fetch(samePinCompany1Req, env, ctx);
-		await waitOnExecutionContext(ctx);
-		expect(samePinCompany1Res.status).toBe(200);
-		const samePinCompany1Body = await samePinCompany1Res.json();
-		expect(samePinCompany1Body.success).toBe(true);
-		expect(samePinCompany1Body.companyId).toBe(1);
-
-		const samePinCompany2Req = new Request('http://restaurant2.quan-esskultur.de/api/staff/auth?pin=1111');
-		ctx = createExecutionContext();
-		const samePinCompany2Res = await worker.fetch(samePinCompany2Req, env, ctx);
-		await waitOnExecutionContext(ctx);
-		expect(samePinCompany2Res.status).toBe(200);
-		const samePinCompany2Body = await samePinCompany2Res.json();
-		expect(samePinCompany2Body.success).toBe(true);
-		expect(samePinCompany2Body.companyId).toBe(2);
-	});
-
-	it('blocks cross-tenant booking stage updates via body companyId override', async () => {
-		await initializeDatabase(env.DB);
-
-		const createReq = new Request('http://restaurant1.quan-esskultur.de/api/test/booking/create', {
-			method: 'POST',
-			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({
-				name: 'Stage Isolation Guest',
-				phone: '+491703333333',
-				date: '2026-12-31',
-				time: '20:00',
-				pax: 2,
-				area: 'indoor'
-			})
-		});
-
-		let ctx = createExecutionContext();
-		const createRes = await worker.fetch(createReq, env, ctx);
-		await waitOnExecutionContext(ctx);
-		expect(createRes.status).toBe(200);
-		const createBody = await createRes.json();
-		expect(createBody.ok).toBe(true);
-
-		const updateReq = new Request(`http://restaurant1.quan-esskultur.de/api/bookings/${encodeURIComponent(createBody.bookingId)}/stage`, {
-			method: 'POST',
-			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({
-				stage: 'confirmed',
-				staffId: 'staff_1',
-				companyId: 2
-			})
-		});
-
-		ctx = createExecutionContext();
-		const updateRes = await worker.fetch(updateReq, env, ctx);
-		await waitOnExecutionContext(ctx);
-		expect(updateRes.status).toBe(403);
-		const updateBody = await updateRes.json();
-		expect(updateBody.ok).toBe(false);
-		expect(String(updateBody.error || '')).toContain('company_id override');
-
-		const booking = await env.DB.prepare(
-			`SELECT stage FROM bookings WHERE company_id = ? AND id = ? LIMIT 1`
-		).bind(1, createBody.bookingId).first();
-
-		expect(String(booking?.stage || '')).toBe('pending');
-	});
-
-	it('routes booking creation and stage-update SSE notifications per company', async () => {
-		await initializeDatabase(env.DB);
-
-		const streamCompany1Req = new Request('http://restaurant1.quan-esskultur.de/api/notifications/stream');
-		const streamCompany2Req = new Request('http://restaurant2.quan-esskultur.de/api/notifications/stream');
-
-		let ctx = createExecutionContext();
-		const streamCompany1Res = await worker.fetch(streamCompany1Req, env, ctx);
-		await waitOnExecutionContext(ctx);
-		expect(streamCompany1Res.status).toBe(200);
-
-		ctx = createExecutionContext();
-		const streamCompany2Res = await worker.fetch(streamCompany2Req, env, ctx);
-		await waitOnExecutionContext(ctx);
-		expect(streamCompany2Res.status).toBe(200);
-
-		const readerCompany1 = streamCompany1Res.body?.getReader();
-		const readerCompany2 = streamCompany2Res.body?.getReader();
-		expect(readerCompany1).toBeTruthy();
-		expect(readerCompany2).toBeTruthy();
-
-		const connectedChunkCompany1 = await readSseChunkWithTimeout(readerCompany1, 1500);
-		const connectedChunkCompany2 = await readSseChunkWithTimeout(readerCompany2, 1500);
-		expect(String(connectedChunkCompany1 || '')).toContain('event: connected');
-		expect(String(connectedChunkCompany2 || '')).toContain('event: connected');
-
-		const createCompany1Req = new Request('http://restaurant1.quan-esskultur.de/api/test/booking/create', {
-			method: 'POST',
-			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({
-				name: 'Notify Company 1',
-				phone: '+491704444444',
-				date: '2026-12-31',
-				time: '21:00',
-				pax: 2,
-				area: 'indoor'
-			})
-		});
-
-		ctx = createExecutionContext();
-		const createCompany1Res = await worker.fetch(createCompany1Req, env, ctx);
-		await waitOnExecutionContext(ctx);
-		expect(createCompany1Res.status).toBe(200);
-		const createCompany1Body = await createCompany1Res.json();
-		expect(createCompany1Body.ok).toBe(true);
-
-		const bookingEventCompany1 = await readSseChunkWithTimeout(readerCompany1, 1500);
-		expect(String(bookingEventCompany1 || '')).toContain('event: booking');
-		expect(String(bookingEventCompany1 || '')).toContain(createCompany1Body.bookingId);
-
-		const updateCompany1Req = new Request(`http://restaurant1.quan-esskultur.de/api/bookings/${encodeURIComponent(createCompany1Body.bookingId)}/stage`, {
-			method: 'POST',
-			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({
-				stage: 'confirmed',
-				staffId: 'staff_1'
-			})
-		});
-
-		ctx = createExecutionContext();
-		const updateCompany1Res = await worker.fetch(updateCompany1Req, env, ctx);
-		await waitOnExecutionContext(ctx);
-		expect(updateCompany1Res.status).toBe(200);
-
-		const stageEventCompany1 = await readSseChunkWithTimeout(readerCompany1, 1500);
-		expect(String(stageEventCompany1 || '')).toContain('event: stage-update');
-		expect(String(stageEventCompany1 || '')).toContain(createCompany1Body.bookingId);
-
-		const createCompany2Req = new Request('http://restaurant2.quan-esskultur.de/api/test/booking/create', {
-			method: 'POST',
-			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({
-				name: 'Notify Company 2',
-				phone: '+491705555555',
-				date: '2026-12-31',
-				time: '21:30',
-				pax: 3,
-				area: 'outdoor'
-			})
-		});
-
-		ctx = createExecutionContext();
-		const createCompany2Res = await worker.fetch(createCompany2Req, env, ctx);
-		await waitOnExecutionContext(ctx);
-		expect(createCompany2Res.status).toBe(200);
-		const createCompany2Body = await createCompany2Res.json();
-		expect(createCompany2Body.ok).toBe(true);
-
-		const bookingEventCompany2 = await readSseChunkWithTimeout(readerCompany2, 1500);
-		expect(String(bookingEventCompany2 || '')).toContain('event: booking');
-		expect(String(bookingEventCompany2 || '')).toContain(createCompany2Body.bookingId);
-
-		await readerCompany1.cancel();
-		await readerCompany2.cancel();
-	});
-
-	it('syncs booking create to configured Odoo webhook and stores odoo_lead_id', async () => {
-		await initializeDatabase(env.DB);
-		const now = new Date().toISOString();
-
-		await env.DB.prepare(`
-			INSERT INTO settings (company_id, key, value, description, updated_at, updated_by)
-			VALUES (?, ?, ?, ?, ?, ?)
-			ON CONFLICT(company_id, key) DO UPDATE SET
-				value = excluded.value,
-				description = excluded.description,
-				updated_at = excluded.updated_at,
-				updated_by = excluded.updated_by
-		`).bind(
-			1,
-			'ODOO_BOOKING_CREATE_WEBHOOK',
-			'https://booking-sync.example/odoo',
-			'test booking create webhook',
-			now,
-			'test'
-		).run();
-
-		const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
-			const requestUrl = typeof input === 'string' ? input : input.url;
-
-			if (requestUrl.includes('challenges.cloudflare.com/turnstile')) {
-				return new Response(JSON.stringify({ success: true }), {
-					status: 200,
-					headers: { 'content-type': 'application/json' }
-				});
-			}
-
-			if (requestUrl.includes('booking-sync.example/odoo')) {
-				return new Response(JSON.stringify({ odoo_lead_id: 'odoo_lead_123' }), {
-					status: 200,
-					headers: { 'content-type': 'application/json' }
-				});
-			}
-
-			return new Response('Unhandled mock URL', { status: 500 });
-		});
-
-		const formData = new FormData();
-		formData.set('name', 'Booking Lead Guest');
-		formData.set('phone', '+491701234567');
-		formData.set('email', 'lead-guest@example.com');
-		formData.set('date', '2026-12-31');
-		formData.set('time', '19:15');
-		formData.set('pax', '4');
-		formData.set('area', 'garden');
-		formData.set('cf_token', 'turnstile-test-token');
-
-		const request = new Request('http://restaurant1.quan-esskultur.de/api/bookings/create', {
-			method: 'POST',
-			body: formData
-		});
-
-		const ctx = createExecutionContext();
-		const response = await worker.fetch(request, env, ctx);
-		await waitOnExecutionContext(ctx);
-
-		expect(response.status).toBe(200);
-		const body = await response.json();
-		expect(body.ok).toBe(true);
-
-		const calledWebhook = fetchSpy.mock.calls.some(([input]) => {
-			const requestUrl = typeof input === 'string' ? input : input?.url;
-			return String(requestUrl || '').includes('booking-sync.example/odoo');
-		});
-		expect(calledWebhook).toBe(true);
-
-		const booking = await env.DB.prepare(
-			`SELECT odoo_lead_id, area, stage FROM bookings WHERE company_id = ? AND id = ? LIMIT 1`
-		).bind(1, body.bookingId).first();
-
-		expect(String(booking?.odoo_lead_id || '')).toBe('odoo_lead_123');
-		expect(String(booking?.area || '')).toBe('garden');
-		expect(String(booking?.stage || '')).toBe('pending');
-		expect(fetchSpy).toHaveBeenCalled();
-	});
-
-	it('returns 400 tenant_required for main-domain bookings and staff auth routes', async () => {
-		await initializeDatabase(env.DB);
-
-		let ctx = createExecutionContext();
-		const bookingsRes = await worker.fetch(new Request('http://quan-esskultur.de/api/bookings'), env, ctx);
-		await waitOnExecutionContext(ctx);
-		expect(bookingsRes.status).toBe(400);
-		const bookingsBody = await bookingsRes.json();
-		expect(bookingsBody.ok).toBe(false);
-		expect(String(bookingsBody.error || '')).toBe('tenant_required');
-
-		ctx = createExecutionContext();
-		const staffAuthRes = await worker.fetch(new Request('http://quan-esskultur.de/api/staff/auth?pin=1111'), env, ctx);
-		await waitOnExecutionContext(ctx);
-		expect(staffAuthRes.status).toBe(400);
-		const staffAuthBody = await staffAuthRes.json();
-		expect(staffAuthBody.ok).toBe(false);
-		expect(String(staffAuthBody.error || '')).toBe('tenant_required');
-	});
-
-	it('returns 404 tenant_subdomain_not_found for unknown-subdomain booking and founder pages', async () => {
-		await initializeDatabase(env.DB);
-
-		let ctx = createExecutionContext();
-		const bookingFormRes = await worker.fetch(new Request('http://unknown.quan-esskultur.de/booking-form'), env, ctx);
-		await waitOnExecutionContext(ctx);
-		expect(bookingFormRes.status).toBe(404);
-		const bookingFormBody = await bookingFormRes.json();
-		expect(bookingFormBody.ok).toBe(false);
-		expect(String(bookingFormBody.error || '')).toBe('tenant_subdomain_not_found');
-
-		ctx = createExecutionContext();
-		const founderRes = await worker.fetch(new Request('http://unknown.quan-esskultur.de/founder'), env, ctx);
-		await waitOnExecutionContext(ctx);
-		expect(founderRes.status).toBe(404);
-		const founderBody = await founderRes.json();
-		expect(founderBody.ok).toBe(false);
-		expect(String(founderBody.error || '')).toBe('tenant_subdomain_not_found');
-	});
-
-	it('returns 400 tenant_required for main-domain notifications stream without opening SSE', async () => {
-		await initializeDatabase(env.DB);
-
-		const ctx = createExecutionContext();
-		const response = await worker.fetch(new Request('http://quan-esskultur.de/api/notifications/stream'), env, ctx);
-		await waitOnExecutionContext(ctx);
-
-		expect(response.status).toBe(400);
-		expect(String(response.headers.get('content-type') || '')).toContain('application/json');
-		const body = await response.json();
-		expect(body.ok).toBe(false);
-		expect(String(body.error || '')).toBe('tenant_required');
-	});
-
-	it('allows localhost and workers.dev company_id override when company exists', async () => {
-		await initializeDatabase(env.DB);
-
-		for (const host of ['localhost:8787', 'tenant-preview.workers.dev']) {
-			const request = new Request(`http://${host}/api/bookings?company_id=2`);
-			const ctx = createExecutionContext();
-			const response = await worker.fetch(request, env, ctx);
-			await waitOnExecutionContext(ctx);
-
-			expect(response.status).toBe(200);
-			const body = await response.json();
-			expect(body.ok).toBe(true);
-			expect(Number(body.companyId)).toBe(2);
-		}
-	});
-
-	it('returns 403 company_id_override_not_allowed for tenant host with mismatched company_id query', async () => {
-		await initializeDatabase(env.DB);
-
-		const request = new Request('http://restaurant1.quan-esskultur.de/api/bookings?company_id=2');
-		const ctx = createExecutionContext();
-		const response = await worker.fetch(request, env, ctx);
-		await waitOnExecutionContext(ctx);
-
-		expect(response.status).toBe(403);
-		const body = await response.json();
-		expect(body.ok).toBe(false);
-		expect(String(body.error || '')).toBe('company_id_override_not_allowed');
-	});
-
-		it('syncs staff create/update to configured Odoo staff webhook', async () => {
-			await initializeDatabase(env.DB);
-			const now = new Date().toISOString();
-
-			await env.DB.prepare(`
-				INSERT INTO settings (company_id, key, value, description, updated_at, updated_by)
-				VALUES (?, ?, ?, ?, ?, ?)
-				ON CONFLICT(company_id, key) DO UPDATE SET
-					value = excluded.value,
-					description = excluded.description,
-					updated_at = excluded.updated_at,
-					updated_by = excluded.updated_by
-			`).bind(
-				1,
-				'ODOO_STAFF_SYNC_WEBHOOK',
-				'https://staff-sync.example/odoo',
-				'test staff sync webhook',
-				now,
-				'test'
-			).run();
-
-			let outboundPayload = null;
-			const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
-				const url = typeof input === 'string' ? input : input.url;
-
-				if (url.includes('staff-sync.example/odoo')) {
-					outboundPayload = JSON.parse(String(init?.body || '{}'));
-					return new Response('ok', { status: 200 });
-				}
-
-				return new Response('Unhandled mock URL', { status: 500 });
-			});
-
-			const request = new Request('http://restaurant1.quan-esskultur.de/api/admin/staff', {
-				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({
-					pin: '1234',
-					staff: {
-						name: 'Webhook Staff',
-						pin: '4321',
-						role: 'staff',
-						is_active: 1,
-						permissions: '["view_bookings"]'
-					}
-				})
-			});
-
-			const ctx = createExecutionContext();
-			const response = await worker.fetch(request, env, ctx);
-			await waitOnExecutionContext(ctx);
-
-			expect(response.status).toBe(200);
-			expect(fetchSpy).toHaveBeenCalledTimes(1);
-			expect(outboundPayload).toMatchObject({
-				_model: 'hr.employee',
-				action: 'upsert',
-				name: 'Webhook Staff',
-				role: 'staff',
-				is_active: true,
-				company_id: 1,
-				updated_by: 'Admin'
-			});
-			expect(Array.isArray(outboundPayload?.permissions)).toBe(true);
-			expect(outboundPayload?.permissions).toContain('view_bookings');
-			expect(typeof outboundPayload?.staff_id).toBe('string');
-			expect(outboundPayload?.staff_id.length).toBeGreaterThan(0);
-		});
 
 	it('redirects founder route to standard contact link when membership module is disabled', async () => {
 		await initializeDatabase(env.DB);
@@ -865,7 +1236,7 @@ describe('ESSKULTUR worker', () => {
 				updated_by = excluded.updated_by
 		`).bind(1, 'standard_contact_link', '/kontakt', 'test', now, 'test').run();
 
-		const request = new Request('http://restaurant1.quan-esskultur.de/founder?program=kc', {
+		const request = new Request('http://example.com/founder?program=kc', {
 			redirect: 'manual'
 		});
 		const ctx = createExecutionContext();
@@ -898,7 +1269,7 @@ describe('ESSKULTUR worker', () => {
 		formData.set('pax', '2');
 		formData.set('cf_token', 'token');
 
-		const request = new Request('http://restaurant1.quan-esskultur.de/api/bookings/create', {
+		const request = new Request('http://example.com/api/bookings/create', {
 			method: 'POST',
 			body: formData
 		});
@@ -919,7 +1290,7 @@ describe('ESSKULTUR worker', () => {
 			`SELECT name, email, phone, timezone, odoo_url, odoo_company_id FROM companies WHERE id = ? LIMIT 1`
 		).bind(1).first();
 
-		const request = new Request('http://restaurant1.quan-esskultur.de/api/admin/platform-config', {
+		const request = new Request('http://example.com/api/admin/platform-config', {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify({

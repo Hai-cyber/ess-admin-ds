@@ -243,6 +243,12 @@ test('E2E: Online booking → Board → Staff notification', async () => {
 
 **Definition**: Complete onboarding flow. Restaurant owner signs up, creates tenant, goes through setup wizard, configures all required fields, reaches "Go Live" state.
 
+**Current proposal to add into CP-3 scope**:
+- Build a tenant-facing website content editor inside Restaurant Admin
+- Tenant can edit presentation-surface fields only: text, photos, button labels, opening hours, and public owner or house information
+- Technical keys, payload paths, renderer-only settings, and module internals remain locked
+- Opening hours must stay machine-readable so they can later connect to shop and online-order availability
+
 **Verification Script**:
 
 ```javascript

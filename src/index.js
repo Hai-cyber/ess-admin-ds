@@ -35,14 +35,57 @@ const PLATFORM_OPERATOR_COMPANY_ID = 1;
 const PLATFORM_PUBLIC_DOMAIN = 'gooddining.app';
 const PLATFORM_PRICING_DEFAULTS = {
   platform_core_price_per_user: '9.98',
+  platform_core_name: 'Online',
+  platform_core_description: 'For restaurants that need a branded website on a managed subdomain.',
+  platform_core_features: 'Restaurant website\nHosted on your gooddining.app subdomain\nContact and info page\nNo booking workflow included\nHosting included\nSSL included',
   platform_commerce_price_per_user: '59',
+  platform_commerce_name: 'Service',
+  platform_commerce_description: 'For restaurants that need POS, service flow, and a German-standard checkout.',
+  platform_commerce_features: 'Everything in Online\nRestaurant POS\nLive booking board, reminders, and confirmations\nFast staff PIN login and walk-ins\nGerman-standard cash register workflow\nTSE available as add-on for German compliance',
   platform_growth_price_per_user: '89',
+  platform_growth_name: 'Repeat Guests',
+  platform_growth_description: 'For restaurants that want SMS marketing and loyal-guest management built in.',
+  platform_growth_features: 'Everything in Service\nSMS marketing for previous guests\nLoyal guest profiles and segments\nSimple win-back campaigns\nRepeat-guest overview and follow-up',
+  platform_enterprise_price_per_user: '',
+  platform_enterprise_name: 'Groups',
+  platform_enterprise_description: 'Multi-location, custom integrations, dedicated SLA support.',
+  platform_enterprise_features: 'Everything in Repeat Guests\nMulti-location support\nCustom integrations API\nDedicated onboarding + SLA',
   platform_setup_fee_once: '349',
   platform_tse_fee_monthly: '19',
   platform_it_support_hourly: '95',
   platform_it_support_monthly: '249',
   platform_price_note: 'Billed per active user. Included: hosting, platform maintenance, SSL, and a managed gooddining.app subdomain. Add-ons only apply for SMS usage, TSE, onboarding, and optional IT support.'
 };
+const PLATFORM_PLAN_DEFINITIONS = [
+  {
+    id: 'core',
+    priceKey: 'platform_core_price_per_user',
+    nameKey: 'platform_core_name',
+    descriptionKey: 'platform_core_description',
+    featuresKey: 'platform_core_features'
+  },
+  {
+    id: 'commerce',
+    priceKey: 'platform_commerce_price_per_user',
+    nameKey: 'platform_commerce_name',
+    descriptionKey: 'platform_commerce_description',
+    featuresKey: 'platform_commerce_features'
+  },
+  {
+    id: 'growth',
+    priceKey: 'platform_growth_price_per_user',
+    nameKey: 'platform_growth_name',
+    descriptionKey: 'platform_growth_description',
+    featuresKey: 'platform_growth_features'
+  },
+  {
+    id: 'enterprise',
+    priceKey: 'platform_enterprise_price_per_user',
+    nameKey: 'platform_enterprise_name',
+    descriptionKey: 'platform_enterprise_description',
+    featuresKey: 'platform_enterprise_features'
+  }
+];
 const WEBSITE_BUILDER_DEFAULTS = {
   site_template: 'modern',
   site_theme_variant: 'theme-luxury-a',
@@ -964,6 +1007,28 @@ async function getPlatformMarketingSettings(env) {
   return merged;
 }
 
+function parsePlatformPlanFeatures(rawValue) {
+  return String(rawValue || '')
+    .split(/\r?\n/)
+    .map(item => item.trim())
+    .filter(Boolean);
+}
+
+function buildPlatformPlanDefinition(settingsMap, definition) {
+  const name = String(settingsMap[definition.nameKey] || PLATFORM_PRICING_DEFAULTS[definition.nameKey] || '').trim();
+  const description = String(settingsMap[definition.descriptionKey] || PLATFORM_PRICING_DEFAULTS[definition.descriptionKey] || '').trim();
+  const priceRaw = String(settingsMap[definition.priceKey] || PLATFORM_PRICING_DEFAULTS[definition.priceKey] || '').trim();
+  const features = parsePlatformPlanFeatures(settingsMap[definition.featuresKey] || PLATFORM_PRICING_DEFAULTS[definition.featuresKey] || '');
+
+  return {
+    id: definition.id,
+    name,
+    description,
+    priceEurPerUserMonthly: priceRaw === '' ? null : Number(priceRaw),
+    features
+  };
+}
+
 function buildPlatformPlansResponse(settingsMap) {
   const setupFee = Number(settingsMap.platform_setup_fee_once || PLATFORM_PRICING_DEFAULTS.platform_setup_fee_once || 0);
   const tseFee = Number(settingsMap.platform_tse_fee_monthly || PLATFORM_PRICING_DEFAULTS.platform_tse_fee_monthly || 0);
@@ -980,52 +1045,7 @@ function buildPlatformPlansResponse(settingsMap) {
       itSupportHourlyEur: supportHourly,
       itSupportMonthlyRetainerEur: supportMonthly
     },
-    plans: [
-      {
-        id: 'core',
-        name: 'Online',
-        priceEurPerUserMonthly: Number(settingsMap.platform_core_price_per_user || PLATFORM_PRICING_DEFAULTS.platform_core_price_per_user || 0),
-        features: [
-          'Restaurant website',
-          'Hosted on your gooddining.app subdomain',
-          'Contact and info page',
-          'No booking workflow included'
-        ]
-      },
-      {
-        id: 'commerce',
-        name: 'Service',
-        priceEurPerUserMonthly: Number(settingsMap.platform_commerce_price_per_user || PLATFORM_PRICING_DEFAULTS.platform_commerce_price_per_user || 0),
-        features: [
-          'Everything in Online',
-          'Restaurant POS',
-          'Live booking board, reminders, and confirmations',
-          'German-standard cash register workflow'
-        ]
-      },
-      {
-        id: 'growth',
-        name: 'Repeat Guests',
-        priceEurPerUserMonthly: Number(settingsMap.platform_growth_price_per_user || PLATFORM_PRICING_DEFAULTS.platform_growth_price_per_user || 0),
-        features: [
-          'Everything in Service',
-          'SMS marketing for previous guests',
-          'Loyal guest profiles and segments',
-          'Repeat-guest overview and follow-up'
-        ]
-      },
-      {
-        id: 'enterprise',
-        name: 'Groups',
-        priceEurPerUserMonthly: null,
-        features: [
-          'Everything in Repeat Guests',
-          'Multi-location support',
-          'Custom integrations API',
-          'Dedicated onboarding + SLA'
-        ]
-      }
-    ]
+    plans: PLATFORM_PLAN_DEFINITIONS.map(definition => buildPlatformPlanDefinition(settingsMap, definition))
   };
 }
 

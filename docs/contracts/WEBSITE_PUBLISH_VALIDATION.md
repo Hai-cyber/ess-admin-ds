@@ -15,6 +15,8 @@ This validation gate exists to support the fixed-skin model:
 - system validates the payload
 - system renders the fixed page model
 
+Tenant admin may expose friendly content fields, but validation still runs against normalized contract data rather than raw form labels or UI-only field names.
+
 If validation fails, the website version must not publish.
 
 ---
@@ -58,6 +60,7 @@ Required checks:
 - phone
 - email
 - address
+- opening-hours data is present in a normalized machine-readable form when the tenant publishes service hours
 - hero title
 - hero subtitle
 - about title
@@ -124,6 +127,7 @@ Use this checklist before rendering or publishing a new tenant version.
 - [ ] Contract version is current
 - [ ] Required business identity fields are present
 - [ ] Required contact fields are present
+- [ ] Opening hours are valid for public display and future shop or online-order reuse
 - [ ] Navigation uses fixed page keys only
 - [ ] Section copy uses known section keys only
 - [ ] Button, form, and feedback copy stay inside known registries

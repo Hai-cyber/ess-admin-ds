@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Founder Registrierung</title>
+  <title>Werden Sie Teil der Community</title>
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   <style>
     :root {
@@ -286,11 +286,36 @@
         max-width: none;
         min-height: 100vh;
         box-shadow: none;
-        padding: 20px 14px 24px;
+        padding: 16px 12px 18px;
       }
 
       h1 {
         font-size: 25px;
+      }
+
+      .intro {
+        margin-bottom: 10px;
+      }
+
+      .steps {
+        margin-bottom: 12px;
+      }
+
+      .field {
+        margin-bottom: 10px;
+      }
+
+      .consent {
+        margin-bottom: 8px;
+      }
+
+      .turnstile-wrap {
+        margin: 8px 0 8px;
+        min-height: 58px;
+      }
+
+      .actions {
+        margin-top: 2px;
       }
     }
   </style>
@@ -298,9 +323,9 @@
 <body>
   <main class="shell">
     <section class="card" aria-live="polite">
-      <p class="eyebrow">KANTON Founder</p>
-      <h1 id="form-title">Founder Zugang aktivieren</h1>
-      <p id="form-intro" class="intro">Registrieren Sie sich mit Ihrer Mobilnummer. Danach bestaetigen Sie den 6-stelligen OTP-Code.</p>
+      <p id="form-eyebrow" class="eyebrow">Founder Mitgliedschaft</p>
+      <h1 id="form-title">Werde Teil der Community</h1>
+      <p id="form-intro" class="intro">Registrieren Sie sich mit Ihrer Mobilnummer, um Teil der Community zu werden. Anschliessend bestaetigen Sie den 6-stelligen OTP-Code.</p>
 
       <div class="steps" aria-hidden="true">
         <span id="dot-register" class="step-dot active"></span>
@@ -314,6 +339,7 @@
         <form id="register-form" novalidate>
           <input type="hidden" name="x_studio_founder_status" value="Pending Verification">
           <input type="hidden" name="x_studio_founder_level" value="Trial">
+            <input id="program-mode-hidden" type="hidden" name="program_mode" value="founder">
             <input id="membership-type-hidden" type="hidden" name="x_studio_membership_type" value="Founder">
             <input id="kc-terms-hidden" type="hidden" name="x_studio_kc_terms_accepted" value="no">
             <input id="founder-terms-hidden" type="hidden" name="x_studio_founder_terms_accepted" value="yes">
@@ -377,7 +403,7 @@
 
       <section id="step-success" class="step-panel">
         <div id="success-box" class="success-box">
-          Ihr OTP wurde verifiziert. Ihre Founder Registrierung ist jetzt aktiv.
+          Vielen Dank. Ihre Anmeldung ist jetzt bestaetigt.
         </div>
         <p id="success-intro" class="intro" style="margin-bottom:14px;">Sie werden in wenigen Sekunden weitergeleitet.</p>
         <div class="actions">
@@ -400,6 +426,7 @@
       var globalMessage = document.getElementById('global-message');
       var cooldownEl = document.getElementById('resend-cooldown');
       var continueLink = document.getElementById('continue-link');
+      var formEyebrow = document.getElementById('form-eyebrow');
       var formTitle = document.getElementById('form-title');
       var formIntro = document.getElementById('form-intro');
       var nameLabel = document.getElementById('label-name');
@@ -412,6 +439,7 @@
       var successIntro = document.getElementById('success-intro');
       var hiddenOptInText = document.getElementById('opt-in-text-hidden');
       var hiddenMembershipType = document.getElementById('membership-type-hidden');
+      var hiddenProgramMode = document.getElementById('program-mode-hidden');
       var hiddenKcTerms = document.getElementById('kc-terms-hidden');
       var hiddenFounderTerms = document.getElementById('founder-terms-hidden');
       var hiddenNotes = document.getElementById('notes-hidden');
@@ -556,6 +584,11 @@
         return String(text || '').replace(/Founder/g, getProgramLabelForLocale());
       }
 
+      function getProgramMembershipTitle() {
+        var prefix = programKey === 'kc' ? 'KC' : 'Founder';
+        return prefix + ' ' + t('eyebrow');
+      }
+
       function getProgramDefaults() {
         if (programKey === 'kc') {
           return {
@@ -575,12 +608,16 @@
       }
 
       var programDefaults = getProgramDefaults();
+      var registerEndpoint = programKey === 'kc' ? '/api/kc/register' : '/api/founder/register';
+      var verifyEndpoint = programKey === 'kc' ? '/api/kc/verify' : '/api/founder/verify';
+      var resendEndpoint = programKey === 'kc' ? '/api/kc/resend-otp' : '/api/founder/resend-otp';
 
       var I18N = {
         de: {
-          pageTitle: 'Founder Registrierung',
-          heading: 'Founder Zugang aktivieren',
-          intro: 'Registrieren Sie sich mit Ihrer Mobilnummer. Danach bestaetigen Sie den 6-stelligen OTP-Code.',
+          pageTitle: 'Werden Sie Teil der Community',
+          eyebrow: 'Mitgliedschaft',
+          heading: 'Werde Teil der Community',
+          intro: 'Registrieren Sie sich mit Ihrer Mobilnummer, um Teil der Community zu werden. Anschliessend bestaetigen Sie den 6-stelligen OTP-Code.',
           nameLabel: 'Name',
           namePlaceholder: 'Ihr Name',
           phoneLabel: 'Mobiltelefon',
@@ -595,7 +632,7 @@
           otpVerify: 'OTP pruefen',
           back: 'Zurueck',
           resend: 'OTP erneut senden',
-          successBox: 'Ihr OTP wurde verifiziert. Ihre Founder Registrierung ist jetzt aktiv.',
+          successBox: 'Vielen Dank. Ihre Anmeldung ist jetzt bestaetigt.',
           successIntro: 'Sie werden in wenigen Sekunden weitergeleitet.',
           continue: 'Weiter',
           wait: 'Bitte warten...',
@@ -610,14 +647,15 @@
           registerFirst: 'Bitte zuerst registrieren.',
           invalidOtp: 'Bitte geben Sie einen gueltigen 6-stelligen OTP-Code ein.',
           verifyFailed: 'OTP Verifizierung fehlgeschlagen.',
-          verified: 'OTP verifiziert.',
+          verified: 'Verifizierung erfolgreich.',
           resendFailed: 'OTP konnte nicht erneut gesendet werden.',
           resent: 'OTP wurde erneut gesendet.'
         },
         en: {
-          pageTitle: 'Founder Registration',
-          heading: 'Activate Founder Access',
-          intro: 'Register with your mobile number, then verify the 6-digit OTP code.',
+          pageTitle: 'Join the Community',
+          eyebrow: 'Membership',
+          heading: 'Join the Community',
+          intro: 'Register with your mobile number to join the community. Then verify the 6-digit OTP code.',
           nameLabel: 'Name',
           namePlaceholder: 'Your name',
           phoneLabel: 'Mobile phone',
@@ -632,7 +670,7 @@
           otpVerify: 'Verify OTP',
           back: 'Back',
           resend: 'Resend OTP',
-          successBox: 'Your OTP has been verified. Your Founder registration is now active.',
+          successBox: 'Thank you. Your sign-up is now confirmed.',
           successIntro: 'You will be redirected in a few seconds.',
           continue: 'Continue',
           wait: 'Please wait...',
@@ -647,7 +685,7 @@
           registerFirst: 'Please register first.',
           invalidOtp: 'Please enter a valid 6-digit OTP code.',
           verifyFailed: 'OTP verification failed.',
-          verified: 'OTP verified.',
+          verified: 'Verification successful.',
           resendFailed: 'OTP could not be resent.',
           resent: 'OTP sent again.'
         }
@@ -663,8 +701,11 @@
         'Bitte geben Sie einen gueltigen 6-stelligen OTP-Code ein.': 'Please enter a valid 6-digit OTP code.',
         'OTP Verifizierung fehlgeschlagen.': 'OTP verification failed.',
         'OTP verifiziert.': 'OTP verified.',
+        'OTP verifiziert. Ihre Anmeldung ist jetzt bestaetigt.': 'OTP verified. Your sign-up is now confirmed.',
         'OTP verifiziert. Ihre Founder-Registrierung ist jetzt aktiv.': 'OTP verified. Your Founder registration is now active.',
         'OTP verifiziert. Ihre KC-Registrierung ist jetzt aktiv.': 'OTP verified. Your KC registration is now active.',
+        'Profil konnte derzeit nicht mit Odoo synchronisiert werden. Bitte erneut versuchen.': 'Your profile could not be synchronized with Odoo right now. Please try again.',
+        'Verifizierung konnte derzeit nicht mit Odoo synchronisiert werden. Bitte erneut versuchen.': 'Your verification could not be synchronized with Odoo right now. Please try again.',
         'OTP konnte nicht erneut gesendet werden.': 'OTP could not be resent.',
         'OTP wurde erneut gesendet.': 'OTP sent again.',
         'Bitte geben Sie eine gueltige E-Mail-Adresse ein.': 'Please enter a valid email address.',
@@ -748,9 +789,11 @@
       }
 
       function applyTranslations() {
+        var membershipTitle = getProgramMembershipTitle();
         document.documentElement.lang = locale;
-        document.title = applyProgramLabel(t('pageTitle'));
-        formTitle.textContent = applyProgramLabel(t('heading'));
+        document.title = membershipTitle;
+        formEyebrow.textContent = membershipTitle;
+        formTitle.textContent = t('heading');
         formIntro.textContent = applyProgramLabel(t('intro'));
         nameLabel.textContent = t('nameLabel');
         nameInput.placeholder = t('namePlaceholder');
@@ -766,6 +809,7 @@
         }
 
         hiddenOptInText.value = t('optInText');
+        hiddenProgramMode.value = programKey;
         hiddenMembershipType.value = programDefaults.membershipType;
         hiddenFounderTerms.value = programDefaults.founderTerms;
         hiddenKcTerms.value = programDefaults.kcTerms;
@@ -906,7 +950,7 @@
           formData.set('consent_sms', document.getElementById('consent-sms').checked ? 'yes' : 'no');
           formData.set('consent_terms', document.getElementById('consent-terms').checked ? 'yes' : 'no');
 
-          var registerResponse = await fetch('/api/founder/register', {
+          var registerResponse = await fetch(registerEndpoint, {
             method: 'POST',
             body: formData
           });
@@ -960,7 +1004,7 @@
         setButtonBusy(verifyBtn, true, t('verifying'), t('otpVerify'));
 
         try {
-          var verifyResponse = await fetch('/api/founder/verify', {
+          var verifyResponse = await fetch(verifyEndpoint, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
@@ -1008,7 +1052,7 @@
         setButtonBusy(resendBtn, true, t('sending'), t('resend'));
 
         try {
-          var resendResponse = await fetch('/api/founder/resend-otp', {
+          var resendResponse = await fetch(resendEndpoint, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'

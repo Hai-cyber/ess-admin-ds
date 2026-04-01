@@ -380,10 +380,89 @@
       background: #49535f;
       color: rgba(255, 255, 255, 0.86);
       border-top-color: rgba(255, 255, 255, 0.08);
+      padding-top: 1.35rem;
+      padding-bottom: 1.35rem;
     }
 
     body.theme-luxury-a footer a {
       color: rgba(255, 255, 255, 0.86);
+    }
+
+    body.theme-luxury-a .luxury-two-header-shell {
+      gap: 0.85rem;
+      padding-top: 0.55rem;
+      padding-bottom: 0.55rem;
+    }
+
+    body.theme-luxury-a .luxury-two-brand {
+      gap: 0.65rem;
+    }
+
+    body.theme-luxury-a [data-brand-logo] {
+      width: 2.75rem;
+      height: 2.75rem;
+      padding: 0.2rem;
+    }
+
+    body.theme-luxury-a [data-brand-fallback] {
+      min-width: 2.45rem;
+      min-height: 2.45rem;
+      padding: 0 0.58rem;
+      font-size: 0.64rem;
+    }
+
+    body.theme-luxury-a .luxury-two-brand-title {
+      font-size: 0.92rem;
+      line-height: 1.2;
+    }
+
+    body.theme-luxury-a .luxury-two-brand-tagline {
+      font-size: 0.68rem;
+      line-height: 1.35;
+    }
+
+    body.theme-luxury-a .luxury-two-header-actions {
+      gap: 0.55rem;
+    }
+
+    body.theme-luxury-a [data-primary-nav] {
+      gap: 0.9rem;
+    }
+
+    body.theme-luxury-a [data-mobile-nav] {
+      padding-top: 0.55rem;
+      padding-bottom: 0.55rem;
+    }
+
+    body.theme-luxury-a .page-tab {
+      font-size: 0.66rem;
+    }
+
+    body.theme-luxury-a header [data-header-contact-label],
+    body.theme-luxury-a header [data-header-reserve-label] {
+      padding: 0.58rem 0.88rem;
+    }
+
+    body.theme-luxury-a #secondary-nav {
+      gap: 0.78rem;
+    }
+
+    body.theme-luxury-a #secondary-nav a {
+      font-size: 0.63rem;
+    }
+
+    body.theme-luxury-a .footer-grid {
+      gap: 1rem;
+    }
+
+    body.theme-luxury-a footer [data-bind="restaurant.name"] {
+      font-size: 1.2rem;
+      line-height: 1.15;
+    }
+
+    body.theme-luxury-a footer p,
+    body.theme-luxury-a footer nav {
+      font-size: 0.82rem;
     }
 
     body.theme-luxury-a .luxury-page-shell {
@@ -2321,6 +2400,81 @@
     }
 
     @media (max-width: 768px) {
+      body.theme-luxury-a .luxury-two-header-shell {
+        gap: 0.7rem;
+        padding-top: 0.42rem;
+        padding-bottom: 0.42rem;
+      }
+
+      body.theme-luxury-a .luxury-two-brand {
+        gap: 0.55rem;
+      }
+
+      body.theme-luxury-a [data-brand-logo] {
+        width: 2.2rem;
+        height: 2.2rem;
+      }
+
+      body.theme-luxury-a [data-brand-fallback] {
+        min-width: 2.05rem;
+        min-height: 2.05rem;
+        padding: 0 0.46rem;
+        font-size: 0.58rem;
+      }
+
+      body.theme-luxury-a .luxury-two-brand-title {
+        font-size: 0.84rem;
+      }
+
+      body.theme-luxury-a .luxury-two-brand-tagline {
+        font-size: 0.6rem;
+      }
+
+      body.theme-luxury-a .luxury-two-header-actions {
+        gap: 0.4rem;
+      }
+
+      body.theme-luxury-a [data-mobile-nav] {
+        padding-top: 0.45rem;
+        padding-bottom: 0.4rem;
+      }
+
+      body.theme-luxury-a .page-tab {
+        font-size: 0.62rem;
+      }
+
+      body.theme-luxury-a header [data-header-contact-label],
+      body.theme-luxury-a header [data-header-reserve-label] {
+        padding: 0.48rem 0.68rem;
+        font-size: 0.64rem;
+      }
+
+      body.theme-luxury-a #secondary-nav {
+        gap: 0.6rem;
+      }
+
+      body.theme-luxury-a #secondary-nav a {
+        font-size: 0.58rem;
+      }
+
+      body.theme-luxury-a footer {
+        padding-top: 0.95rem;
+        padding-bottom: 0.95rem;
+      }
+
+      body.theme-luxury-a .footer-grid {
+        gap: 0.8rem;
+      }
+
+      body.theme-luxury-a footer [data-bind="restaurant.name"] {
+        font-size: 1.05rem;
+      }
+
+      body.theme-luxury-a footer p,
+      body.theme-luxury-a footer nav {
+        font-size: 0.76rem;
+      }
+
       .hero-grid,
       .signature-grid,
       .category-grid,
@@ -2856,10 +3010,6 @@
           career: 'Careers'
         },
         secondary_items: [
-          { page: 'about', label: 'Our rooms' },
-          { href: '#', label: 'House journal' },
-          { page: 'career', label: 'Team & roles' },
-          { href: '#', label: 'Instagram' },
           { page: 'contact', label: 'Contact' }
         ],
         page_visibility: {
@@ -3152,7 +3302,10 @@
     }
 
     function normalizeThemeFamily(themeRaw) {
-      const match = String(themeRaw || '').trim().toLowerCase().match(/^theme-([a-z]+)-/);
+      const normalized = String(themeRaw || '').trim().toLowerCase();
+      if (normalized === 'theme-luxury-a') return 'luxury-one';
+      if (normalized === 'theme-luxury-b') return 'luxury-two';
+      const match = normalized.match(/^theme-([a-z]+)-/);
       return match?.[1] || 'luxury';
     }
 
@@ -3535,7 +3688,11 @@
             founder: source?.navigation?.labels?.founder || languageTexts.founder
           },
           pageVisibility,
-          secondaryItems: Array.isArray(source?.navigation?.secondary_items) ? source.navigation.secondary_items : [],
+          secondaryItems: normalizeThemeFamily(theme) === 'luxury-one'
+            ? []
+            : Array.isArray(source?.navigation?.secondary_items)
+              ? source.navigation.secondary_items
+              : [],
           headerContactLabel: source?.navigation?.header_contact_label || languageTexts.contactButton,
           headerReserveLabel: source?.navigation?.header_reserve_label || languageTexts.reserveButton
         },

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Restaurant Admin — Tenant Console</title>
+  <title>ESSKULTUR Staff Admin</title>
   <style>
     :root {
       --brand: #A54A7B;
@@ -747,27 +747,15 @@
 
       <!-- PAGE 4: SETTINGS -->
       <div class="page" data-page="settings">
-        <h2 class="page-title">⚙️ Restaurant Admin (Tenant Console)</h2>
+        <h2 class="page-title">⚙️ Settings & Admin</h2>
         <div class="settings-grid">
           <div class="settings-section">
             <div class="settings-section-title">Restaurant Profile</div>
             <div id="companyProfileList"></div>
           </div>
           <div class="settings-section">
-            <div class="settings-section-title">Billing, Domain & Payment</div>
-            <div id="tenantBillingList"></div>
-          </div>
-          <div class="settings-section">
             <div class="settings-section-title">Operations & Capacity</div>
             <div id="operationalSettingsList"></div>
-          </div>
-          <div class="settings-section">
-            <div class="settings-section-title">Platform Pricing & Extra Costs</div>
-            <div id="platformPricingList"></div>
-          </div>
-          <div class="settings-section">
-            <div class="settings-section-title">Website Builder Studio</div>
-            <div id="websiteBuilderList"></div>
           </div>
           <div class="settings-section">
             <div class="settings-section-title">Social Profiles & Public IDs</div>
@@ -818,60 +806,10 @@
     let bookingsSearchTerm = '';
     let customersSearchTerm = '';
 
-    function getRequestedCompanyIdFromLocation() {
-      try {
-        const raw = String(new URLSearchParams(window.location.search || '').get('company_id') || '').trim();
-        const value = Number(raw || 0);
-        return Number.isInteger(value) && value > 0 ? value : null;
-      } catch {
-        return null;
-      }
-    }
-
-    function hostRequiresCompanyIdQuery() {
-      const host = String(window.location.hostname || '').toLowerCase();
-      return host === 'localhost' || host === '127.0.0.1' || host === '[::1]' || host.includes('workers.dev');
-    }
-
-    const requestedCompanyId = getRequestedCompanyIdFromLocation();
-
-    function withCompanyIdForApi(rawUrl) {
-      if (!requestedCompanyId || typeof rawUrl !== 'string') return rawUrl;
-
-      try {
-        const urlObj = new URL(rawUrl, window.location.origin);
-        if (!urlObj.pathname.startsWith('/api/')) return rawUrl;
-        if (!urlObj.searchParams.has('company_id')) {
-          urlObj.searchParams.set('company_id', String(requestedCompanyId));
-        }
-        return urlObj.pathname + (urlObj.search || '');
-      } catch {
-        return rawUrl;
-      }
-    }
-
-    // Ensure all admin API calls include company_id when this page is opened
-    // as /admin?company_id=... on localhost/workers.dev.
-    const nativeFetch = window.fetch.bind(window);
-    window.fetch = function patchedAdminFetch(input, init) {
-      if (typeof input === 'string') {
-        return nativeFetch(withCompanyIdForApi(input), init);
-      }
-      return nativeFetch(input, init);
-    };
-
     const OPERATIONAL_SETTING_KEYS = [
       'website_url',
       'standard_contact_link',
       'booking_email',
-      'platform_core_price_per_user',
-      'platform_commerce_price_per_user',
-      'platform_growth_price_per_user',
-      'platform_setup_fee_once',
-      'platform_tse_fee_monthly',
-      'platform_it_support_hourly',
-      'platform_it_support_monthly',
-      'platform_price_note',
       'social_instagram_url',
       'social_facebook_url',
       'social_tiktok_url',
@@ -893,83 +831,13 @@
       'kc_redirect_link',
       'founder_terms_link',
       'kc_terms_link',
-      'privacy_link',
-      'site_template',
-      'site_tagline',
-      'site_hero_title',
-      'site_hero_subtitle',
-      'site_about_title',
-      'site_about_body',
-      'site_primary_cta_text',
-      'site_secondary_cta_text',
-      'site_accent_color'
+      'privacy_link'
     ];
-
-    const PLATFORM_PRICING_KEYS = [
-      'platform_core_price_per_user',
-      'platform_commerce_price_per_user',
-      'platform_growth_price_per_user',
-      'platform_setup_fee_once',
-      'platform_tse_fee_monthly',
-      'platform_it_support_hourly',
-      'platform_it_support_monthly',
-      'platform_price_note'
-    ];
-
-    const WEBSITE_BUILDER_KEYS = [
-      'site_template',
-      'site_tagline',
-      'site_hero_title',
-      'site_hero_subtitle',
-      'site_about_title',
-      'site_about_body',
-      'site_primary_cta_text',
-      'site_secondary_cta_text',
-      'site_accent_color'
-    ];
-
-    const OPERATIONAL_DEFAULTS = {
-      platform_core_price_per_user: '29',
-      platform_commerce_price_per_user: '69',
-      platform_growth_price_per_user: '99',
-      platform_setup_fee_once: '349',
-      platform_tse_fee_monthly: '19',
-      platform_it_support_hourly: '95',
-      platform_it_support_monthly: '249',
-      platform_price_note: 'Prices are billed per active staff user. Additional fees may apply for TSE, onboarding, and IT support.',
-      site_template: 'modern',
-      site_tagline: 'Neighborhood restaurant with a modern booking experience.',
-      site_hero_title: 'Welcome to our restaurant',
-      site_hero_subtitle: 'Book a table, explore our menu, and discover what makes us special.',
-      site_about_title: 'About us',
-      site_about_body: 'Tell guests what your restaurant is about, what style of cuisine you serve, and why they should visit.',
-      site_primary_cta_text: 'Book a table',
-      site_secondary_cta_text: 'View menu',
-      site_accent_color: '#A54A7B',
-      company_plan: 'core',
-      billable_staff_count: '1',
-      billing_include_tse: 'false',
-      billing_include_support_retainer: 'false',
-      billing_include_setup: 'true',
-      demo_payment_status: 'trial_active',
-      demo_payment_due_today_eur: '0',
-      demo_payment_recurring_monthly_eur: '0',
-      custom_domain: '',
-      stripe_account_id: ''
-    };
 
     const OPERATIONAL_LABELS = {
       website_url: 'Website URL',
       standard_contact_link: 'Standard Contact Link',
       booking_email: 'Booking Email',
-      platform_core_price_per_user: 'Core Price (€ / user / month)',
-      platform_commerce_price_per_user: 'Commerce Price (€ / user / month)',
-      platform_growth_price_per_user: 'Growth Price (€ / user / month)',
-      platform_setup_fee_once: 'One-Time Setup Fee (€)',
-      platform_tse_fee_monthly: 'TSE Monthly Fee (€)',
-      platform_it_support_hourly: 'IT Support Hourly (€)',
-      platform_it_support_monthly: 'IT Support Monthly Retainer (€)',
-      platform_price_note: 'Pricing Note',
       social_instagram_url: 'Instagram URL',
       social_facebook_url: 'Facebook URL',
       social_tiktok_url: 'TikTok URL',
@@ -991,26 +859,7 @@
       kc_redirect_link: 'KC Redirect Link (path or URL)',
       founder_terms_link: 'Founder Terms Link (path or URL)',
       kc_terms_link: 'KC Terms Link (path or URL)',
-      privacy_link: 'Privacy Link (path or URL)',
-      site_template: 'Website Template',
-      site_tagline: 'Website Tagline',
-      site_hero_title: 'Hero Title',
-      site_hero_subtitle: 'Hero Subtitle',
-      site_about_title: 'About Section Title',
-      site_about_body: 'About Section Body',
-      site_primary_cta_text: 'Primary CTA Text',
-      site_secondary_cta_text: 'Secondary CTA Text',
-      site_accent_color: 'Accent Color',
-      company_plan: 'Subscription Plan',
-      billable_staff_count: 'Billable Staff Count',
-      billing_include_tse: 'TSE Included',
-      billing_include_support_retainer: 'Support Retainer Included',
-      billing_include_setup: 'Setup Fee Included',
-      demo_payment_status: 'Billing Status',
-      demo_payment_due_today_eur: 'Due Today (€)',
-      demo_payment_recurring_monthly_eur: 'Recurring Monthly (€)',
-      custom_domain: 'Custom Domain',
-      stripe_account_id: 'Stripe Account ID'
+      privacy_link: 'Privacy Link (path or URL)'
     };
 
     const SOCIAL_SETTING_KEYS = [
@@ -1053,16 +902,21 @@
     const NON_SECRET_INTEGRATION_KEYS = [
       'FOUNDER_OTP_CHANNELS',
       'FOUNDER_TEST_EXCEPTION_PHONES',
+      'FOUNDER_OTP_BRAND_NAME',
       'TWILIO_WHATSAPP_FROM',
       'TWILIO_SMS_FROM',
       'TWILIO_MESSAGING_SERVICE_SID',
+      'ODOO_BASE_URL',
+      'ODOO_DB_NAME',
+      'ODOO_LOGIN',
       'ODOO_API_TOKEN',
+      'ODOO_PASSWORD',
+      'ODOO_TAG_FOUNDER',
+      'ODOO_TAG_FOUNDER_TRIAL',
+      'ODOO_TAG_KC_CLUB',
+      'ODOO_TAG_KOLLEGENSCLUB',
       'ODOO_FOUNDER_CREATE_WEBHOOK',
-      'ODOO_FOUNDER_VERIFY_WEBHOOK',
-      'ODOO_STAFF_SYNC_WEBHOOK',
-      'ODOO_BOOKING_CREATE_WEBHOOK',
-      'ODOO_BOOKING_STAGE_WEBHOOK',
-      'ODOO_CRM_TEAM_ID'
+      'ODOO_FOUNDER_VERIFY_WEBHOOK'
     ];
 
     const SECRET_INTEGRATION_KEYS = [
@@ -1074,16 +928,21 @@
     const INTEGRATION_LABELS = {
       FOUNDER_OTP_CHANNELS: 'Founder OTP Channels',
       FOUNDER_TEST_EXCEPTION_PHONES: 'Founder Test Exception Phones',
+      FOUNDER_OTP_BRAND_NAME: 'Founder OTP Brand Name (optional)',
       TWILIO_WHATSAPP_FROM: 'Twilio WhatsApp From',
       TWILIO_SMS_FROM: 'Twilio SMS From',
       TWILIO_MESSAGING_SERVICE_SID: 'Twilio Messaging Service SID',
-      ODOO_API_TOKEN: 'Odoo API Token (direct API)',
-      ODOO_FOUNDER_CREATE_WEBHOOK: 'Odoo Founder Create Webhook',
-      ODOO_FOUNDER_VERIFY_WEBHOOK: 'Odoo Founder Verify Webhook',
-      ODOO_STAFF_SYNC_WEBHOOK: 'Odoo Staff Sync Webhook',
-      ODOO_BOOKING_CREATE_WEBHOOK: 'Odoo Booking Create Webhook (fallback)',
-      ODOO_BOOKING_STAGE_WEBHOOK: 'Odoo Booking Stage Webhook (fallback)',
-      ODOO_CRM_TEAM_ID: 'Odoo CRM Team ID (default: 5)',
+      ODOO_BASE_URL: 'Odoo Base URL (Tenant)',
+      ODOO_DB_NAME: 'Odoo Database Name (Tenant)',
+      ODOO_LOGIN: 'Odoo Login/User (Tenant)',
+      ODOO_API_TOKEN: 'Odoo API Token (Tenant)',
+      ODOO_PASSWORD: 'Odoo Password (Optional, Tenant)',
+      ODOO_TAG_FOUNDER: 'Odoo Tag Label: Founder',
+      ODOO_TAG_FOUNDER_TRIAL: 'Odoo Tag Label: Founder Trial',
+      ODOO_TAG_KC_CLUB: 'Odoo Tag Label: KC Club',
+      ODOO_TAG_KOLLEGENSCLUB: 'Odoo Tag Label: Kollegensclub',
+      ODOO_FOUNDER_CREATE_WEBHOOK: 'Legacy Odoo Create Webhook (Fallback)',
+      ODOO_FOUNDER_VERIFY_WEBHOOK: 'Legacy Odoo Verify Webhook (Fallback)',
       TURNSTILE_SECRET: 'Turnstile Secret',
       TWILIO_ACCOUNT_SID: 'Twilio Account SID',
       TWILIO_AUTH_TOKEN: 'Twilio Auth Token'
@@ -1122,11 +981,6 @@
     }
 
     async function showPINGate() {
-      if (hostRequiresCompanyIdQuery() && !requestedCompanyId) {
-        alert('Missing tenant context. Open this page with ?company_id=1 (or your tenant ID).');
-        return;
-      }
-
       const pin = prompt('🔐 Enter Staff PIN:');
       if (!pin) {
         alert('PIN required to access');
@@ -1139,16 +993,6 @@
         const data = await res.json().catch(() => ({}));
 
         if (!res.ok || !data.success) {
-          const err = String(data.error || '').toLowerCase();
-          if (err === 'tenant_required') {
-            alert('Missing tenant context. Open this page with ?company_id=1 (or your tenant ID).');
-            return;
-          }
-          if (err === 'company_id_override_not_allowed') {
-            alert('company_id override is not allowed on this host. Use tenant subdomain.');
-            return;
-          }
-
           alert(data.error || 'Invalid PIN');
           await showPINGate();
           return;
@@ -1787,7 +1631,7 @@
     }
 
     function getOperationalValue(key) {
-      return operationalSettings[key] ?? OPERATIONAL_DEFAULTS[key] ?? '';
+      return operationalSettings[key] ?? '';
     }
 
     function weekdayLabel(value) {
@@ -1885,7 +1729,7 @@
         return;
       }
 
-      const keys = OPERATIONAL_SETTING_KEYS.filter(key => !['website_url', 'standard_contact_link', 'booking_email', ...SOCIAL_SETTING_KEYS, ...PLATFORM_PRICING_KEYS, ...WEBSITE_BUILDER_KEYS].includes(key));
+      const keys = OPERATIONAL_SETTING_KEYS.filter(key => !['website_url', 'standard_contact_link', 'booking_email', ...SOCIAL_SETTING_KEYS].includes(key));
       container.innerHTML = keys.map((key) => {
         const value = getOperationalValue(key);
 
@@ -1908,88 +1752,6 @@
           </div>
         `;
       }).join('');
-    }
-
-    function renderPlatformPricingSection() {
-      const container = document.getElementById('platformPricingList');
-      if (!container) return;
-
-      if (!isAdminUser()) {
-        container.innerHTML = '<div class="integration-note">Admin only.</div>';
-        return;
-      }
-
-      if (platformConfigError) {
-        container.innerHTML = `<div class="integration-note" style="color: var(--danger);">${escapeHtml(platformConfigError)}</div>`;
-        return;
-      }
-
-      container.innerHTML = PLATFORM_PRICING_KEYS.map((key) => {
-        const isTextArea = key === 'platform_price_note';
-        const value = getOperationalValue(key);
-        return `
-          <div class="setting-row" style="align-items:${isTextArea ? 'start' : 'center'};">
-            <div class="setting-label">${escapeHtml(OPERATIONAL_LABELS[key] || key)}</div>
-            ${isTextArea
-              ? `<textarea class="setting-value" id="op_${key}" style="min-height:90px;resize:vertical;">${escapeHtml(value)}</textarea>`
-              : `<input type="number" step="0.01" class="setting-value" id="op_${key}" value="${escapeHtml(value)}">`}
-          </div>
-        `;
-      }).join('') + `
-        <div class="integration-note">These values drive the public pricing page. For now they are stored through the current admin tenant config and used as global preview values.</div>
-        <div class="setting-row">
-          <div></div>
-          <div style="display:flex;justify-content:flex-end;gap:8px;">
-            <button class="btn-small btn-secondary" onclick="reloadPlatformConfig()">Reload</button>
-            <button class="btn-small btn-primary" onclick="savePlatformConfig()">Save Profile / Ops / Social / Modules</button>
-          </div>
-        </div>
-      `;
-    }
-
-    function renderWebsiteBuilderSection() {
-      const container = document.getElementById('websiteBuilderList');
-      if (!container) return;
-
-      if (!isManagerOrAdminUser()) {
-        container.innerHTML = '<div class="integration-note">Manager or admin only.</div>';
-        return;
-      }
-
-      if (platformConfigError) {
-        container.innerHTML = `<div class="integration-note" style="color: var(--danger);">${escapeHtml(platformConfigError)}</div>`;
-        return;
-      }
-
-      container.innerHTML = `
-        <div class="setting-row">
-          <div class="setting-label">${escapeHtml(OPERATIONAL_LABELS.site_template)}</div>
-          <select class="setting-value" id="op_site_template">
-            ${['minimal', 'modern', 'premium'].map((template) => `<option value="${template}" ${String(getOperationalValue('site_template')) === template ? 'selected' : ''}>${template}</option>`).join('')}
-          </select>
-        </div>
-        ${WEBSITE_BUILDER_KEYS.filter((key) => key !== 'site_template').map((key) => {
-          const isTextArea = ['site_about_body', 'site_hero_subtitle', 'site_tagline'].includes(key);
-          const inputType = key === 'site_accent_color' ? 'color' : 'text';
-          const value = getOperationalValue(key);
-          return `
-            <div class="setting-row" style="align-items:${isTextArea ? 'start' : 'center'};">
-              <div class="setting-label">${escapeHtml(OPERATIONAL_LABELS[key] || key)}</div>
-              ${isTextArea
-                ? `<textarea class="setting-value" id="op_${key}" style="min-height:90px;resize:vertical;">${escapeHtml(value)}</textarea>`
-                : `<input type="${inputType}" class="setting-value" id="op_${key}" value="${escapeHtml(value)}">`}
-            </div>
-          `;
-        }).join('')}
-        <div class="integration-note">This is the first pass of the website builder studio: text blocks, color, and template choice. It is saved now and will drive the tenant public website templates.</div>
-        <div class="setting-row">
-          <div></div>
-          <div style="display:flex;justify-content:flex-end;gap:8px;">
-            <button class="btn-small btn-secondary" onclick="reloadPlatformConfig()">Reload</button>
-            <button class="btn-small btn-primary" onclick="savePlatformConfig()">Save Profile / Ops / Social / Modules</button>
-          </div>
-        </div>
-      `;
     }
 
     function renderSocialSettingsSection() {
@@ -2021,53 +1783,6 @@
             <button class="btn-small btn-primary" onclick="savePlatformConfig()">Save Profile / Ops / Social / Modules</button>
           </div>
         </div>
-      `;
-    }
-
-    function renderTenantBillingSection() {
-      const container = document.getElementById('tenantBillingList');
-      if (!container) return;
-
-      if (!isAdminUser()) {
-        container.innerHTML = '<div class="integration-note">Admin only.</div>';
-        return;
-      }
-
-      if (platformConfigError) {
-        container.innerHTML = `<div class="integration-note" style="color: var(--danger);">${escapeHtml(platformConfigError)}</div>`;
-        return;
-      }
-
-      container.innerHTML = `
-        <div class="setting-row">
-          <div class="setting-label">${escapeHtml(OPERATIONAL_LABELS.custom_domain)}</div>
-          <input type="text" class="setting-value" id="op_custom_domain" value="${escapeHtml(getOperationalValue('custom_domain'))}" placeholder="www.restaurant-domain.de">
-        </div>
-        <div class="setting-row">
-          <div class="setting-label">${escapeHtml(OPERATIONAL_LABELS.stripe_account_id)}</div>
-          <input type="text" class="setting-value" id="op_stripe_account_id" value="${escapeHtml(getOperationalValue('stripe_account_id'))}" placeholder="acct_xxx">
-        </div>
-        <div class="setting-row">
-          <div class="setting-label">${escapeHtml(OPERATIONAL_LABELS.company_plan)}</div>
-          <input type="text" class="setting-value" id="op_company_plan" value="${escapeHtml(getOperationalValue('company_plan'))}">
-        </div>
-        <div class="setting-row">
-          <div class="setting-label">${escapeHtml(OPERATIONAL_LABELS.billable_staff_count)}</div>
-          <input type="number" class="setting-value" id="op_billable_staff_count" value="${escapeHtml(getOperationalValue('billable_staff_count'))}" readonly>
-        </div>
-        <div class="setting-row">
-          <div class="setting-label">${escapeHtml(OPERATIONAL_LABELS.demo_payment_status)}</div>
-          <input type="text" class="setting-value" id="op_demo_payment_status" value="${escapeHtml(getOperationalValue('demo_payment_status'))}" readonly>
-        </div>
-        <div class="setting-row">
-          <div class="setting-label">${escapeHtml(OPERATIONAL_LABELS.demo_payment_due_today_eur)}</div>
-          <input type="number" step="0.01" class="setting-value" id="op_demo_payment_due_today_eur" value="${escapeHtml(getOperationalValue('demo_payment_due_today_eur'))}" readonly>
-        </div>
-        <div class="setting-row">
-          <div class="setting-label">${escapeHtml(OPERATIONAL_LABELS.demo_payment_recurring_monthly_eur)}</div>
-          <input type="number" step="0.01" class="setting-value" id="op_demo_payment_recurring_monthly_eur" value="${escapeHtml(getOperationalValue('demo_payment_recurring_monthly_eur'))}" readonly>
-        </div>
-        <div class="integration-note">Staff count updates the recurring invoice automatically. Custom domain and Stripe account id are tenant-owned settings.</div>
       `;
     }
 
@@ -2114,10 +1829,7 @@
     async function reloadPlatformConfig() {
       await loadPlatformConfig();
       renderCompanyProfileSection();
-      renderTenantBillingSection();
       renderOperationalSettingsSection();
-      renderPlatformPricingSection();
-      renderWebsiteBuilderSection();
       renderSocialSettingsSection();
       renderModuleSettingsSection();
     }
@@ -2146,9 +1858,7 @@
       } : null;
 
       const nextOperationalSettings = {};
-      const operationalKeysToSave = canManageFullPlatform
-        ? OPERATIONAL_SETTING_KEYS
-        : Array.from(new Set([...SOCIAL_SETTING_KEYS, ...WEBSITE_BUILDER_KEYS]));
+      const operationalKeysToSave = canManageFullPlatform ? OPERATIONAL_SETTING_KEYS : SOCIAL_SETTING_KEYS;
       operationalKeysToSave.forEach((key) => {
         const input = document.getElementById(`op_${key}`);
         nextOperationalSettings[key] = input ? input.value.trim() : '';
@@ -2652,10 +2362,7 @@
     // ==================== PAGE 4: SETTINGS ====================
     function renderSettingsPage() {
       renderCompanyProfileSection();
-      renderTenantBillingSection();
       renderOperationalSettingsSection();
-      renderPlatformPricingSection();
-      renderWebsiteBuilderSection();
       renderSocialSettingsSection();
       renderModuleSettingsSection();
       renderStaffSection();
