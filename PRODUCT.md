@@ -46,17 +46,17 @@
 
 ## User Surfaces
 
-1. **`restaurantos.app`** — Platform marketing site: features, pricing tiers, signup (no tenant context)
-2. **`{subdomain}.restaurantos.app`** — Tenant website template: the restaurant's public-facing site (menu, booking form, contact)
-3. **`restaurantos.app/platform/admin`** — SaaS Admin: pricing, web builder studio defaults, signup CRM-lite, follow-up workflow
-4. **`{subdomain}.restaurantos.app/admin`** — Restaurant Admin (tenant admin): domain, payment method, website builder studio, staff, reports, restaurant operations config
-5. **`{subdomain}.restaurantos.app/app`** — Staff app: booking board, stage management, POS
+1. **`gooddining.app`** — Platform marketing site: features, pricing tiers, signup (no tenant context)
+2. **`{subdomain}.gooddining.app`** — Tenant website template: the restaurant's public-facing site (website, contact, service-tier modules)
+3. **`gooddining.app/platform/admin`** — SaaS Admin: pricing, web builder studio defaults, signup CRM-lite, follow-up workflow
+4. **`{subdomain}.gooddining.app/admin`** — Restaurant Admin (tenant admin): domain, payment method, website builder studio, staff, reports, restaurant operations config
+5. **`{subdomain}.gooddining.app/app`** — Staff app: booking board, stage management, POS
 
 ---
 
 ## User Society
 
-- **Prospect** (restaurant owner browsing): visits `restaurantos.app`, compares tiers, signs up
+- **Prospect** (restaurant owner browsing): visits `gooddining.app`, compares tiers, signs up
 - **Platform Operator**: manages SaaS pricing, signup CRM-lite, follow-up, global web-builder defaults
 - **Restaurant Owner/Admin**: completes setup wizard, configures tenant settings, domain, payment method, manages staff
 - **Staff (hostess, bartender, manager)**: Mobile app, daily operations

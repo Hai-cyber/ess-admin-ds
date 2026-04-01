@@ -756,12 +756,12 @@
                 <div class="plan-card-choice selected" data-plan="core" onclick="selectPlan('core')">
                   <div class="plan-tier" data-i18n="price.core_name">Online</div>
                   <div class="plan-choice-name" data-i18n="price.core_name">Online</div>
-                  <div class="plan-choice-price" data-plan-price="core">EUR29<span class="mo">/active user/mo</span></div>
-                  <div class="plan-choice-desc" data-i18n="price.core_desc">So guests can find you and book a table.</div>
+                  <div class="plan-choice-price" data-plan-price="core">€9.98<span class="mo">/active user/mo</span></div>
+                  <div class="plan-choice-desc" data-i18n="price.core_desc">For restaurants that need a branded website on a managed subdomain.</div>
                   <ul class="plan-feature-list">
-                    <li data-i18n="su.plan_core_f1">Restaurant website and online booking form</li>
-                    <li data-i18n="su.plan_core_f2">Contact page and bookings in one place</li>
-                    <li data-i18n="su.plan_core_f3">Hosting and standard domain setup included</li>
+                    <li data-i18n="su.plan_core_f1">Restaurant website on your gooddining.app subdomain</li>
+                    <li data-i18n="su.plan_core_f2">Contact page, opening hours, and essential info</li>
+                    <li data-i18n="su.plan_core_f3">Hosting and SSL included. No booking workflow</li>
                   </ul>
                 </div>
 
@@ -838,7 +838,7 @@
                   <label class="signup-check"><input id="f-extra-tse" type="checkbox" /> <span data-i18n="su.extra_tse">Include TSE package for German fiscal compliance needs.</span></label>
                   <label class="signup-check"><input id="f-extra-support" type="checkbox" /> <span data-i18n="su.extra_support">Include monthly IT support retainer for hands-on operational support.</span></label>
                 </div>
-                <div class="form-hint" data-i18n="su.options_hint">Hosting, platform maintenance, and standard domain setup are already included. SMS usage is billed separately only when you use it.</div>
+                <div class="form-hint" data-i18n="su.options_hint">Hosting, platform maintenance, SSL, and a managed gooddining.app subdomain are already included. SMS usage is billed separately only when you use it.</div>
               </div>
 
               <div class="signup-summary-card">
@@ -965,14 +965,14 @@
                 </div>
 
                 <div class="form-group">
-                  <label for="f-subdomain" data-i18n="su.sub_label">Your Restaurant OS URL</label>
+                  <label for="f-subdomain" data-i18n="su.sub_label">Your gooddining.app subdomain</label>
                   <div class="subdomain-input-row">
                     <input id="f-subdomain" type="text" placeholder="my-restaurant" maxlength="30" oninput="this.value=this.value.toLowerCase();checkSubdomain(this.value)" />
-                    <div class="subdomain-suffix">.restaurantos.app</div>
+                    <div class="subdomain-suffix">.gooddining.app</div>
                   </div>
                   <div class="form-error">Subdomain is required.</div>
                   <div class="subdomain-status" id="subdomain-status"></div>
-                  <div class="form-hint" data-i18n="su.sub_hint">Guests see this URL when booking online. Lowercase letters, numbers, and hyphens only.</div>
+                  <div class="form-hint" data-i18n="su.sub_hint">Guests see this URL on your website. Lowercase letters, numbers, and hyphens only.</div>
                 </div>
 
                 <div class="form-group full" style="display:flex;gap:10px;align-items:flex-start;">

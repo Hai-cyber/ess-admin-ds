@@ -32,15 +32,16 @@ const FOUNDER_OTP_COOLDOWN_SECONDS = 180;
 const FOUNDER_OTP_EXPIRES_SECONDS = 600;
 const FOUNDER_DEFAULT_MEMBERSHIP_TYPE = 'Founder';
 const PLATFORM_OPERATOR_COMPANY_ID = 1;
+const PLATFORM_PUBLIC_DOMAIN = 'gooddining.app';
 const PLATFORM_PRICING_DEFAULTS = {
-  platform_core_price_per_user: '29',
+  platform_core_price_per_user: '9.98',
   platform_commerce_price_per_user: '59',
   platform_growth_price_per_user: '89',
   platform_setup_fee_once: '349',
   platform_tse_fee_monthly: '19',
   platform_it_support_hourly: '95',
   platform_it_support_monthly: '249',
-  platform_price_note: 'Billed per active user. Included: hosting, platform maintenance, and standard domain setup. Add-ons only apply for SMS usage, TSE, onboarding, and optional IT support.'
+  platform_price_note: 'Billed per active user. Included: hosting, platform maintenance, SSL, and a managed gooddining.app subdomain. Add-ons only apply for SMS usage, TSE, onboarding, and optional IT support.'
 };
 const WEBSITE_BUILDER_DEFAULTS = {
   site_template: 'modern',
@@ -449,6 +450,10 @@ function normalizeIntegrationKey(rawKey) {
 
 function normalizeTenantSubdomain(rawSubdomain) {
   return String(rawSubdomain || '').trim().toLowerCase();
+}
+
+function buildTenantWebsiteUrl(subdomain) {
+  return 'https://' + subdomain + '.' + PLATFORM_PUBLIC_DOMAIN;
 }
 
 function isValidTenantSubdomain(subdomain) {
@@ -982,9 +987,9 @@ function buildPlatformPlansResponse(settingsMap) {
         priceEurPerUserMonthly: Number(settingsMap.platform_core_price_per_user || PLATFORM_PRICING_DEFAULTS.platform_core_price_per_user || 0),
         features: [
           'Restaurant website',
-          'Online booking form',
+          'Hosted on your gooddining.app subdomain',
           'Contact and info page',
-          'Bookings in one place'
+          'No booking workflow included'
         ]
       },
       {
@@ -1062,6 +1067,19 @@ function normalizeHexColor(value, fallback = WEBSITE_BUILDER_DEFAULTS.site_accen
 function normalizePlanId(planRaw) {
   const normalized = String(planRaw || '').trim().toLowerCase();
   return ['core', 'commerce', 'growth', 'enterprise'].includes(normalized) ? normalized : '';
+}
+
+function getPlanModuleOverrides(planId) {
+  switch (normalizePlanId(planId)) {
+    case 'core':
+      return {
+        module_booking_management: false,
+        module_membership_management: false,
+        module_founder_program: false
+      };
+    default:
+      return {};
+  }
 }
 
 function normalizeWebsiteTemplate(templateRaw) {
@@ -2667,7 +2685,7 @@ export default {
           return Response.json({ ok: false, code: 'subdomain_taken', available: false, slug: requestedSlug, suggestion: `${requestedSlug}-2` }, { status: 409 });
         }
 
-        return Response.json({ ok: true, available: true, slug: requestedSlug, url: `https://${requestedSlug}.restaurantos.app` });
+        return Response.json({ ok: true, available: true, slug: requestedSlug, url: buildTenantWebsiteUrl(requestedSlug) });
       } catch (e) {
         return Response.json({ ok: false, error: e.message }, { status: 500 });
       }
@@ -2864,7 +2882,7 @@ export default {
           'platform-signup'
         ).run();
 
-        const websiteUrl = `https://${requestedSlug}.restaurantos.app`;
+        const websiteUrl = buildTenantWebsiteUrl(requestedSlug);
         const initialSettings = {
           website_url: websiteUrl,
           booking_email: ownerEmail,
@@ -2893,6 +2911,18 @@ export default {
           await upsertSettingValue(env, companyId, key, String(value || ''), `Platform signup setting: ${key}`, 'platform-signup');
         }
 
+        const planModuleOverrides = getPlanModuleOverrides(plan);
+        for (const [key, enabled] of Object.entries(planModuleOverrides)) {
+          await upsertSettingValue(
+            env,
+            companyId,
+            key,
+            enabled ? 'enabled' : 'disabled',
+            MODULE_KEY_DESCRIPTIONS[key] || ('Platform signup module override: ' + key),
+            'platform-signup'
+          );
+        }
+
         await env.DB.prepare(`
           INSERT INTO platform_signups (
             id, company_id, organization_id, restaurant_name, owner_email, owner_phone, subdomain, plan,
@@ -2919,7 +2949,7 @@ export default {
         ).run();
 
         const previewAdminUrl = `${url.origin}/admin?company_id=${companyId}`;
-        const previewBoardUrl = `${url.origin}/board?company_id=${companyId}`;
+        const previewBoardUrl = plan === 'core' ? null : url.origin + '/board?company_id=' + companyId;
 
         return Response.json({
           ok: true,

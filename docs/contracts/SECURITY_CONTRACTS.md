@@ -12,7 +12,7 @@
 
 **Sources** (in order of precedence):
 
-1. **Subdomain** (primary): `tenant_abc.restaurantos.app` → `tenant_id = tenant_abc`
+1. **Subdomain** (primary): `tenant_abc.gooddining.app` → `tenant_id = tenant_abc`
 2. **Query override** (dev only): `?company_id=1` (localhost/workers.dev only)
 3. **None**: Returns `400 tenant_required`
 

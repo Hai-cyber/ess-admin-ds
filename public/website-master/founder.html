@@ -72,6 +72,23 @@
       z-index: -1;
     }
 
+    body::after {
+      content: 'NOT IN MARKET YET';
+      position: fixed;
+      right: 14px;
+      bottom: 14px;
+      z-index: 9999;
+      padding: 7px 11px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.9);
+      color: #ffffff;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
+      pointer-events: none;
+    }
+
     .shell {
       width: min(100% - 2rem, var(--container-width));
       margin: 0 auto;
@@ -453,6 +470,38 @@
     body.theme-luxury-a #contact > .luxury-page-shell > div,
     body.theme-luxury-a #career > .luxury-page-shell > div {
       gap: 2rem;
+    }
+
+    body.theme-luxury-a #founder .founder-shell {
+      display: grid;
+      gap: 2rem;
+    }
+
+    body.theme-luxury-a #founder .founder-intro {
+      max-width: 52rem;
+    }
+
+    body.theme-luxury-a #founder .founder-layout {
+      display: grid;
+      gap: 2rem;
+      align-items: start;
+    }
+
+    body.theme-luxury-a #founder .founder-feature-column,
+    body.theme-luxury-a #founder .founder-form-column {
+      display: grid;
+      gap: 1.25rem;
+      align-content: start;
+    }
+
+    body.theme-luxury-a #founder .founder-feature-card {
+      border: 1px solid rgba(73, 83, 95, 0.16);
+      background: rgba(255, 255, 255, 0.72);
+      padding: 1.35rem 1.5rem;
+    }
+
+    body.theme-luxury-a #founder #membership-rewards-grid {
+      grid-template-columns: 1fr;
     }
 
     body.theme-luxury-a #contact > .luxury-page-shell > div {
@@ -2061,6 +2110,16 @@
       body.theme-luxury-a .luxury-form-panel {
         padding: 1.25rem;
       }
+
+      body.theme-luxury-a #founder .founder-feature-card {
+        padding: 1.15rem 1.2rem;
+      }
+    }
+
+    @media (min-width: 1024px) {
+      body.theme-luxury-a #founder .founder-layout {
+        grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+      }
     }
 
     .theme-minimal-a,
@@ -2539,15 +2598,36 @@
     <!-- Member portal switch: hidden unless premium tier. -->
     <section id="founder" class="shell has-member-portal feature-switch pt-8" style="margin-top: var(--section-spacing);" data-page-panel="founder">
       <div class="section-shell glass-panel luxury-page-shell px-6 py-8 md:px-10 md:py-10">
-        <div class="grid gap-8 lg:grid-cols-[1fr_1fr] lg:items-center">
-          <div class="luxury-flat-panel">
+        <div class="founder-shell">
+          <div class="luxury-flat-panel founder-intro">
             <p class="text-xs font-bold uppercase tracking-[0.24em] text-[color:var(--primary-color)]">Founder</p>
             <h2 class="mt-3 font-heading text-4xl font-black">Founder-style membership flow for premium restaurants</h2>
             <p class="mt-4 text-base leading-8 text-[color:var(--muted-color)]">
               Keep this region wrapped in <strong>class="has-member-portal"</strong>. This block is the website-facing variant of the Founder/KC idea: members join, verify consent, and receive rewards, previews, or privileged booking access.
             </p>
           </div>
-          <div class="grid gap-5">
+          <div class="founder-layout">
+            <div class="founder-feature-column">
+              <div class="luxury-flat-panel founder-feature-card">
+                <p class="text-xs font-bold uppercase tracking-[0.2em] text-[color:var(--primary-color)]">Membership highlights</p>
+                <ul class="mt-4 space-y-3 text-sm leading-7 text-[color:var(--muted-color)]">
+                  <li>Priority access to new drops, tasting previews, and seasonal experiences.</li>
+                  <li>Member-only communication flow with consent, verification, and a clear audit path.</li>
+                  <li>One clean page for signup, OTP verification, and rewards without sending guests elsewhere.</li>
+                </ul>
+              </div>
+
+              <div class="luxury-flat-panel founder-feature-card">
+                <p class="text-xs font-bold uppercase tracking-[0.2em] text-[color:var(--primary-color)]">Benefits</p>
+                <p class="mt-3 text-sm leading-7 text-[color:var(--muted-color)]">
+                  Use this column to explain why the program exists before the guest sees the form. It keeps the value proposition stable and makes the form easier to scan.
+                </p>
+              </div>
+
+              <div id="membership-rewards-grid" class="grid gap-4"></div>
+            </div>
+
+            <div class="founder-form-column">
             <form class="rounded-[28px] border border-black/5 bg-white p-6 shadow-sm luxury-form-panel" data-tenant-form="membership-register" method="post">
               <input type="hidden" name="tenant_id" value="demo-tenant-001" data-tenant-field="tenant_id" data-bind-attr="value:tenant.id" />
               <input type="hidden" name="company_id" value="101" data-tenant-field="company_id" />
@@ -2595,8 +2675,7 @@
                 <p class="form-feedback text-sm leading-7" data-form-feedback="membership-verify"></p>
               </div>
             </form>
-
-            <div id="membership-rewards-grid" class="grid gap-4 md:grid-cols-2"></div>
+            </div>
           </div>
         </div>
       </div>

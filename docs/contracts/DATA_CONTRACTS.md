@@ -23,7 +23,7 @@ CREATE TABLE tenants (
     -- 'active'         → trial complete or paid subscription started
     -- 'suspended'      → payment failed or admin hold
     -- 'cancelled'      → account closed
-  subdomain TEXT NOT NULL UNIQUE,  -- {subdomain}.restaurantos.app
+  subdomain TEXT NOT NULL UNIQUE,  -- {subdomain}.gooddining.app
   domain TEXT,                     -- custom domain (Phase 3+)
   owner_email TEXT NOT NULL,
   owner_phone TEXT,

@@ -166,7 +166,7 @@ POST https://api.stripe.com/v1/payment_intents
 ```javascript
 // Tenant resolution (priority order)
 1. ?company_id=1 (only localhost/workers.dev)
-2. subdomain (tenant_abc.restaurantos.app)
+2. subdomain (tenant_abc.gooddining.app)
 3. None → 400 tenant_required
 
 // PIN auth

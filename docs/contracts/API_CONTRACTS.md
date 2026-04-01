@@ -101,7 +101,7 @@ GET /api/platform/signup/check-subdomain?slug=trattoria-roma
   "ok": true,
   "available": true,
   "slug": "trattoria-roma",
-  "url": "trattoria-roma.restaurantos.app"
+  "url": "trattoria-roma.gooddining.app"
 }
 
 // Response (409 if taken)
@@ -170,7 +170,7 @@ GET /api/platform/signup/check-subdomain?slug=trattoria-roma
   "ok": true,
   "tenant_id": "trattoria-roma",
   "status": "trial_active",
-  "redirect_url": "https://trattoria-roma.restaurantos.app/admin/setup"
+  "redirect_url": "https://trattoria-roma.gooddining.app/admin/setup"
 }
 
 // Errors
