@@ -5,18 +5,9 @@ import reservieungPage from '../public/reservierung.html';
 import thankYouPage from '../public/danke-reservierung.html';
 import appUI from '../public/app.html';
 import founderFormUI from '../public/founder-form.html';
-import boardUI from '../public/board.html';
-import platformHomeUI from '../public/platform/index.html';
-import platformSignupUI from '../public/platform/signup.html';
-import platformContactUI from '../public/platform/contact.html';
-import platformAdminUI from '../public/platform/admin.html';
-import platformTermsUI from '../public/platform/legal/terms.html';
-import platformPrivacyUI from '../public/platform/legal/privacy.html';
-import platformImpressumUI from '../public/platform/legal/impressum.html';
 
 // Import utilities
 import { getTenantContext, validateTenantAccess } from './utils/tenant.js';
-import { requireTenant } from './utils/tenant-guard.js';
 import { initializeDatabase } from './db/init.js';
 import { getOrganizationSecret, getOrganizationSecretStatuses } from './utils/organization-secrets.js';
 
@@ -85,191 +76,44 @@ const PLATFORM_PLAN_DEFINITIONS = [
     featuresKey: 'platform_enterprise_features'
   }
 ];
-const WEBSITE_BUILDER_DEFAULTS = {
-  site_template: 'modern',
-  site_theme_variant: 'theme-luxury-a',
-  site_content_preset: 'theme-luxury-a',
-  site_language: 'en',
-  site_tagline: 'Neighborhood restaurant with a modern booking experience.',
-  site_hero_title: 'Welcome to our restaurant',
-  site_hero_subtitle: 'Book a table, explore our menu, and discover what makes us special.',
-  site_about_title: 'About us',
-  site_about_body: 'Tell guests what your restaurant is about, what style of cuisine you serve, and why they should visit.',
-  site_primary_cta_text: 'Book a table',
-  site_secondary_cta_text: 'View menu',
-  site_contact_address: '27 Alder Quay, Berlin 10407',
-  site_accent_color: '#A54A7B',
-  site_branding_json: '{}',
-  site_navigation_json: '{}',
-  site_content_json: '{}',
-  site_career_json: '{}'
-};
-const WEBSITE_THEME_PREVIEW_PROFILES = {
-  'theme-basic-a': {
-    company: {
-      name: 'Common Table',
-      city: 'Berlin',
-      cuisine: 'Casual Grill & Lunch',
-      phone: '+49 30 2201 4810',
-      email: 'hello@common-table.example',
-      address: '18 Lindenhof Passage, 10435 Berlin'
-    },
-    settings: {
-      site_tagline: 'Straightforward neighborhood dining with fast booking and big food cues.',
-      site_hero_title: 'Common Table',
-      site_hero_subtitle: 'A direct, friendly restaurant site built to sell dishes clearly and convert fast.'
-    }
-  },
-  'theme-basic-b': {
-    company: {
-      name: 'Brick & Pepper',
-      city: 'Berlin',
-      cuisine: 'Fire Kitchen',
-      phone: '+49 30 2201 4820',
-      email: 'table@brick-pepper.example',
-      address: '44 Gartenmarkt, 10999 Berlin'
-    },
-    settings: {
-      site_tagline: 'Warm casual food, louder appetite cues, and a practical conversion flow.',
-      site_hero_title: 'Brick & Pepper',
-      site_hero_subtitle: 'Built for hearty dishes, visible value, and a simpler neighborhood sales language.'
-    }
-  },
-  'theme-luxury-a': {
-    company: {
-      name: 'Maison Cendree',
-      city: 'Berlin',
-      cuisine: 'Seasonal Fine Dining',
-      phone: '+49 30 2201 4830',
-      email: 'reservations@maison-cendree.example',
-      address: '7 Monbijou Platz, 10178 Berlin'
-    },
-    settings: {
-      site_tagline: 'Seasonal hospitality with a composed, editorial luxury tone.',
-      site_hero_title: 'Maison Cendree',
-      site_hero_subtitle: 'A quieter luxury expression built around light, space, and a restrained dining-room rhythm.'
-    }
-  },
-  'theme-luxury-b': {
-    company: {
-      name: 'Maison Verenne',
-      city: 'Berlin',
-      cuisine: 'French Dining & Cocktails',
-      phone: '+49 30 2201 4840',
-      email: 'soir@maison-verenne.example',
-      address: '112 Augustufer, 10117 Berlin'
-    },
-    settings: {
-      site_tagline: 'A cinematic evening house shaped by shadow, copper detail, and appetite.',
-      site_hero_title: 'Maison Verenne',
-      site_hero_subtitle: 'An atmosphere-led restaurant concept where the homepage sells emotion first and practical navigation stays quiet.'
-    }
-  },
-  'theme-minimal-a': {
-    company: {
-      name: 'Studio Aster',
-      city: 'Berlin',
-      cuisine: 'Modern Seasonal Plates',
-      phone: '+49 30 2201 4850',
-      email: 'hello@studio-aster.example',
-      address: '39 Linienufer, 10115 Berlin'
-    },
-    settings: {
-      site_tagline: 'Editorial calm, asymmetry, and a modern neighborhood story.',
-      site_hero_title: 'Studio Aster',
-      site_hero_subtitle: 'Built for brands that want a quieter, more directional visual language with more whitespace and narrative.'
-    }
-  },
-  'theme-minimal-b': {
-    company: {
-      name: 'North Vale',
-      city: 'Berlin',
-      cuisine: 'Contemporary Kitchen',
-      phone: '+49 30 2201 4860',
-      email: 'bookings@north-vale.example',
-      address: '53 Helioshof, 10243 Berlin'
-    },
-    settings: {
-      site_tagline: 'Clean structure, restrained typography, and a sharper editorial edge.',
-      site_hero_title: 'North Vale',
-      site_hero_subtitle: 'A minimal concept that trades decorative UI for proportion, image placement, and quiet confidence.'
-    }
-  },
-  'theme-diner-a': {
-    company: {
-      name: 'Lucky Jet Diner',
-      city: 'Berlin',
-      cuisine: 'Burgers, Shakes & Late Bites',
-      phone: '+49 30 2201 4870',
-      email: 'hello@lucky-jet.example',
-      address: '91 Neon Arcade, 10967 Berlin'
-    },
-    settings: {
-      site_tagline: 'Big appetite cues, color, and fast ordering energy.',
-      site_hero_title: 'Lucky Jet Diner',
-      site_hero_subtitle: 'A louder family built for food-first merchandising, category blocks, and high-clarity action paths.'
-    }
-  },
-  'theme-diner-b': {
-    company: {
-      name: 'Turbo Melt',
-      city: 'Berlin',
-      cuisine: 'Street Burgers & Fries',
-      phone: '+49 30 2201 4880',
-      email: 'crew@turbo-melt.example',
-      address: '12 Signal Yard, 12043 Berlin'
-    },
-    settings: {
-      site_tagline: 'Hotter color, denser merchandising, and a stronger impulse-ordering rhythm.',
-      site_hero_title: 'Turbo Melt',
-      site_hero_subtitle: 'Made for louder diner brands that need category visibility and immediate commercial energy.'
-    }
-  }
-};
+const WEBSITE_SUPPORTED_LANGUAGES = new Set(['en', 'de']);
+const WEBSITE_SUPPORTED_THEME_VARIANTS = new Set([
+  'theme-basic',
+  'theme-minimal',
+  'theme-diner',
+  'theme-luxury-a',
+  'theme-luxury-b'
+]);
 const WEBSITE_THEME_FALLBACK_BY_TEMPLATE = {
-  minimal: 'theme-minimal-a',
-  modern: 'theme-basic-a',
+  minimal: 'theme-minimal',
+  modern: 'theme-basic',
   premium: 'theme-luxury-a'
 };
-const WEBSITE_SUPPORTED_THEME_VARIANTS = new Set([
-  'theme-basic-a',
-  'theme-basic-b',
-  'theme-luxury-a',
-  'theme-luxury-b',
-  'theme-minimal-a',
-  'theme-minimal-b',
-  'theme-diner-a',
-  'theme-diner-b'
-]);
-const WEBSITE_SUPPORTED_LANGUAGES = new Set(['en', 'de']);
+const WEBSITE_BUILDER_DEFAULTS = {
+  site_template: 'premium',
+  site_theme_variant: 'theme-luxury-a',
+  site_language: 'en',
+  site_tagline: 'Seasonal dining with warm service and a room built for repeat visits.',
+  site_hero_title: 'A dining room shaped by the full service rhythm',
+  site_hero_subtitle: 'Lunch, aperitif, dinner, and the quieter hours around them.',
+  site_about_title: 'About',
+  site_about_body: 'Tell guests what kind of restaurant you are, how you cook, and why the room feels distinct.',
+  site_primary_cta_text: 'Reserve',
+  site_secondary_cta_text: 'Menu',
+  site_contact_address: '',
+  site_accent_color: '#9a3412'
+};
 const OPERATIONAL_SETTING_KEYS = [
   'website_url',
   'standard_contact_link',
   'booking_email',
-  'platform_core_price_per_user',
-  'platform_commerce_price_per_user',
-  'platform_growth_price_per_user',
-  'platform_setup_fee_once',
-  'platform_tse_fee_monthly',
-  'platform_it_support_hourly',
-  'platform_it_support_monthly',
-  'platform_price_note',
-  'custom_domain',
-  'stripe_account_id',
-  'company_plan',
-  'billable_staff_count',
-  'billing_include_tse',
-  'billing_include_support_retainer',
-  'billing_include_setup',
-  'demo_payment_status',
-  'demo_payment_due_today_eur',
-  'demo_payment_recurring_monthly_eur',
   'social_instagram_url',
   'social_facebook_url',
   'social_tiktok_url',
   'social_google_business_url',
   'business_hours_open',
   'business_hours_close',
+  'business_hours_schedule_json',
   'closed_weekday',
   'min_booking_advance_min',
   'default_booking_duration',
@@ -309,32 +153,13 @@ const MANAGER_EDITABLE_OPERATIONAL_SETTING_KEYS = new Set([
   'social_facebook_url',
   'social_tiktok_url',
   'social_google_business_url',
-  'site_template',
-  'site_theme_variant',
-  'site_content_preset',
-  'site_language',
-  'site_tagline',
-  'site_hero_title',
-  'site_hero_subtitle',
-  'site_about_title',
-  'site_about_body',
-  'site_primary_cta_text',
-  'site_secondary_cta_text',
-  'site_contact_address',
-  'site_accent_color',
-  'site_branding_json',
-  'site_navigation_json',
-  'site_content_json',
-  'site_career_json'
+  'business_hours_schedule_json',
 ]);
 const MODULE_SETTING_KEYS = [
   'module_membership_management',
   'module_marketing_management',
   'module_booking_management',
   'module_digital_management',
-  'module_loyalty_rewards',
-  'module_contact_crm',
-  'module_telegram_notifications',
   // Legacy key retained for backward compatibility. Runtime behavior is
   // controlled by module_membership_management.
   'module_founder_program'
@@ -353,30 +178,13 @@ const OPERATIONAL_KEY_DESCRIPTIONS = {
   website_url: 'Public website URL for this restaurant',
   standard_contact_link: 'Fallback contact page path or URL when membership module is disabled',
   booking_email: 'Operational email for booking notices',
-  platform_core_price_per_user: 'Core plan price per active user / month for the public platform site',
-  platform_commerce_price_per_user: 'Commerce plan price per active user / month for the public platform site',
-  platform_growth_price_per_user: 'Growth plan price per active user / month for the public platform site',
-  platform_setup_fee_once: 'One-time onboarding / setup fee displayed on the public platform site',
-  platform_tse_fee_monthly: 'Monthly TSE surcharge displayed on the public platform site',
-  platform_it_support_hourly: 'Hourly IT support fee displayed on the public platform site',
-  platform_it_support_monthly: 'Monthly IT support retainer displayed on the public platform site',
-  platform_price_note: 'Pricing note displayed under the public platform pricing section',
-  custom_domain: 'Custom domain mapped for the tenant website',
-  stripe_account_id: 'Tenant-owned Stripe account id / payment method binding',
-  company_plan: 'Current tenant subscription plan',
-  billable_staff_count: 'Current count of active billable staff users',
-  billing_include_tse: 'Whether the tenant invoice includes TSE monthly surcharge',
-  billing_include_support_retainer: 'Whether the tenant invoice includes monthly IT support retainer',
-  billing_include_setup: 'Whether the tenant invoice includes one-time setup fee',
-  demo_payment_status: 'Current payment status for signup/demo billing',
-  demo_payment_due_today_eur: 'Due today amount for initial signup invoice',
-  demo_payment_recurring_monthly_eur: 'Recurring monthly amount for the tenant invoice',
   social_instagram_url: 'Instagram profile URL',
   social_facebook_url: 'Facebook page URL',
   social_tiktok_url: 'TikTok profile URL',
   social_google_business_url: 'Google Business profile URL',
   business_hours_open: 'Opening hour',
   business_hours_close: 'Closing hour',
+  business_hours_schedule_json: 'Structured weekly opening-hours schedule in JSON for website/shop/order reuse',
   closed_weekday: 'Closed weekday (0=Sun, 1=Mon)',
   min_booking_advance_min: 'Minimum advance booking time in minutes',
   default_booking_duration: 'Default booking duration in minutes',
@@ -394,18 +202,18 @@ const OPERATIONAL_KEY_DESCRIPTIONS = {
   kc_terms_link: 'Terms path or URL for KC flow',
   privacy_link: 'Privacy policy path or URL for founder/KC flows',
   site_template: 'Public website template choice (minimal, modern, premium)',
-  site_theme_variant: 'Exact tenant website theme variant key (for example theme-luxury-a)',
-  site_content_preset: 'Content preset key used by the website master payload',
+  site_theme_variant: 'Theme variant override used by website previews and published pages',
+  site_content_preset: 'Content preset identifier used to seed website-master content',
   site_language: 'Public website language code (en or de)',
-  site_tagline: 'Short public-facing tagline for the restaurant website',
-  site_hero_title: 'Main hero title on the tenant website',
-  site_hero_subtitle: 'Hero subtitle on the tenant website',
-  site_about_title: 'About section title on the tenant website',
-  site_about_body: 'About section body text on the tenant website',
-  site_primary_cta_text: 'Primary call-to-action label on the tenant website',
-  site_secondary_cta_text: 'Secondary call-to-action label on the tenant website',
-  site_contact_address: 'Public contact address shown on the tenant website',
-  site_accent_color: 'Primary brand accent color for the tenant website',
+  site_tagline: 'Public website tagline shown near the brand lockup',
+  site_hero_title: 'Public website hero headline',
+  site_hero_subtitle: 'Public website hero supporting copy',
+  site_about_title: 'Public website about section title',
+  site_about_body: 'Public website about section body copy',
+  site_primary_cta_text: 'Primary call-to-action label on the website',
+  site_secondary_cta_text: 'Secondary call-to-action label on the website',
+  site_contact_address: 'Public contact address shown on website pages',
+  site_accent_color: 'Accent color override for the public website',
   site_branding_json: 'JSON overrides for website branding, language, and logo asset references',
   site_navigation_json: 'JSON overrides for website navigation labels, page visibility, and secondary nav items',
   site_content_json: 'JSON overrides for website content blocks, images, and section copy',
@@ -483,7 +291,7 @@ function normalizeTenantSubdomain(rawSubdomain) {
 }
 
 function buildTenantWebsiteUrl(subdomain) {
-  return 'https://' + subdomain + '.' + PLATFORM_PUBLIC_DOMAIN;
+  return `https://${subdomain}.${PLATFORM_PUBLIC_DOMAIN}`;
 }
 
 function isValidTenantSubdomain(subdomain) {
@@ -505,6 +313,67 @@ function parseJsonArray(rawValue) {
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
+  }
+}
+
+function normalizeBusinessHoursTime(rawValue) {
+  const value = String(rawValue || '').trim();
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(value) ? value : '';
+}
+
+function buildFallbackBusinessHoursSchedule({ open, close, closedWeekday } = {}) {
+  const normalizedOpen = normalizeBusinessHoursTime(open);
+  const normalizedClose = normalizeBusinessHoursTime(close);
+  const normalizedClosedWeekday = String(closedWeekday || '').trim();
+  const orderedDays = ['1', '2', '3', '4', '5', '6', '0'];
+
+  return orderedDays.map((day) => {
+    const isClosed = normalizedClosedWeekday === day;
+    return {
+      day,
+      closed: isClosed,
+      open: isClosed ? '' : normalizedOpen,
+      close: isClosed ? '' : normalizedClose
+    };
+  });
+}
+
+function parseBusinessHoursSchedule(rawValue, fallback = {}) {
+  const fallbackSchedule = buildFallbackBusinessHoursSchedule(fallback);
+  if (typeof rawValue !== 'string' || !rawValue.trim()) return fallbackSchedule;
+
+  try {
+    const parsed = JSON.parse(rawValue);
+    if (!Array.isArray(parsed) || !parsed.length) return fallbackSchedule;
+
+    const parsedMap = new Map();
+    for (const row of parsed) {
+      const day = String(row?.day || '').trim();
+      if (!day) continue;
+      parsedMap.set(day, {
+        day,
+        closed: row?.closed === true,
+        open: normalizeBusinessHoursTime(row?.open),
+        close: normalizeBusinessHoursTime(row?.close)
+      });
+    }
+
+    return fallbackSchedule.map((fallbackRow) => {
+      const parsedRow = parsedMap.get(fallbackRow.day);
+      if (!parsedRow) return fallbackRow;
+      if (parsedRow.closed) {
+        return { day: fallbackRow.day, closed: true, open: '', close: '' };
+      }
+
+      return {
+        day: fallbackRow.day,
+        closed: false,
+        open: parsedRow.open || fallbackRow.open,
+        close: parsedRow.close || fallbackRow.close
+      };
+    });
+  } catch {
+    return fallbackSchedule;
   }
 }
 
@@ -602,11 +471,7 @@ async function getMergedSettingsMap(env, companyId, companyKeys, organizationKey
     getOrganizationIdForCompany(env, companyId)
   ]);
 
-  const organizationKeys = Array.from(new Set(
-    companyKeys
-      .map(key => organizationKeyMap[key] || key)
-      .filter(Boolean)
-  ));
+    const organizationKeys = Array.from(new Set(companyKeys.map(key => organizationKeyMap[key] || key).filter(Boolean)));
 
   const organizationMap = organizationId
     ? await getOrganizationSettingsMapById(env, organizationId, organizationKeys)
@@ -621,6 +486,46 @@ async function getMergedSettingsMap(env, companyId, companyKeys, organizationKey
   }
 
   return merged;
+}
+
+function parsePlatformPlanFeatures(rawValue) {
+  return String(rawValue || '')
+    .split(/\r?\n/)
+    .map(item => item.trim())
+    .filter(Boolean);
+}
+
+function buildPlatformPlanDefinition(settingsMap, definition) {
+  const name = String(settingsMap[definition.nameKey] || PLATFORM_PRICING_DEFAULTS[definition.nameKey] || '').trim();
+  const description = String(settingsMap[definition.descriptionKey] || PLATFORM_PRICING_DEFAULTS[definition.descriptionKey] || '').trim();
+  const priceRaw = String(settingsMap[definition.priceKey] || PLATFORM_PRICING_DEFAULTS[definition.priceKey] || '').trim();
+  const features = parsePlatformPlanFeatures(settingsMap[definition.featuresKey] || PLATFORM_PRICING_DEFAULTS[definition.featuresKey] || '');
+
+  return {
+    id: definition.id,
+    name,
+    description,
+    priceEurPerUserMonthly: priceRaw === '' ? null : Number(priceRaw),
+    features
+  };
+}
+
+function buildPlatformPlansResponse(settingsMap) {
+  const plans = PLATFORM_PLAN_DEFINITIONS.map((definition) => {
+    return buildPlatformPlanDefinition(settingsMap, definition);
+  });
+
+  return {
+    ok: true,
+    plans,
+    extras: {
+      oneTimeSetupFeeEur: Number(settingsMap.platform_setup_fee_once || PLATFORM_PRICING_DEFAULTS.platform_setup_fee_once || 0),
+      tseMonthlyFeeEur: Number(settingsMap.platform_tse_fee_monthly || PLATFORM_PRICING_DEFAULTS.platform_tse_fee_monthly || 0),
+      itSupportHourlyEur: Number(settingsMap.platform_it_support_hourly || PLATFORM_PRICING_DEFAULTS.platform_it_support_hourly || 0),
+      itSupportMonthlyRetainerEur: Number(settingsMap.platform_it_support_monthly || PLATFORM_PRICING_DEFAULTS.platform_it_support_monthly || 0)
+    },
+    pricingNote: String(settingsMap.platform_price_note || PLATFORM_PRICING_DEFAULTS.platform_price_note || '').trim()
+  };
 }
 
 async function getIntegrationSettingsMap(env, companyId) {
@@ -706,6 +611,7 @@ async function getAdminPlatformConfig(env, companyId) {
 function safeParseJsonObject(rawValue, fallback = {}) {
   const text = String(rawValue || '').trim();
   if (!text) return { ...fallback };
+
   try {
     const parsed = JSON.parse(text);
     return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : { ...fallback };
@@ -741,6 +647,8 @@ function getDefaultWebsiteLabels(language) {
       about: 'Uber uns',
       contact: 'Kontakt',
       career: 'Karriere',
+      founder: 'Founder',
+      shop: 'Shop',
       contactButton: 'Kontakt',
       reserveButton: 'Reservieren'
     };
@@ -753,191 +661,39 @@ function getDefaultWebsiteLabels(language) {
     about: 'About',
     contact: 'Contact',
     career: 'Careers',
+    founder: 'Founder',
+    shop: 'Shop',
     contactButton: 'Contact',
     reserveButton: 'Reserve'
   };
 }
 
-function getDefaultWebsiteSecondaryItems(language) {
-  if (language === 'de') {
-    return [
-      { page: 'about', label: 'Haus & Geschichte' },
-      { page: 'menu', label: 'Speisekarten' },
-      { page: 'career', label: 'Arbeiten mit uns' },
-      { page: 'contact', label: 'Kontakt' }
-    ];
-  }
-
-  return [
-    { page: 'about', label: 'House Story' },
-    { page: 'menu', label: 'Menus' },
-    { page: 'career', label: 'Work With Us' },
-    { page: 'contact', label: 'Contact' }
-  ];
-}
-
-async function getActiveWebsiteMediaAssets(env, companyId) {
-  const result = await env.DB.prepare(`
-    SELECT id, title, alt_text, data_url, tags
-    FROM media_assets
-    WHERE company_id = ? AND is_active = 1
-    ORDER BY updated_at DESC
-    LIMIT 200
-  `).bind(companyId).all();
-
-  return (result.results || []).map((row) => ({
-    id: String(row.id || '').trim(),
-    title: String(row.title || '').trim(),
-    altText: String(row.alt_text || '').trim(),
-    dataUrl: String(row.data_url || '').trim(),
-    tags: (() => {
-      try {
-        const parsed = JSON.parse(String(row.tags || '[]'));
-        return Array.isArray(parsed)
-          ? parsed.map((item) => String(item || '').trim().toLowerCase()).filter(Boolean)
-          : [];
-      } catch {
-        return [];
-      }
-    })()
-  })).filter((asset) => asset.dataUrl);
-}
-
-function findMediaAssetDataUrlByTags(assets, tags) {
-  const normalizedTags = (tags || []).map((tag) => String(tag || '').trim().toLowerCase()).filter(Boolean);
-  if (!normalizedTags.length) return '';
-  const match = (assets || []).find((asset) => normalizedTags.some((tag) => asset.tags.includes(tag)));
-  return match?.dataUrl || '';
-}
-
-function buildWebsiteMediaSlots(assets) {
-  return {
-    logo_image: findMediaAssetDataUrlByTags(assets, ['logo', 'brand-logo']),
-    hero_image: findMediaAssetDataUrlByTags(assets, ['hero', 'home-hero']),
-    team_image: findMediaAssetDataUrlByTags(assets, ['team', 'about-team']),
-    journal_feature_image: findMediaAssetDataUrlByTags(assets, ['journal-feature', 'feature-food']),
-    location_images: [
-      findMediaAssetDataUrlByTags(assets, ['location-1', 'berlin']),
-      findMediaAssetDataUrlByTags(assets, ['location-2', 'munich']),
-      findMediaAssetDataUrlByTags(assets, ['location-3', 'konstanz'])
-    ],
-    journal_images: [
-      findMediaAssetDataUrlByTags(assets, ['journal-1']),
-      findMediaAssetDataUrlByTags(assets, ['journal-2']),
-      findMediaAssetDataUrlByTags(assets, ['journal-3'])
-    ],
-    menu_images: [
-      findMediaAssetDataUrlByTags(assets, ['menu-1']),
-      findMediaAssetDataUrlByTags(assets, ['menu-2']),
-      findMediaAssetDataUrlByTags(assets, ['menu-3'])
-    ]
-  };
-}
-
-function getWebsiteThemePreviewProfile(theme) {
-  const normalizedTheme = normalizeWebsiteThemeVariant(theme, WEBSITE_BUILDER_DEFAULTS.site_template);
-  return WEBSITE_THEME_PREVIEW_PROFILES[normalizedTheme] || null;
-}
-
 async function buildPublicWebsitePayload(env, companyId, currentUrl) {
-  const [{ company, operationalSettings, modules }, assets] = await Promise.all([
-    getAdminPlatformConfig(env, companyId),
-    getActiveWebsiteMediaAssets(env, companyId)
-  ]);
-
+  const { company, operationalSettings, modules } = await getAdminPlatformConfig(env, companyId);
   const settings = operationalSettings || {};
   const brandingOverrides = safeParseJsonObject(settings.site_branding_json);
   const navigationOverrides = safeParseJsonObject(settings.site_navigation_json);
   const contentOverrides = safeParseJsonObject(settings.site_content_json);
   const careerOverrides = safeParseJsonObject(settings.site_career_json);
   const requestedPreviewTheme = String(currentUrl?.searchParams?.get('theme') || '').trim();
-  const theme = normalizeWebsiteThemeVariant(requestedPreviewTheme || settings.site_theme_variant || settings.site_template, settings.site_template);
+  const theme = normalizeWebsiteThemeVariant(
+    requestedPreviewTheme || settings.site_theme_variant || settings.site_template,
+    settings.site_template
+  );
   const language = normalizeWebsiteLanguage(settings.site_language || brandingOverrides.language_code);
-  const themePreset = String(requestedPreviewTheme || settings.site_content_preset || theme).trim() || theme;
-  const previewProfile = requestedPreviewTheme ? getWebsiteThemePreviewProfile(theme) : null;
-  const mediaSlots = buildWebsiteMediaSlots(assets);
   const defaultLabels = getDefaultWebsiteLabels(language);
-  const websiteUrl = String(settings.website_url || currentUrl?.origin || '').trim();
-  const contactAddress = String(previewProfile?.company?.address || settings.site_contact_address || '').trim() || '27 Alder Quay, Berlin 10407';
-  const fallbackEmail = String(previewProfile?.company?.email || settings.booking_email || company?.email || '').trim() || 'hello@example.com';
-  const fallbackPhone = String(previewProfile?.company?.phone || company?.phone || '').trim() || '+49 30 5550 2100';
-  const openingHoursSchedule = (() => {
-    const normalizeScheduleTime = (value) => {
-      const normalized = String(value || '').trim();
-      return /^([01]\d|2[0-3]):[0-5]\d$/.test(normalized) ? normalized : '';
-    };
-    const orderedDays = ['1', '2', '3', '4', '5', '6', '0'];
-    const fallbackOpen = normalizeScheduleTime(settings.business_hours_open);
-    const fallbackClose = normalizeScheduleTime(settings.business_hours_close);
-    const fallbackClosedWeekday = String(settings.closed_weekday || '').trim();
-    const fallbackSchedule = orderedDays.map((day) => {
-      const isClosed = fallbackClosedWeekday == day;
-      return {
-        day,
-        closed: isClosed,
-        open: isClosed ? '' : fallbackOpen,
-        close: isClosed ? '' : fallbackClose
-      };
-    });
-
-    try {
-      const parsed = JSON.parse(String(settings.business_hours_schedule_json || ''));
-      if (!Array.isArray(parsed) || !parsed.length) return fallbackSchedule;
-      const parsedMap = new Map(parsed.map((row) => [String(row?.day || '').trim(), row]));
-      return fallbackSchedule.map((row) => {
-        const next = parsedMap.get(row.day);
-        if (!next) return row;
-        const closed = next?.closed === true;
-        return {
-          day: row.day,
-          closed,
-          open: closed ? '' : (normalizeScheduleTime(next?.open) || row.open),
-          close: closed ? '' : (normalizeScheduleTime(next?.close) || row.close)
-        };
-      });
-    } catch {
-      return fallbackSchedule;
-    }
-  })();
-
-  const content = {
-    ...(contentOverrides || {})
-  };
-
-  if (!content.logo_image && mediaSlots.logo_image) content.logo_image = mediaSlots.logo_image;
-  if (!content.hero_image && mediaSlots.hero_image) content.hero_image = mediaSlots.hero_image;
-  if (!content.team_image && mediaSlots.team_image) content.team_image = mediaSlots.team_image;
-  if (!content.journal_feature_image && mediaSlots.journal_feature_image) content.journal_feature_image = mediaSlots.journal_feature_image;
-
-  if (Array.isArray(content.location_cards)) {
-    content.location_cards = content.location_cards.map((card, index) => ({
-      ...card,
-      image: String(card?.image || '').trim() || mediaSlots.location_images[index] || ''
-    }));
-  }
-
-  if (Array.isArray(content.journal_cards)) {
-    content.journal_cards = content.journal_cards.map((card, index) => ({
-      ...card,
-      image: String(card?.image || '').trim() || mediaSlots.journal_images[index] || ''
-    }));
-  }
-
-  if (Array.isArray(content.menu_link_cards)) {
-    content.menu_link_cards = content.menu_link_cards.map((card, index) => ({
-      ...card,
-      image: String(card?.image || '').trim() || mediaSlots.menu_images[index] || ''
-    }));
-  }
-
-  const navigationLabels = navigationOverrides?.labels && typeof navigationOverrides.labels === 'object'
-    ? navigationOverrides.labels
-    : {};
-  const companyIdText = String(companyId || '').trim();
+  const themePreset = String(requestedPreviewTheme || settings.site_content_preset || theme).trim() || theme;
+  const tenantSubdomain = normalizeTenantSubdomain(company?.subdomain);
+  const websiteUrl = String(settings.website_url || '').trim() || (tenantSubdomain ? buildTenantWebsiteUrl(tenantSubdomain) : String(currentUrl?.origin || '').trim());
+  const openingHoursSchedule = parseBusinessHoursSchedule(settings.business_hours_schedule_json, {
+    open: settings.business_hours_open,
+    close: settings.business_hours_close,
+    closedWeekday: settings.closed_weekday
+  });
 
   return {
     tenant: {
-      id: String(company?.subdomain || `tenant-${companyIdText}`).trim(),
+      id: tenantSubdomain || `tenant-${String(companyId || '').trim()}`,
       company_id: Number(companyId),
       theme,
       tier: inferWebsiteTierFromModules(modules),
@@ -945,289 +701,48 @@ async function buildPublicWebsitePayload(env, companyId, currentUrl) {
     },
     theme_presets_url: '/website-master/theme-presets.example.json',
     company: {
-      name: String(previewProfile?.company?.name || company?.name || 'North & Mercer House').trim(),
-      city: String(brandingOverrides.city || previewProfile?.company?.city || 'Berlin').trim(),
-      cuisine: String(brandingOverrides.cuisine || previewProfile?.company?.cuisine || 'Contemporary European').trim(),
-      phone: fallbackPhone,
-      email: fallbackEmail,
-      address: contactAddress
+      name: String(company?.name || '').trim() || 'Restaurant Name',
+      city: String(brandingOverrides.city || '').trim() || 'Berlin',
+      cuisine: String(brandingOverrides.cuisine || '').trim() || 'Restaurant Cuisine',
+      phone: String(company?.phone || '').trim(),
+      email: String(settings.booking_email || company?.email || '').trim(),
+      address: String(settings.site_contact_address || '').trim()
     },
     settings: {
       site_template: String(settings.site_template || WEBSITE_BUILDER_DEFAULTS.site_template).trim(),
-      site_tagline: String(settings.site_tagline || previewProfile?.settings?.site_tagline || WEBSITE_BUILDER_DEFAULTS.site_tagline).trim(),
-      site_hero_title: String(settings.site_hero_title || previewProfile?.settings?.site_hero_title || WEBSITE_BUILDER_DEFAULTS.site_hero_title).trim(),
-      site_hero_subtitle: String(settings.site_hero_subtitle || previewProfile?.settings?.site_hero_subtitle || WEBSITE_BUILDER_DEFAULTS.site_hero_subtitle).trim(),
+      site_tagline: String(settings.site_tagline || WEBSITE_BUILDER_DEFAULTS.site_tagline).trim(),
+      site_hero_title: String(settings.site_hero_title || WEBSITE_BUILDER_DEFAULTS.site_hero_title).trim(),
+      site_hero_subtitle: String(settings.site_hero_subtitle || WEBSITE_BUILDER_DEFAULTS.site_hero_subtitle).trim(),
       site_about_title: String(settings.site_about_title || WEBSITE_BUILDER_DEFAULTS.site_about_title).trim(),
       site_about_body: String(settings.site_about_body || WEBSITE_BUILDER_DEFAULTS.site_about_body).trim(),
       site_primary_cta_text: String(settings.site_primary_cta_text || defaultLabels.reserveButton).trim(),
       site_secondary_cta_text: String(settings.site_secondary_cta_text || 'Menu').trim(),
+      site_contact_address: String(settings.site_contact_address || '').trim(),
       site_accent_color: String(settings.site_accent_color || WEBSITE_BUILDER_DEFAULTS.site_accent_color).trim(),
       site_language: language,
       business_hours_open: String(settings.business_hours_open || '').trim(),
       business_hours_close: String(settings.business_hours_close || '').trim(),
       closed_weekday: String(settings.closed_weekday || '').trim(),
       opening_hours_schedule: openingHoursSchedule,
-      booking_email: fallbackEmail,
-      website_url: websiteUrl,
-      custom_domain: String(settings.custom_domain || '').trim(),
-      standard_contact_link: String(settings.standard_contact_link || '').trim(),
-      founder_program_label: String(settings.founder_program_label || 'Circle').trim(),
-      founder_membership_type: String(settings.founder_membership_type || FOUNDER_DEFAULT_MEMBERSHIP_TYPE).trim(),
-      founder_redirect_link: String(settings.founder_redirect_link || '').trim(),
-      privacy_link: String(settings.privacy_link || '/privacy.html').trim(),
-      founder_terms_link: String(settings.founder_terms_link || '/terms.html').trim()
+      booking_email: String(settings.booking_email || company?.email || '').trim(),
+      website_url: websiteUrl
     },
-    branding: {
-      logo_image: String(brandingOverrides.logo_image || content.logo_image || '').trim(),
-      locale_label: String(brandingOverrides.locale_label || language.toUpperCase()).trim(),
-      language_code: language
-    },
+    branding: brandingOverrides,
     navigation: {
       labels: {
-        home: String(navigationLabels.home || defaultLabels.home).trim(),
-        menu: String(navigationLabels.menu || defaultLabels.menu).trim(),
-        reservation: String(navigationLabels.reservation || defaultLabels.reservation).trim(),
-        about: String(navigationLabels.about || defaultLabels.about).trim(),
-        contact: String(navigationLabels.contact || defaultLabels.contact).trim(),
-        career: String(navigationLabels.career || defaultLabels.career).trim()
+        ...defaultLabels,
+        ...(navigationOverrides.labels && typeof navigationOverrides.labels === 'object' ? navigationOverrides.labels : {})
       },
-      secondary_items: Array.isArray(navigationOverrides.secondary_items)
-        ? navigationOverrides.secondary_items
-        : getDefaultWebsiteSecondaryItems(language),
       page_visibility: navigationOverrides.page_visibility && typeof navigationOverrides.page_visibility === 'object'
         ? navigationOverrides.page_visibility
-        : {
-          home: { show_in_nav: true, show_on_home: true },
-          menu: { show_in_nav: true, show_on_home: false },
-          reservation: { show_in_nav: true, show_on_home: false },
-          about: { show_in_nav: true, show_on_home: false },
-          contact: { show_in_nav: true, show_on_home: false },
-          career: { show_in_nav: true, show_on_home: false }
-        },
+        : {},
+      secondary_items: Array.isArray(navigationOverrides.secondary_items) ? navigationOverrides.secondary_items : [],
       header_contact_label: String(navigationOverrides.header_contact_label || defaultLabels.contactButton).trim(),
       header_reserve_label: String(navigationOverrides.header_reserve_label || defaultLabels.reserveButton).trim()
     },
-    career: {
-      ...(careerOverrides || {})
-    },
-    modules,
-    legal: {
-      terms_url: String(settings.founder_terms_link || '/terms.html').trim(),
-      privacy_url: String(settings.privacy_link || '/privacy.html').trim(),
-      impressum_url: String(brandingOverrides.impressum_url || '/impressum.html').trim()
-    },
-    social: {
-      instagram: String(settings.social_instagram_url || '').trim(),
-      facebook: String(settings.social_facebook_url || '').trim(),
-      tiktok: String(settings.social_tiktok_url || '').trim(),
-      google_business: String(settings.social_google_business_url || '').trim()
-    },
-    content
-  };
-}
-
-async function getPlatformMarketingSettings(env) {
-  const settingsMap = await getSettingsMap(env, PLATFORM_OPERATOR_COMPANY_ID, Object.keys(PLATFORM_PRICING_DEFAULTS));
-  const merged = {};
-  for (const key of Object.keys(PLATFORM_PRICING_DEFAULTS)) {
-    const raw = String(settingsMap[key] || '').trim();
-    merged[key] = raw || PLATFORM_PRICING_DEFAULTS[key];
-  }
-  return merged;
-}
-
-function parsePlatformPlanFeatures(rawValue) {
-  return String(rawValue || '')
-    .split(/\r?\n/)
-    .map(item => item.trim())
-    .filter(Boolean);
-}
-
-function buildPlatformPlanDefinition(settingsMap, definition) {
-  const name = String(settingsMap[definition.nameKey] || PLATFORM_PRICING_DEFAULTS[definition.nameKey] || '').trim();
-  const description = String(settingsMap[definition.descriptionKey] || PLATFORM_PRICING_DEFAULTS[definition.descriptionKey] || '').trim();
-  const priceRaw = String(settingsMap[definition.priceKey] || PLATFORM_PRICING_DEFAULTS[definition.priceKey] || '').trim();
-  const features = parsePlatformPlanFeatures(settingsMap[definition.featuresKey] || PLATFORM_PRICING_DEFAULTS[definition.featuresKey] || '');
-
-  return {
-    id: definition.id,
-    name,
-    description,
-    priceEurPerUserMonthly: priceRaw === '' ? null : Number(priceRaw),
-    features
-  };
-}
-
-function buildPlatformPlansResponse(settingsMap) {
-  const setupFee = Number(settingsMap.platform_setup_fee_once || PLATFORM_PRICING_DEFAULTS.platform_setup_fee_once || 0);
-  const tseFee = Number(settingsMap.platform_tse_fee_monthly || PLATFORM_PRICING_DEFAULTS.platform_tse_fee_monthly || 0);
-  const supportHourly = Number(settingsMap.platform_it_support_hourly || PLATFORM_PRICING_DEFAULTS.platform_it_support_hourly || 0);
-  const supportMonthly = Number(settingsMap.platform_it_support_monthly || PLATFORM_PRICING_DEFAULTS.platform_it_support_monthly || 0);
-
-  return {
-    ok: true,
-    billingModel: 'per_user_monthly',
-    pricingNote: String(settingsMap.platform_price_note || PLATFORM_PRICING_DEFAULTS.platform_price_note),
-    extras: {
-      oneTimeSetupFeeEur: setupFee,
-      tseMonthlyFeeEur: tseFee,
-      itSupportHourlyEur: supportHourly,
-      itSupportMonthlyRetainerEur: supportMonthly
-    },
-    plans: PLATFORM_PLAN_DEFINITIONS.map(definition => buildPlatformPlanDefinition(settingsMap, definition))
-  };
-}
-
-async function getNextIntegerId(env, tableName) {
-  const row = await env.DB.prepare(`SELECT COALESCE(MAX(id), 0) + 1 AS nextId FROM ${tableName}`).first();
-  return Number(row?.nextId || 1);
-}
-
-async function cloneOrganizationDefaults(env, sourceOrganizationId, targetOrganizationId, updatedBy = 'platform-signup') {
-  const result = await env.DB.prepare(`
-    SELECT key, value, description
-    FROM organization_settings
-    WHERE organization_id = ?
-  `).bind(sourceOrganizationId).all();
-
-  const rows = result?.results || [];
-  const now = new Date().toISOString();
-  for (const row of rows) {
-    await env.DB.prepare(`
-      INSERT OR IGNORE INTO organization_settings (organization_id, key, value, description, updated_at, updated_by)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).bind(
-      targetOrganizationId,
-      String(row.key || ''),
-      String(row.value || ''),
-      String(row.description || ''),
-      now,
-      updatedBy
-    ).run();
-  }
-}
-
-function normalizeHexColor(value, fallback = WEBSITE_BUILDER_DEFAULTS.site_accent_color) {
-  const input = String(value || '').trim();
-  if (/^#[0-9a-f]{6}$/i.test(input)) return input;
-  return fallback;
-}
-
-function normalizePlanId(planRaw) {
-  const normalized = String(planRaw || '').trim().toLowerCase();
-  return ['core', 'commerce', 'growth', 'enterprise'].includes(normalized) ? normalized : '';
-}
-
-function getPlanModuleOverrides(planId) {
-  switch (normalizePlanId(planId)) {
-    case 'core':
-      return {
-        module_booking_management: false,
-        module_membership_management: false,
-        module_founder_program: false
-      };
-    default:
-      return {};
-  }
-}
-
-function normalizeWebsiteTemplate(templateRaw) {
-  const normalized = String(templateRaw || '').trim().toLowerCase();
-  return ['minimal', 'modern', 'premium'].includes(normalized) ? normalized : WEBSITE_BUILDER_DEFAULTS.site_template;
-}
-
-function computeDemoPaymentSummary(planId, userCount, extras, settingsMap) {
-  const perUserMap = {
-    core: Number(settingsMap.platform_core_price_per_user || PLATFORM_PRICING_DEFAULTS.platform_core_price_per_user || 0),
-    commerce: Number(settingsMap.platform_commerce_price_per_user || PLATFORM_PRICING_DEFAULTS.platform_commerce_price_per_user || 0),
-    growth: Number(settingsMap.platform_growth_price_per_user || PLATFORM_PRICING_DEFAULTS.platform_growth_price_per_user || 0),
-    enterprise: 0
-  };
-  const perUser = Number(perUserMap[planId] || 0);
-  const monthlyBase = perUser * Math.max(1, Number(userCount || 1));
-  const setupFee = parseBooleanLike(extras?.includeSetup, true)
-    ? Number(settingsMap.platform_setup_fee_once || PLATFORM_PRICING_DEFAULTS.platform_setup_fee_once || 0)
-    : 0;
-  const tseFee = parseBooleanLike(extras?.includeTse, false)
-    ? Number(settingsMap.platform_tse_fee_monthly || PLATFORM_PRICING_DEFAULTS.platform_tse_fee_monthly || 0)
-    : 0;
-  const supportMonthly = parseBooleanLike(extras?.includeSupportRetainer, false)
-    ? Number(settingsMap.platform_it_support_monthly || PLATFORM_PRICING_DEFAULTS.platform_it_support_monthly || 0)
-    : 0;
-  return {
-    billingModel: 'demo_payment',
-    perUserMonthlyEur: perUser,
-    users: Math.max(1, Number(userCount || 1)),
-    monthlyBaseEur: monthlyBase,
-    monthlyExtrasEur: tseFee + supportMonthly,
-    oneTimeSetupEur: setupFee,
-    dueTodayEur: setupFee,
-    recurringMonthlyEur: monthlyBase + tseFee + supportMonthly,
-    extras: {
-      includeSetup: parseBooleanLike(extras?.includeSetup, true),
-      includeTse: parseBooleanLike(extras?.includeTse, false),
-      includeSupportRetainer: parseBooleanLike(extras?.includeSupportRetainer, false),
-      tseFeeEur: tseFee,
-      supportRetainerMonthlyEur: supportMonthly
-    },
-    paymentStatus: 'demo_paid'
-  };
-}
-
-async function recalculateCompanyBillingSummary(env, companyId) {
-  const [pricingSettings, companySettings, staffCountRow] = await Promise.all([
-    getPlatformMarketingSettings(env),
-    getSettingsMap(env, companyId, [
-      'company_plan',
-      'billing_include_tse',
-      'billing_include_support_retainer',
-      'billing_include_setup'
-    ]),
-    env.DB.prepare(`SELECT COUNT(*) AS count FROM staff WHERE company_id = ? AND is_active = 1`).bind(companyId).first()
-  ]);
-
-  const plan = normalizePlanId(companySettings.company_plan || 'core') || 'core';
-  const extras = {
-    includeTse: parseBooleanLike(companySettings.billing_include_tse, false),
-    includeSupportRetainer: parseBooleanLike(companySettings.billing_include_support_retainer, false),
-    includeSetup: parseBooleanLike(companySettings.billing_include_setup, false)
-  };
-  const activeStaff = Math.max(1, Number(staffCountRow?.count || 1));
-  const summary = computeDemoPaymentSummary(plan, activeStaff, extras, pricingSettings);
-
-  await upsertSettingValue(env, companyId, 'billable_staff_count', String(activeStaff), OPERATIONAL_KEY_DESCRIPTIONS.billable_staff_count, 'billing-automation');
-  await upsertSettingValue(env, companyId, 'demo_payment_recurring_monthly_eur', String(summary.recurringMonthlyEur), OPERATIONAL_KEY_DESCRIPTIONS.demo_payment_recurring_monthly_eur, 'billing-automation');
-
-  return { activeStaff, summary };
-}
-
-async function authorizePlatformOperator(env, pinRaw) {
-  return authorizeAdminByPin(env, PLATFORM_OPERATOR_COMPANY_ID, pinRaw);
-}
-
-async function getPlatformAdminDashboard(env) {
-  const [pricingSettings, signupsResult, contactsResult] = await Promise.all([
-    getPlatformMarketingSettings(env),
-    env.DB.prepare(`
-      SELECT id, company_id, organization_id, restaurant_name, owner_email, owner_phone, subdomain, plan,
-             website_template, staff_users, country, payment_status, due_today_eur, recurring_monthly_eur,
-             follow_up_status, follow_up_note, followed_up_at, created_at
-      FROM platform_signups
-      ORDER BY created_at DESC
-      LIMIT 100
-    `).all(),
-    env.DB.prepare(`
-      SELECT id, name, email, subject, message, submitted_at, status
-      FROM platform_contacts
-      ORDER BY submitted_at DESC
-      LIMIT 100
-    `).all()
-  ]);
-
-  return {
-    pricingSettings,
-    signups: signupsResult?.results || [],
-    contacts: contactsResult?.results || []
+    content: contentOverrides,
+    career: careerOverrides,
+    modules: modules || {}
   };
 }
 
@@ -1296,95 +811,57 @@ async function getFounderSecretRuntimeConfig(env, companyId) {
   };
 }
 
-function canOverrideCompanyIdForHost(tenant, url = null) {
-  const host = String(tenant?.hostname || url?.hostname || '').toLowerCase();
-  return (
-    host.includes('workers.dev') ||
-    host.startsWith('localhost') ||
-    host === '127.0.0.1' ||
-    host === '[::1]'
-  );
-}
-
 async function resolveActiveCompanyId(env, tenant, url) {
-  if (!env?.DB) {
-    return { ok: false, reason: 'db_unavailable' };
-  }
+  const fallbackCompanyId = 1;
+  if (!env?.DB) return fallbackCompanyId;
 
-  const queryCompanyById = async (companyId) => {
-    try {
-      return await env.DB.prepare(
-        `SELECT id FROM companies WHERE id = ? AND is_active = 1 LIMIT 1`
-      ).bind(companyId).first();
-    } catch (error) {
-      const message = String(error?.message || error || '').toLowerCase();
-      if (message.includes('no such table: companies')) {
-        return { __error: 'companies_table_missing' };
+  const host = String(tenant?.hostname || '').toLowerCase();
+  const allowQueryOverride = host.includes('workers.dev') || host.startsWith('localhost');
+
+  if (allowQueryOverride) {
+    const queryCompanyId = Number(url.searchParams.get('company_id') || 0);
+    if (Number.isInteger(queryCompanyId) && queryCompanyId > 0) {
+      let row = null;
+      try {
+        row = await env.DB.prepare(
+          `SELECT id FROM companies WHERE id = ? AND is_active = 1 LIMIT 1`
+        ).bind(queryCompanyId).first();
+      } catch (error) {
+        const message = String(error?.message || error || '');
+        if (message.toLowerCase().includes('no such table: companies')) {
+          return queryCompanyId;
+        }
+        throw error;
       }
-      throw error;
-    }
-  };
 
-  const queryCompanyBySubdomain = async (subdomain) => {
-    try {
-      return await env.DB.prepare(
-        `SELECT id FROM companies WHERE lower(subdomain) = ? AND is_active = 1 LIMIT 1`
-      ).bind(subdomain).first();
-    } catch (error) {
-      const message = String(error?.message || error || '').toLowerCase();
-      if (message.includes('no such table: companies')) {
-        return { __error: 'companies_table_missing' };
-      }
-      throw error;
+      if (row?.id) return Number(row.id);
     }
-  };
-
-  const allowQueryOverride = canOverrideCompanyIdForHost(tenant, url);
-  const queryCompanyId = Number(url.searchParams.get('company_id') || 0);
-
-  if (Number.isInteger(queryCompanyId) && queryCompanyId > 0) {
-    if (!allowQueryOverride) {
-      return { ok: false, reason: 'override_not_allowed' };
-    }
-
-    const overrideCompany = await queryCompanyById(queryCompanyId);
-    if (overrideCompany?.__error) {
-      return { ok: false, reason: overrideCompany.__error };
-    }
-    if (overrideCompany?.id) {
-      return { ok: true, companyId: Number(overrideCompany.id) };
-    }
-
-    return { ok: false, reason: 'override_company_not_found' };
   }
 
   const tenantCompanyId = Number(tenant?.companyId || 0);
   if (Number.isInteger(tenantCompanyId) && tenantCompanyId > 0) {
-    const tenantCompany = await queryCompanyById(tenantCompanyId);
-    if (tenantCompany?.__error) {
-      return { ok: false, reason: tenantCompany.__error };
-    }
-    if (tenantCompany?.id) {
-      return { ok: true, companyId: Number(tenantCompany.id) };
-    }
-
-    return { ok: false, reason: 'tenant_company_not_found' };
+    return tenantCompanyId;
   }
 
   const subdomain = String(tenant?.subdomain || '').trim().toLowerCase();
   if (subdomain && subdomain !== 'www') {
-    const subdomainCompany = await queryCompanyBySubdomain(subdomain);
-    if (subdomainCompany?.__error) {
-      return { ok: false, reason: subdomainCompany.__error };
-    }
-    if (subdomainCompany?.id) {
-      return { ok: true, companyId: Number(subdomainCompany.id) };
+    let row = null;
+    try {
+      row = await env.DB.prepare(
+        `SELECT id FROM companies WHERE lower(subdomain) = ? AND is_active = 1 LIMIT 1`
+      ).bind(subdomain).first();
+    } catch (error) {
+      const message = String(error?.message || error || '');
+      if (message.toLowerCase().includes('no such table: companies')) {
+        return fallbackCompanyId;
+      }
+      throw error;
     }
 
-    return { ok: false, reason: 'tenant_subdomain_not_found' };
+    if (row?.id) return Number(row.id);
   }
 
-  return { ok: false, reason: 'no_tenant_context' };
+  return fallbackCompanyId;
 }
 
 function getTurnstileSiteKey(env) {
@@ -1395,19 +872,6 @@ function getTurnstileSiteKey(env) {
 function isLocalDevelopmentHost(url) {
   const hostname = String(url?.hostname || '').trim().toLowerCase();
   return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
-}
-
-function isTurnstileBypassHost(url) {
-  const hostname = String(url?.hostname || '').trim().toLowerCase();
-  return isLocalDevelopmentHost(url) || hostname.includes('workers.dev');
-}
-
-function isWebsiteMasterPreviewPath(pathnameRaw) {
-  const pathname = String(pathnameRaw || '').trim().toLowerCase();
-  return pathname === '/website-master'
-    || pathname === '/website-master/'
-    || pathname.startsWith('/website-master/')
-    || pathname === '/favicon.svg';
 }
 
 function getResolvedTurnstileSiteKey(env, url = null) {
@@ -1446,9 +910,14 @@ function resolveConfiguredLink(rawLink, baseUrl = '') {
 }
 
 async function getStandardContactFallbackLink(env, companyId, currentUrl = null) {
-  const settings = await getOperationalSettingsMap(env, companyId);
-  const websiteUrl = String(settings.website_url || '').trim() || String(currentUrl?.origin || '').trim();
-  const configuredFallback = String(settings.standard_contact_link || '').trim() || '/contact';
+  const [settings, company] = await Promise.all([
+    getOperationalSettingsMap(env, companyId),
+    getCompanyProfile(env, companyId)
+  ]);
+  const tenantSubdomain = normalizeTenantSubdomain(company?.subdomain);
+  const fallbackBaseUrl = String(currentUrl || '').trim();
+  const websiteUrl = String(settings.website_url || '').trim() || (tenantSubdomain ? buildTenantWebsiteUrl(tenantSubdomain) : fallbackBaseUrl);
+  const configuredFallback = String(settings.standard_contact_link || '').trim() || websiteUrl;
   return resolveConfiguredLink(configuredFallback, websiteUrl);
 }
 
@@ -1622,7 +1091,7 @@ function resolveRequestedMembershipProgram({
 
   return {
     membershipType: membershipType || FOUNDER_DEFAULT_MEMBERSHIP_TYPE,
-    founderTermsFlag: founderTermsAccepted ? 1 : 1,
+    founderTermsFlag: 1,
     kcTermsFlag: 0,
     notes: notesRaw || 'Founder Form Registration'
   };
@@ -1685,6 +1154,11 @@ function formatIsoToBerlinDate(value) {
     month: '2-digit',
     day: '2-digit'
   }).format(safeDate);
+}
+
+function getFounderOtpBrandPart(env, runtimeConfig = null) {
+  const brandName = String(runtimeConfig?.founderOtpBrandName || env.FOUNDER_OTP_BRAND_NAME || '').trim();
+  return brandName ? ` bei ${brandName}` : '';
 }
 
 async function sendTwilioMessage(env, { to, from, body, messagingServiceSid = '', credentials = null }) {
@@ -1771,11 +1245,6 @@ function generateOtpCode() {
 }
 
 async function verifyTurnstileToken(token, env, remoteIp, secretConfig = null, url = null) {
-  // Dev bypass: set DISABLE_TURNSTILE_FOR_DEV=true in wrangler.jsonc vars (never in production)
-  if (env?.DISABLE_TURNSTILE_FOR_DEV === 'true' && isTurnstileBypassHost(url)) {
-    return { success: true, _bypass: 'dev' };
-  }
-
   if (!token) return { success: false };
 
   const turnstileSecret = isLocalDevelopmentHost(url)
@@ -2008,9 +1477,12 @@ async function sendFounderOtpViaTwilio(env, phoneE164, name, otpCode, runtimeCon
 
   const channels = getFounderOtpChannels(env, runtimeConfig);
   const senders = getTwilioSenders(env, runtimeConfig);
-  const firstName = String(name || '').trim().split(/\s+/)[0] || 'Founder';
-  const whatsappMsg = `Hallo ${firstName}! Ihr Code fuer den Founder-Zugang ist: *${otpCode}*. Bitte antworten Sie nur mit diesen 6 Ziffern.\nQUAN ESSKULTUR TEAM`;
-  const smsMsg = `Hallo ${firstName}! Ihr Founder-Code ist: ${otpCode}. Bitte senden Sie nur diese 6 Ziffern als Antwort.`;
+  const firstName = String(name || '').trim().split(/\s+/)[0] || '';
+  const greeting = firstName ? `Hallo ${firstName}` : 'Hallo';
+  const brandPart = getFounderOtpBrandPart(env, runtimeConfig);
+  const otpValidMinutes = Math.max(1, Math.floor(FOUNDER_OTP_EXPIRES_SECONDS / 60));
+  const whatsappMsg = `${greeting}, willkommen${brandPart}. Ihr persoenlicher Verifizierungscode lautet: *${otpCode}*. Er ist ${otpValidMinutes} Minuten gueltig. Bitte nicht weitergeben.`;
+  const smsMsg = `${greeting}, willkommen${brandPart}. Ihr persoenlicher Verifizierungscode lautet: ${otpCode}. Er ist ${otpValidMinutes} Minuten gueltig. Bitte nicht weitergeben.`;
 
   const results = [];
 
@@ -2253,15 +1725,6 @@ export default {
     const url = new URL(request.url);
     const tenant = getTenantContext(request);
 
-    if (url.pathname === '/website/-master' || url.pathname === '/website/-master/') {
-      return Response.redirect(`${url.origin}/website-master/`, 301);
-    }
-
-    if (url.pathname.startsWith('/website/-master/')) {
-      const redirectPath = url.pathname.replace('/website/-master/', '/website-master/');
-      return Response.redirect(`${url.origin}${redirectPath}${url.search}`, 301);
-    }
-
     // Initialize D1 once per DB binding before handling the first non-static request.
     // This avoids fresh-runtime failures on POST-only flows such as OTP register.
     if (env?.DB && !initializedDatabases.has(env.DB) && !url.pathname.startsWith("/static")) {
@@ -2274,31 +1737,12 @@ export default {
       }
     }
 
-    let activeCompanyId = null;
-    let activeCompanyResolution = { ok: false, reason: 'unresolved' };
-    if (!isWebsiteMasterPreviewPath(url.pathname)) {
-      try {
-        activeCompanyResolution = await resolveActiveCompanyId(env, tenant, url);
-      } catch (e) {
-        console.warn('Company resolution error:', e?.message || e);
-        activeCompanyResolution = { ok: false, reason: 'resolution_error' };
-      }
-
-      if (activeCompanyResolution.ok) {
-        activeCompanyId = activeCompanyResolution.companyId;
-      } else {
-        console.warn('Tenant resolution failed:', activeCompanyResolution.reason);
-      }
+    let activeCompanyId = 1;
+    try {
+      activeCompanyId = await resolveActiveCompanyId(env, tenant, url);
+    } catch (e) {
+      console.warn('Company resolution fallback to default company_id=1:', e?.message || e);
     }
-
-    const runTenantRoute = (handler) => requireTenant(handler)({
-      request,
-      env,
-      ctx,
-      tenant,
-      url,
-      activeCompanyResolution
-    });
 
     // ==================== HEALTH CHECK ====================
     if (url.pathname === "/api/health") {
@@ -2310,15 +1754,14 @@ export default {
     }
 
     if (url.pathname === "/api/website/payload" && request.method === "GET") {
-      return runTenantRoute(async ({ companyId }) => {
-        try {
-          const source = await buildPublicWebsitePayload(env, companyId, url);
-          return Response.json({ ok: true, companyId, source });
-        } catch (e) {
-          console.error('Website payload GET error:', e);
-          return Response.json({ ok: false, error: e.message }, { status: 500 });
-        }
-      });
+      try {
+        const companyId = activeCompanyId;
+        const source = await buildPublicWebsitePayload(env, companyId, url);
+        return Response.json({ ok: true, companyId, source });
+      } catch (e) {
+        console.error('Website payload GET error:', e);
+        return Response.json({ ok: false, error: e.message }, { status: 500 });
+      }
     }
 
     // ==================== ADMIN UI ====================
@@ -2335,462 +1778,35 @@ export default {
       });
     }
 
-    // ==================== PLATFORM SITE ====================
-    if (url.pathname === "/platform" || url.pathname === "/platform/" || url.pathname === "/platform/index.html") {
-      return new Response(platformHomeUI, {
-        headers: { "Content-Type": "text/html; charset=utf-8" }
-      });
-    }
-
-    if (url.pathname === "/platform/signup" || url.pathname === "/platform/signup.html") {
-      return new Response(platformSignupUI, {
-        headers: { "Content-Type": "text/html; charset=utf-8" }
-      });
-    }
-
-    if (url.pathname === "/platform/admin" || url.pathname === "/platform/admin.html") {
-      return new Response(platformAdminUI, {
-        headers: { "Content-Type": "text/html; charset=utf-8" }
-      });
-    }
-
-    if (url.pathname === "/platform/contact" || url.pathname === "/platform/contact.html") {
-      return new Response(platformContactUI, {
-        headers: { "Content-Type": "text/html; charset=utf-8" }
-      });
-    }
-
-    if (url.pathname === "/platform/legal/terms" || url.pathname === "/platform/legal/terms.html") {
-      return new Response(platformTermsUI, {
-        headers: { "Content-Type": "text/html; charset=utf-8" }
-      });
-    }
-
-    if (url.pathname === "/platform/legal/privacy" || url.pathname === "/platform/legal/privacy.html") {
-      return new Response(platformPrivacyUI, {
-        headers: { "Content-Type": "text/html; charset=utf-8" }
-      });
-    }
-
-    if (url.pathname === "/platform/legal/impressum" || url.pathname === "/platform/legal/impressum.html") {
-      return new Response(platformImpressumUI, {
-        headers: { "Content-Type": "text/html; charset=utf-8" }
-      });
-    }
-
-    // ==================== PLATFORM API ====================
-    if (url.pathname === "/api/platform/plans" && request.method === "GET") {
-      try {
-        const settingsMap = await getPlatformMarketingSettings(env);
-        return Response.json(buildPlatformPlansResponse(settingsMap));
-      } catch (e) {
-        return Response.json({ ok: false, error: e.message }, { status: 500 });
-      }
-    }
-
-    if (url.pathname === "/api/platform/signup/check-subdomain" && request.method === "GET") {
-      try {
-        const requestedSlug = normalizeTenantSubdomain(url.searchParams.get('slug') || '');
-        if (!requestedSlug || !isValidTenantSubdomain(requestedSlug)) {
-          return Response.json({ ok: false, code: 'validation_failed', message: 'Subdomain must use lowercase letters, numbers, and hyphens.' }, { status: 400 });
-        }
-
-        const existing = await env.DB.prepare(`
-          SELECT id FROM companies WHERE lower(subdomain) = lower(?) LIMIT 1
-        `).bind(requestedSlug).first();
-
-        if (existing?.id) {
-          return Response.json({ ok: false, code: 'subdomain_taken', available: false, slug: requestedSlug, suggestion: `${requestedSlug}-2` }, { status: 409 });
-        }
-
-        return Response.json({ ok: true, available: true, slug: requestedSlug, url: buildTenantWebsiteUrl(requestedSlug) });
-      } catch (e) {
-        return Response.json({ ok: false, error: e.message }, { status: 500 });
-      }
-    }
-
-    if (url.pathname === "/api/platform/contact" && request.method === "POST") {
-      try {
-        const body = await request.json().catch(() => ({}));
-        const name = String(body?.name || '').trim();
-        const email = normalizeOptionalEmail(body?.email || '');
-        const subject = String(body?.subject || '').trim();
-        const message = String(body?.message || '').trim();
-
-        if (!name || !message) {
-          return Response.json({ ok: false, code: 'validation_failed', message: 'Name and message are required.' }, { status: 400 });
-        }
-
-        await env.DB.prepare(`
-          INSERT INTO platform_contacts (id, name, email, subject, message, submitted_at, status)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
-        `).bind(
-          crypto.randomUUID(),
-          name,
-          email,
-          subject,
-          message,
-          new Date().toISOString(),
-          'new'
-        ).run();
-
-        return Response.json({ ok: true, message: 'Message received.' });
-      } catch (e) {
-        return Response.json({ ok: false, error: e.message }, { status: 500 });
-      }
-    }
-
-    if (url.pathname === "/api/platform/admin/dashboard" && request.method === "GET") {
-      try {
-        const pin = String(url.searchParams.get('pin') || request.headers.get('x-admin-pin') || '').trim();
-        const auth = await authorizePlatformOperator(env, pin);
-        if (!auth.ok) {
-          return Response.json({ ok: false, error: auth.error }, { status: auth.status });
-        }
-
-        const dashboard = await getPlatformAdminDashboard(env);
-        return Response.json({ ok: true, ...dashboard });
-      } catch (e) {
-        return Response.json({ ok: false, error: e.message }, { status: 500 });
-      }
-    }
-
-    if (url.pathname === "/api/platform/admin/config" && request.method === "POST") {
-      try {
-        const body = await request.json().catch(() => ({}));
-        const pin = String(body?.pin || '').trim();
-        const auth = await authorizePlatformOperator(env, pin);
-        if (!auth.ok) {
-          return Response.json({ ok: false, error: auth.error }, { status: auth.status });
-        }
-
-        const incoming = body?.values && typeof body.values === 'object' ? body.values : {};
-        const updatedBy = String(auth.staff.name || auth.staff.id || 'platform-admin');
-        for (const key of Object.keys(PLATFORM_PRICING_DEFAULTS)) {
-          if (!(key in incoming)) continue;
-          await upsertSettingValue(env, PLATFORM_OPERATOR_COMPANY_ID, key, String(incoming[key] ?? '').trim(), OPERATIONAL_KEY_DESCRIPTIONS[key] || 'Platform operator setting', updatedBy);
-        }
-
-        const pricingSettings = await getPlatformMarketingSettings(env);
-        return Response.json({ ok: true, pricingSettings });
-      } catch (e) {
-        return Response.json({ ok: false, error: e.message }, { status: 500 });
-      }
-    }
-
-    if (url.pathname === "/api/platform/admin/signup-followup" && request.method === "POST") {
-      try {
-        const body = await request.json().catch(() => ({}));
-        const pin = String(body?.pin || '').trim();
-        const auth = await authorizePlatformOperator(env, pin);
-        if (!auth.ok) {
-          return Response.json({ ok: false, error: auth.error }, { status: auth.status });
-        }
-
-        const signupId = String(body?.signupId || '').trim();
-        const followUpStatus = String(body?.followUpStatus || '').trim() || 'new';
-        const followUpNote = String(body?.followUpNote || '').trim();
-        if (!signupId) {
-          return Response.json({ ok: false, error: 'signupId required' }, { status: 400 });
-        }
-
-        await env.DB.prepare(`
-          UPDATE platform_signups
-          SET follow_up_status = ?, follow_up_note = ?, followed_up_at = ?
-          WHERE id = ?
-        `).bind(followUpStatus, followUpNote, new Date().toISOString(), signupId).run();
-
-        return Response.json({ ok: true, signupId, followUpStatus });
-      } catch (e) {
-        return Response.json({ ok: false, error: e.message }, { status: 500 });
-      }
-    }
-
-    if (url.pathname === "/api/platform/signup" && request.method === "POST") {
-      try {
-        const body = await request.json().catch(() => ({}));
-        const restaurantName = String(body?.restaurant_name || '').trim();
-        const ownerEmail = normalizeOptionalEmail(body?.owner_email || '');
-        const ownerPhone = normalizeFounderPhone(body?.owner_phone || '');
-        const requestedSlug = normalizeTenantSubdomain(body?.subdomain || '');
-        const plan = normalizePlanId(body?.plan || '');
-        const country = String(body?.country || 'DE').trim().slice(0, 10);
-        const timezone = String(body?.timezone || 'Europe/Berlin').trim() || 'Europe/Berlin';
-        const adminPin = String(body?.admin_pin || '').trim();
-        const adminName = String(body?.admin_name || 'Owner').trim() || 'Owner';
-        const websiteTemplate = normalizeWebsiteTemplate(body?.website_template || 'modern');
-        const staffUsers = Math.max(1, Number(body?.staff_users || 1));
-        const demoPayment = parseBooleanLike(body?.demo_payment, true);
-        const extras = body?.extras && typeof body.extras === 'object' ? body.extras : {};
-
-        if (!restaurantName || !ownerEmail || !requestedSlug || !plan) {
-          return Response.json({ ok: false, code: 'validation_failed', message: 'Restaurant name, owner email, plan, and subdomain are required.' }, { status: 400 });
-        }
-
-        if (!isValidTenantSubdomain(requestedSlug)) {
-          return Response.json({ ok: false, code: 'validation_failed', message: 'Subdomain must use lowercase letters, numbers, and hyphens.' }, { status: 400 });
-        }
-
-        if (!/^\d{4}$/.test(adminPin)) {
-          return Response.json({ ok: false, code: 'validation_failed', message: 'Admin PIN must be exactly 4 digits.' }, { status: 400 });
-        }
-
-        const existingSubdomain = await env.DB.prepare(`SELECT id FROM companies WHERE lower(subdomain) = lower(?) LIMIT 1`).bind(requestedSlug).first();
-        if (existingSubdomain?.id) {
-          return Response.json({ ok: false, code: 'subdomain_taken', message: 'Subdomain already in use.' }, { status: 409 });
-        }
-
-        const existingEmail = await env.DB.prepare(`SELECT id FROM companies WHERE lower(email) = lower(?) LIMIT 1`).bind(ownerEmail).first();
-        if (existingEmail?.id) {
-          return Response.json({ ok: false, code: 'email_already_registered', message: 'This owner email is already registered.' }, { status: 409 });
-        }
-
-        const now = new Date().toISOString();
-        const [organizationId, companyId, pricingSettings] = await Promise.all([
-          getNextIntegerId(env, 'organizations'),
-          getNextIntegerId(env, 'companies'),
-          getPlatformMarketingSettings(env)
-        ]);
-
-        const paymentSummary = computeDemoPaymentSummary(plan, staffUsers, extras, pricingSettings);
-
-        await env.DB.prepare(`
-          INSERT INTO organizations (id, slug, name, billing_email, phone, is_active, timezone, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?)
-        `).bind(
-          organizationId,
-          `${requestedSlug}-org`,
-          restaurantName,
-          ownerEmail,
-          ownerPhone,
-          timezone,
-          now,
-          now
-        ).run();
-
-        await cloneOrganizationDefaults(env, PLATFORM_OPERATOR_COMPANY_ID, organizationId, 'platform-signup');
-
-        await env.DB.prepare(`
-          INSERT INTO companies (id, organization_id, subdomain, name, email, phone, is_active, timezone, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
-        `).bind(
-          companyId,
-          organizationId,
-          requestedSlug,
-          restaurantName,
-          ownerEmail,
-          ownerPhone,
-          timezone,
-          now,
-          now
-        ).run();
-
-        await env.DB.prepare(`
-          INSERT INTO staff (id, company_id, name, pin, role, is_active, permissions, created_at, updated_at, created_by, updated_by)
-          VALUES (?, ?, ?, ?, 'admin', 1, ?, ?, ?, ?, ?)
-        `).bind(
-          crypto.randomUUID(),
-          companyId,
-          adminName,
-          adminPin,
-          JSON.stringify(['*']),
-          now,
-          now,
-          'platform-signup',
-          'platform-signup'
-        ).run();
-
-        const websiteUrl = buildTenantWebsiteUrl(requestedSlug);
-        const initialSettings = {
-          website_url: websiteUrl,
-          booking_email: ownerEmail,
-          standard_contact_link: '/contact',
-          site_template: websiteTemplate,
-          site_tagline: WEBSITE_BUILDER_DEFAULTS.site_tagline,
-          site_hero_title: WEBSITE_BUILDER_DEFAULTS.site_hero_title,
-          site_hero_subtitle: WEBSITE_BUILDER_DEFAULTS.site_hero_subtitle,
-          site_about_title: WEBSITE_BUILDER_DEFAULTS.site_about_title,
-          site_about_body: WEBSITE_BUILDER_DEFAULTS.site_about_body,
-          site_primary_cta_text: WEBSITE_BUILDER_DEFAULTS.site_primary_cta_text,
-          site_secondary_cta_text: WEBSITE_BUILDER_DEFAULTS.site_secondary_cta_text,
-          site_accent_color: normalizeHexColor(body?.site_accent_color || WEBSITE_BUILDER_DEFAULTS.site_accent_color),
-          company_plan: plan,
-          billing_include_setup: String(parseBooleanLike(extras?.includeSetup, true)),
-          billing_include_tse: String(parseBooleanLike(extras?.includeTse, false)),
-          billing_include_support_retainer: String(parseBooleanLike(extras?.includeSupportRetainer, false)),
-          demo_payment_status: paymentSummary.paymentStatus,
-          demo_payment_due_today_eur: String(paymentSummary.dueTodayEur),
-          demo_payment_recurring_monthly_eur: String(paymentSummary.recurringMonthlyEur),
-          billable_staff_count: String(Math.max(1, staffUsers)),
-          country_code: country
-        };
-
-        for (const [key, value] of Object.entries(initialSettings)) {
-          await upsertSettingValue(env, companyId, key, String(value || ''), `Platform signup setting: ${key}`, 'platform-signup');
-        }
-
-        const planModuleOverrides = getPlanModuleOverrides(plan);
-        for (const [key, enabled] of Object.entries(planModuleOverrides)) {
-          await upsertSettingValue(
-            env,
-            companyId,
-            key,
-            enabled ? 'enabled' : 'disabled',
-            MODULE_KEY_DESCRIPTIONS[key] || ('Platform signup module override: ' + key),
-            'platform-signup'
-          );
-        }
-
-        await env.DB.prepare(`
-          INSERT INTO platform_signups (
-            id, company_id, organization_id, restaurant_name, owner_email, owner_phone, subdomain, plan,
-            website_template, staff_users, country, payment_status, due_today_eur, recurring_monthly_eur,
-            raw_payload_json, created_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).bind(
-          crypto.randomUUID(),
-          companyId,
-          organizationId,
-          restaurantName,
-          ownerEmail,
-          ownerPhone,
-          requestedSlug,
-          plan,
-          websiteTemplate,
-          Math.max(1, staffUsers),
-          country,
-          paymentSummary.paymentStatus,
-          Number(paymentSummary.dueTodayEur || 0),
-          Number(paymentSummary.recurringMonthlyEur || 0),
-          JSON.stringify(body || {}),
-          now
-        ).run();
-
-        const previewAdminUrl = `${url.origin}/admin?company_id=${companyId}`;
-        const previewBoardUrl = plan === 'core' ? null : url.origin + '/board?company_id=' + companyId;
-
-        return Response.json({
-          ok: true,
-          message: demoPayment ? 'Demo payment completed. Account created.' : 'Account created.',
-          company_id: companyId,
-          organization_id: organizationId,
-          subdomain: requestedSlug,
-          website_url: websiteUrl,
-          preview_admin_url: previewAdminUrl,
-          preview_board_url: previewBoardUrl,
-          payment: paymentSummary,
-          admin_pin_hint: adminPin,
-          status: 'trial_active'
-        }, { status: 201 });
-      } catch (e) {
-        return Response.json({ ok: false, error: e.message }, { status: 500 });
-      }
-    }
-
     // ==================== BOOKING FORM ====================
     if (url.pathname === "/booking-form.html" || url.pathname === "/booking-form") {
-      return runTenantRoute(async ({ companyId }) => {
-        const bookingEnabled = await isModuleEnabled(env, companyId, 'module_booking_management');
-        if (!bookingEnabled) {
-          return new Response('Booking management module is disabled for this restaurant.', {
-            status: 404,
-            headers: { "Content-Type": "text/plain; charset=utf-8" }
-          });
-        }
-
-        return new Response(injectTurnstileSiteKey(bookingForm, env, url), {
-          headers: { "Content-Type": "text/html; charset=utf-8" }
+      const companyId = activeCompanyId;
+      const bookingEnabled = await isModuleEnabled(env, companyId, 'module_booking_management');
+      if (!bookingEnabled) {
+        return new Response('Booking management module is disabled for this restaurant.', {
+          status: 404,
+          headers: { "Content-Type": "text/plain; charset=utf-8" }
         });
-      });
-    }
+      }
 
-    if (url.pathname === "/api/contact/create" && request.method === "POST") {
-      return runTenantRoute(async ({ companyId }) => {
-        try {
-          const contentType = (request.headers.get('content-type') || '').toLowerCase();
-          let getField = (_key, _fallback = '') => '';
-
-          if (contentType.includes('application/json')) {
-            const body = await request.json().catch(() => ({}));
-            getField = (key, fallback = '') => {
-              const value = body?.[key];
-              return String(value == null ? fallback : value).trim();
-            };
-          } else {
-            const formData = await request.formData();
-            getField = (key, fallback = '') => {
-              const value = formData.get(key);
-              return String(value == null ? fallback : value).trim();
-            };
-          }
-
-          const name = getField('name');
-          const emailRaw = getField('email');
-          const email = normalizeOptionalEmail(emailRaw);
-          const phone = getField('phone');
-          const subject = getField('subject');
-          const message = getField('message');
-
-          if (!name || !message) {
-            return Response.json({ ok: false, code: 'validation_failed', message: 'Name and message are required.' }, { status: 400 });
-          }
-
-          if (emailRaw && !email) {
-            return Response.json({ ok: false, code: 'validation_failed', message: 'Please provide a valid email address.' }, { status: 400 });
-          }
-
-          const now = new Date().toISOString();
-          const contactId = `contact_${companyId}_${Date.now()}`;
-
-          await env.DB.prepare(`
-            INSERT INTO contacts (
-              id, company_id, name, email, phone, subject, message,
-              is_meaningful, summary, status, pushed_to_gmail,
-              submitted_at, processed_at, processed_by, notes
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          `).bind(
-            contactId,
-            companyId,
-            name,
-            email || null,
-            phone || null,
-            subject || null,
-            message,
-            1,
-            null,
-            'new',
-            0,
-            now,
-            null,
-            null,
-            'website_master_public_form'
-          ).run();
-
-          return Response.json({
-            ok: true,
-            contactId,
-            message: 'Message received.'
-          });
-        } catch (e) {
-          return Response.json({ ok: false, error: e.message }, { status: 500 });
-        }
+      return new Response(injectTurnstileSiteKey(bookingForm, env, url), {
+        headers: { "Content-Type": "text/html; charset=utf-8" }
       });
     }
 
     // ==================== RESERVIERUNG PAGE ====================
     if (url.pathname === "/reservierung" || url.pathname === "/reservierung.html") {
-      return runTenantRoute(async ({ companyId }) => {
-        const bookingEnabled = await isModuleEnabled(env, companyId, 'module_booking_management');
-        if (!bookingEnabled) {
-          return new Response('Booking management module is disabled for this restaurant.', {
-            status: 404,
-            headers: { "Content-Type": "text/plain; charset=utf-8" }
-          });
-        }
-
-        return new Response(reservieungPage, {
-          headers: { "Content-Type": "text/html; charset=utf-8" }
+      const companyId = activeCompanyId;
+      const bookingEnabled = await isModuleEnabled(env, companyId, 'module_booking_management');
+      if (!bookingEnabled) {
+        return new Response('Booking management module is disabled for this restaurant.', {
+          status: 404,
+          headers: { "Content-Type": "text/plain; charset=utf-8" }
         });
+      }
+
+      return new Response(reservieungPage, {
+        headers: { "Content-Type": "text/html; charset=utf-8" }
       });
     }
 
@@ -2814,36 +1830,34 @@ export default {
 
     // ==================== FOUNDER FORM ====================
     if (url.pathname === "/founder" || url.pathname === "/founder-form" || url.pathname === "/founder-form.html") {
-      return runTenantRoute(async ({ companyId }) => {
-        const membershipEnabled = await isModuleEnabled(env, companyId, 'module_membership_management');
+      const companyId = activeCompanyId;
+      const membershipEnabled = await isModuleEnabled(env, companyId, 'module_membership_management');
 
-        if (!membershipEnabled) {
-          const fallbackLink = await getStandardContactFallbackLink(env, companyId, url);
-          if (fallbackLink) {
-            return Response.redirect(fallbackLink, 302);
-          }
-
-          return new Response('Community membership module is disabled for this restaurant.', {
-            status: 404,
-            headers: { "Content-Type": "text/plain; charset=utf-8" }
-          });
+      if (!membershipEnabled) {
+        const fallbackLink = await getStandardContactFallbackLink(env, companyId, url);
+        if (fallbackLink) {
+          return Response.redirect(fallbackLink, 302);
         }
 
-        const hydratedUrl = await buildFounderFormUrlWithSettingsDefaults(env, companyId, url);
-        if (hydratedUrl) {
-          return Response.redirect(hydratedUrl.toString(), 302);
-        }
-
-        return new Response(injectTurnstileSiteKey(founderFormUI, env, url), {
-          headers: { "Content-Type": "text/html; charset=utf-8" }
+        return new Response('Community membership module is disabled for this restaurant.', {
+          status: 404,
+          headers: { "Content-Type": "text/plain; charset=utf-8" }
         });
+      }
+
+      const hydratedUrl = await buildFounderFormUrlWithSettingsDefaults(env, companyId, url);
+      if (hydratedUrl) {
+        return Response.redirect(hydratedUrl.toString(), 302);
+      }
+
+      return new Response(injectTurnstileSiteKey(founderFormUI, env, url), {
+        headers: { "Content-Type": "text/html; charset=utf-8" }
       });
     }
 
     // ==================== API: FOUNDER REGISTER ====================
     if ((url.pathname === "/api/founder/register" || url.pathname === '/api/kc/register') && request.method === "POST") {
-      return runTenantRoute(async ({ companyId }) => {
-        try {
+      try {
         const contentType = (request.headers.get('content-type') || '').toLowerCase();
         let getField = (_key, _fallback = '') => '';
 
@@ -2860,6 +1874,8 @@ export default {
             return String(value == null ? fallback : value).trim();
           };
         }
+
+        const companyId = activeCompanyId;
         const membershipEnabled = await isModuleEnabled(env, companyId, 'module_membership_management');
 
         if (!membershipEnabled) {
@@ -2886,12 +1902,12 @@ export default {
         const consentTerms = parseConsentValue(getField('consent_terms'));
         const founderTermsAccepted = parseConsentValue(getField('x_studio_founder_terms_accepted'));
         const kcTermsAccepted = parseConsentValue(getField('x_studio_kc_terms_accepted'));
+        const programModeRaw = getField('program_mode');
         const optInTextRaw = getField('x_studio_opt_in_text', FOUNDER_OPT_IN_TEXT);
         const optInText = optInTextRaw || FOUNDER_OPT_IN_TEXT;
-        const programModeRaw = getField('program_mode');
         const notesRaw = getField('x_studio_notes');
         const membershipTypeRaw = getField('x_studio_membership_type');
-        const requestedMembershipProgram = resolveRequestedMembershipProgram({
+        const programSelection = resolveRequestedMembershipProgram({
           membershipTypeRaw,
           programModeRaw,
           founderTermsAccepted,
@@ -2899,10 +1915,10 @@ export default {
           notesRaw,
           requestedPathIsKc: url.pathname === '/api/kc/register'
         });
-        const membershipType = requestedMembershipProgram.membershipType;
-        const founderTermsFlag = requestedMembershipProgram.founderTermsFlag;
-        const kcTermsFlag = requestedMembershipProgram.kcTermsFlag;
-        const notes = requestedMembershipProgram.notes;
+        const membershipType = programSelection.membershipType;
+        const founderTermsFlag = programSelection.founderTermsFlag;
+        const kcTermsFlag = programSelection.kcTermsFlag;
+        const notes = programSelection.notes;
 
         if (honeypot) {
           return Response.json({ status: 'error', message: 'Ungueltige Anfrage.' }, { status: 400 });
@@ -3016,12 +2032,9 @@ export default {
         ).run();
 
         const skipRegisterSyncForTestException = isFounderTestExceptionPhone && existingStatus === 'live' && alreadyActiveForRequestedProgram;
-        const shouldSendFreshOtp = !skipRegisterSyncForTestException || isPendingRegistration;
 
         const otpCode = generateOtpCode();
-        if (shouldSendFreshOtp) {
-          await upsertFounderOtpRecord(env, companyId, phone, otpCode, now);
-        }
+        await upsertFounderOtpRecord(env, companyId, phone, otpCode, now);
 
         const sendResult = await sendFounderOtpViaTwilio(env, phone, name, otpCode, founderRuntimeConfig, founderSecretConfig);
         if (!sendResult.ok) {
@@ -3036,17 +2049,16 @@ export default {
           phone,
           nextStep: 'verify_otp'
         });
-        } catch (e) {
-          console.error('Founder register error:', e);
-          return Response.json({ status: 'error', message: 'Interner Fehler bei der Registrierung.' }, { status: 500 });
-        }
-      });
+      } catch (e) {
+        console.error('Founder register error:', e);
+        return Response.json({ status: 'error', message: 'Interner Fehler bei der Registrierung.' }, { status: 500 });
+      }
     }
 
     // ==================== API: FOUNDER OTP RESEND ====================
     if ((url.pathname === '/api/founder/resend-otp' || url.pathname === '/api/kc/resend-otp') && request.method === 'POST') {
-      return runTenantRoute(async ({ companyId }) => {
-        try {
+      try {
+        const companyId = activeCompanyId;
         const membershipEnabled = await isModuleEnabled(env, companyId, 'module_membership_management');
 
         if (!membershipEnabled) {
@@ -3133,36 +2145,33 @@ export default {
           phone,
           nextStep: 'verify_otp'
         });
-        } catch (e) {
-          console.error('Founder resend OTP error:', e);
-          return Response.json({ status: 'error', message: 'Interner Fehler beim erneuten Senden des OTP.' }, { status: 500 });
-        }
-      });
+      } catch (e) {
+        console.error('Founder resend OTP error:', e);
+        return Response.json({ status: 'error', message: 'Interner Fehler beim erneuten Senden des OTP.' }, { status: 500 });
+      }
     }
 
     // ==================== API: FOUNDER OTP VERIFY (TWILIO WEBHOOK) ====================
     if ((url.pathname === '/webhooks/twilio/founder-otp' || url.pathname === '/api/webhooks/twilio/founder-otp') && request.method === 'POST') {
-      return runTenantRoute(async ({ companyId }) => {
-        return handleFounderOtpVerificationRequest(request, env, companyId, { twilioWebhookMode: true });
-      });
+      const companyId = activeCompanyId;
+      return handleFounderOtpVerificationRequest(request, env, companyId, { twilioWebhookMode: true });
     }
 
     // ==================== API: FOUNDER OTP VERIFY ====================
     if ((url.pathname === '/api/founder/verify' || url.pathname === '/api/kc/verify') && request.method === 'POST') {
-      return runTenantRoute(async ({ companyId }) => {
-        return handleFounderOtpVerificationRequest(request, env, companyId);
-      });
+      const companyId = activeCompanyId;
+      return handleFounderOtpVerificationRequest(request, env, companyId);
     }
 
     // ==================== API: STAFF AUTH ====================
     if (url.pathname === "/api/staff/auth" && request.method === "GET") {
-      return runTenantRoute(async ({ companyId }) => {
-        try {
+      try {
         const pin = url.searchParams.get("pin");
         if (!pin) {
           return Response.json({ success: false, error: "PIN required" }, { status: 400 });
         }
 
+        const companyId = activeCompanyId;
         const auth = await authorizeStaffByPin(env, companyId, pin);
         if (!auth.ok) {
           return Response.json(
@@ -3186,20 +2195,19 @@ export default {
           companyId: staff.company_id,
           role: staff.role
         });
-        } catch (e) {
-          console.error("Auth error:", e);
-          return Response.json(
-            { success: false, error: e.message },
-            { status: 500 }
-          );
-        }
-      });
+      } catch (e) {
+        console.error("Auth error:", e);
+        return Response.json(
+          { success: false, error: e.message },
+          { status: 500 }
+        );
+      }
     }
 
     // ==================== API: CONTACTS ====================
     if (url.pathname === "/api/contacts" && request.method === "GET") {
-      return runTenantRoute(async ({ companyId }) => {
-        try {
+      try {
+        const companyId = activeCompanyId;
         const pin = String(url.searchParams.get('pin') || request.headers.get('x-staff-pin') || request.headers.get('x-admin-pin') || '').trim();
         const statusFilter = String(url.searchParams.get('status') || '').trim();
         const auth = await authorizeStaffByPin(env, companyId, pin);
@@ -3232,16 +2240,15 @@ export default {
           companyId,
           data: result.results || []
         });
-        } catch (e) {
-          console.error('Contacts GET error:', e);
-          return Response.json({ ok: false, error: e.message }, { status: 500 });
-        }
-      });
+      } catch (e) {
+        console.error('Contacts GET error:', e);
+        return Response.json({ ok: false, error: e.message }, { status: 500 });
+      }
     }
 
     if (url.pathname.match(/^\/api\/contacts\/([^\/]+)\/push$/) && request.method === "POST") {
-      return runTenantRoute(async ({ companyId }) => {
-        try {
+      try {
+        const companyId = activeCompanyId;
         const routeMatch = url.pathname.match(/^\/api\/contacts\/([^\/]+)\/push$/);
         const contactId = decodeURIComponent(String(routeMatch?.[1] || '')).trim();
         const body = await request.json().catch(() => ({}));
@@ -3277,17 +2284,16 @@ export default {
         }
 
         return Response.json({ ok: true, contactId, status: 'processed' });
-        } catch (e) {
-          console.error('Contacts push error:', e);
-          return Response.json({ ok: false, error: e.message }, { status: 500 });
-        }
-      });
+      } catch (e) {
+        console.error('Contacts push error:', e);
+        return Response.json({ ok: false, error: e.message }, { status: 500 });
+      }
     }
 
     // ==================== API: ADMIN INTEGRATION CONFIG ====================
     if (url.pathname === "/api/admin/integration-config" && request.method === "GET") {
-      return runTenantRoute(async ({ companyId }) => {
-        try {
+      try {
+        const companyId = activeCompanyId;
         const pin = String(url.searchParams.get("pin") || request.headers.get("x-admin-pin") || '').trim();
 
         const auth = await authorizeAdminByPin(env, companyId, pin);
@@ -3328,19 +2334,18 @@ export default {
           tenantSecretVaultEnabled: !!env.TENANT_SECRETS_MASTER_KEY,
           config
         });
-        } catch (e) {
-          console.error('Admin integration-config GET error:', e);
-          return Response.json(
-            { success: false, error: e.message },
-            { status: 500 }
-          );
-        }
-      });
+      } catch (e) {
+        console.error('Admin integration-config GET error:', e);
+        return Response.json(
+          { success: false, error: e.message },
+          { status: 500 }
+        );
+      }
     }
 
     if (url.pathname === "/api/admin/integration-config" && request.method === "POST") {
-      return runTenantRoute(async ({ companyId }) => {
-        try {
+      try {
+        const companyId = activeCompanyId;
         const body = await request.json();
         const pin = String(body?.pin || '').trim();
 
@@ -3421,20 +2426,19 @@ export default {
           saved,
           rejected
         });
-        } catch (e) {
-          console.error('Admin integration-config POST error:', e);
-          return Response.json(
-            { success: false, error: e.message },
-            { status: 500 }
-          );
-        }
-      });
+      } catch (e) {
+        console.error('Admin integration-config POST error:', e);
+        return Response.json(
+          { success: false, error: e.message },
+          { status: 500 }
+        );
+      }
     }
 
     // ==================== API: ADMIN PLATFORM CONFIG ====================
     if (url.pathname === "/api/admin/platform-config" && request.method === "GET") {
-      return runTenantRoute(async ({ companyId }) => {
-        try {
+      try {
+        const companyId = activeCompanyId;
         const pin = String(url.searchParams.get("pin") || request.headers.get("x-admin-pin") || request.headers.get("x-staff-pin") || '').trim();
         const auth = await authorizeManagerOrAdminByPin(env, companyId, pin);
 
@@ -3444,16 +2448,15 @@ export default {
 
         const config = await getAdminPlatformConfig(env, companyId);
         return Response.json({ success: true, companyId, ...config });
-        } catch (e) {
-          console.error('Admin platform-config GET error:', e);
-          return Response.json({ success: false, error: e.message }, { status: 500 });
-        }
-      });
+      } catch (e) {
+        console.error('Admin platform-config GET error:', e);
+        return Response.json({ success: false, error: e.message }, { status: 500 });
+      }
     }
 
     if (url.pathname === "/api/admin/platform-config" && request.method === "POST") {
-      return runTenantRoute(async ({ companyId }) => {
-        try {
+      try {
+        const companyId = activeCompanyId;
         const body = await request.json();
         const pin = String(body?.pin || '').trim();
         const auth = await authorizeManagerOrAdminByPin(env, companyId, pin);
@@ -3554,17 +2557,16 @@ export default {
 
         const config = await getAdminPlatformConfig(env, companyId);
         return Response.json({ success: true, companyId, ...config });
-        } catch (e) {
-          console.error('Admin platform-config POST error:', e);
-          return Response.json({ success: false, error: e.message }, { status: 500 });
-        }
-      });
+      } catch (e) {
+        console.error('Admin platform-config POST error:', e);
+        return Response.json({ success: false, error: e.message }, { status: 500 });
+      }
     }
 
     // ==================== API: ADMIN STAFF ====================
     if (url.pathname === "/api/admin/staff" && request.method === "GET") {
-      return runTenantRoute(async ({ companyId }) => {
-        try {
+      try {
+        const companyId = activeCompanyId;
         const pin = String(url.searchParams.get("pin") || request.headers.get("x-admin-pin") || '').trim();
         const auth = await authorizeAdminByPin(env, companyId, pin);
 
@@ -3580,16 +2582,15 @@ export default {
         `).bind(companyId).all();
 
         return Response.json({ success: true, staff: result.results || [] });
-        } catch (e) {
-          console.error('Admin staff GET error:', e);
-          return Response.json({ success: false, error: e.message }, { status: 500 });
-        }
-      });
+      } catch (e) {
+        console.error('Admin staff GET error:', e);
+        return Response.json({ success: false, error: e.message }, { status: 500 });
+      }
     }
 
     if (url.pathname === "/api/admin/staff" && request.method === "POST") {
-      return runTenantRoute(async ({ companyId }) => {
-        try {
+      try {
+        const companyId = activeCompanyId;
         const body = await request.json();
         const pin = String(body?.pin || '').trim();
         const auth = await authorizeAdminByPin(env, companyId, pin);
@@ -3655,20 +2656,17 @@ export default {
           updatedBy
         ).run();
 
-        await recalculateCompanyBillingSummary(env, companyId);
-
         return Response.json({ success: true, staffId });
-        } catch (e) {
-          console.error('Admin staff POST error:', e);
-          return Response.json({ success: false, error: e.message }, { status: 500 });
-        }
-      });
+      } catch (e) {
+        console.error('Admin staff POST error:', e);
+        return Response.json({ success: false, error: e.message }, { status: 500 });
+      }
     }
 
     // ==================== API: ADMIN MEDIA ASSETS ====================
     if (url.pathname === "/api/admin/media-assets" && request.method === "GET") {
-      return runTenantRoute(async ({ companyId }) => {
-        try {
+      try {
+        const companyId = activeCompanyId;
         const pin = String(url.searchParams.get("pin") || request.headers.get("x-admin-pin") || request.headers.get("x-staff-pin") || '').trim();
         const auth = await authorizeManagerOrAdminByPin(env, companyId, pin);
 
@@ -3689,16 +2687,15 @@ export default {
           .filter(Boolean);
 
         return Response.json({ success: true, companyId, assets });
-        } catch (e) {
-          console.error('Admin media-assets GET error:', e);
-          return Response.json({ success: false, error: e.message }, { status: 500 });
-        }
-      });
+      } catch (e) {
+        console.error('Admin media-assets GET error:', e);
+        return Response.json({ success: false, error: e.message }, { status: 500 });
+      }
     }
 
     if (url.pathname === "/api/admin/media-assets" && request.method === "POST") {
-      return runTenantRoute(async ({ companyId }) => {
-        try {
+      try {
+        const companyId = activeCompanyId;
         const body = await request.json();
         const pin = String(body?.pin || '').trim();
         const auth = await authorizeManagerOrAdminByPin(env, companyId, pin);
@@ -3831,82 +2828,68 @@ export default {
           action: existing ? 'updated' : 'created',
           asset: mapMediaAssetRow(row)
         });
-        } catch (e) {
-          console.error('Admin media-assets POST error:', e);
-          return Response.json({ success: false, error: e.message }, { status: 500 });
-        }
-      });
+      } catch (e) {
+        console.error('Admin media-assets POST error:', e);
+        return Response.json({ success: false, error: e.message }, { status: 500 });
+      }
     }
 
     // ==================== API: NOTIFICATIONS STREAM (SSE) ====================
     if (url.pathname === "/api/notifications/stream" && request.method === "GET") {
-      return runTenantRoute(async ({ companyId }) => {
-        const requestedCompanyId = Number(url.searchParams.get("company_id") || 0);
-        let effectiveCompanyId = companyId;
+      const requestedCompanyId = Number(url.searchParams.get("company_id") || 0);
+      const companyId = Number.isInteger(requestedCompanyId) && requestedCompanyId > 0
+        ? requestedCompanyId
+        : activeCompanyId;
 
-        if (Number.isInteger(requestedCompanyId) && requestedCompanyId > 0) {
-          if (requestedCompanyId === companyId) {
-            effectiveCompanyId = requestedCompanyId;
-          } else if (canOverrideCompanyIdForHost(tenant, url)) {
-            effectiveCompanyId = requestedCompanyId;
-          } else {
-            return Response.json(
-              { ok: false, error: "company_id override is not allowed for this host" },
-              { status: 403 }
-            );
+      // Create SSE response
+      let clientId = `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({
+        start(controller) {
+          // Store client
+          if (!sseClients.has(companyId)) {
+            sseClients.set(companyId, new Set());
           }
-        }
-
-        // Create SSE response
-        let clientId = `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-        const encoder = new TextEncoder();
-        const stream = new ReadableStream({
-          start(controller) {
-            // Store client
-            if (!sseClients.has(effectiveCompanyId)) {
-              sseClients.set(effectiveCompanyId, new Set());
+          const client = {
+            id: clientId,
+            send: (event, data) => {
+              const msg = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+              controller.enqueue(encoder.encode(msg));
             }
-            const client = {
-              id: clientId,
-              send: (event, data) => {
-                const msg = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
-                controller.enqueue(encoder.encode(msg));
-              }
-            };
-            sseClients.get(effectiveCompanyId).add(client);
+          };
+          sseClients.get(companyId).add(client);
 
-            // Send initial connected message
-            client.send("connected", { ok: true });
+          // Send initial connected message
+          client.send("connected", { ok: true });
 
-            // Cleanup on close
-            const closeInterval = setInterval(() => {
-              try {
-                controller.enqueue(encoder.encode(":\n\n"));
-              } catch (e) {
-                clearInterval(closeInterval);
-                sseClients.get(effectiveCompanyId).delete(client);
-              }
-            }, 30000);
-          }
-        });
+          // Cleanup on close
+          const closeInterval = setInterval(() => {
+            try {
+              controller.enqueue(encoder.encode(":\n\n"));
+            } catch (e) {
+              clearInterval(closeInterval);
+              sseClients.get(companyId).delete(client);
+            }
+          }, 30000);
+        }
+      });
 
-        return new Response(stream, {
-          headers: {
-            "Content-Type": "text/event-stream",
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "Access-Control-Allow-Origin": "*"
-          }
-        });
+      return new Response(stream, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          "Connection": "keep-alive",
+          "Access-Control-Allow-Origin": "*"
+        }
       });
     }
 
     // ==================== API: CREATE BOOKING (FORM HANDLER) ====================
     if (url.pathname === "/api/bookings/create" && request.method === "POST") {
-      return runTenantRoute(async ({ companyId }) => {
-        try {
+      try {
         const formData = await request.formData();
+        const companyId = activeCompanyId;
         const bookingEnabled = await isModuleEnabled(env, companyId, 'module_booking_management');
 
         if (!bookingEnabled) {
@@ -3923,8 +2906,6 @@ export default {
         const date = String(formData.get("date") || "").trim();
         const time = String(formData.get("time") || "").trim();
         const pax = parseInt(formData.get("pax") || 0);
-        const areaRaw = String(formData.get('area') || 'indoor').trim().toLowerCase();
-        const area = ['indoor', 'outdoor', 'garden', 'bar'].includes(areaRaw) ? areaRaw : 'indoor';
         const cfToken = String(formData.get("cf_token") || "").trim();
 
         if (emailRaw && !email) {
@@ -3967,15 +2948,8 @@ export default {
           (id, company_id, contact_name, phone, email, guests_pax, booking_date, booking_time, booking_datetime, area, stage, stage_id, source, submitted_at, updated_at, created_by)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).bind(
-          bookingId, companyId, name, phone, email || null, pax, date, time, bookingDateTime, area, "pending", 1, "web", now, now, "system"
+          bookingId, companyId, name, phone, email || null, pax, date, time, bookingDateTime, "indoor", "pending", 1, "web", now, now, "system"
         ).run();
-
-        syncBookingStageToBoard(env, {
-          bookingId,
-          companyId,
-          newStage: 'pending',
-          changedAt: now
-        }).catch((err) => console.warn('Booking create board sync error:', err));
 
         // Notify SSE clients
         if (sseClients.has(companyId)) {
@@ -3987,16 +2961,12 @@ export default {
             guests_pax: pax,
             booking_date: date,
             booking_time: time,
-            area,
+            area: "indoor",
             stage: "pending"
           };
 
           for (const client of sseClients.get(companyId)) {
-            try {
-              client.send("booking", booking);
-            } catch {
-              sseClients.get(companyId).delete(client);
-            }
+            client.send("booking", booking);
           }
         }
 
@@ -4005,37 +2975,26 @@ export default {
           bookingId,
           redirect_url: "/danke-reservierung"
         });
-        } catch (e) {
-          console.error("Booking create error:", e);
-          return Response.json(
-            { ok: false, error: e.message },
-            { status: 500 }
-          );
-        }
-      });
+      } catch (e) {
+        console.error("Booking create error:", e);
+        return Response.json(
+          { ok: false, error: e.message },
+          { status: 500 }
+        );
+      }
     }
 
     // ==================== API: UPDATE BOOKING STAGE ====================
     if (url.pathname.match(/^\/api\/bookings\/([^\/]+)\/stage$/) && request.method === "POST") {
-      return runTenantRoute(async ({ companyId }) => {
-        try {
+      try {
         const bookingId = url.pathname.match(/^\/api\/bookings\/([^\/]+)\/stage$/)[1];
         const body = await request.json();
         const { stage: newStage, staffId } = body;
 
-        let effectiveCompanyId = companyId;
+        let companyId = activeCompanyId;
         const reqCompanyId = Number(body?.companyId || 0);
         if (Number.isInteger(reqCompanyId) && reqCompanyId > 0) {
-          if (reqCompanyId === companyId) {
-            effectiveCompanyId = reqCompanyId;
-          } else if (canOverrideCompanyIdForHost(tenant, url)) {
-            effectiveCompanyId = reqCompanyId;
-          } else {
-            return Response.json(
-              { ok: false, error: "company_id override is not allowed for this host" },
-              { status: 403 }
-            );
-          }
+          companyId = reqCompanyId;
         }
 
         if (!bookingId || !newStage) {
@@ -4048,7 +3007,7 @@ export default {
         // Get existing booking
         const booking = await env.DB.prepare(
           `SELECT stage FROM bookings WHERE id = ? AND company_id = ?`
-        ).bind(bookingId, effectiveCompanyId).first();
+        ).bind(bookingId, companyId).first();
 
         if (!booking) {
           return Response.json(
@@ -4061,7 +3020,7 @@ export default {
         const now = new Date().toISOString();
         await env.DB.prepare(
           `UPDATE bookings SET stage = ?, updated_at = ?, updated_by = ? WHERE id = ? AND company_id = ?`
-        ).bind(newStage, now, staffId || "staff", bookingId, effectiveCompanyId).run();
+        ).bind(newStage, now, staffId || "staff", bookingId, companyId).run();
 
         // Create audit log
         const actionId = `action_${Date.now()}`;
@@ -4069,24 +3028,20 @@ export default {
           `INSERT INTO booking_actions (id, company_id, booking_id, action_type, old_stage, new_stage, changed_by, changed_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
         ).bind(
-          actionId, effectiveCompanyId, bookingId, "stage_changed", booking.stage, newStage, staffId || "staff", now
+          actionId, companyId, bookingId, "stage_changed", booking.stage, newStage, staffId || "staff", now
         ).run();
 
         // Notify SSE clients
-        if (sseClients.has(effectiveCompanyId)) {
-          for (const client of sseClients.get(effectiveCompanyId)) {
-            try {
-              client.send("stage-update", { bookingId, newStage });
-            } catch {
-              sseClients.get(effectiveCompanyId).delete(client);
-            }
+        if (sseClients.has(companyId)) {
+          for (const client of sseClients.get(companyId)) {
+            client.send("stage-update", { bookingId, newStage });
           }
         }
 
         // Sync stage to booking board KV (no-op when BOARD_KV binding is absent)
         syncBookingStageToBoard(env, {
           bookingId,
-          companyId: effectiveCompanyId,
+          companyId,
           newStage,
           changedAt: now
         }).catch((err) => console.warn('Booking stage board sync error:', err));
@@ -4096,20 +3051,19 @@ export default {
           message: `Stage updated to ${newStage}`,
           bookingId
         });
-        } catch (e) {
-          console.error("Stage update error:", e);
-          return Response.json(
-            { ok: false, error: e.message },
-            { status: 500 }
-          );
-        }
-      });
+      } catch (e) {
+        console.error("Stage update error:", e);
+        return Response.json(
+          { ok: false, error: e.message },
+          { status: 500 }
+        );
+      }
     }
 
     // ==================== API: GET BOOKINGS BY COMPANY ====================
     if (url.pathname === "/api/bookings" && request.method === "GET") {
-      return runTenantRoute(async ({ companyId }) => {
-        try {
+      try {
+        const companyId = activeCompanyId;
         const date = url.searchParams.get("date");
 
         let query = "SELECT * FROM bookings WHERE company_id = ?";
@@ -4129,126 +3083,18 @@ export default {
           companyId,
           data: result.results || []
         });
-        } catch (e) {
-          return Response.json(
-            { ok: false, error: e.message },
-            { status: 500 }
-          );
-        }
-      });
-    }
-
-    // ==================== API: STAFF BOARD BOOKING (onsite, no Turnstile) ====================
-    // Used by the /board kiosk — authentication replaces Turnstile.
-    if (url.pathname === "/api/bookings/staff-create" && request.method === "POST") {
-      return runTenantRoute(async ({ companyId }) => {
-        try {
-          const body = await request.json();
-
-          const pin      = String(body.pin      || '').trim();
-          const name     = String(body.name     || '').trim();
-          const phone    = String(body.phone    || '').trim();
-          const emailRaw = String(body.email    || '').trim();
-          const date     = String(body.date     || '').trim();
-          const time     = String(body.time     || '').trim();
-          const pax      = parseInt(body.pax    || 0);
-          const areaRaw  = String(body.area     || 'indoor').trim().toLowerCase();
-          const area     = ['indoor', 'outdoor', 'garden', 'bar'].includes(areaRaw) ? areaRaw : 'indoor';
-          const flag     = String(body.flag     || '').trim().toLowerCase();
-          const notes    = String(body.notes    || '').trim();
-          const duration = parseInt(body.duration || 120);
-
-          // Verify staff PIN — this replaces Turnstile
-          if (!pin) {
-            return Response.json({ ok: false, error: 'Staff PIN required' }, { status: 400 });
-          }
-          const auth = await authorizeStaffByPin(env, companyId, pin);
-          if (!auth.ok) {
-            return Response.json({ ok: false, error: auth.error }, { status: 401 });
-          }
-          const staffUser = auth.staff.name;
-
-          const bookingEnabled = await isModuleEnabled(env, companyId, 'module_booking_management');
-          if (!bookingEnabled) {
-            return Response.json({ ok: false, error: 'Booking management module is disabled' }, { status: 403 });
-          }
-
-          const email = normalizeOptionalEmail(emailRaw);
-          if (emailRaw && !email) {
-            return Response.json({ ok: false, error: 'Invalid email format' }, { status: 400 });
-          }
-
-          if (!name || !phone || !date || !time || !pax) {
-            return Response.json({ ok: false, error: 'Missing required fields' }, { status: 400 });
-          }
-
-          const bookingId      = `booking_${companyId}_${Date.now()}`;
-          const now            = new Date().toISOString();
-          const bookingDateTime = `${date}T${time}:00Z`;
-
-          await env.DB.prepare(`
-            INSERT INTO bookings
-            (id, company_id, contact_name, phone, email, guests_pax, booking_date, booking_time,
-             booking_datetime, area, flag, notes, duration_minutes, stage, stage_id, source,
-             submitted_at, updated_at, created_by, updated_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          `).bind(
-            bookingId, companyId, name, phone, email || null, pax, date, time,
-            bookingDateTime, area, flag || null, notes || null, duration,
-            'pending', 1, 'onsite',
-            now, now, staffUser, staffUser
-          ).run();
-
-          syncBookingStageToBoard(env, {
-            bookingId, companyId, newStage: 'pending', changedAt: now
-          }).catch(() => {});
-
-          if (sseClients.has(companyId)) {
-            const booking = {
-              id: bookingId, contact_name: name, phone,
-              email: email || null, guests_pax: pax, booking_date: date,
-              booking_time: time, area, flag: flag || null, source: 'onsite',
-              stage: 'pending'
-            };
-            for (const client of sseClients.get(companyId)) {
-              try { client.send('booking', booking); } catch {
-                sseClients.get(companyId).delete(client);
-              }
-            }
-          }
-
-          return Response.json({ ok: true, bookingId });
-        } catch (e) {
-          console.error('Staff create error:', e);
-          return Response.json({ ok: false, error: e.message }, { status: 500 });
-        }
-      });
-    }
-
-    // ==================== BOOKING BOARD (per-tenant kiosk) ====================
-    if (url.pathname === '/board' || url.pathname === '/board/') {
-      return runTenantRoute(async ({ companyId }) => {
-        const settingsMap = await getOperationalSettingsMap(env, companyId);
-        const areaCapacity = {
-          indoor:  Number(settingsMap.area_capacity_indoor  || 12),
-          outdoor: Number(settingsMap.area_capacity_outdoor || 10),
-          garden:  Number(settingsMap.area_capacity_garden  || 8),
-          bar:     Number(settingsMap.area_capacity_bar     || 6)
-        };
-        const maxLanes = Object.values(areaCapacity).reduce((s, v) => s + v, 0);
-        const html = String(boardUI || '')
-          .replace(/__AREA_CAPACITY_JSON__/g, JSON.stringify(areaCapacity))
-          .replace(/__MAX_LANES__/g, String(maxLanes));
-        return new Response(html, {
-          headers: { 'Content-Type': 'text/html; charset=UTF-8' }
-        });
-      });
+      } catch (e) {
+        return Response.json(
+          { ok: false, error: e.message },
+          { status: 500 }
+        );
+      }
     }
 
     // ==================== API: TEST BOOKING (Development) ====================
     if (url.pathname === "/api/test/booking/create" && request.method === "POST") {
-      return runTenantRoute(async ({ companyId }) => {
-        try {
+      try {
+        const companyId = activeCompanyId;
         const bookingEnabled = await isModuleEnabled(env, companyId, 'module_booking_management');
         if (!bookingEnabled) {
           return Response.json({ ok: false, error: 'Booking management module is disabled' }, { status: 403 });
@@ -4277,21 +3123,17 @@ export default {
         // Notify SSE clients
         if (sseClients.has(companyId)) {
           for (const client of sseClients.get(companyId)) {
-            try {
-              client.send("booking", {
-                id: bookingId,
-                contact_name: body.name,
-                phone: body.phone,
-                email: bodyEmail || null,
-                guests_pax: body.pax,
-                booking_date: body.date,
-                booking_time: body.time,
-                area: body.area || "indoor",
-                stage: "pending"
-              });
-            } catch {
-              sseClients.get(companyId).delete(client);
-            }
+            client.send("booking", {
+              id: bookingId,
+              contact_name: body.name,
+              phone: body.phone,
+              email: bodyEmail || null,
+              guests_pax: body.pax,
+              booking_date: body.date,
+              booking_time: body.time,
+              area: body.area || "indoor",
+              stage: "pending"
+            });
           }
         }
 
@@ -4300,16 +3142,16 @@ export default {
           bookingId,
           message: "Test booking created"
         });
-        } catch (e) {
-          return Response.json({ ok: false, error: e.message }, { status: 500 });
-        }
-      });
+      } catch (e) {
+        return Response.json({ ok: false, error: e.message }, { status: 500 });
+      }
     }
 
     // ==================== API: GET CUSTOMERS ====================
     if (url.pathname === "/api/customers" && request.method === "GET") {
-      return runTenantRoute(async ({ companyId }) => {
-        try {
+      try {
+        const companyId = activeCompanyId;
+
         const result = await env.DB.prepare(
           `SELECT * FROM customers WHERE company_id = ? ORDER BY created_at DESC LIMIT 100`
         ).bind(companyId).all();
@@ -4318,13 +3160,12 @@ export default {
           ok: true,
           data: result.results || []
         });
-        } catch (e) {
-          return Response.json(
-            { ok: false, error: e.message },
-            { status: 500 }
-          );
-        }
-      });
+      } catch (e) {
+        return Response.json(
+          { ok: false, error: e.message },
+          { status: 500 }
+        );
+      }
     }
 
     // ==================== 404 ====================
