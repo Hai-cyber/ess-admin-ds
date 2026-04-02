@@ -13,6 +13,40 @@ This guide documents the currently deployed query-variable behavior for:
 
 It also explains KC mode and hidden optional email support.
 
+## Important: two membership form variants
+
+Although the current browser UI is served from one shared form template, there are still two distinct membership variants:
+
+- Founder form
+- KC form
+
+These variants do not have identical payload semantics.
+
+Shared visible fields:
+
+- `name`
+- `phone`
+- consent checkboxes
+- OTP verification step
+
+Variant-specific hidden field behavior:
+
+- `x_studio_membership_type`
+- `x_studio_founder_terms_accepted`
+- `x_studio_kc_terms_accepted`
+- `x_studio_notes`
+- redirect target defaults
+- terms-link defaults
+- program label defaults
+
+So while the public-facing copy can stay neutral, the backend contract must still preserve Founder vs KC differences.
+
+Current implementation detail:
+
+- `GET /founder*` serves the shared membership form UI
+- `GET /kc*` redirects into the shared UI with `program=kc`
+- `program=founder` and `program=kc` drive different hidden values and downstream behavior
+
 ## Dynamic defaults from settings
 
 The founder/KC form can now auto-apply defaults from tenant operational settings (without hardcoding per embed).
@@ -178,3 +212,38 @@ If you need WhatsApp + SMS fallback behavior, set:
 ```bash
 FOUNDER_OTP_CHANNELS=whatsapp,sms
 ```
+
+## Odoo sync behavior
+
+Founder/KC membership flows now use direct Odoo API (JSON-RPC) sync with tenant-scoped credentials:
+
+- On registration, the Worker attempts the Odoo contact create/upsert sync before issuing a new OTP.
+- If the Odoo create sync fails, the form returns an error and no OTP is issued.
+- Pending registrations whose first Odoo sync failed can be retried safely on the next submit.
+- On OTP verification, the Worker attempts the Odoo verification update before consuming the OTP.
+- If the Odoo verify sync fails, the OTP remains valid so the user can retry after the integration issue is fixed.
+- If Odoo API config is missing (`ODOO_BASE_URL` + `ODOO_DB_NAME` + `ODOO_LOGIN` + (`ODOO_API_TOKEN` or `ODOO_PASSWORD`)), registration continues but sync state is marked `not_configured`.
+
+This keeps D1, OTP state, and Odoo contact state aligned without Make.com webhook automations.
+
+## Per-tenant Odoo variables
+
+The admin integration config now supports tenant-level Odoo API and tag variables.
+These are stored per company (`settings.company_id`) so each tenant can point to a different Odoo database.
+
+- `ODOO_BASE_URL`
+- `ODOO_DB_NAME`
+- `ODOO_LOGIN`
+- `ODOO_API_TOKEN`
+- `ODOO_PASSWORD` (optional fallback; prefer API token)
+
+Tag label variables are also available per tenant:
+
+- `ODOO_TAG_FOUNDER`
+- `ODOO_TAG_FOUNDER_TRIAL`
+- `ODOO_TAG_KC_CLUB`
+- `ODOO_TAG_KOLLEGENSCLUB`
+
+Changing these labels does not require changing Odoo technical field names.
+
+Legacy founder webhook keys (`ODOO_FOUNDER_CREATE_WEBHOOK`, `ODOO_FOUNDER_VERIFY_WEBHOOK`) are no longer used by founder/KC sync.

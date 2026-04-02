@@ -17,9 +17,10 @@ async function ensureColumn(db, tableName, columnName, columnDefinition) {
 
 async function ensureSchemaEvolution(db) {
   await ensureColumn(db, 'companies', 'organization_id', 'INTEGER');
-  await ensureColumn(db, 'platform_signups', 'follow_up_status', "TEXT DEFAULT 'new'");
-  await ensureColumn(db, 'platform_signups', 'follow_up_note', 'TEXT');
-  await ensureColumn(db, 'platform_signups', 'followed_up_at', 'TEXT');
+  await ensureColumn(db, 'customers', 'odoo_register_sync_state', "TEXT DEFAULT 'pending'");
+  await ensureColumn(db, 'customers', 'odoo_register_sync_error', 'TEXT');
+  await ensureColumn(db, 'customers', 'odoo_register_synced_at', 'TEXT');
+  await ensureColumn(db, 'customers', 'odoo_register_sync_attempts', 'INTEGER DEFAULT 0');
 }
 
 /**
@@ -219,10 +220,18 @@ export async function initializeDatabase(db) {
       { company_id: 1, key: 'closed_weekday', value: '1', description: 'Closed day (0=Sun, 1=Mon)' },
       { company_id: 1, key: 'min_booking_advance_min', value: '15', description: 'Minimum minutes advance for booking' },
       { company_id: 1, key: 'default_booking_duration', value: '120', description: 'Default duration in minutes' },
-      { company_id: 1, key: 'odoo_api_token', value: 'YOUR_ODOO_TOKEN_HERE', description: 'Odoo API token for direct JSON-RPC calls' },
-      { company_id: 1, key: 'ODOO_API_TOKEN', value: 'YOUR_ODOO_TOKEN_HERE', description: 'Odoo API token for direct JSON-RPC calls' },
-      { company_id: 1, key: 'ODOO_CRM_TEAM_ID', value: '5', description: 'Odoo CRM team ID for booking leads' },
+      { company_id: 1, key: 'odoo_api_token', value: 'YOUR_ODOO_TOKEN_HERE', description: 'Odoo API token' },
+      { company_id: 1, key: 'ODOO_BASE_URL', value: 'https://hais-lab.odoo.com', description: 'Odoo base URL (tenant override)' },
+      { company_id: 1, key: 'ODOO_DB_NAME', value: '', description: 'Odoo database name for this tenant' },
+      { company_id: 1, key: 'ODOO_LOGIN', value: '', description: 'Odoo login/user for this tenant' },
+      { company_id: 1, key: 'ODOO_API_TOKEN', value: '', description: 'Odoo API token for this tenant' },
+      { company_id: 1, key: 'ODOO_PASSWORD', value: '', description: 'Optional Odoo password for this tenant (prefer API token)' },
+      { company_id: 1, key: 'ODOO_TAG_FOUNDER', value: 'Founder', description: 'Tag label for Founder members' },
+      { company_id: 1, key: 'ODOO_TAG_FOUNDER_TRIAL', value: 'Founder Trial', description: 'Tag label for Founder Trial members' },
+      { company_id: 1, key: 'ODOO_TAG_KC_CLUB', value: 'KC Club', description: 'Tag label for KC Club members' },
+      { company_id: 1, key: 'ODOO_TAG_KOLLEGENSCLUB', value: 'Kollegensclub', description: 'Tag label for Kollegensclub members' },
       { company_id: 1, key: 'telegram_chat_id', value: '-5101793550', description: 'Telegram booking board group' },
+      { company_id: 1, key: 'FOUNDER_TEST_EXCEPTION_PHONES', value: '+491723855711', description: 'Founder OTP test exception phones' },
       { company_id: 1, key: 'twilio_phone', value: '+49123456789', description: 'Twilio phone for SMS/WhatsApp' },
       { company_id: 1, key: 'module_membership_management', value: 'enabled', description: 'Paid module: membership management' },
       { company_id: 1, key: 'module_marketing_management', value: 'disabled', description: 'Paid module: marketing management' },
@@ -253,9 +262,16 @@ export async function initializeDatabase(db) {
       { company_id: 2, key: 'closed_weekday', value: '1', description: 'Closed day (0=Sun, 1=Mon)' },
       { company_id: 2, key: 'min_booking_advance_min', value: '15', description: 'Minimum minutes advance for booking' },
       { company_id: 2, key: 'default_booking_duration', value: '120', description: 'Default duration in minutes' },
-      { company_id: 2, key: 'odoo_api_token', value: 'YOUR_ODOO_TOKEN_HERE', description: 'Odoo API token for direct JSON-RPC calls' },
-      { company_id: 2, key: 'ODOO_API_TOKEN', value: 'YOUR_ODOO_TOKEN_HERE', description: 'Odoo API token for direct JSON-RPC calls' },
-      { company_id: 2, key: 'ODOO_CRM_TEAM_ID', value: '5', description: 'Odoo CRM team ID for booking leads' },
+      { company_id: 2, key: 'ODOO_BASE_URL', value: 'https://hais-lab.odoo.com', description: 'Odoo base URL (tenant override)' },
+      { company_id: 2, key: 'ODOO_DB_NAME', value: '', description: 'Odoo database name for this tenant' },
+      { company_id: 2, key: 'ODOO_LOGIN', value: '', description: 'Odoo login/user for this tenant' },
+      { company_id: 2, key: 'ODOO_API_TOKEN', value: '', description: 'Odoo API token for this tenant' },
+      { company_id: 2, key: 'ODOO_PASSWORD', value: '', description: 'Optional Odoo password for this tenant (prefer API token)' },
+      { company_id: 2, key: 'ODOO_TAG_FOUNDER', value: 'Founder', description: 'Tag label for Founder members' },
+      { company_id: 2, key: 'ODOO_TAG_FOUNDER_TRIAL', value: 'Founder Trial', description: 'Tag label for Founder Trial members' },
+      { company_id: 2, key: 'ODOO_TAG_KC_CLUB', value: 'KC Club', description: 'Tag label for KC Club members' },
+      { company_id: 2, key: 'ODOO_TAG_KOLLEGENSCLUB', value: 'Kollegensclub', description: 'Tag label for Kollegensclub members' },
+      { company_id: 2, key: 'FOUNDER_TEST_EXCEPTION_PHONES', value: '+491723855711', description: 'Founder OTP test exception phones' },
       { company_id: 2, key: 'module_membership_management', value: 'enabled', description: 'Paid module: membership management' },
       { company_id: 2, key: 'module_marketing_management', value: 'disabled', description: 'Paid module: marketing management' },
       { company_id: 2, key: 'module_booking_management', value: 'enabled', description: 'Product line: booking management' },
