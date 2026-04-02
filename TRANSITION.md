@@ -90,8 +90,8 @@ Website / Staff App / POS UI
 - Online booking form → D1 → SSE staff notification ✅
 - Onsite booking (staff-created) → same D1 path ✅
 - Stage management: pending → confirmed → arrived → done ✅
-- Odoo webhook code still exists but is not required for operations
-- Make.com automations bypassed for core booking flow
+- Legacy Odoo webhook code is being removed from active runtime paths
+- Make.com automations are out of the booking and ops path
 
 **Outcomes**:
 - Booking and ops flows are stable and production-ready
@@ -233,9 +233,9 @@ Website / Staff App / POS UI
 ### Risk 1: Data loss during transition
 
 **Mitigation**:
-- Dual-write for 30 days (Cloudflare + Odoo)
-- Nightly verification (bookings count matches)
-- Easy rollback (Odoo still has all data)
+- D1 remains the single source of truth throughout the cutover
+- Nightly verification on bookings, customers, and stage transitions
+- Backups and export tooling replace any Odoo rollback assumption
 
 ### Risk 2: Staff adoption (learning new platform)
 

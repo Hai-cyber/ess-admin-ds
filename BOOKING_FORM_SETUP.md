@@ -2,7 +2,7 @@
 
 ## Overview
 The booking form system consists of three components:
-1. **Lightweight iframe form** (`/public/booking-form.html`) — Odoo-compatible embedded form
+1. **Lightweight iframe form** (`/public/booking-form.html`) — Cloudflare-native embedded form
 2. **Landing page** (`/public/reservierung.html`) — Standalone booking page
 3. **Form handler endpoint** (`POST /api/bookings/create`) — Cloudflare Worker API
 
@@ -23,8 +23,6 @@ Create booking in D1
         ↓
 Log action in booking_actions table
         ↓
-[TODO] Sync to Odoo CRM
-        ↓
 [TODO] Post to Telegram group
         ↓
 Return success response
@@ -32,14 +30,14 @@ Return success response
 
 ## Form Fields
 
-| Field | Type | Required | Example | Odoo Mapping |
+| Field | Type | Required | Example | Internal Use |
 |-------|------|----------|---------|--------------|
-| name | text | Yes | "Max Müller" | contact_name |
-| phone | tel | Yes | "+49 123 456789" | phone |
-| date | date | Yes | "2024-12-25" | booking_date (part) |
-| time | select | Yes | "19:00" | booking_time (part) |
-| pax | number | Yes | 4 | x_studio_guests |
-| area | select | No | "indoor" | x_studio_area |
+| name | text | Yes | "Max Müller" | customer.contact_name |
+| phone | tel | Yes | "+49 123 456789" | customer.phone |
+| date | date | Yes | "2024-12-25" | booking_date |
+| time | select | Yes | "19:00" | booking_time |
+| pax | number | Yes | 4 | guests_pax |
+| area | select | No | "indoor" | area |
 | hp_confirm_data | hidden | No | "" | spam honeypot |
 | cf_token | hidden | No | "" | Turnstile token |
 
@@ -78,21 +76,17 @@ npm run deploy
 - **Standalone page**: `https://your-domain/reservierung.html`
 - **API endpoint**: `POST https://your-domain/api/bookings/create`
 
-## Integration with Odoo
+## Integration with Website Surfaces
 
-To embed the form in an Odoo CRM Lead form:
+Embed the form anywhere you control HTML:
 
-1. Add an HTML field to `crm.lead`
-2. In the field's HTML content, use:
 ```html
 <iframe 
-  src="https://your-domain/booking-form.html" 
-  style="width:100%; height:700px; border:none; border-radius:10px;"
-  scrolling="no">
+        src="https://your-domain/booking-form.html" 
+        style="width:100%; height:700px; border:none; border-radius:10px;"
+        scrolling="no">
 </iframe>
 ```
-
-Or use the standalone page as a link in Odoo.
 
 ## Database Changes
 
@@ -160,11 +154,10 @@ After successful booking creation:
 1. ✅ Form HTML created
 2. ✅ API endpoint created
 3. ⏳ Test locally
-4. ⏳ Add Odoo sync logic (requires Odoo API credentials)
-5. ⏳ Add Telegram posting (requires Telegram bot token)
-6. ⏳ Add rate limiting
-7. ⏳ Create thank-you page
-8. ⏳ Add SMS notification to customer
+4. ⏳ Add Telegram posting (requires Telegram bot token)
+5. ⏳ Add rate limiting
+6. ⏳ Create thank-you page
+7. ⏳ Add SMS notification to customer
 
 ## Testing
 

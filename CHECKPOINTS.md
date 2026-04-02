@@ -884,7 +884,7 @@ checkPaymentReady();
 
 ## 📋 CP-7: Odoo Removed (PHASE 4)
 
-**Definition**: Zero Odoo API calls in critical path. All business logic in Cloudflare. Odoo is optional (CRM only).
+**Definition**: Zero Odoo API calls in critical path. All business logic in Cloudflare. First-party CRM is authoritative.
 
 **Verification Script**:
 
@@ -993,7 +993,7 @@ checkOdooRemoved();
 - ✅ Make.com workflows disabled/removed
 - ✅ All business logic in Workers
 - ✅ Booking latency < 500ms (was 15-25s)
-- ✅ Odoo optional (CRM mirror only, not required)
+- ✅ First-party CRM is authoritative; no Odoo mirror is required
 - ✅ Odoo license can be cancelled
 - ✅ Cleanup shell script runs without errors
 

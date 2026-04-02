@@ -103,7 +103,7 @@ const T = {
     'feat.staff.title':   'Staff PIN app',
     'feat.staff.desc':    'No accounts to manage. Staff log in with a 4-digit PIN. Works on any phone, no install needed.',
     'feat.crm.title':     'Guest CRM',
-    'feat.crm.desc':      'Guest profiles, booking history, notes, and tags. All first-party in your own database — no Odoo needed.',
+    'feat.crm.desc':      'Guest profiles, booking history, notes, and tags. All first-party in your own database — no external CRM needed.',
     'feat.crm.phase':     'Phase 4',
 
     // Pricing
@@ -322,7 +322,7 @@ const T = {
     'feat.staff.title':   'Mitarbeiter-PIN-App',
     'feat.staff.desc':    'Kein Account-Management. Mitarbeiter melden sich mit Pin-Code an. Läuft auf jedem Smartphone.',
     'feat.crm.title':     'Gäste-CRM',
-    'feat.crm.desc':      'Gastprofile, Buchungshistorie, Notizen und Tags. Alles intern in deiner Datenbank — kein Odoo nötig.',
+    'feat.crm.desc':      'Gastprofile, Buchungshistorie, Notizen und Tags. Alles intern in deiner Datenbank — kein externes CRM nötig.',
     'feat.crm.phase':     'Phase 4',
 
     'price.tag':          'Preise',
@@ -537,7 +537,7 @@ const T = {
     'feat.staff.title':   'App PIN cho nhân viên',
     'feat.staff.desc':    'Không cần quản lý tài khoản. Nhân viên đăng nhập bằng mã PIN 4 chữ số. Chạy trên mọi điện thoại.',
     'feat.crm.title':     'CRM khách hàng',
-    'feat.crm.desc':      'Hồ sơ khách, lịch sử đặt bàn, ghi chú và tag. Hoàn toàn nội bộ trong cơ sở dữ liệu của bạn — không cần Odoo.',
+    'feat.crm.desc':      'Hồ sơ khách, lịch sử đặt bàn, ghi chú và tag. Hoàn toàn nội bộ trong cơ sở dữ liệu của bạn — không cần CRM bên ngoài.',
     'feat.crm.phase':     'Giai đoạn 4',
 
     'price.tag':          'Bảng giá',

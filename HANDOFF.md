@@ -10,6 +10,13 @@
 
 ## 📊 CURRENT PROJECT STATUS (As of 2026-04-02)
 
+### Runtime Odoo Status (2026-04-02)
+
+- Active Odoo runtime paths have been removed from both worker entrypoints.
+- Founder/KC, booking-stage, and admin profile save flows are internal-first and no longer rely on Odoo in the critical path.
+- The outer duplicate app tree was synced to the same runtime behavior, public/admin copy, and test expectations.
+- Schema/init and legacy utility artifacts still contain Odoo-era references and are intentionally left as follow-up cleanup, not active dependencies.
+
 ### ✅ What's Complete
 
 #### Documentation (100%)
@@ -46,6 +53,9 @@
 - [x] Restaurant Admin now includes a tenant-facing Website Content & Opening Hours editor for presentation-only website fields
 - [x] Structured `opening_hours_schedule` now reaches the public website payload alongside legacy open/close fallback values
 - [x] Wildcard tenant subdomains on `gooddining.app` and demo-payment signup walkthrough have been verified live end to end
+- [x] Active Odoo runtime/helper paths removed from both worker entrypoints; active public/admin surfaces updated to first-party CRM wording
+- [x] Duplicate outer app tree synced to the same internal-only behavior and tests
+- [x] Full verification after sync: nested app `18/18`, outer workspace `35/35`
 - [ ] Founder/KC OTP runtime still fails locally without Twilio credentials
 - [ ] Admin UI setup wizard / go-live flow still incomplete (84% complete)
 

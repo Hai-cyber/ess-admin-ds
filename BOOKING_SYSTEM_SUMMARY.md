@@ -3,14 +3,14 @@
 ## 📋 What Was Built
 
 ### Lightweight Booking Form System
-A complete, production-ready booking form with Odoo iframe compatibility, Turnstile CAPTCHA, mobile responsiveness, and Cloudflare Workers backend.
+A complete, production-ready booking form with Turnstile CAPTCHA, mobile responsiveness, and Cloudflare Workers backend.
 
 ---
 
 ## 🎯 Components Created
 
 ### 1. **Booking Form** (`/public/booking-form.html`)
-- **Purpose**: Lightweight, Odoo-compatible form
+- **Purpose**: Lightweight, Cloudflare-native form
 - **Size**: ~8KB (iframe-friendly)
 - **Features**:
   - Self-contained (embedded HTML via `srcdoc`)
@@ -168,8 +168,8 @@ npm run deploy
 
 ## 🔗 Integration Points
 
-### Odoo Integration
-**Embed form in Odoo CRM using**:
+### Embedded Integration
+**Embed form in a website or managed HTML surface using**:
 ```html
 <iframe 
   src="https://your-domain.workers.dev/booking-form.html" 
@@ -204,13 +204,6 @@ When booking is created → Send SMS to customer:
 "Ihre Reservierung für 25.12. um 19:00 Uhr ist bestätigt. 
 Bestätigungscode: XXXXX"
 ```
-
-### Odoo Sync (TODO)
-When booking is created → Create/update in Odoo `crm.lead`:
-- Map form fields to Odoo x_studio_* fields
-- Link to customer (res.partner)
-- Set stage to "Pending Confirmation"
-- Add follower: restaurant staff
 
 ---
 

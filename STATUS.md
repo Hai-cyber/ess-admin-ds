@@ -6,6 +6,13 @@
 **By**: AI Agent  
 **Next Update**: 2026-04-02 (or sooner if major change)
 
+## Runtime Note (2026-04-02)
+
+- Active runtime Odoo paths have been removed from both worker entrypoints and active admin/public UI surfaces.
+- Founder/KC, booking-stage, and admin company-profile flows now run without Odoo in the critical path.
+- The duplicate outer app tree was synced to the same behavior and test expectations.
+- Intentional leftovers remain in schema/init and legacy utility artifacts for now; they are documented debt, not active runtime dependencies.
+
 ---
 
 ## 🎯 Current State (Right Now)
@@ -57,10 +64,12 @@ Not Started: 0%
 - [x] Public website payload now includes structured `opening_hours_schedule` alongside legacy open/close values
 - [x] Wildcard tenant subdomain routing and host-based website payload resolution verified live on `gooddining.app`
 - [x] Demo-payment self-service signup walkthrough verified live end to end with tenant provisioning, admin access, and website host resolution
+- [x] Active Odoo runtime paths removed from both worker entrypoints; active admin/public UI copy synced to first-party CRM wording
+- [x] Full test verification passed after duplicate-tree sync: nested app `18/18`, outer workspace `35/35`
 
 **Evidence**:
 - Local live verification on 2026-03-30 ✅
-- Vitest: 19/21 passing ✅
+- Vitest: nested app `18/18`, outer workspace `35/35` ✅
 - Booking form render + localhost booking submission verified ✅
 - Board and stage updates verified live ✅
 - Platform home + signup copy verified locally after pricing/i18n updates ✅
@@ -74,6 +83,7 @@ Not Started: 0%
 - Wildcard subdomain routing, host-based tenant payload resolution, and demo-payment signup walkthrough verified live ✅
 - Contact route exists in source but still needs verification on a freshly reloaded local worker because the active `8790` runtime did not expose the new route during smoke test ⚠️
 - Known failures isolated to founder/KC OTP delivery paths ⚠️
+- Legacy Odoo references still exist in schema/init and archive-style utility files, but not in active runtime entrypoints or active admin/public UI ⚠️
 
 ---
 

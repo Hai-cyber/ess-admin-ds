@@ -805,7 +805,7 @@
             <div id="moduleToggleList"></div>
           </div>
           <div class="settings-section">
-            <div class="settings-section-title">Integrations (Founder OTP / Odoo)</div>
+            <div class="settings-section-title">Integrations (Founder OTP)</div>
             <div id="integrationConfigList"></div>
           </div>
           <div class="settings-section">
@@ -1014,7 +1014,7 @@
       module_membership_management: 'Community & Membership',
       module_marketing_management: 'Marketing Management',
       module_booking_management: 'Booking Management',
-      module_contact_crm: 'CRM & Odoo Operations',
+      module_contact_crm: 'CRM Operations',
       module_loyalty_rewards: 'Loyalty & Rewards (Advanced)',
       module_digital_management: 'SEO, Hosting & Domain Management',
       module_telegram_notifications: 'Booking Board Notifications (Telegram)'
@@ -1024,8 +1024,8 @@
       module_membership_management: 'Founder/KC opt-in, OTP automation, membership lifecycle, and member behavior tracking.',
       module_marketing_management: 'Social media workflows, SMS/email campaigns, retention loops, and campaign content operations.',
       module_booking_management: 'Booking form, stage automation, booking board synchronization, and staff booking operations.',
-      module_contact_crm: 'Contact inbox and CRM/Odoo operational workflows for customer and product/menu data operations.',
-      module_loyalty_rewards: 'Advanced loyalty mechanics, benefit tiers, and reward automation on top of CRM/Odoo operations.',
+      module_contact_crm: 'Contact inbox and first-party CRM workflows for customer and product/menu data operations.',
+      module_loyalty_rewards: 'Advanced loyalty mechanics, benefit tiers, and reward automation on top of first-party CRM operations.',
       module_digital_management: 'SEO, hosting, domain, and overall digital presence operations.',
       module_telegram_notifications: 'Telegram notifications for booking board and staff alert workflows.'
     };
@@ -1036,18 +1036,7 @@
       'FOUNDER_OTP_BRAND_NAME',
       'TWILIO_WHATSAPP_FROM',
       'TWILIO_SMS_FROM',
-      'TWILIO_MESSAGING_SERVICE_SID',
-      'ODOO_BASE_URL',
-      'ODOO_DB_NAME',
-      'ODOO_LOGIN',
-      'ODOO_API_TOKEN',
-      'ODOO_PASSWORD',
-      'ODOO_TAG_FOUNDER',
-      'ODOO_TAG_FOUNDER_TRIAL',
-      'ODOO_TAG_KC_CLUB',
-      'ODOO_TAG_KOLLEGENSCLUB',
-      'ODOO_FOUNDER_CREATE_WEBHOOK',
-      'ODOO_FOUNDER_VERIFY_WEBHOOK'
+      'TWILIO_MESSAGING_SERVICE_SID'
     ];
 
     const SECRET_INTEGRATION_KEYS = [
@@ -1063,17 +1052,6 @@
       TWILIO_WHATSAPP_FROM: 'Twilio WhatsApp From',
       TWILIO_SMS_FROM: 'Twilio SMS From',
       TWILIO_MESSAGING_SERVICE_SID: 'Twilio Messaging Service SID',
-      ODOO_BASE_URL: 'Odoo Base URL (Tenant)',
-      ODOO_DB_NAME: 'Odoo Database Name (Tenant)',
-      ODOO_LOGIN: 'Odoo Login/User (Tenant)',
-      ODOO_API_TOKEN: 'Odoo API Token (Tenant)',
-      ODOO_PASSWORD: 'Odoo Password (Optional, Tenant)',
-      ODOO_TAG_FOUNDER: 'Odoo Tag Label: Founder',
-      ODOO_TAG_FOUNDER_TRIAL: 'Odoo Tag Label: Founder Trial',
-      ODOO_TAG_KC_CLUB: 'Odoo Tag Label: KC Club',
-      ODOO_TAG_KOLLEGENSCLUB: 'Odoo Tag Label: Kollegensclub',
-      ODOO_FOUNDER_CREATE_WEBHOOK: 'Legacy Odoo Create Webhook (Fallback)',
-      ODOO_FOUNDER_VERIFY_WEBHOOK: 'Legacy Odoo Verify Webhook (Fallback)',
       TURNSTILE_SECRET: 'Turnstile Secret',
       TWILIO_ACCOUNT_SID: 'Twilio Account SID',
       TWILIO_AUTH_TOKEN: 'Twilio Auth Token'
@@ -2051,14 +2029,6 @@
           <input type="text" class="setting-value" id="op_standard_contact_link" value="${escapeHtml(getOperationalValue('standard_contact_link'))}" placeholder="/contact or https://yourdomain/contact">
         </div>
         <div class="setting-row">
-          <div class="setting-label">Odoo URL</div>
-          <input type="text" class="setting-value" id="company_odoo_url" value="${escapeHtml(company.odoo_url || '')}">
-        </div>
-        <div class="setting-row">
-          <div class="setting-label">Odoo Company ID</div>
-          <input type="number" class="setting-value" id="company_odoo_company_id" value="${escapeHtml(company.odoo_company_id ?? '')}">
-        </div>
-        <div class="setting-row">
           <div class="setting-label">Tenant Subdomain</div>
           <input type="text" class="setting-value" id="company_subdomain" value="${escapeHtml(company.subdomain || '')}" placeholder="e.g. esskultur-main">
         </div>
@@ -2276,9 +2246,7 @@
         email: document.getElementById('company_email')?.value.trim() || '',
         phone: document.getElementById('company_phone')?.value.trim() || '',
         subdomain: document.getElementById('company_subdomain')?.value.trim() || '',
-        timezone: document.getElementById('company_timezone')?.value.trim() || 'UTC',
-        odoo_url: document.getElementById('company_odoo_url')?.value.trim() || '',
-        odoo_company_id: document.getElementById('company_odoo_company_id')?.value.trim() || ''
+        timezone: document.getElementById('company_timezone')?.value.trim() || 'UTC'
       } : null;
 
       const nextOperationalSettings = {};
