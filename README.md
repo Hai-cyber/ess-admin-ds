@@ -58,13 +58,17 @@ ess-admin-ds/
 
 ## 🎯 Current Status
 
-**Phase 1: Booking + Platform Entry** (NOW → Q2 2026, ~88% complete)
+**Phase 1: Booking + Platform Entry** (NOW → Q2 2026, ~91% complete)
 
 - ✅ Platform home, plans, contact form, and SaaS admin dashboard working locally
 - ✅ Self-service signup provisions organization + company + admin PIN user
 - ✅ Booking board, staff app, onsite booking create, and stage updates verified locally
 - ✅ Platform login/signup/pricing copy now supports EN/DE/VI browser-driven localization with contextual login routing
 - ✅ Website master preview shipped with dynamic theme presets, schema examples, runtime tenant adapter, and form wiring for booking/contact/membership
+- ✅ Website master boot now renders from embedded source first and hydrates runtime payload/presets in parallel for much faster perceived load
+- ✅ Shared full-height mobile drawer shipped across website-master routes; luxury A/B navigation polish is live
+- ✅ Restaurant Admin now includes a tenant-facing website content and opening-hours editor
+- ✅ Wildcard tenant subdomains and demo-payment signup walkthrough verified live on gooddining.app
 - 🔄 Admin UI / go-live setup still incomplete
 - 🔄 Founder/KC OTP runtime still blocked locally by missing Twilio credentials
 - 🔄 Stripe checkout and tenant website publish/domain workflow still pending
@@ -75,6 +79,8 @@ ess-admin-ds/
 - Public booking form renders; localhost `company_id` override submit works
 - Staff create booking from board → all systems updated
 - Stage transitions (pending → confirmed → arrived → done)
+- Website payload now includes structured `opening_hours_schedule` while preserving legacy open/close values
+- Tenant subdomain host-based website payload resolution verified live on wildcard routing
 - Per-tenant data isolation working
 - Vitest: 19/21 passing (2 founder/KC failures due Twilio credentials)
 

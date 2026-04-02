@@ -2,7 +2,7 @@
 
 **Purpose**: Real-time snapshot of project state. Update before/after every session.
 
-**Last Updated**: 2026-04-01  
+**Last Updated**: 2026-04-02  
 **By**: AI Agent  
 **Next Update**: 2026-04-02 (or sooner if major change)
 
@@ -11,16 +11,16 @@
 ## 🎯 Current State (Right Now)
 
 ### Phase
-**Phase 1: Booking + Platform Entry (89% complete)**
+**Phase 1: Booking + Platform Entry (91% complete)**
 - ETA: April 15, 2026
 - Status: 🟡 ON TRACK (remaining: Stripe checkout wiring + tenant website publish/domain workflow + founder/KC OTP runtime fix)
 
 ### Overall Progress
 ```
-█████████░ 89%
+█████████░ 91%
 
-Completed: 89%
-In Progress: 7% (platform billing/admin/domain finalization)
+Completed: 91%
+In Progress: 5% (platform billing/admin/domain finalization)
 Blocked: 4% (founder/KC OTP delivery in local runtime)
 Not Started: 0%
 ```
@@ -51,6 +51,12 @@ Not Started: 0%
 - [x] Fixed-skin website template contract added for the 8-skin bounded-customization model
 - [x] Website publish validation contract added for pre-render/pre-publish gating
 - [x] Runnable website payload validator added and verified locally with `npm run validate:website-template`
+- [x] Website master boot now renders from embedded source first and hydrates runtime payload plus theme presets in parallel, eliminating the visible master-template flash on first load
+- [x] Shared full-height mobile drawer navigation shipped across all website-master routes, replacing the old mobile tab strip
+- [x] Restaurant Admin now exposes a tenant-facing Website Content & Opening Hours editor for presentation-only website fields
+- [x] Public website payload now includes structured `opening_hours_schedule` alongside legacy open/close values
+- [x] Wildcard tenant subdomain routing and host-based website payload resolution verified live on `gooddining.app`
+- [x] Demo-payment self-service signup walkthrough verified live end to end with tenant provisioning, admin access, and website host resolution
 
 **Evidence**:
 - Local live verification on 2026-03-30 ✅
@@ -62,6 +68,10 @@ Not Started: 0%
 - Booking API verified from website-style payload on `8790`; founder verify completed and persisted in local D1 ✅
 - Website template contract and publish-validation docs now define the non-bespoke tenant website model ✅
 - `npm run validate:website-template` passes against the publish-ready example payload ✅
+- Live website-master preview now boots visibly faster after the embedded-first render + parallel hydration change ✅
+- Shared mobile drawer navigation verified live across the website-master page set ✅
+- Restaurant Admin website-content editor and structured-hours payload compile cleanly and persist through the current worker path ✅
+- Wildcard subdomain routing, host-based tenant payload resolution, and demo-payment signup walkthrough verified live ✅
 - Contact route exists in source but still needs verification on a freshly reloaded local worker because the active `8790` runtime did not expose the new route during smoke test ⚠️
 - Known failures isolated to founder/KC OTP delivery paths ⚠️
 
@@ -69,7 +79,7 @@ Not Started: 0%
 
 ## 🔄 In Progress (12%)
 
-### Finalization Track (Platform + Billing) (78% → ship-ready)
+### Finalization Track (Platform + Billing) (84% → ship-ready)
 
 **What works**:
 - [x] SaaS Admin: pricing editor + signup CRM-lite + lead follow-up
@@ -81,21 +91,28 @@ Not Started: 0%
 - [x] Website master preview consumes external theme/content presets and runtime-shaped tenant source payloads
 - [x] Website master preview can submit booking, contact, and membership forms against current runtime APIs with preview-safe tenant injection
 - [x] Fixed-skin contract and publish-validation gate now define the required payload/page/media boundaries for tenant website versions
+- [x] Website master boot now renders instantly from embedded source and hydrates payload/presets in parallel
+- [x] Shared full-height mobile drawer now replaces the old mobile tab strip across the website-master page set
+- [x] Tenant website content editor is now exposed in Restaurant Admin for text, photos, button labels, address, and opening hours
+- [x] Structured opening hours now flow through website payloads for future reuse by shop and online-order availability logic
+- [x] Wildcard tenant subdomain routing and demo-payment signup walkthrough are verified live
 
 **What needs work** (next 3-4 days):
 - [ ] Stripe test checkout flow (replace demo-paid simulation)
-- [ ] Connect Website Builder Studio admin fields to persisted publish flow for tenant websites (beyond the current master preview/runtime adapter)
+- [ ] Connect the new tenant website-content editor to a fully explicit publish/release workflow for tenant websites (beyond the current master preview/runtime adapter)
 - [ ] Enforce the new website validator inside the actual publish path, not only as a repo script
 - [ ] Publish tenant website output + assets to deployment storage and validate custom-domain serving path
-- [ ] Tenant custom domain connection workflow (DNS + validation)
+- [ ] Tenant custom domain connection workflow (DNS + validation + ops guidance)
 - [ ] Tenant payment method onboarding UX (Stripe + manual modes)
+- [ ] End-to-end QA for tenant website editor save/reload flow from Restaurant Admin to live tenant subdomain
+- [ ] Wire structured opening hours into shop and online-order availability once those modules land
 - [ ] Founder/KC OTP delivery path needs working Twilio credentials or a dedicated local stub
 - [ ] Document the local-dev caveat: Turnstile bypass only applies on localhost/workers.dev, not Host-header tenant simulation
 - [ ] Re-run `/api/contact/create` smoke test against a freshly reloaded worker to confirm the new public contact route on the active dev runtime
 
 **Current dependency**:
 - Stripe test credentials + Twilio credentials (or explicit local OTP stub)
-- ETA: Mar 31
+- ETA: Apr 05
 
 **Where it lives**:
 - `src/index.js` (platform + tenant admin APIs)
@@ -156,16 +173,16 @@ Checkpoint           Status      Owner    ETA        % Complete
 ─────────────────────────────────────────────────────────────
 CP-1: Tenant Isol   ✅ DONE      Team     Done       100%
 CP-2: Booking MVP   ✅ DONE      Team     Done       100%
-CP-3: Admin Setup   🔄 TESTING   @dev-L   Mar 31      75%
+CP-3: Admin Setup   🔄 TESTING   @dev-L   Apr 05      84%
 CP-4: Staff Mobile  📋 PLANNED   TBD      May 1        0%
 CP-5: POS System    📋 PLANNED   TBD      Aug 1        0%
 CP-6: Payment       📋 PLANNED   TBD      Aug 1        0%
 CP-7: Odoo Removed  ❌ PLANNED   TBD      Jan 1        0%
 CP-8: Growth        ❌ PLANNED   TBD      Apr 1        0%
 CP-9: Founder/KC    📋 PLANNED   TBD      Future       0%
-CP-10: Platform+SU  🔄 TESTING   @dev-L   Mar 31      92%
+CP-10: Platform+SU  🔄 TESTING   @dev-L   Apr 05      96%
 ─────────────────────────────────────────────────────────────
-PHASE 1 TOTAL                                        89%
+PHASE 1 TOTAL                                        91%
 ```
 
 ---
@@ -198,11 +215,13 @@ PHASE 1 TOTAL                                        89%
 
 ## 🗓️ What Happens Next
 
-### This Week (Mar 22-29)
+### This Week (Apr 2-5)
 
 **Priority 1** (Must do):
 - [ ] Wire Stripe test checkout for signup and recurring invoices
+- [ ] Turn the new Restaurant Admin website-content editor into a publish-safe tenant website workflow
 - [ ] Finish tenant website publish/domain workflow on top of the delivered website-master preview adapter
+- [ ] Re-test tenant website editor end to end on live tenant subdomains after save/reload cycles
 - [ ] Configure or stub Twilio so founder/KC OTP works in local runtime and tests
 - [ ] Reload dev worker and confirm `/api/contact/create` on the active local runtime
 - **Owner**: @dev-lead

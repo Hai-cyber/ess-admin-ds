@@ -874,6 +874,44 @@ async function buildPublicWebsitePayload(env, companyId, currentUrl) {
   const contactAddress = String(previewProfile?.company?.address || settings.site_contact_address || '').trim() || '27 Alder Quay, Berlin 10407';
   const fallbackEmail = String(previewProfile?.company?.email || settings.booking_email || company?.email || '').trim() || 'hello@example.com';
   const fallbackPhone = String(previewProfile?.company?.phone || company?.phone || '').trim() || '+49 30 5550 2100';
+  const openingHoursSchedule = (() => {
+    const normalizeScheduleTime = (value) => {
+      const normalized = String(value || '').trim();
+      return /^([01]\d|2[0-3]):[0-5]\d$/.test(normalized) ? normalized : '';
+    };
+    const orderedDays = ['1', '2', '3', '4', '5', '6', '0'];
+    const fallbackOpen = normalizeScheduleTime(settings.business_hours_open);
+    const fallbackClose = normalizeScheduleTime(settings.business_hours_close);
+    const fallbackClosedWeekday = String(settings.closed_weekday || '').trim();
+    const fallbackSchedule = orderedDays.map((day) => {
+      const isClosed = fallbackClosedWeekday == day;
+      return {
+        day,
+        closed: isClosed,
+        open: isClosed ? '' : fallbackOpen,
+        close: isClosed ? '' : fallbackClose
+      };
+    });
+
+    try {
+      const parsed = JSON.parse(String(settings.business_hours_schedule_json || ''));
+      if (!Array.isArray(parsed) || !parsed.length) return fallbackSchedule;
+      const parsedMap = new Map(parsed.map((row) => [String(row?.day || '').trim(), row]));
+      return fallbackSchedule.map((row) => {
+        const next = parsedMap.get(row.day);
+        if (!next) return row;
+        const closed = next?.closed === true;
+        return {
+          day: row.day,
+          closed,
+          open: closed ? '' : (normalizeScheduleTime(next?.open) || row.open),
+          close: closed ? '' : (normalizeScheduleTime(next?.close) || row.close)
+        };
+      });
+    } catch {
+      return fallbackSchedule;
+    }
+  })();
 
   const content = {
     ...(contentOverrides || {})
@@ -938,6 +976,10 @@ async function buildPublicWebsitePayload(env, companyId, currentUrl) {
       site_secondary_cta_text: String(settings.site_secondary_cta_text || 'Menu').trim(),
       site_accent_color: String(settings.site_accent_color || WEBSITE_BUILDER_DEFAULTS.site_accent_color).trim(),
       site_language: language,
+      business_hours_open: String(settings.business_hours_open || '').trim(),
+      business_hours_close: String(settings.business_hours_close || '').trim(),
+      closed_weekday: String(settings.closed_weekday || '').trim(),
+      opening_hours_schedule: openingHoursSchedule,
       booking_email: fallbackEmail,
       website_url: websiteUrl,
       custom_domain: String(settings.custom_domain || '').trim(),

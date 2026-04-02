@@ -89,6 +89,263 @@
       pointer-events: none;
     }
 
+    body.is-booting {
+      overflow: hidden;
+    }
+
+    body.is-booting > header,
+    body.is-booting > main,
+    body.is-booting > footer {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    [data-template-loader] {
+      position: fixed;
+      inset: 0;
+      z-index: 9998;
+      display: grid;
+      place-items: center;
+      padding: 1.5rem;
+      background:
+        radial-gradient(circle at top, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.84) 42%, rgba(250, 246, 239, 0.98) 100%),
+        linear-gradient(180deg, #fffaf5 0%, var(--surface-color) 100%);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 180ms ease, visibility 180ms ease;
+    }
+
+    body.is-booting [data-template-loader] {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    [data-template-loader-card] {
+      width: min(100%, 28rem);
+      border-radius: 24px;
+      border: 1px solid rgba(31, 41, 55, 0.08);
+      background: rgba(255, 255, 255, 0.88);
+      padding: 1.5rem;
+      box-shadow: 0 30px 80px rgba(15, 23, 42, 0.12);
+      backdrop-filter: blur(14px);
+    }
+
+    [data-template-loader-label] {
+      margin: 0;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--muted-color);
+    }
+
+    [data-template-loader-title] {
+      margin: 0.75rem 0 0;
+      font-family: var(--font-heading), serif;
+      font-size: clamp(2rem, 5vw, 3rem);
+      line-height: 0.95;
+      color: var(--text-color);
+    }
+
+    [data-template-loader-copy] {
+      margin: 0.9rem 0 0;
+      font-size: 0.96rem;
+      line-height: 1.7;
+      color: var(--muted-color);
+    }
+
+    [data-template-loader-progress] {
+      position: relative;
+      margin-top: 1.2rem;
+      height: 4px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(31, 41, 55, 0.1);
+    }
+
+    [data-template-loader-progress]::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      width: 38%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, transparent 0%, var(--primary-color) 28%, var(--accent-color) 100%);
+      animation: template-loader-slide 1.1s ease-in-out infinite;
+    }
+
+    @keyframes template-loader-slide {
+      0% {
+        transform: translateX(-120%);
+      }
+      100% {
+        transform: translateX(320%);
+      }
+    }
+
+    [data-template-loader-meta] {
+      margin-top: 0.9rem;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted-color);
+    }
+
+    body.mobile-drawer-open {
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    [data-mobile-nav] {
+      display: none !important;
+    }
+
+    [data-mobile-menu-toggle] {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 2.9rem;
+      height: 2.9rem;
+      border-radius: 999px;
+      border: 1px solid currentColor;
+      background: transparent;
+      color: inherit;
+    }
+
+    [data-mobile-menu-toggle] svg {
+      width: 1.15rem;
+      height: 1.15rem;
+    }
+
+    [data-mobile-drawer-backdrop][hidden],
+    [data-mobile-drawer][hidden] {
+      display: none !important;
+    }
+
+    [data-mobile-drawer-backdrop] {
+      position: fixed;
+      inset: var(--mobile-drawer-offset, 5.5rem) 0 0 0;
+      z-index: 45;
+      background: rgba(15, 23, 42, 0.36);
+      backdrop-filter: blur(10px);
+    }
+
+    [data-mobile-drawer] {
+      position: fixed;
+      inset: var(--mobile-drawer-offset, 5.5rem) 0 0 0;
+      z-index: 46;
+      width: 100vw;
+      height: calc(100svh - var(--mobile-drawer-offset, 5.5rem));
+      min-height: calc(100svh - var(--mobile-drawer-offset, 5.5rem));
+      max-height: none;
+      padding: 0;
+    }
+
+    [data-mobile-drawer-panel] {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      height: 100%;
+      min-height: calc(100svh - var(--mobile-drawer-offset, 5.5rem));
+      max-height: none;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      border-radius: 0;
+      border: 0;
+      background: rgba(255, 255, 255, 0.985);
+      box-shadow: none;
+      padding: 1rem 1rem calc(1.25rem + env(safe-area-inset-bottom));
+      color: var(--text-color);
+      transform: translateY(1.5rem);
+      opacity: 0;
+      transition: transform 180ms ease, opacity 180ms ease;
+    }
+
+    body.mobile-drawer-open [data-mobile-drawer-panel] {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    [data-mobile-drawer-close-row] {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    [data-mobile-drawer-panel] a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    [data-mobile-drawer-primary],
+    [data-mobile-drawer-secondary] {
+      display: grid;
+      gap: 0.65rem;
+    }
+
+    [data-mobile-drawer-primary] a,
+    [data-mobile-drawer-secondary] a {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      min-height: 3.65rem;
+      border-radius: 18px;
+      border: 1px solid rgba(31, 41, 55, 0.08);
+      padding: 1rem 1.1rem;
+      background: #fff;
+      box-shadow: 0 10px 20px rgba(15, 23, 42, 0.05);
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+
+    [data-mobile-drawer-primary] a.is-active,
+    [data-mobile-drawer-secondary] a.is-active {
+      background: rgba(15, 23, 42, 0.08);
+      border-color: rgba(15, 23, 42, 0.16);
+    }
+
+    [data-mobile-drawer-section-label] {
+      margin: 0 0 0.75rem;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted-color);
+    }
+
+    [data-mobile-drawer-actions] {
+      margin-top: auto;
+      display: grid;
+      gap: 0.75rem;
+      padding-top: 1rem;
+    }
+
+    @media (max-width: 1023px) {
+      [data-mobile-menu-toggle] {
+        display: inline-flex;
+      }
+
+      .luxury-two-header-shell {
+        justify-content: space-between;
+      }
+
+      .luxury-two-header-info,
+      .luxury-two-header-actions,
+      [data-secondary-nav-shell] {
+        display: none !important;
+      }
+    }
+
+    @media (min-width: 1024px) {
+      [data-mobile-drawer-backdrop],
+      [data-mobile-drawer] {
+        display: none !important;
+      }
+    }
+
     .shell {
       width: min(100% - 2rem, var(--container-width));
       margin: 0 auto;
@@ -626,7 +883,7 @@
       padding-left: 0;
       padding-right: 0;
       border-radius: 0;
-      color: rgba(245, 233, 216, 0.84);
+      color: rgba(46, 34, 24, 0.88);
     }
 
     body.theme-luxury-b .page-tab.is-active {
@@ -690,11 +947,29 @@
 
     body.theme-luxury-b #secondary-nav {
       justify-content: center;
-      color: rgba(245, 233, 216, 0.58);
+      color: rgba(78, 58, 38, 0.76);
     }
 
     body.theme-luxury-b #secondary-nav a {
       letter-spacing: 0.16em;
+      color: inherit;
+    }
+
+    body.theme-luxury-b [data-mobile-drawer-panel] {
+      background: rgba(255, 250, 242, 0.985);
+      color: #2e2218;
+    }
+
+    body.theme-luxury-b [data-mobile-drawer-primary] a,
+    body.theme-luxury-b [data-mobile-drawer-secondary] a {
+      background: rgba(255, 252, 247, 0.98);
+      border-color: rgba(120, 53, 15, 0.14);
+      color: #2e2218;
+      box-shadow: 0 10px 20px rgba(120, 53, 15, 0.07);
+    }
+
+    body.theme-luxury-b [data-mobile-drawer-section-label] {
+      color: rgba(78, 58, 38, 0.74);
     }
 
     body.theme-luxury-b footer {
@@ -2448,7 +2723,15 @@
     }
   </style>
 </head>
-<body class="theme-luxury-a" data-theme="luxury-a" data-tier="premium">
+<body class="theme-luxury-a is-booting" data-theme="luxury-a" data-tier="premium">
+  <div data-template-loader aria-live="polite" aria-busy="true">
+    <div data-template-loader-card>
+        <p data-template-loader-label>Please wait</p>
+        <h1 data-template-loader-title>Loading...</h1>
+        <p data-template-loader-copy>Preparing the page.</p>
+      <div data-template-loader-progress aria-hidden="true"></div>
+    </div>
+  </div>
   <!--
     RESTAURANTOS MASTER TEMPLATE
 
@@ -2481,6 +2764,15 @@
         </div>
       </a>
 
+      <button type="button" data-mobile-menu-toggle aria-expanded="false" aria-controls="mobile-drawer">
+        <span class="sr-only">Open menu</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <path d="M4 7h16"></path>
+          <path d="M4 12h16"></path>
+          <path d="M4 17h16"></path>
+        </svg>
+      </button>
+
       <nav data-primary-nav class="hidden items-center gap-6 text-sm font-semibold text-[color:var(--text-color)] lg:flex">
         <a href="index.html?page=home" class="page-tab rounded-full px-4 py-2" data-page-link="home" data-nav-label="home">Home</a>
         <a href="menu.html?page=menu" class="page-tab rounded-full px-4 py-2" data-page-link="menu" data-nav-label="menu">Menu</a>
@@ -2505,19 +2797,45 @@
       </div>
     </div>
 
-    <div class="border-t border-black/5 bg-white/72 lg:hidden">
-      <div data-mobile-nav class="shell flex gap-2 overflow-x-auto py-3 text-sm font-semibold">
-        <a href="index.html?page=home" class="page-tab whitespace-nowrap rounded-full px-4 py-2" data-page-link="home" data-nav-label="home">Home</a>
-        <a href="menu.html?page=menu" class="page-tab whitespace-nowrap rounded-full px-4 py-2" data-page-link="menu" data-nav-label="menu">Menu</a>
-        <a href="shop.html?page=shop" class="page-tab whitespace-nowrap rounded-full px-4 py-2" data-page-link="shop" data-nav-label="shop">Shop</a>
-        <a href="reservation.html?page=reservation" class="page-tab whitespace-nowrap rounded-full px-4 py-2" data-page-link="reservation" data-nav-label="reservation">Reservation</a>
-        <a href="about.html?page=about" class="page-tab whitespace-nowrap rounded-full px-4 py-2" data-page-link="about" data-nav-label="about">About Us</a>
-        <a href="career.html?page=career" class="page-tab whitespace-nowrap rounded-full px-4 py-2" data-page-link="career" data-nav-label="career">Career</a>
-        <a href="founder.html?page=founder" class="page-tab whitespace-nowrap rounded-full px-4 py-2" data-page-link="founder" data-nav-label="founder">Founder</a>
-      </div>
-    </div>
+    <div data-mobile-drawer-backdrop hidden></div>
+    <aside id="mobile-drawer" data-mobile-drawer hidden>
+      <div data-mobile-drawer-panel>
+        <div data-mobile-drawer-close-row>
+          <button type="button" data-mobile-menu-close class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-black/10 bg-white text-[color:var(--text-color)]">
+            <span class="sr-only">Close menu</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+              <path d="M6 6l12 12"></path>
+              <path d="M18 6L6 18"></path>
+            </svg>
+          </button>
+        </div>
 
-    <div class="border-t border-black/5 bg-white/92">
+        <div>
+          <p data-mobile-drawer-section-label>Menu</p>
+          <nav data-mobile-drawer-primary>
+            <a href="index.html?page=home" data-page-link="home" data-nav-label="home">Home</a>
+            <a href="menu.html?page=menu" data-page-link="menu" data-nav-label="menu">Menu</a>
+            <a href="shop.html?page=shop" data-page-link="shop" data-nav-label="shop">Shop</a>
+            <a href="reservation.html?page=reservation" data-page-link="reservation" data-nav-label="reservation">Reservation</a>
+            <a href="about.html?page=about" data-page-link="about" data-nav-label="about">About Us</a>
+            <a href="career.html?page=career" data-page-link="career" data-nav-label="career">Career</a>
+            <a href="founder.html?page=founder" data-page-link="founder" data-nav-label="founder">Founder</a>
+          </nav>
+        </div>
+
+        <div data-mobile-drawer-secondary-wrap class="mt-8 border-t border-black/10 pt-6" hidden>
+          <p data-mobile-drawer-section-label>More</p>
+          <nav data-mobile-drawer-secondary></nav>
+        </div>
+
+        <div data-mobile-drawer-actions>
+          <a href="contact.html?page=contact" class="inline-flex items-center justify-center rounded-full border border-black/10 px-4 py-3 text-sm font-semibold" data-page-link="contact" data-header-contact-label>Contact</a>
+          <a href="reservation.html?page=reservation" class="inline-flex items-center justify-center rounded-full bg-[color:var(--primary-color)] px-4 py-3 text-sm font-bold text-[color:var(--text-color)] shadow-brand" data-page-link="reservation" data-header-reserve-label>Reservieren</a>
+        </div>
+      </div>
+    </aside>
+
+    <div data-secondary-nav-shell class="border-t border-black/5 bg-white/92">
       <div class="shell">
         <nav id="secondary-nav" class="flex flex-wrap gap-5 py-3 text-xs font-bold uppercase tracking-[0.18em] text-[color:var(--muted-color)]"></nav>
       </div>
@@ -3434,8 +3752,7 @@
       return result;
     }
 
-    async function loadTemplateSourceFromRuntime() {
-      const fallbackSource = window.RESTAURANT_TEMPLATE_SOURCE || {};
+    async function loadTemplateSourceFromRuntime(fallbackSource = window.RESTAURANT_TEMPLATE_SOURCE || {}) {
       const endpoint = new URL('/api/website/payload', window.location.origin);
       const params = new URLSearchParams(window.location.search);
       const companyId = String(params.get('company_id') || fallbackSource?.tenant?.company_id || '').trim();
@@ -4621,7 +4938,6 @@
       }
 
       const secondaryNav = document.getElementById('secondary-nav');
-      if (!secondaryNav) return;
       const items = Array.isArray(viewModel?.navigation?.secondaryItems) ? viewModel.navigation.secondaryItems : [];
       const pageVisibility = viewModel?.navigation?.pageVisibility || {};
       const visibleItems = items.filter((item) => {
@@ -4629,12 +4945,77 @@
         const pageState = pageVisibility[item.page] || {};
         return pageState.enabled !== false && pageState.showInNav !== false;
       });
-      secondaryNav.innerHTML = visibleItems.map((item) => {
+      const navMarkup = visibleItems.map((item) => {
         const label = escapeHtml(item?.label || 'Link');
         const href = item?.page ? buildPageUrl(item.page) : escapeHtml(item?.href || '#');
         return `<a href="${href}" class="subnav-link">${label}</a>`;
       }).join('');
-      secondaryNav.parentElement.parentElement.style.display = visibleItems.length ? '' : 'none';
+      if (secondaryNav) {
+        secondaryNav.innerHTML = navMarkup;
+        secondaryNav.parentElement.parentElement.style.display = visibleItems.length ? '' : 'none';
+      }
+
+      const mobileSecondaryNav = document.querySelector('[data-mobile-drawer-secondary]');
+      const mobileSecondaryWrap = document.querySelector('[data-mobile-drawer-secondary-wrap]');
+      if (mobileSecondaryNav) mobileSecondaryNav.innerHTML = navMarkup;
+      if (mobileSecondaryWrap) mobileSecondaryWrap.hidden = !visibleItems.length;
+    }
+
+    function initMobileDrawer() {
+      const drawer = document.querySelector('[data-mobile-drawer]');
+      const backdrop = document.querySelector('[data-mobile-drawer-backdrop]');
+      const toggles = Array.from(document.querySelectorAll('[data-mobile-menu-toggle]'));
+      const closeButtons = Array.from(document.querySelectorAll('[data-mobile-menu-close]'));
+      const header = document.querySelector('header');
+      if (!drawer || !backdrop || !toggles.length) return;
+
+      const syncOffset = () => {
+        const offset = header ? Math.ceil(header.getBoundingClientRect().height) : 88;
+        document.documentElement.style.setProperty('--mobile-drawer-offset', `${offset}px`);
+      };
+
+      if (drawer.dataset.mobileDrawerBound === 'true') {
+        syncOffset();
+        return;
+      }
+      drawer.dataset.mobileDrawerBound = 'true';
+
+      const setOpen = (nextOpen) => {
+        syncOffset();
+        drawer.hidden = !nextOpen;
+        backdrop.hidden = !nextOpen;
+        document.body.classList.toggle('mobile-drawer-open', nextOpen);
+        toggles.forEach((toggle) => {
+          toggle.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
+        });
+      };
+
+      syncOffset();
+
+      toggles.forEach((toggle) => {
+        toggle.addEventListener('click', () => {
+          const isOpen = toggle.getAttribute('aria-expanded') === 'true';
+          setOpen(!isOpen);
+        });
+      });
+
+      closeButtons.forEach((button) => {
+        button.addEventListener('click', () => setOpen(false));
+      });
+
+      backdrop.addEventListener('click', () => setOpen(false));
+      drawer.addEventListener('click', (event) => {
+        if (event.target.closest('a')) setOpen(false);
+      });
+
+      window.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') setOpen(false);
+      });
+
+      window.addEventListener('resize', () => {
+        syncOffset();
+        if (window.innerWidth >= 1024) setOpen(false);
+      });
     }
 
     function renderShopPage(viewModel) {
@@ -4910,7 +5291,8 @@
 
     function attachFormHandlers(viewModel, tenantContext) {
       const bookingForm = document.querySelector('[data-tenant-form="booking"]');
-      if (bookingForm) {
+      if (bookingForm && bookingForm.dataset.handlersBound !== 'true') {
+        bookingForm.dataset.handlersBound = 'true';
         bookingForm.addEventListener('submit', async (event) => {
           event.preventDefault();
           setFormFeedback('booking', 'pending', translateText(viewModel, 'status.booking.pending', 'Reservation request is being sent...'));
@@ -4926,7 +5308,8 @@
       }
 
       const contactForm = document.querySelector('[data-tenant-form="contact"]');
-      if (contactForm) {
+      if (contactForm && contactForm.dataset.handlersBound !== 'true') {
+        contactForm.dataset.handlersBound = 'true';
         contactForm.addEventListener('submit', async (event) => {
           event.preventDefault();
           setFormFeedback('contact', 'pending', translateText(viewModel, 'status.contact.pending', 'Message is being sent...'));
@@ -4943,7 +5326,14 @@
 
       const membershipRegisterForm = document.querySelector('[data-tenant-form="membership-register"]');
       const membershipVerifyForm = document.querySelector('[data-tenant-form="membership-verify"]');
-      if (membershipRegisterForm && membershipVerifyForm) {
+      if (
+        membershipRegisterForm &&
+        membershipVerifyForm &&
+        membershipRegisterForm.dataset.handlersBound !== 'true' &&
+        membershipVerifyForm.dataset.handlersBound !== 'true'
+      ) {
+        membershipRegisterForm.dataset.handlersBound = 'true';
+        membershipVerifyForm.dataset.handlersBound = 'true';
         membershipRegisterForm.addEventListener('submit', async (event) => {
           event.preventDefault();
           setFormFeedback('membership-register', 'pending', translateText(viewModel, 'status.membership.register.pending', 'Registration is being sent...'));
@@ -5017,9 +5407,7 @@
       }
     }
 
-    async function initTemplate() {
-      const source = await loadTemplateSourceFromRuntime();
-      const themePresets = await loadThemePresets(source);
+    function renderTemplate(source, themePresets) {
       const templateViewModel = normalizeTemplateSource(source, themePresets);
       const tenantContext = resolveTenantRuntimeContext(source, templateViewModel);
       window.RESTAURANT_TENANT_CONTEXT = tenantContext;
@@ -5046,6 +5434,36 @@
       bootstrapTurnstile(templateViewModel.membership.turnstileSiteKey);
       attachFormHandlers(templateViewModel, tenantContext);
       initPageNavigation(templateViewModel);
+      initMobileDrawer();
+    }
+
+    function revealTemplate() {
+      document.body.classList.remove('is-booting');
+    }
+
+    async function initTemplate() {
+      const fallbackSource = window.RESTAURANT_TEMPLATE_SOURCE || {};
+      const embeddedPresets = window.RESTAURANT_THEME_PRESETS && typeof window.RESTAURANT_THEME_PRESETS === 'object'
+        ? window.RESTAURANT_THEME_PRESETS
+        : {};
+
+      try {
+        renderTemplate(fallbackSource, embeddedPresets);
+        window.requestAnimationFrame(revealTemplate);
+      } catch (error) {
+        console.error('Website preview initial render failed', error);
+        revealTemplate();
+      }
+
+      try {
+        const [source, themePresets] = await Promise.all([
+          loadTemplateSourceFromRuntime(fallbackSource),
+          loadThemePresets(fallbackSource)
+        ]);
+        renderTemplate(source, themePresets);
+      } catch (error) {
+        console.error('Website preview hydration failed', error);
+      }
     }
 
     initTemplate();

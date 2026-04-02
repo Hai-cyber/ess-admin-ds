@@ -2,23 +2,23 @@
 
 **Purpose**: Track checkpoint completion as you move through phases. Update this weekly.
 
-**Last Updated**: 2026-04-01  
-**Current Phase**: Phase 1 (Booking + Platform Entry) — 89% complete
+**Last Updated**: 2026-04-02  
+**Current Phase**: Phase 1 (Booking + Platform Entry) — 91% complete
 
 ---
 
 ## Phase 1: Booking System + Platform Entry
 
 **ETA**: Q2 2026  
-**Status**: ⏳ IN PROGRESS (89% complete)
+**Status**: ⏳ IN PROGRESS (91% complete)
 
 | Checkpoint | Component | Status | Evidence | Owner | ETA |
 |-----------|-----------|--------|----------|-------|-----|
 | CP-1 | Tenant Isolation | ✅ DONE | E2E_TEST_SUMMARY.md | Team | ✅ Done |
 | CP-2 | Booking MVP | ✅ DONE | Local runtime verified: booking form render, board, staff-create, booking list, stage updates | Team | ✅ Done |
-| CP-3 | Admin UI Setup | ⏳ 75% | Tenant admin refined, billing/domain/payment section active; final go-live path still pending | @dev-lead | Mar 31 |
-| CP-10 | Platform Site + Self-Service Signup | ⏳ 92% | Live runtime verified plus fixed-skin website template contract, publish-validation gate, and runnable payload validator added for tenant website versions | @dev-lead | Mar 31 |
-| **Phase 1 Total** | — | **89%** | — | — | **Apr 15** |
+| CP-3 | Admin UI Setup | ⏳ 84% | Tenant admin now includes website content and opening-hours editor; final go-live and publish flow still pending | @dev-lead | Apr 05 |
+| CP-10 | Platform Site + Self-Service Signup | ⏳ 96% | Live runtime verified, wildcard tenant subdomains resolve, demo-payment signup walkthrough works, and website-master boot/mobile shell are production-ready | @dev-lead | Apr 05 |
+| **Phase 1 Total** | — | **91%** | — | — | **Apr 15** |
 
 ### CP-1 Evidence ✅
 
@@ -52,15 +52,20 @@
 ✅ Website-style booking flow and founder verify flow confirmed on active local runtime port `8790`
 ✅ Fixed-skin website template contract documented for the 8-skin approach
 ✅ Pre-publish validation contract documented for tenant website versions
-✅ Runnable validator added: `npm run validate:website-template`
+✅ Website master boot now renders from embedded source first and hydrates runtime payload/presets in parallel, eliminating the branded master flash on first load
+✅ Shared full-height mobile drawer shipped across all website-master routes; the old mobile tab strip is no longer the active navigation shell
+✅ Restaurant Admin now exposes a website content editor for presentation-surface fields: text, photos, button labels, address, and opening hours
+✅ Structured `opening_hours_schedule` now reaches the public website payload while keeping legacy open/close fallbacks intact
+✅ Wildcard `*.gooddining.app` tenant routing and host-based payload resolution verified live
+✅ Demo-payment self-service signup walkthrough verified live end to end with tenant provisioning and tenant subdomain access
 📌 Proposal added for next working session: build a tenant website content editor in Restaurant Admin so tenants can edit presentation-surface text, photos, button labels, opening hours, and public owner/house information without exposure to technical keys
-⏳ Real Stripe checkout wiring still pending
+⏳ Tenant website publish/release workflow still pending beyond the current preview/runtime adapter and host-based preview
 ⏳ Tenant website publish/custom-domain workflow still pending beyond the current preview/runtime adapter
 ⏳ `/api/contact/create` source route still needs smoke-test verification on a freshly reloaded worker
 ⏳ Founder/KC OTP runtime blocked locally by missing Twilio credentials
-```
+**Blockers**: Stripe test credentials, website publish/release workflow completion, worker reload for the new contact route, and Twilio credentials or a local OTP stub
 
-**Blockers**: Stripe test credentials, website publish/domain completion, worker reload for the new contact route, and Twilio credentials or a local OTP stub
+**Next**: QA the new tenant website content editor end to end on live tenant subdomains + wire the validator into actual publish/release flow + complete tenant website publish/domain ops workflow + reload worker and verify `/api/contact/create` + fix founder/KC OTP local runtime path
 
 **Next**: Build the tenant website content editor in Restaurant Admin + wire the validator into actual publish flow + complete tenant website publish/domain flow + reload worker and verify `/api/contact/create` + fix founder/KC OTP local runtime path
 

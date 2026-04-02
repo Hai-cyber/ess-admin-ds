@@ -8,7 +8,7 @@
 
 ---
 
-## 📊 CURRENT PROJECT STATUS (As of 2026-04-01)
+## 📊 CURRENT PROJECT STATUS (As of 2026-04-02)
 
 ### ✅ What's Complete
 
@@ -25,7 +25,7 @@
 - [x] Decision records (DECISIONS.md)
 - [x] Legacy reference policy formalized (Founder/KC retained as reference assets)
 
-#### Implementation (89%)
+#### Implementation (91%)
 - [x] Tenant isolation (CP-1) ✅ VERIFIED
 - [x] Booking MVP (CP-2) ✅ VERIFIED
 - [x] Booking form live
@@ -40,8 +40,14 @@
 - [x] Website master now wires booking, contact, and founder/KC membership forms to current runtime endpoints with automatic preview-safe tenant injection
 - [x] New public contact route `/api/contact/create` stores website-originated submissions in the existing `contacts` table
 - [x] Active local runtime verification on port `8790` confirmed website master render, booking create/readback, and founder register/verify persistence
+- [x] Website master boot now renders from embedded source immediately and hydrates runtime payload plus theme presets in parallel
+- [x] Shared mobile drawer navigation now replaces the old mobile tab strip across the website-master page set
+- [x] Luxury A/B polish shipped: luxury B light-surface menu contrast fixed and luxury A secondary header items removed from the active runtime path
+- [x] Restaurant Admin now includes a tenant-facing Website Content & Opening Hours editor for presentation-only website fields
+- [x] Structured `opening_hours_schedule` now reaches the public website payload alongside legacy open/close fallback values
+- [x] Wildcard tenant subdomains on `gooddining.app` and demo-payment signup walkthrough have been verified live end to end
 - [ ] Founder/KC OTP runtime still fails locally without Twilio credentials
-- [ ] Admin UI setup wizard / go-live flow still incomplete (75% complete)
+- [ ] Admin UI setup wizard / go-live flow still incomplete (84% complete)
 
 #### Contracts & Specifications (100%)
 - [x] API Contracts (all endpoints defined)
@@ -55,7 +61,7 @@
 
 ### 🔄 In Progress (Current Sprint)
 
-#### CP-3: Admin UI Setup (75% complete)
+#### CP-3: Admin UI Setup (84% complete)
 
 **What's done**:
 - [x] Restaurant admin page + platform-config API + staff API are live
@@ -64,12 +70,14 @@
 - [x] Platform landing and signup pricing copy now reflects Service POS/German checkout and Repeat Guests SMS/loyal-guest positioning in EN/DE/VI
 - [x] Included/add-on pricing notes and signup commercial summary are now language-aware instead of hardcoded English
 - [x] Website master preview can consume runtime-shaped website settings and preview tenant/company context without hardcoded tenant pages
+- [x] Tenant website editor now exists inside Restaurant Admin for text, images, button labels, navigation labels, career copy, and opening hours schedule
+- [x] Website payload now includes structured opening hours for future reuse by shop and online-order availability
 - [ ] Restaurant config form (email/phone/hours/areas)
 - [ ] Staff PIN setup
 - [ ] Payment integration setup
 - [ ] "Go Live" verification
 
-**What's blocked**: final UX completion, website publish/domain workflow completion, plus founder/KC OTP runtime depending on Twilio credentials
+**What's blocked**: final UX completion, website publish/release workflow completion, plus founder/KC OTP runtime depending on Twilio credentials
 
 **Entry points**: `src/index.js`, `public/admin.html`, `public/platform/admin.html`, `public/website-master/index.html`
 
@@ -98,7 +106,7 @@
 
 ## 🎯 Current Phase: Phase 1 (Booking System)
 
-**Status**: 89% complete  
+**Status**: 91% complete  
 **ETA**: April 15, 2026  
 **Owner**: Development team
 
@@ -106,18 +114,19 @@
 |-----------|--------|----------|----------|
 | CP-1: Tenant Isolation | ✅ DONE | E2E_TEST_SUMMARY.md | None |
 | CP-2: Booking MVP | ✅ DONE | Local runtime verified on 2026-03-30 | None |
-| CP-3: Admin UI Setup | 🔄 75% | Admin routes/UI live; go-live flow still incomplete | UX completion |
-| CP-10: Platform Site + Self-Service Signup | 🔄 92% | Platform home/contact/admin/signup verified live; localized pricing/login/signup polish shipped locally; website master preview runtime wired and smoke-tested; fixed-skin website contract and validator added | Stripe + publish/domain workflow + Twilio for founder/KC |
-| **Phase 1 Total** | **🔄 89%** | — | **Platform/founder finalization** |
+| CP-3: Admin UI Setup | 🔄 84% | Admin routes/UI live; website content editor and structured hours added; go-live flow still incomplete | UX completion |
+| CP-10: Platform Site + Self-Service Signup | 🔄 96% | Platform home/contact/admin/signup verified live; wildcard tenant subdomains resolve; demo-payment walkthrough works; website-master boot/mobile shell polished; fixed-skin website contract and validator added | Stripe + publish/release workflow + Twilio for founder/KC |
+| **Phase 1 Total** | **🔄 91%** | — | **Platform/founder finalization** |
 
 ---
 
 ## 📍 What Needs to Happen Next
 
-### Immediate (This week - Mar 22-29)
+### Immediate (This week - Apr 2-5)
 
 **Task 1**: Complete Admin UI setup wizard
-- Implement restaurant config form (name, address, phone, hours)
+- Validate and harden the new website content editor end to end on live tenant subdomains
+- Implement remaining restaurant config form gaps (name, address, phone, hours)
 - Add staff PIN setup (hostess, bartender, manager)
 - Add payment integration screen (Stripe account linking)
 - Add "Setup Complete" → "Go Live" button
@@ -135,7 +144,7 @@
 - Verification path: `npm test` + `wrangler dev --config wrangler.jsonc` + manual smoke tests
 
 **Task 3**: Complete website publish/domain workflow
-- Bind Website Builder Studio admin fields into the publish path beyond the current master preview adapter
+- Bind the new Restaurant Admin website fields into the publish/release path beyond the current master preview adapter
 - Publish tenant website output/assets and validate custom-domain serving
 - Re-test `/api/contact/create` on a freshly reloaded worker because the active `8790` runtime did not expose the new source route during smoke test
 - Time estimate: Half day

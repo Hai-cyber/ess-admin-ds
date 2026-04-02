@@ -486,6 +486,41 @@
       color: var(--text-primary);
     }
 
+    textarea.setting-value {
+      min-height: 6.5rem;
+      resize: vertical;
+      font: inherit;
+      line-height: 1.45;
+    }
+
+    .settings-subsection-title {
+      margin: 18px 0 10px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--brand);
+    }
+
+    .hours-schedule-grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .hours-schedule-row {
+      display: grid;
+      grid-template-columns: 88px 90px 1fr 1fr;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .hours-schedule-row label {
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .hours-schedule-row.is-closed input[type="time"] {
+      opacity: 0.5;
+    }
+
     .secret-status {
       display: inline-block;
       padding: 4px 10px;
@@ -754,6 +789,10 @@
             <div id="companyProfileList"></div>
           </div>
           <div class="settings-section">
+            <div class="settings-section-title">Website Content & Opening Hours</div>
+            <div id="websiteContentList"></div>
+          </div>
+          <div class="settings-section">
             <div class="settings-section-title">Operations & Capacity</div>
             <div id="operationalSettingsList"></div>
           </div>
@@ -816,6 +855,7 @@
       'social_google_business_url',
       'business_hours_open',
       'business_hours_close',
+      'business_hours_schedule_json',
       'closed_weekday',
       'min_booking_advance_min',
       'default_booking_duration',
@@ -831,7 +871,24 @@
       'kc_redirect_link',
       'founder_terms_link',
       'kc_terms_link',
-      'privacy_link'
+      'privacy_link',
+      'site_template',
+      'site_theme_variant',
+      'site_content_preset',
+      'site_language',
+      'site_tagline',
+      'site_hero_title',
+      'site_hero_subtitle',
+      'site_about_title',
+      'site_about_body',
+      'site_primary_cta_text',
+      'site_secondary_cta_text',
+      'site_contact_address',
+      'site_accent_color',
+      'site_branding_json',
+      'site_navigation_json',
+      'site_content_json',
+      'site_career_json'
     ];
 
     const OPERATIONAL_LABELS = {
@@ -844,6 +901,7 @@
       social_google_business_url: 'Google Business URL',
       business_hours_open: 'Open Time',
       business_hours_close: 'Close Time',
+      business_hours_schedule_json: 'Opening Hours Schedule',
       closed_weekday: 'Closed Weekday',
       min_booking_advance_min: 'Min Booking Advance (min)',
       default_booking_duration: 'Default Booking Duration (min)',
@@ -859,8 +917,81 @@
       kc_redirect_link: 'KC Redirect Link (path or URL)',
       founder_terms_link: 'Founder Terms Link (path or URL)',
       kc_terms_link: 'KC Terms Link (path or URL)',
-      privacy_link: 'Privacy Link (path or URL)'
+      privacy_link: 'Privacy Link (path or URL)',
+      site_template: 'Template Family',
+      site_theme_variant: 'Theme Variant',
+      site_content_preset: 'Content Preset',
+      site_language: 'Website Language',
+      site_tagline: 'Website Tagline',
+      site_hero_title: 'Hero Title',
+      site_hero_subtitle: 'Hero Subtitle',
+      site_about_title: 'About Title',
+      site_about_body: 'About Body',
+      site_primary_cta_text: 'Primary CTA Label',
+      site_secondary_cta_text: 'Secondary CTA Label',
+      site_contact_address: 'Public Contact Address',
+      site_accent_color: 'Accent Color',
+      site_branding_json: 'Branding Overrides JSON',
+      site_navigation_json: 'Navigation Overrides JSON',
+      site_content_json: 'Content Overrides JSON',
+      site_career_json: 'Career Overrides JSON'
     };
+
+    const WEBSITE_CONTENT_SETTING_KEYS = [
+      'site_template',
+      'site_theme_variant',
+      'site_content_preset',
+      'site_language',
+      'site_tagline',
+      'site_hero_title',
+      'site_hero_subtitle',
+      'site_about_title',
+      'site_about_body',
+      'site_primary_cta_text',
+      'site_secondary_cta_text',
+      'site_contact_address',
+      'site_accent_color',
+      'business_hours_schedule_json'
+    ];
+
+    const WEBSITE_NAV_LABEL_KEYS = [
+      'home',
+      'menu',
+      'shop',
+      'reservation',
+      'about',
+      'contact',
+      'career',
+      'founder'
+    ];
+
+    const WEBSITE_OPERATIONAL_HIDDEN_KEYS = new Set([
+      'website_url',
+      'standard_contact_link',
+      'booking_email',
+      'social_instagram_url',
+      'social_facebook_url',
+      'social_tiktok_url',
+      'social_google_business_url',
+      ...WEBSITE_CONTENT_SETTING_KEYS,
+      'business_hours_open',
+      'business_hours_close',
+      'closed_weekday',
+      'site_branding_json',
+      'site_navigation_json',
+      'site_content_json',
+      'site_career_json'
+    ]);
+
+    const WEEKDAY_OPTIONS = [
+      { value: '1', label: 'Monday' },
+      { value: '2', label: 'Tuesday' },
+      { value: '3', label: 'Wednesday' },
+      { value: '4', label: 'Thursday' },
+      { value: '5', label: 'Friday' },
+      { value: '6', label: 'Saturday' },
+      { value: '0', label: 'Sunday' }
+    ];
 
     const SOCIAL_SETTING_KEYS = [
       'social_instagram_url',
@@ -1539,6 +1670,98 @@
         .replace(/'/g, '&#39;');
     }
 
+    function safeParseJsonObject(value) {
+      if (!value || typeof value !== 'string') return {};
+
+      try {
+        const parsed = JSON.parse(value);
+        return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+      } catch {
+        return {};
+      }
+    }
+
+    function normalizeTimeValue(value) {
+      const normalized = String(value || '').trim();
+      return /^([01]\d|2[0-3]):[0-5]\d$/.test(normalized) ? normalized : '';
+    }
+
+    function parseOpeningHoursSchedule(value) {
+      const fallbackOpen = normalizeTimeValue(getOperationalValue('business_hours_open'));
+      const fallbackClose = normalizeTimeValue(getOperationalValue('business_hours_close'));
+      const fallbackClosedWeekday = String(getOperationalValue('closed_weekday') || '').trim();
+      const fallback = WEEKDAY_OPTIONS.map((day) => ({
+        day: day.value,
+        closed: fallbackClosedWeekday === day.value,
+        open: fallbackClosedWeekday === day.value ? '' : fallbackOpen,
+        close: fallbackClosedWeekday === day.value ? '' : fallbackClose
+      }));
+
+      if (!value) return fallback;
+
+      try {
+        const parsed = JSON.parse(value);
+        if (!Array.isArray(parsed) || !parsed.length) return fallback;
+        const parsedMap = new Map(parsed.map((row) => [String(row?.day || '').trim(), row]));
+        return fallback.map((row) => {
+          const next = parsedMap.get(row.day);
+          if (!next) return row;
+          const closed = next?.closed === true;
+          return {
+            day: row.day,
+            closed,
+            open: closed ? '' : (normalizeTimeValue(next?.open) || row.open),
+            close: closed ? '' : (normalizeTimeValue(next?.close) || row.close)
+          };
+        });
+      } catch {
+        return fallback;
+      }
+    }
+
+    function deriveLegacyOpeningHours(schedule) {
+      const rows = Array.isArray(schedule) ? schedule : [];
+      const openRows = rows.filter((row) => !row.closed && row.open && row.close);
+      const closedRows = rows.filter((row) => row.closed);
+      const sameHours = openRows.length > 0 && openRows.every((row) => row.open === openRows[0].open && row.close === openRows[0].close);
+
+      return {
+        open: sameHours ? openRows[0].open : '',
+        close: sameHours ? openRows[0].close : '',
+        closedWeekday: closedRows.length === 1 ? closedRows[0].day : ''
+      };
+    }
+
+    function pruneEmptyObject(value) {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+
+      return Object.entries(value).reduce((acc, [key, entryValue]) => {
+        if (entryValue == null) return acc;
+        if (typeof entryValue === 'string') {
+          const trimmed = entryValue.trim();
+          if (!trimmed) return acc;
+          acc[key] = trimmed;
+          return acc;
+        }
+        if (Array.isArray(entryValue)) {
+          if (entryValue.length) acc[key] = entryValue;
+          return acc;
+        }
+        if (typeof entryValue === 'object') {
+          const nested = pruneEmptyObject(entryValue);
+          if (Object.keys(nested).length) acc[key] = nested;
+          return acc;
+        }
+        acc[key] = entryValue;
+        return acc;
+      }, {});
+    }
+
+    function stringifyOptionalJson(value) {
+      const cleaned = pruneEmptyObject(value);
+      return Object.keys(cleaned).length ? JSON.stringify(cleaned) : '';
+    }
+
     async function loadIntegrationConfig() {
       if (!currentUser?.pin) {
         integrationConfig = { __error: 'Please login again to manage integration settings.' };
@@ -1647,6 +1870,141 @@
       return labels[String(value)] || String(value || '');
     }
 
+    function renderWebsiteContentSection() {
+      const container = document.getElementById('websiteContentList');
+      if (!container) return;
+
+      if (!isAdminUser()) {
+        container.innerHTML = '<div class="integration-note">Admin only.</div>';
+        return;
+      }
+
+      if (platformConfigError) {
+        container.innerHTML = `<div class="integration-note" style="color: var(--danger);">${escapeHtml(platformConfigError)}</div>`;
+        return;
+      }
+
+      const brandingOverrides = safeParseJsonObject(getOperationalValue('site_branding_json'));
+      const navigationOverrides = safeParseJsonObject(getOperationalValue('site_navigation_json'));
+      const contentOverrides = safeParseJsonObject(getOperationalValue('site_content_json'));
+      const careerOverrides = safeParseJsonObject(getOperationalValue('site_career_json'));
+      const schedule = parseOpeningHoursSchedule(getOperationalValue('business_hours_schedule_json'));
+
+      const contentFields = [
+        ['site_template', 'Template Family', 'text', 'premium'],
+        ['site_theme_variant', 'Theme Variant', 'text', 'theme-luxury-a'],
+        ['site_content_preset', 'Content Preset', 'text', 'theme-luxury-a'],
+        ['site_language', 'Website Language', 'text', 'en'],
+        ['site_tagline', 'Tagline', 'text', 'Short line under the restaurant name'],
+        ['site_hero_title', 'Hero Title', 'text', 'Main homepage headline'],
+        ['site_hero_subtitle', 'Hero Subtitle', 'textarea', 'Supporting copy below the hero title'],
+        ['site_about_title', 'About Title', 'text', 'Section title'],
+        ['site_about_body', 'About Body', 'textarea', 'Short story for the restaurant'],
+        ['site_primary_cta_text', 'Primary Button Label', 'text', 'Reserve'],
+        ['site_secondary_cta_text', 'Secondary Button Label', 'text', 'View menu'],
+        ['site_contact_address', 'Public Contact Address', 'textarea', 'Address shown on website contact/footer areas'],
+        ['site_accent_color', 'Accent Color', 'text', '#2f3a20']
+      ];
+
+      container.innerHTML = `
+        ${contentFields.map(([key, label, type, placeholder]) => `
+          <div class="setting-row">
+            <div class="setting-label">${escapeHtml(label)}</div>
+            ${type === 'textarea'
+              ? `<textarea class="setting-value" id="op_${key}" rows="3" placeholder="${escapeHtml(placeholder)}">${escapeHtml(getOperationalValue(key))}</textarea>`
+              : `<input type="text" class="setting-value" id="op_${key}" value="${escapeHtml(getOperationalValue(key))}" placeholder="${escapeHtml(placeholder)}">`}
+          </div>
+        `).join('')}
+
+        <div class="settings-subsection-title">Visuals & Footer</div>
+        <div class="setting-row">
+          <div class="setting-label">Logo Image URL</div>
+          <input type="url" class="setting-value" id="site_branding_logo_image" value="${escapeHtml(brandingOverrides.logo_image || '')}" placeholder="https://...">
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Hero Image URL</div>
+          <input type="url" class="setting-value" id="site_content_hero_image" value="${escapeHtml(contentOverrides.hero_image || '')}" placeholder="https://...">
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Footer Copy</div>
+          <textarea class="setting-value" id="site_content_footer_copy" rows="2" placeholder="Copyright ...">${escapeHtml(contentOverrides.footer_copy || '')}</textarea>
+        </div>
+
+        <div class="settings-subsection-title">Header & Navigation</div>
+        ${WEBSITE_NAV_LABEL_KEYS.map((key) => `
+          <div class="setting-row">
+            <div class="setting-label">${escapeHtml(key.charAt(0).toUpperCase() + key.slice(1))} Label</div>
+            <input type="text" class="setting-value" id="nav_label_${key}" value="${escapeHtml(navigationOverrides?.labels?.[key] || '')}">
+          </div>
+        `).join('')}
+        <div class="setting-row">
+          <div class="setting-label">Header Contact Button</div>
+          <input type="text" class="setting-value" id="site_nav_header_contact_label" value="${escapeHtml(navigationOverrides.header_contact_label || '')}">
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Header Reserve Button</div>
+          <input type="text" class="setting-value" id="site_nav_header_reserve_label" value="${escapeHtml(navigationOverrides.header_reserve_label || '')}">
+        </div>
+
+        <div class="settings-subsection-title">Career Page</div>
+        <div class="setting-row">
+          <div class="setting-label">Career Eyebrow</div>
+          <input type="text" class="setting-value" id="site_career_eyebrow" value="${escapeHtml(careerOverrides.eyebrow || '')}">
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Career Title</div>
+          <input type="text" class="setting-value" id="site_career_title" value="${escapeHtml(careerOverrides.title || '')}">
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Career Body</div>
+          <textarea class="setting-value" id="site_career_body" rows="3">${escapeHtml(careerOverrides.body || '')}</textarea>
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Career CTA Label</div>
+          <input type="text" class="setting-value" id="site_career_cta_label" value="${escapeHtml(careerOverrides.cta_label || '')}">
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Career CTA Link</div>
+          <input type="text" class="setting-value" id="site_career_cta_href" value="${escapeHtml(careerOverrides.cta_href || '')}" placeholder="contact.html?page=contact">
+        </div>
+
+        <div class="settings-subsection-title">Opening Hours Schedule</div>
+        <div class="hours-schedule-grid">
+          ${schedule.map((row) => `
+            <div class="hours-schedule-row ${row.closed ? 'is-closed' : ''}">
+              <label for="hours_closed_${row.day}">${escapeHtml(weekdayLabel(row.day))}</label>
+              <label><input type="checkbox" id="hours_closed_${row.day}" ${row.closed ? 'checked' : ''}> Closed</label>
+              <input type="time" class="setting-value" id="hours_open_${row.day}" value="${escapeHtml(row.open || '')}" ${row.closed ? 'disabled' : ''}>
+              <input type="time" class="setting-value" id="hours_close_${row.day}" value="${escapeHtml(row.close || '')}" ${row.closed ? 'disabled' : ''}>
+            </div>
+          `).join('')}
+        </div>
+
+        <div class="integration-note">This editor only exposes presentation fields: text, photos, button labels, address, and opening hours. Technical payload keys stay hidden. Structured opening hours are stored now so they can later feed shop and online order flows.</div>
+        <div class="setting-row">
+          <div></div>
+          <div style="display:flex;justify-content:flex-end;gap:8px;">
+            <button class="btn-small btn-secondary" onclick="reloadPlatformConfig()">Reload</button>
+            <button class="btn-small btn-primary" onclick="savePlatformConfig()">Save Website Content</button>
+          </div>
+        </div>
+      `;
+
+      WEEKDAY_OPTIONS.forEach((day) => {
+        const closedInput = document.getElementById(`hours_closed_${day.value}`);
+        const openInput = document.getElementById(`hours_open_${day.value}`);
+        const closeInput = document.getElementById(`hours_close_${day.value}`);
+        if (!closedInput || !openInput || !closeInput) return;
+
+        closedInput.addEventListener('change', () => {
+          const disabled = closedInput.checked;
+          openInput.disabled = disabled;
+          closeInput.disabled = disabled;
+          openInput.closest('.hours-schedule-row')?.classList.toggle('is-closed', disabled);
+        });
+      });
+    }
+
     function renderCompanyProfileSection() {
       const container = document.getElementById('companyProfileList');
       if (!container) return;
@@ -1729,7 +2087,7 @@
         return;
       }
 
-      const keys = OPERATIONAL_SETTING_KEYS.filter(key => !['website_url', 'standard_contact_link', 'booking_email', ...SOCIAL_SETTING_KEYS].includes(key));
+      const keys = OPERATIONAL_SETTING_KEYS.filter((key) => !WEBSITE_OPERATIONAL_HIDDEN_KEYS.has(key));
       container.innerHTML = keys.map((key) => {
         const value = getOperationalValue(key);
 
@@ -1829,9 +2187,75 @@
     async function reloadPlatformConfig() {
       await loadPlatformConfig();
       renderCompanyProfileSection();
+      renderWebsiteContentSection();
       renderOperationalSettingsSection();
       renderSocialSettingsSection();
       renderModuleSettingsSection();
+    }
+
+    function buildWebsiteContentOperationalSettings() {
+      const next = {};
+
+      WEBSITE_CONTENT_SETTING_KEYS.forEach((key) => {
+        if (key === 'business_hours_schedule_json') return;
+        const input = document.getElementById(`op_${key}`);
+        if (input) next[key] = input.value.trim();
+      });
+
+      const currentNavigationOverrides = safeParseJsonObject(getOperationalValue('site_navigation_json'));
+      const navigationOverrides = {
+        ...currentNavigationOverrides,
+        labels: {
+          ...(currentNavigationOverrides.labels && typeof currentNavigationOverrides.labels === 'object' ? currentNavigationOverrides.labels : {})
+        },
+        header_contact_label: document.getElementById('site_nav_header_contact_label')?.value.trim() || '',
+        header_reserve_label: document.getElementById('site_nav_header_reserve_label')?.value.trim() || ''
+      };
+      WEBSITE_NAV_LABEL_KEYS.forEach((key) => {
+        navigationOverrides.labels[key] = document.getElementById(`nav_label_${key}`)?.value.trim() || '';
+      });
+
+      const brandingOverrides = {
+        ...safeParseJsonObject(getOperationalValue('site_branding_json')),
+        logo_image: document.getElementById('site_branding_logo_image')?.value.trim() || ''
+      };
+
+      const contentOverrides = {
+        ...safeParseJsonObject(getOperationalValue('site_content_json')),
+        hero_image: document.getElementById('site_content_hero_image')?.value.trim() || '',
+        footer_copy: document.getElementById('site_content_footer_copy')?.value.trim() || ''
+      };
+
+      const careerOverrides = {
+        ...safeParseJsonObject(getOperationalValue('site_career_json')),
+        eyebrow: document.getElementById('site_career_eyebrow')?.value.trim() || '',
+        title: document.getElementById('site_career_title')?.value.trim() || '',
+        body: document.getElementById('site_career_body')?.value.trim() || '',
+        cta_label: document.getElementById('site_career_cta_label')?.value.trim() || '',
+        cta_href: document.getElementById('site_career_cta_href')?.value.trim() || ''
+      };
+
+      const schedule = WEEKDAY_OPTIONS.map((day) => {
+        const closed = !!document.getElementById(`hours_closed_${day.value}`)?.checked;
+        return {
+          day: day.value,
+          closed,
+          open: closed ? '' : normalizeTimeValue(document.getElementById(`hours_open_${day.value}`)?.value),
+          close: closed ? '' : normalizeTimeValue(document.getElementById(`hours_close_${day.value}`)?.value)
+        };
+      });
+      const legacyHours = deriveLegacyOpeningHours(schedule);
+
+      next.business_hours_schedule_json = JSON.stringify(schedule);
+      next.business_hours_open = legacyHours.open;
+      next.business_hours_close = legacyHours.close;
+      next.closed_weekday = legacyHours.closedWeekday;
+      next.site_navigation_json = stringifyOptionalJson(navigationOverrides);
+      next.site_branding_json = stringifyOptionalJson(brandingOverrides);
+      next.site_content_json = stringifyOptionalJson(contentOverrides);
+      next.site_career_json = stringifyOptionalJson(careerOverrides);
+
+      return next;
     }
 
     async function savePlatformConfig() {
@@ -1861,8 +2285,12 @@
       const operationalKeysToSave = canManageFullPlatform ? OPERATIONAL_SETTING_KEYS : SOCIAL_SETTING_KEYS;
       operationalKeysToSave.forEach((key) => {
         const input = document.getElementById(`op_${key}`);
-        nextOperationalSettings[key] = input ? input.value.trim() : '';
+        if (input) nextOperationalSettings[key] = input.value.trim();
       });
+
+      if (canManageFullPlatform) {
+        Object.assign(nextOperationalSettings, buildWebsiteContentOperationalSettings());
+      }
 
       const nextModules = {};
       if (canManageFullPlatform) {
@@ -2362,6 +2790,7 @@
     // ==================== PAGE 4: SETTINGS ====================
     function renderSettingsPage() {
       renderCompanyProfileSection();
+      renderWebsiteContentSection();
       renderOperationalSettingsSection();
       renderSocialSettingsSection();
       renderModuleSettingsSection();
