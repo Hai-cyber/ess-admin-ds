@@ -1386,6 +1386,40 @@ async function submitSignup() {
   }
 }
 
+async function confirmSignupCheckoutFromUrl() {
+  const params = new URLSearchParams(window.location.search || '');
+  if (params.get('checkout') !== 'success') return;
+
+  const companyId = String(params.get('company_id') || '').trim();
+  const sessionId = String(params.get('session_id') || '').trim();
+  if (!companyId || !sessionId) return;
+
+  try {
+    const res = await fetch(`/api/platform/signup/confirm-payment?company_id=${encodeURIComponent(companyId)}&session_id=${encodeURIComponent(sessionId)}`);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) {
+      const errEl = document.getElementById('signup-error');
+      if (errEl) {
+        errEl.textContent = data.error || 'Unable to confirm Stripe checkout yet.';
+        errEl.style.display = 'block';
+      }
+      return;
+    }
+
+    const successBody = document.getElementById('success-body');
+    if (successBody) {
+      successBody.innerHTML = `Stripe payment confirmed.<br>Company ID: <strong>${companyId}</strong><br>Payment status: <strong>${data.payment_status || 'stripe_paid'}</strong><br>Session: <strong>${sessionId}</strong>`;
+    }
+    goStep(4);
+  } catch {
+    const errEl = document.getElementById('signup-error');
+    if (errEl) {
+      errEl.textContent = 'Network error while confirming Stripe checkout.';
+      errEl.style.display = 'block';
+    }
+  }
+}
+
 // ── Contact form ──────────────────────────────────────
 
 async function submitContact(e) {
@@ -1426,6 +1460,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   applyLang();
   loadPlatformPlans();
+  confirmSignupCheckoutFromUrl();
 
   Object.assign(window, {
     setLang,

@@ -285,6 +285,8 @@ const OPERATIONAL_SETTING_KEYS = [
   'billing_include_support_retainer',
   'billing_include_setup',
   'demo_payment_status',
+  'demo_payment_reference',
+  'demo_payment_confirmed_at',
   'demo_payment_due_today_eur',
   'demo_payment_recurring_monthly_eur',
   'social_instagram_url',
@@ -394,6 +396,8 @@ const OPERATIONAL_KEY_DESCRIPTIONS = {
   billing_include_support_retainer: 'Whether the tenant invoice includes monthly IT support retainer',
   billing_include_setup: 'Whether the tenant invoice includes one-time setup fee',
   demo_payment_status: 'Current payment status for signup/demo billing',
+  demo_payment_reference: 'External payment reference such as a Stripe checkout session id',
+  demo_payment_confirmed_at: 'Timestamp when payment moved from pending to confirmed',
   demo_payment_due_today_eur: 'Due today amount for initial signup invoice',
   demo_payment_recurring_monthly_eur: 'Recurring monthly amount for the tenant invoice',
   social_instagram_url: 'Instagram profile URL',
@@ -888,11 +892,12 @@ async function createStripeCheckoutSession(env, payload = {}) {
   if (stripeMode === 'mock') {
     const sessionId = `cs_test_mock_${crypto.randomUUID()}`;
     const successUrl = String(payload.successUrl || '').trim();
-    const joiner = successUrl.includes('?') ? '&' : '?';
     return {
       ok: true,
       id: sessionId,
-      url: `${successUrl}${joiner}mock_stripe_session=1&session_id=${encodeURIComponent(sessionId)}`
+      url: successUrl.includes('{CHECKOUT_SESSION_ID}')
+        ? successUrl.replaceAll('{CHECKOUT_SESSION_ID}', encodeURIComponent(sessionId))
+        : `${successUrl}${successUrl.includes('?') ? '&' : '?'}session_id=${encodeURIComponent(sessionId)}&mock_stripe_session=1`
     };
   }
 
@@ -944,6 +949,173 @@ async function createStripeCheckoutSession(env, payload = {}) {
     id: String(data?.id || '').trim(),
     url: String(data?.url || '').trim()
   };
+}
+
+async function retrieveStripeCheckoutSession(env, sessionId) {
+  const stripeMode = String(env?.STRIPE_MODE || '').trim().toLowerCase();
+  if (stripeMode === 'mock') {
+    return {
+      ok: true,
+      id: String(sessionId || '').trim(),
+      status: 'complete',
+      payment_status: 'paid'
+    };
+  }
+
+  const stripeKey = String(env?.STRIPE_API_KEY || '').trim();
+  if (!stripeKey) {
+    return { ok: false, status: 503, code: 'stripe_unavailable', error: 'Stripe API key is not configured.' };
+  }
+
+  const response = await fetch(`https://api.stripe.com/v1/checkout/sessions/${encodeURIComponent(String(sessionId || '').trim())}`, {
+    headers: {
+      Authorization: `Bearer ${stripeKey}`
+    }
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    return {
+      ok: false,
+      status: 503,
+      code: 'stripe_unavailable',
+      error: String(data?.error?.message || 'Unable to retrieve Stripe checkout session.'),
+      stripeErrorCode: String(data?.error?.code || '').trim()
+    };
+  }
+
+  return {
+    ok: true,
+    id: String(data?.id || '').trim(),
+    status: String(data?.status || '').trim(),
+    payment_status: String(data?.payment_status || '').trim()
+  };
+}
+
+async function confirmPlatformSignupPayment(env, payload = {}) {
+  const companyId = Number(payload.companyId || 0);
+  const sessionId = String(payload.sessionId || '').trim();
+  if (!companyId || !sessionId) {
+    return { ok: false, status: 400, code: 'validation_failed', error: 'company_id and session_id are required.' };
+  }
+
+  const signup = await env.DB.prepare(`
+    SELECT id, company_id, payment_status, payment_method, payment_reference
+    FROM platform_signups
+    WHERE company_id = ? AND payment_reference = ?
+    ORDER BY created_at DESC
+    LIMIT 1
+  `).bind(companyId, sessionId).first();
+
+  if (!signup) {
+    return { ok: false, status: 404, code: 'payment_not_found', error: 'Pending checkout record not found.' };
+  }
+
+  if (String(signup.payment_status || '').trim().toLowerCase() === 'stripe_paid') {
+    return { ok: true, alreadyConfirmed: true, paymentStatus: 'stripe_paid', sessionId };
+  }
+
+  const checkoutSession = await retrieveStripeCheckoutSession(env, sessionId);
+  if (!checkoutSession.ok) {
+    return checkoutSession;
+  }
+
+  if (String(checkoutSession.payment_status || '').trim().toLowerCase() !== 'paid') {
+    return {
+      ok: false,
+      status: 409,
+      code: 'payment_not_completed',
+      error: 'Stripe checkout is not paid yet.',
+      stripe_status: checkoutSession.status,
+      stripe_payment_status: checkoutSession.payment_status
+    };
+  }
+
+  const now = new Date().toISOString();
+  await setPlatformSignupPaymentState(env, {
+    signupId: signup.id,
+    companyId,
+    sessionId,
+    paymentStatus: 'stripe_paid',
+    confirmedAt: now,
+    updatedBy: 'stripe-confirmation'
+  });
+
+  return {
+    ok: true,
+    paymentStatus: 'stripe_paid',
+    confirmedAt: now,
+    sessionId
+  };
+}
+
+async function setPlatformSignupPaymentState(env, payload = {}) {
+  const signupId = String(payload.signupId || '').trim();
+  const companyId = Number(payload.companyId || 0);
+  const sessionId = String(payload.sessionId || '').trim();
+  const paymentStatus = String(payload.paymentStatus || '').trim();
+  const confirmedAt = String(payload.confirmedAt || '').trim() || null;
+  const updatedBy = String(payload.updatedBy || 'payment-state').trim();
+
+  if (!signupId || !companyId || !paymentStatus) {
+    return false;
+  }
+
+  await env.DB.prepare(`
+    UPDATE platform_signups
+    SET payment_status = ?, payment_confirmed_at = ?
+    WHERE id = ?
+  `).bind(paymentStatus, confirmedAt, signupId).run();
+
+  await Promise.all([
+    upsertSettingValue(env, companyId, 'demo_payment_status', paymentStatus, OPERATIONAL_KEY_DESCRIPTIONS.demo_payment_status, updatedBy),
+    upsertSettingValue(env, companyId, 'demo_payment_confirmed_at', confirmedAt || '', OPERATIONAL_KEY_DESCRIPTIONS.demo_payment_confirmed_at, updatedBy),
+    upsertSettingValue(env, companyId, 'demo_payment_reference', sessionId, OPERATIONAL_KEY_DESCRIPTIONS.demo_payment_reference, updatedBy)
+  ]);
+
+  return true;
+}
+
+function hexEncode(bytes) {
+  return Array.from(new Uint8Array(bytes)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function verifyStripeWebhookSignature(payloadText, signatureHeader, secret) {
+  const parts = String(signatureHeader || '').split(',').map((item) => item.trim()).filter(Boolean);
+  const timestamp = parts.find((part) => part.startsWith('t='))?.slice(2) || '';
+  const signature = parts.find((part) => part.startsWith('v1='))?.slice(3) || '';
+  if (!timestamp || !signature || !secret) return false;
+
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const signed = await crypto.subtle.sign('HMAC', key, encoder.encode(`${timestamp}.${payloadText}`));
+  return hexEncode(signed) === signature;
+}
+
+async function parseStripeWebhookEvent(env, request) {
+  const payloadText = await request.text();
+  const stripeMode = String(env?.STRIPE_MODE || '').trim().toLowerCase();
+  if (stripeMode === 'mock') {
+    return { ok: true, event: JSON.parse(payloadText || '{}') };
+  }
+
+  const secret = String(env?.STRIPE_WEBHOOK_SECRET || '').trim();
+  if (!secret) {
+    return { ok: false, status: 503, code: 'stripe_webhook_unconfigured', error: 'Stripe webhook secret is not configured.' };
+  }
+
+  const signatureHeader = request.headers.get('stripe-signature') || '';
+  const valid = await verifyStripeWebhookSignature(payloadText, signatureHeader, secret);
+  if (!valid) {
+    return { ok: false, status: 400, code: 'invalid_webhook_signature', error: 'Invalid Stripe webhook signature.' };
+  }
+
+  return { ok: true, event: JSON.parse(payloadText || '{}') };
 }
 
 function normalizeMediaTags(rawTags) {
@@ -2086,8 +2258,8 @@ async function getPlatformAdminDashboard(env) {
     getPlatformMarketingSettings(env),
     env.DB.prepare(`
       SELECT id, company_id, organization_id, restaurant_name, owner_email, owner_phone, subdomain, plan,
-             website_template, staff_users, country, payment_status, due_today_eur, recurring_monthly_eur,
-             follow_up_status, follow_up_note, followed_up_at, created_at
+             website_template, staff_users, country, payment_status, payment_method, payment_reference, payment_confirmed_at,
+             due_today_eur, recurring_monthly_eur, follow_up_status, follow_up_note, followed_up_at, created_at
       FROM platform_signups
       ORDER BY created_at DESC
       LIMIT 100
@@ -3820,7 +3992,7 @@ export default {
             amountEur: chargeAmountEur,
             customerEmail: ownerEmail,
             productName: `${restaurantName} ${plan} signup`,
-            successUrl: `${url.origin}/platform/signup.html?checkout=success&company_id=${companyId}`,
+            successUrl: `${url.origin}/platform/signup.html?checkout=success&company_id=${companyId}&session_id={CHECKOUT_SESSION_ID}`,
             cancelUrl: `${url.origin}/platform/signup.html?checkout=cancelled`,
             metadata: {
               company_id: companyId,
@@ -3921,6 +4093,8 @@ export default {
           billing_include_support_retainer: String(parseBooleanLike(extras?.includeSupportRetainer, false)),
           demo_payment_status: paymentSummary.paymentStatus,
           demo_payment_method: paymentSummary.paymentMethod,
+          demo_payment_reference: paymentSummary.checkoutSessionId || '',
+          demo_payment_confirmed_at: paymentSummary.paymentStatus === 'stripe_paid' || paymentSummary.paymentStatus === 'demo_paid' ? now : '',
           demo_payment_due_today_eur: String(paymentSummary.dueTodayEur),
           demo_payment_recurring_monthly_eur: String(paymentSummary.recurringMonthlyEur),
           accepted_payment_methods_json: JSON.stringify([paymentSummary.paymentMethod]),
@@ -3947,9 +4121,9 @@ export default {
         await env.DB.prepare(`
           INSERT INTO platform_signups (
             id, company_id, organization_id, restaurant_name, owner_email, owner_phone, subdomain, plan,
-            website_template, staff_users, country, payment_status, due_today_eur, recurring_monthly_eur,
-            raw_payload_json, created_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            website_template, staff_users, country, payment_status, payment_method, payment_reference, payment_confirmed_at,
+            due_today_eur, recurring_monthly_eur, raw_payload_json, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).bind(
           crypto.randomUUID(),
           companyId,
@@ -3963,6 +4137,9 @@ export default {
           Math.max(1, staffUsers),
           country,
           paymentSummary.paymentStatus,
+          paymentSummary.paymentMethod,
+          paymentSummary.checkoutSessionId || null,
+          paymentSummary.paymentStatus === 'stripe_paid' || paymentSummary.paymentStatus === 'demo_paid' ? now : null,
           Number(paymentSummary.dueTodayEur || 0),
           Number(paymentSummary.recurringMonthlyEur || 0),
           JSON.stringify(body || {}),
@@ -3988,6 +4165,83 @@ export default {
           admin_pin_hint: adminPin,
           status: 'trial_active'
         }, { status: 201 });
+      } catch (e) {
+        return Response.json({ ok: false, error: e.message }, { status: 500 });
+      }
+    }
+
+    if (url.pathname === "/api/platform/signup/confirm-payment" && request.method === "GET") {
+      try {
+        const companyId = Number(url.searchParams.get('company_id') || 0);
+        const sessionId = String(url.searchParams.get('session_id') || '').trim();
+        const result = await confirmPlatformSignupPayment(env, { companyId, sessionId });
+        if (!result.ok) {
+          return Response.json({ ok: false, code: result.code, error: result.error, stripe_status: result.stripe_status, stripe_payment_status: result.stripe_payment_status }, { status: result.status || 500 });
+        }
+
+        return Response.json({ ok: true, payment_status: result.paymentStatus, confirmed_at: result.confirmedAt || null, session_id: result.sessionId, already_confirmed: !!result.alreadyConfirmed });
+      } catch (e) {
+        return Response.json({ ok: false, error: e.message }, { status: 500 });
+      }
+    }
+
+    if (url.pathname === "/api/integrations/stripe/webhook" && request.method === "POST") {
+      try {
+        const parsed = await parseStripeWebhookEvent(env, request);
+        if (!parsed.ok) {
+          return Response.json({ ok: false, code: parsed.code, error: parsed.error }, { status: parsed.status || 400 });
+        }
+
+        const event = parsed.event || {};
+        const eventType = String(event.type || '').trim();
+        const session = event?.data?.object || {};
+        const sessionId = String(session.id || '').trim();
+        const companyId = Number(session?.metadata?.company_id || 0);
+
+        if (!sessionId || !companyId) {
+          return Response.json({ ok: true, received: true, ignored: true, reason: 'missing_checkout_metadata' });
+        }
+
+        const signup = await env.DB.prepare(`
+          SELECT id, company_id, payment_status
+          FROM platform_signups
+          WHERE company_id = ? AND payment_reference = ?
+          ORDER BY created_at DESC
+          LIMIT 1
+        `).bind(companyId, sessionId).first();
+
+        if (!signup?.id) {
+          return Response.json({ ok: true, received: true, ignored: true, reason: 'signup_not_found' });
+        }
+
+        if (eventType === 'checkout.session.completed' || eventType === 'checkout.session.async_payment_succeeded') {
+          const confirmedAt = new Date().toISOString();
+          await setPlatformSignupPaymentState(env, {
+            signupId: signup.id,
+            companyId,
+            sessionId,
+            paymentStatus: 'stripe_paid',
+            confirmedAt,
+            updatedBy: 'stripe-webhook'
+          });
+
+          return Response.json({ ok: true, received: true, action: 'payment_confirmed', payment_status: 'stripe_paid', session_id: sessionId });
+        }
+
+        if (eventType === 'checkout.session.expired' || eventType === 'checkout.session.async_payment_failed') {
+          await setPlatformSignupPaymentState(env, {
+            signupId: signup.id,
+            companyId,
+            sessionId,
+            paymentStatus: eventType === 'checkout.session.expired' ? 'stripe_expired' : 'stripe_failed',
+            confirmedAt: null,
+            updatedBy: 'stripe-webhook'
+          });
+
+          return Response.json({ ok: true, received: true, action: 'payment_failed', payment_status: eventType === 'checkout.session.expired' ? 'stripe_expired' : 'stripe_failed', session_id: sessionId });
+        }
+
+        return Response.json({ ok: true, received: true, ignored: true, event_type: eventType });
       } catch (e) {
         return Response.json({ ok: false, error: e.message }, { status: 500 });
       }

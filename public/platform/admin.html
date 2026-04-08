@@ -26,6 +26,10 @@
     .badge-approved { background: #ecfdf5; color: #166534; }
     .badge-rejected { background: #fef2f2; color: #b91c1c; }
     .badge-suspended { background: #111827; color: white; }
+    .badge-stripe_checkout_pending { background: #eff6ff; color: #1d4ed8; }
+    .badge-stripe_paid { background: #ecfdf5; color: #166534; }
+    .badge-stripe_failed, .badge-stripe_expired { background: #fef2f2; color: #b91c1c; }
+    .badge-demo_paid { background: #f5f3ff; color: #6d28d9; }
     .pricing-form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
     .pricing-form .full { grid-column: 1 / -1; }
     .pricing-plan-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 18px; }
@@ -39,6 +43,7 @@
     .lead-top { display: flex; justify-content: space-between; gap: 12px; align-items: start; }
     .lead-name { font-weight: 700; }
     .lead-meta { font-size: 0.82rem; color: var(--text-muted); }
+    .lead-payment-meta { font-size: 0.82rem; color: var(--text); display:grid; gap:4px; }
     .lead-controls { display: grid; grid-template-columns: 180px 1fr auto; gap: 10px; align-items: start; }
     .review-row { display: grid; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--border); }
     .review-row:last-child { border-bottom: none; }
@@ -237,8 +242,17 @@
 
     function statusBadge(status) {
       const normalized = String(status || 'new').toLowerCase();
-      const css = ['new', 'contacted', 'won', 'lost', 'pending', 'approved', 'rejected', 'suspended'].includes(normalized) ? normalized : 'new';
+      const css = ['new', 'contacted', 'won', 'lost', 'pending', 'approved', 'rejected', 'suspended', 'stripe_checkout_pending', 'stripe_paid', 'stripe_failed', 'stripe_expired', 'demo_paid'].includes(normalized) ? normalized : 'new';
       return `<span class="badge-lite badge-${css}">${normalized}</span>`;
+    }
+
+    function humanizePaymentMethod(method) {
+      return {
+        bankcard: 'Bank card',
+        paypal: 'PayPal',
+        cash: 'Cash',
+        pickup_at_store: 'Pick up at store'
+      }[String(method || '').trim()] || String(method || 'n/a');
     }
 
     async function loadSaasDashboard() {
@@ -299,6 +313,11 @@
             <div>
               <div class="lead-name">${escapeHtml(row.restaurant_name || 'Unknown restaurant')}</div>
               <div class="lead-meta">${escapeHtml(row.owner_email || '')} • ${escapeHtml(row.subdomain || '')} • plan: ${escapeHtml(row.plan || '')} • recurring: €${Number(row.recurring_monthly_eur || 0).toFixed(0)}</div>
+              <div class="lead-payment-meta">
+                <div>Payment: ${statusBadge(row.payment_status || 'demo_paid')} • ${escapeHtml(humanizePaymentMethod(row.payment_method || ''))}</div>
+                <div>Reference: ${escapeHtml(row.payment_reference || 'none')}</div>
+                <div>Confirmed: ${escapeHtml(row.payment_confirmed_at || 'not confirmed')}</div>
+              </div>
             </div>
             <div>${statusBadge(row.follow_up_status || 'new')}</div>
           </div>

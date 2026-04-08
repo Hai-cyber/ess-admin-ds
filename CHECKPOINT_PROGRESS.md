@@ -65,6 +65,9 @@
 ✅ SaaS Admin now controls payment method availability with platform-level toggles that enforce signup choices
 ✅ Tenant admin payment setup now shows which methods are disabled by SaaS policy, instead of silently clamping them
 ✅ Bank card signup can now open Stripe test checkout when `STRIPE_API_KEY` is configured or `STRIPE_MODE=mock`
+✅ Post-checkout confirmation path now turns `stripe_checkout_pending` into `stripe_paid` and stores confirmation state in both signup records and tenant settings
+✅ Stripe webhook endpoint now supports lifecycle updates for checkout completion and expiry without depending on browser redirect
+✅ SaaS Admin signup list now shows payment lifecycle clearly: pending, paid, expired, method, reference, and confirmation time
 ✅ SaaS Admin moderation queue now has summary/filter/refresh controls on top of approve/reject/suspend/quarantine actions
 ✅ Local smoke verification now covers `/api/contact/create`, platform contact, publish review, suspend, quarantine, and host-based public blocking
 ✅ Explicit `production` env now deploys against a real D1 database id

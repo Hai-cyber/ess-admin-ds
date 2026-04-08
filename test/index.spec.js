@@ -1427,13 +1427,163 @@ describe('ESSKULTUR worker', () => {
 		const body = await response.json();
 		expect(body.ok).toBe(true);
 		expect(String(body.payment?.paymentStatus || '')).toBe('stripe_checkout_pending');
-		expect(String(body.checkout_url || '')).toContain('mock_stripe_session=1');
+		expect(String(body.checkout_url || '')).toContain('checkout=success');
+		expect(String(body.checkout_url || '')).toContain('session_id=cs_test_mock_');
 
 		const companyId = Number(body.company_id || 0);
 		const statusSetting = await env.DB.prepare(
 			`SELECT value FROM settings WHERE company_id = ? AND key = 'demo_payment_status' LIMIT 1`
 		).bind(companyId).first();
 		expect(String(statusSetting?.value || '')).toBe('stripe_checkout_pending');
+	});
+
+	it('confirms a pending Stripe checkout signup through the post-checkout confirmation path', async () => {
+		await initializeDatabase(env.DB);
+		env.STRIPE_MODE = 'mock';
+
+		let request = new Request('http://localhost/api/platform/signup', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				restaurant_name: 'Stripe Confirm Diner',
+				owner_email: 'stripe-confirm@example.com',
+				subdomain: 'stripe-confirm-diner',
+				plan: 'core',
+				admin_pin: '1234',
+				admin_name: 'Owner',
+				demo_payment_method: 'bankcard'
+			})
+		});
+
+		let ctx = createExecutionContext();
+		let response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		const signupBody = await response.json();
+		expect(response.status).toBe(201);
+		const companyId = Number(signupBody.company_id || 0);
+		const sessionId = String(signupBody.payment?.checkoutSessionId || '');
+		expect(sessionId).toContain('cs_test_mock_');
+
+		request = new Request(`http://localhost/api/platform/signup/confirm-payment?company_id=${companyId}&session_id=${encodeURIComponent(sessionId)}`);
+		ctx = createExecutionContext();
+		response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		const confirmBody = await response.json();
+		expect(confirmBody.ok).toBe(true);
+		expect(String(confirmBody.payment_status || '')).toBe('stripe_paid');
+
+		const signupRow = await env.DB.prepare(
+			`SELECT payment_status, payment_confirmed_at FROM platform_signups WHERE company_id = ? LIMIT 1`
+		).bind(companyId).first();
+		const statusSetting = await env.DB.prepare(
+			`SELECT value FROM settings WHERE company_id = ? AND key = 'demo_payment_status' LIMIT 1`
+		).bind(companyId).first();
+		expect(String(signupRow?.payment_status || '')).toBe('stripe_paid');
+		expect(String(signupRow?.payment_confirmed_at || '')).not.toBe('');
+		expect(String(statusSetting?.value || '')).toBe('stripe_paid');
+	});
+
+	it('updates pending Stripe checkout state to paid through the Stripe webhook', async () => {
+		await initializeDatabase(env.DB);
+		env.STRIPE_MODE = 'mock';
+
+		let request = new Request('http://localhost/api/platform/signup', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				restaurant_name: 'Webhook Paid Diner',
+				owner_email: 'webhook-paid@example.com',
+				subdomain: 'webhook-paid-diner',
+				plan: 'core',
+				admin_pin: '1234',
+				admin_name: 'Owner',
+				demo_payment_method: 'bankcard'
+			})
+		});
+
+		let ctx = createExecutionContext();
+		let response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		const signupBody = await response.json();
+		const companyId = Number(signupBody.company_id || 0);
+		const sessionId = String(signupBody.payment?.checkoutSessionId || '');
+
+		request = new Request('http://localhost/api/integrations/stripe/webhook', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				type: 'checkout.session.completed',
+				data: {
+					object: {
+						id: sessionId,
+						metadata: { company_id: String(companyId) }
+					}
+				}
+			})
+		});
+
+		ctx = createExecutionContext();
+		response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+
+		const signupRow = await env.DB.prepare(
+			`SELECT payment_status, payment_confirmed_at FROM platform_signups WHERE company_id = ? LIMIT 1`
+		).bind(companyId).first();
+		expect(String(signupRow?.payment_status || '')).toBe('stripe_paid');
+		expect(String(signupRow?.payment_confirmed_at || '')).not.toBe('');
+	});
+
+	it('updates pending Stripe checkout state to expired through the Stripe webhook', async () => {
+		await initializeDatabase(env.DB);
+		env.STRIPE_MODE = 'mock';
+
+		let request = new Request('http://localhost/api/platform/signup', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				restaurant_name: 'Webhook Expired Diner',
+				owner_email: 'webhook-expired@example.com',
+				subdomain: 'webhook-expired-diner',
+				plan: 'core',
+				admin_pin: '1234',
+				admin_name: 'Owner',
+				demo_payment_method: 'bankcard'
+			})
+		});
+
+		let ctx = createExecutionContext();
+		let response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		const signupBody = await response.json();
+		const companyId = Number(signupBody.company_id || 0);
+		const sessionId = String(signupBody.payment?.checkoutSessionId || '');
+
+		request = new Request('http://localhost/api/integrations/stripe/webhook', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				type: 'checkout.session.expired',
+				data: {
+					object: {
+						id: sessionId,
+						metadata: { company_id: String(companyId) }
+					}
+				}
+			})
+		});
+
+		ctx = createExecutionContext();
+		response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+
+		const signupRow = await env.DB.prepare(
+			`SELECT payment_status, payment_confirmed_at FROM platform_signups WHERE company_id = ? LIMIT 1`
+		).bind(companyId).first();
+		expect(String(signupRow?.payment_status || '')).toBe('stripe_expired');
+		expect(String(signupRow?.payment_confirmed_at || '')).toBe('');
 	});
 
 	it('redirects founder route to standard contact link when membership module is disabled', async () => {

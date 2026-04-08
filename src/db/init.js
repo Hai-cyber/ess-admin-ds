@@ -28,6 +28,9 @@ async function ensureSchemaEvolution(db) {
   await ensureColumn(db, 'customers', 'odoo_register_sync_error', 'TEXT');
   await ensureColumn(db, 'customers', 'odoo_register_synced_at', 'TEXT');
   await ensureColumn(db, 'customers', 'odoo_register_sync_attempts', 'INTEGER DEFAULT 0');
+  await ensureColumn(db, 'platform_signups', 'payment_method', 'TEXT');
+  await ensureColumn(db, 'platform_signups', 'payment_reference', 'TEXT');
+  await ensureColumn(db, 'platform_signups', 'payment_confirmed_at', 'TEXT');
 }
 
 /**

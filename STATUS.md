@@ -68,6 +68,9 @@ Not Started: 0%
 - [x] SaaS Admin now exposes platform-level payment method toggles that control signup and tenant payment choices
 - [x] Tenant Admin now shows SaaS-policy-disabled payment methods directly in the payment setup UI
 - [x] Platform signup now supports Stripe test checkout for bank card when Stripe test or mock mode is available
+- [x] Platform signup now supports post-checkout confirmation so Stripe pending payments can transition to `stripe_paid`
+- [x] Stripe webhook endpoint now updates payment lifecycle states like `stripe_paid` and `stripe_expired`
+- [x] SaaS Admin now shows payment lifecycle details directly in the signup CRM list
 - [x] Public website payload now includes structured `opening_hours_schedule` alongside legacy open/close values
 - [x] Wildcard tenant subdomain routing and host-based website payload resolution verified live on `gooddining.app`
 - [x] Demo-payment self-service signup walkthrough verified live end to end with tenant provisioning, admin access, and website host resolution
@@ -94,6 +97,8 @@ Not Started: 0%
 - Public tenant website payload now resolves from the latest published release snapshot, and rollback restores older published snapshots ✅
 - SaaS admin payment method toggles now feed `/api/platform/plans` and block disabled payment methods during signup ✅
 - Bank card signup now returns a Stripe checkout URL in test/mock mode instead of only demo-paid simulation ✅
+- Stripe post-checkout confirmation path now persists `payment_reference`, `payment_confirmed_at`, and `stripe_paid` state ✅
+- Stripe webhook handling now updates pending checkout sessions to `paid` or `expired` without requiring the success page ✅
 - Wildcard subdomain routing, host-based tenant payload resolution, and demo-payment signup walkthrough verified live ✅
 - Contact route and platform contact lead flow verified on a freshly reloaded local worker ✅
 - Production workers.dev ingress currently returns Cloudflare `1050`; application deploy exists but public ingress is not finished ⚠️

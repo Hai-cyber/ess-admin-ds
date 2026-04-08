@@ -2281,10 +2281,22 @@
       })();
       const enabledMethods = Array.isArray(paymentMethodPolicy?.enabled) ? paymentMethodPolicy.enabled : ['bankcard', 'paypal', 'cash', 'pickup_at_store'];
       const demoPaymentMethod = String(getOperationalValue('demo_payment_method') || 'bankcard').trim() || 'bankcard';
+      const paymentStatus = String(getOperationalValue('demo_payment_status') || '').trim() || 'demo_paid';
+      const paymentReference = String(getOperationalValue('demo_payment_reference') || '').trim();
+      const paymentConfirmedAt = String(getOperationalValue('demo_payment_confirmed_at') || '').trim();
+      const stripeCollectionMode = enabledMethods.includes('bankcard') ? 'Stripe online collection available for bank card' : 'Stripe online collection disabled by SaaS admin';
+      const manualMethods = acceptedMethods.filter((method) => method !== 'bankcard');
 
       container.innerHTML = `
         <div class="integration-note">Stripe is still the long-term online payment path. Until then, you can declare demo or manual methods explicitly for onboarding and go-live.</div>
         <div class="integration-note">Enabled by SaaS admin policy: ${escapeHtml(enabledMethods.map(humanizePaymentMethod).join(', ') || 'none')}.</div>
+        <div class="setting-row">
+          <div class="setting-label">Collection Model</div>
+          <div class="setting-value" style="padding-top: 10px; display:grid; gap:6px;">
+            <div><strong>Stripe online collection:</strong> ${escapeHtml(stripeCollectionMode)}</div>
+            <div><strong>Manual/demo methods:</strong> ${escapeHtml(manualMethods.map(humanizePaymentMethod).join(', ') || 'none')}</div>
+          </div>
+        </div>
         <div class="setting-row">
           <div class="setting-label">Stripe Account ID</div>
           <input type="text" class="setting-value" id="op_stripe_account_id" value="${escapeHtml(getOperationalValue('stripe_account_id'))}" placeholder="acct_...">
@@ -2311,6 +2323,14 @@
           <input type="text" class="setting-value" id="op_demo_payment_status" value="${escapeHtml(getOperationalValue('demo_payment_status'))}" placeholder="demo_paid">
         </div>
         <div class="setting-row">
+          <div class="setting-label">Payment Reference</div>
+          <div class="setting-value" style="padding-top: 10px; word-break: break-all;">${escapeHtml(paymentReference || 'none')}</div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Confirmed At</div>
+          <div class="setting-value" style="padding-top: 10px;">${escapeHtml(paymentConfirmedAt || 'not confirmed')}</div>
+        </div>
+        <div class="setting-row">
           <div class="setting-label">Due Today (EUR)</div>
           <input type="number" step="0.01" class="setting-value" id="op_demo_payment_due_today_eur" value="${escapeHtml(getOperationalValue('demo_payment_due_today_eur'))}">
         </div>
@@ -2321,6 +2341,7 @@
         <div class="setting-row">
           <div></div>
           <div style="display:flex;justify-content:flex-end;gap:8px;">
+            ${paymentStatus === 'stripe_checkout_pending' && paymentReference ? '<button class="btn-small btn-secondary" onclick="confirmTenantStripePayment()">Re-check Stripe Payment</button>' : ''}
             <button class="btn-small btn-secondary" onclick="reloadPlatformConfig()">Reload</button>
             <button class="btn-small btn-primary" onclick="savePlatformConfig()">Save Payment Setup</button>
           </div>
@@ -2472,6 +2493,29 @@
         alert(`Rollback completed from release ${data.restored_from_release_id || releaseId}.`);
       } catch (error) {
         alert(error.message || 'Network error while rolling back release.');
+      }
+    }
+
+    async function confirmTenantStripePayment() {
+      const sessionId = String(getOperationalValue('demo_payment_reference') || '').trim();
+      const companyId = Number(currentUser?.companyId || 0);
+      if (!sessionId || !companyId) {
+        alert('No Stripe checkout reference found for this tenant.');
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/platform/signup/confirm-payment?company_id=${encodeURIComponent(companyId)}&session_id=${encodeURIComponent(sessionId)}`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) {
+          alert(data.error || 'Stripe payment is still pending.');
+          return;
+        }
+
+        await reloadPlatformConfig();
+        alert(`Stripe payment confirmed: ${data.payment_status || 'stripe_paid'}`);
+      } catch (error) {
+        alert(error.message || 'Network error while confirming Stripe payment.');
       }
     }
 
