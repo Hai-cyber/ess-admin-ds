@@ -18,6 +18,13 @@ CREATE TABLE IF NOT EXISTS companies (
   id INTEGER PRIMARY KEY,
   organization_id INTEGER,
   subdomain TEXT UNIQUE NOT NULL,
+  subdomain_status TEXT DEFAULT 'active',
+  website_status TEXT DEFAULT 'draft',
+  trust_state TEXT DEFAULT 'pending_verification',
+  risk_score INTEGER DEFAULT 0,
+  suspended_reason TEXT,
+  suspended_at TEXT,
+  last_reviewed_at TEXT,
   name TEXT NOT NULL,
   email TEXT,
   phone TEXT,
@@ -260,8 +267,67 @@ CREATE TABLE IF NOT EXISTS telegram_messages (
   FOREIGN KEY (booking_id) REFERENCES bookings(id)
 );
 
+CREATE TABLE IF NOT EXISTS reserved_terms (
+  id TEXT PRIMARY KEY,
+  term TEXT NOT NULL,
+  normalized_term TEXT NOT NULL,
+  match_type TEXT NOT NULL,
+  category TEXT NOT NULL,
+  action TEXT NOT NULL,
+  notes TEXT,
+  is_active BOOLEAN DEFAULT 1,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS subdomain_reservations (
+  id TEXT PRIMARY KEY,
+  slug TEXT NOT NULL,
+  normalized_slug TEXT NOT NULL,
+  company_id INTEGER,
+  status TEXT NOT NULL,
+  reason_code TEXT,
+  decision_source TEXT DEFAULT 'system',
+  expires_at TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (company_id) REFERENCES companies(id)
+);
+
+CREATE TABLE IF NOT EXISTS publish_reviews (
+  id TEXT PRIMARY KEY,
+  company_id INTEGER NOT NULL,
+  website_version_id TEXT,
+  host TEXT,
+  subdomain TEXT,
+  decision TEXT NOT NULL,
+  review_status TEXT NOT NULL DEFAULT 'pending',
+  risk_score INTEGER DEFAULT 0,
+  reason_codes_json TEXT NOT NULL DEFAULT '[]',
+  evidence_json TEXT NOT NULL DEFAULT '{}',
+  payload_snapshot_json TEXT,
+  reviewer_type TEXT NOT NULL DEFAULT 'system',
+  reviewer_id TEXT,
+  review_note TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (company_id) REFERENCES companies(id)
+);
+
+CREATE TABLE IF NOT EXISTS abuse_reports (
+  id TEXT PRIMARY KEY,
+  company_id INTEGER,
+  host TEXT NOT NULL,
+  report_type TEXT NOT NULL,
+  report_payload_json TEXT NOT NULL DEFAULT '{}',
+  status TEXT NOT NULL DEFAULT 'new',
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (company_id) REFERENCES companies(id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_customers_company ON customers(company_id);
 CREATE INDEX IF NOT EXISTS idx_companies_org ON companies(organization_id);
+CREATE INDEX IF NOT EXISTS idx_companies_subdomain_status ON companies(subdomain_status, website_status, trust_state);
 CREATE INDEX IF NOT EXISTS idx_org_settings_org ON organization_settings(organization_id);
 CREATE INDEX IF NOT EXISTS idx_org_secrets_org ON organization_secrets(organization_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_company ON bookings(company_id);
@@ -277,4 +343,11 @@ CREATE INDEX IF NOT EXISTS idx_platform_signups_email ON platform_signups(owner_
 CREATE INDEX IF NOT EXISTS idx_media_assets_company ON media_assets(company_id);
 CREATE INDEX IF NOT EXISTS idx_otp_company ON otp_cache(company_id);
 CREATE INDEX IF NOT EXISTS idx_telegram_company ON telegram_messages(company_id);
+CREATE INDEX IF NOT EXISTS idx_reserved_terms_normalized ON reserved_terms(normalized_term, is_active);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_subdomain_reservation_slug_status ON subdomain_reservations(normalized_slug, status);
+CREATE INDEX IF NOT EXISTS idx_subdomain_reservation_company ON subdomain_reservations(company_id);
+CREATE INDEX IF NOT EXISTS idx_publish_reviews_company ON publish_reviews(company_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_publish_reviews_status ON publish_reviews(review_status, decision, created_at);
+CREATE INDEX IF NOT EXISTS idx_abuse_reports_host ON abuse_reports(host, created_at);
+CREATE INDEX IF NOT EXISTS idx_abuse_reports_status ON abuse_reports(status, created_at);
 `;

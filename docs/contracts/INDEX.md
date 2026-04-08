@@ -93,6 +93,11 @@ Then enforce publish gating with [WEBSITE_PUBLISH_VALIDATION.md](./WEBSITE_PUBLI
 
 This changes presentation and copy only. It does not change the internal page model.
 
+For subdomain abuse protection, moderation review, and Telegram operator triage, also read:
+
+- `knowledge/specs/subdomain-abuse-protection-spec.md`
+- `knowledge/runbooks/content-review-telegram.md`
+
 ---
 
 ### I'm creating a new module

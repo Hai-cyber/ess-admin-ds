@@ -22,6 +22,10 @@
     .badge-contacted { background: #ecfdf5; color: #047857; }
     .badge-won { background: #f0fdf4; color: #166534; }
     .badge-lost { background: #fef2f2; color: #b91c1c; }
+    .badge-pending { background: #fff7ed; color: #9a3412; }
+    .badge-approved { background: #ecfdf5; color: #166534; }
+    .badge-rejected { background: #fef2f2; color: #b91c1c; }
+    .badge-suspended { background: #111827; color: white; }
     .pricing-form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
     .pricing-form .full { grid-column: 1 / -1; }
     .pricing-plan-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 18px; }
@@ -36,6 +40,17 @@
     .lead-name { font-weight: 700; }
     .lead-meta { font-size: 0.82rem; color: var(--text-muted); }
     .lead-controls { display: grid; grid-template-columns: 180px 1fr auto; gap: 10px; align-items: start; }
+    .review-row { display: grid; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--border); }
+    .review-row:last-child { border-bottom: none; }
+    .review-row.highlight { background: #fff7ed; border-radius: 16px; padding: 16px; margin: 0 -8px; border: 1px solid #fdba74; }
+    .review-head { display: flex; justify-content: space-between; gap: 12px; align-items: start; }
+    .review-title { font-weight: 700; }
+    .review-meta { font-size: 0.82rem; color: var(--text-muted); }
+    .review-reasons { font-size: 0.82rem; color: var(--text); }
+    .review-links { display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.82rem; }
+    .review-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn-danger-lite { border: 1px solid #fca5a5; color: #b91c1c; background: #fff1f2; }
+    .btn-warn-lite { border: 1px solid #fdba74; color: #9a3412; background: #fff7ed; }
     @media (max-width: 980px) { .saas-grid { grid-template-columns: 1fr; } .pricing-form { grid-template-columns: 1fr; } .pricing-plan-grid { grid-template-columns: 1fr; } .pricing-extras-grid { grid-template-columns: 1fr; } .lead-controls { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -133,6 +148,12 @@
 
     <div class="saas-grid-bottom">
       <div class="saas-card">
+        <h2>Moderation Review Queue</h2>
+        <p class="meta">Pending and recent website moderation decisions. Use the operator PIN loaded above to approve, reject, suspend, or quarantine directly.</p>
+        <div id="saas-reviews-list"></div>
+      </div>
+
+      <div class="saas-card">
         <h2>Inbound Contact Leads</h2>
         <p class="meta">Messages submitted from the platform contact form.</p>
         <div id="saas-contacts-list"></div>
@@ -169,7 +190,12 @@
     ];
 
     let saasPin = '';
-    let saasDashboard = { pricingSettings: {}, signups: [], contacts: [] };
+    let saasDashboard = { pricingSettings: {}, signups: [], contacts: [], reviews: [] };
+
+    function getReviewFocusId() {
+      const params = new URLSearchParams(window.location.search);
+      return String(params.get('review') || '').trim();
+    }
 
     function escapeHtml(value) {
       return String(value || '')
@@ -182,7 +208,7 @@
 
     function statusBadge(status) {
       const normalized = String(status || 'new').toLowerCase();
-      const css = ['new', 'contacted', 'won', 'lost'].includes(normalized) ? normalized : 'new';
+      const css = ['new', 'contacted', 'won', 'lost', 'pending', 'approved', 'rejected', 'suspended'].includes(normalized) ? normalized : 'new';
       return `<span class="badge-lite badge-${css}">${normalized}</span>`;
     }
 
@@ -203,10 +229,18 @@
       }
 
       saasDashboard = data;
-      msg.textContent = `Loaded ${data.signups.length} signups and ${data.contacts.length} contact leads.`;
+      msg.textContent = `Loaded ${data.signups.length} signups, ${data.reviews.length} review items, and ${data.contacts.length} contact leads.`;
       renderSaasPricing();
       renderSaasSignups();
+      renderSaasReviews();
       renderSaasContacts();
+
+      const reviewFocusId = getReviewFocusId();
+      if (reviewFocusId) {
+        setTimeout(() => {
+          document.getElementById(`review_${reviewFocusId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 60);
+      }
     }
 
     function renderSaasPricing() {
@@ -243,6 +277,59 @@
           </div>
         </div>
       `).join('');
+    }
+
+    function renderSaasReviews() {
+      const el = document.getElementById('saas-reviews-list');
+      const reviews = Array.isArray(saasDashboard.reviews) ? saasDashboard.reviews : [];
+      if (!reviews.length) {
+        el.innerHTML = '<p class="text-muted">No moderation reviews yet.</p>';
+        return;
+      }
+
+      const focusReviewId = getReviewFocusId();
+      el.innerHTML = reviews.map((row) => {
+        const reasonCodes = (() => {
+          try {
+            const parsed = JSON.parse(String(row.reason_codes_json || '[]'));
+            return Array.isArray(parsed) ? parsed : [];
+          } catch {
+            return [];
+          }
+        })();
+        const isPending = String(row.review_status || '').toLowerCase() === 'pending';
+        const reviewUrl = `/platform/admin.html?review=${encodeURIComponent(row.id)}`;
+        const tenantAdminUrl = row.company_id ? `/admin?company_id=${encodeURIComponent(row.company_id)}` : '';
+        const previewUrl = row.company_id ? `/website-master/index.html?company_id=${encodeURIComponent(row.company_id)}` : '';
+        const highlightClass = focusReviewId && focusReviewId === String(row.id) ? ' highlight' : '';
+
+        return `
+          <div class="review-row${highlightClass}" id="review_${escapeHtml(row.id)}">
+            <div class="review-head">
+              <div>
+                <div class="review-title">${escapeHtml(row.company_name || row.subdomain || 'Unknown tenant')}</div>
+                <div class="review-meta">review: ${escapeHtml(row.id)} • host: ${escapeHtml(row.host || '')} • status: ${escapeHtml(row.review_status || 'pending')} • decision: ${escapeHtml(row.decision || '')} • website: ${escapeHtml(row.website_status || '')} • subdomain: ${escapeHtml(row.subdomain_status || '')} • trust: ${escapeHtml(row.trust_state || '')}</div>
+              </div>
+              <div>${statusBadge(row.review_status || 'new')}</div>
+            </div>
+            <div class="review-reasons">Reasons: ${reasonCodes.length ? escapeHtml(reasonCodes.join(', ')) : 'none'}</div>
+            <div class="review-links">
+              <a href="${reviewUrl}">Focus review</a>
+              ${previewUrl ? `<a href="${previewUrl}" target="_blank" rel="noopener">Open preview</a>` : ''}
+              ${tenantAdminUrl ? `<a href="${tenantAdminUrl}" target="_blank" rel="noopener">Open tenant admin</a>` : ''}
+            </div>
+            <div class="lead-controls">
+              <textarea id="review_note_${escapeHtml(row.id)}" placeholder="Operator note">${escapeHtml(row.review_note || '')}</textarea>
+              <div class="review-actions">
+                <button class="btn btn-sm btn-outline" ${isPending ? '' : 'disabled'} onclick="approveReview('${escapeHtml(row.id)}')">Approve</button>
+                <button class="btn btn-sm btn-warn-lite" ${isPending ? '' : 'disabled'} onclick="rejectReview('${escapeHtml(row.id)}')">Reject</button>
+                <button class="btn btn-sm btn-danger-lite" ${row.company_id ? '' : 'disabled'} onclick="suspendTenantWebsite('${escapeHtml(row.company_id || '')}')">Suspend website</button>
+                <button class="btn btn-sm btn-outline" ${row.subdomain ? '' : 'disabled'} onclick="quarantineTenantSubdomain('${escapeHtml(row.subdomain || '')}')">Quarantine subdomain</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
     }
 
     function renderSaasContacts() {
@@ -302,6 +389,62 @@
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) return alert(data.error || 'Failed to save follow-up');
+      await loadSaasDashboard();
+    }
+
+    async function approveReview(reviewId) {
+      if (!saasPin) return alert('Load SaaS admin first.');
+      const reviewNote = document.getElementById(`review_note_${reviewId}`)?.value || '';
+      const res = await fetch(`/api/platform/moderation/review/${encodeURIComponent(reviewId)}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: saasPin, reviewNote })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) return alert(data.error || 'Failed to approve review');
+      await loadSaasDashboard();
+    }
+
+    async function rejectReview(reviewId) {
+      if (!saasPin) return alert('Load SaaS admin first.');
+      const reviewNote = document.getElementById(`review_note_${reviewId}`)?.value || '';
+      const res = await fetch(`/api/platform/moderation/review/${encodeURIComponent(reviewId)}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: saasPin, reviewNote })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) return alert(data.error || 'Failed to reject review');
+      await loadSaasDashboard();
+    }
+
+    async function suspendTenantWebsite(companyId) {
+      if (!saasPin) return alert('Load SaaS admin first.');
+      if (!companyId) return alert('Missing company id.');
+      const reason = window.prompt('Suspend website reason', 'operator_suspension');
+      if (!reason) return;
+      const res = await fetch(`/api/platform/tenants/${encodeURIComponent(companyId)}/suspend-website`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: saasPin, reason })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) return alert(data.error || 'Failed to suspend website');
+      await loadSaasDashboard();
+    }
+
+    async function quarantineTenantSubdomain(slug) {
+      if (!saasPin) return alert('Load SaaS admin first.');
+      if (!slug) return alert('Missing slug.');
+      const reason = window.prompt('Quarantine subdomain reason', 'operator_quarantine');
+      if (!reason) return;
+      const res = await fetch(`/api/platform/subdomains/${encodeURIComponent(slug)}/quarantine`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: saasPin, reason })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) return alert(data.error || 'Failed to quarantine subdomain');
       await loadSaasDashboard();
     }
 

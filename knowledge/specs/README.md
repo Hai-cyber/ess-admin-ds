@@ -5,3 +5,4 @@
 - frontend-self-service-spec.md
 - media-automation-spec.md
 - module-catalog-and-billing-toggles.md
+- subdomain-abuse-protection-spec.md

@@ -111,6 +111,76 @@ RESPONSE:
 20003 — Internal error (retry)
 ```
 
+## Operator Review Notification Contract
+
+### Telegram
+
+**When**: Moderation queue events for subdomain review, website publish review, abuse escalation, or emergency suspension
+
+**Purpose**: Notify platform operators that manual review or emergency action is required
+
+**Environment variables**:
+```
+TELEGRAM_BOT_TOKEN=...
+TELEGRAM_REVIEW_CHAT_ID=...
+```
+
+**Endpoint used**:
+
+```
+POST https://api.telegram.org/bot{BOT_TOKEN}/sendMessage
+```
+
+**Payload shape**:
+
+```json
+{
+  "chat_id": "-1001234567890",
+  "text": "Review required: tenant website publish\nTenant: company_123 / Roma Trattoria\nHost: roma.gooddining.app\nDecision: review\nRisk score: 67\nReasons: suspicious_external_link, political_sensitive_copy\nPreview: https://platform.example/review/preview/abc\nAdmin: https://platform.example/admin/moderation/reviews/review_abc",
+  "disable_web_page_preview": true
+}
+```
+
+**Required event fields**:
+
+- moderation record id
+- company id
+- tenant display name
+- host or subdomain
+- decision (`review`, `block`, `suspended`)
+- reason codes
+- risk score
+- preview link
+- admin decision link
+
+**Delivery rules**:
+
+- Telegram is notification-only in the first iteration
+- final approve or reject action must write through the platform backend
+- retry transient Telegram failures with bounded backoff
+- moderation decision must not depend on Telegram delivery success
+
+**Failure handling**:
+
+```javascript
+try {
+  await sendTelegramReviewAlert(event);
+} catch (error) {
+  console.error('telegram_review_alert_failed', {
+    review_id: event.review_id,
+    error: error.message
+  });
+  // Never unblock a blocked publish because Telegram failed.
+  // Persist the review and surface it in operator admin.
+}
+```
+
+**Security rules**:
+
+- never expose Telegram bot token to browser clients
+- only send internal review links intended for operator access
+- verify callback signatures if interactive Telegram buttons are added later
+
 ---
 
 ## Email Integration Contract

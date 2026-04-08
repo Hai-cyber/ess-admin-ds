@@ -45,6 +45,410 @@ describe('ESSKULTUR worker', () => {
 		expect(html).toContain('<title>Ess Admin DS</title>');
 	});
 
+	it('blocks reserved system subdomains during availability checks', async () => {
+		await initializeDatabase(env.DB);
+
+		const request = new Request('http://localhost/api/platform/signup/check-subdomain?slug=admin');
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(409);
+		const body = await response.json();
+		expect(body.ok).toBe(false);
+		expect(body.available).toBe(false);
+		expect(body.decision).toBe('block');
+		expect(Array.isArray(body.reason_codes)).toBe(true);
+		expect(body.reason_codes).toContain('internal_system_block');
+	});
+
+	it('rejects signup when subdomain is blocked by platform policy', async () => {
+		await initializeDatabase(env.DB);
+
+		const request = new Request('http://localhost/api/platform/signup', {
+			method: 'POST',
+			headers: {
+				'content-type': 'application/json'
+			},
+			body: JSON.stringify({
+				restaurant_name: 'Blocked Slug Diner',
+				owner_email: 'blocked-slug@example.com',
+				subdomain: 'admin',
+				plan: 'core',
+				admin_pin: '1234',
+				admin_name: 'Owner'
+			})
+		});
+
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(409);
+		const body = await response.json();
+		expect(body.ok).toBe(false);
+		expect(body.code).toBe('subdomain_blocked');
+
+		const company = await env.DB.prepare(
+			`SELECT id FROM companies WHERE lower(email) = lower(?) LIMIT 1`
+		).bind('blocked-slug@example.com').first();
+		expect(company).toBeNull();
+	});
+
+	it('rejects tenant admin subdomain updates that hit blocked policy terms', async () => {
+		await initializeDatabase(env.DB);
+
+		const baseline = await env.DB.prepare(
+			`SELECT name, email, phone, timezone FROM companies WHERE id = ? LIMIT 1`
+		).bind(1).first();
+
+		const request = new Request('http://localhost/api/admin/platform-config?company_id=1', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				pin: '1234',
+				company: {
+					name: baseline?.name || '',
+					email: baseline?.email || '',
+					phone: baseline?.phone || '',
+					subdomain: 'support',
+					timezone: baseline?.timezone || 'UTC'
+				},
+				operationalSettings: {},
+				modules: {}
+			})
+		});
+
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(409);
+		const body = await response.json();
+		expect(body.success).toBe(false);
+		expect(Array.isArray(body.reason_codes)).toBe(true);
+		expect(body.reason_codes).toContain('internal_system_block');
+	});
+
+	it('creates a website publish review and notifies Telegram for suspicious content', async () => {
+		await initializeDatabase(env.DB);
+		env.TELEGRAM_BOT_TOKEN = 'telegram-test-token';
+		env.TELEGRAM_REVIEW_CHAT_ID = '-1001234567890';
+
+		const now = new Date().toISOString();
+		await env.DB.prepare(`
+			INSERT INTO settings (company_id, key, value, description, updated_at, updated_by)
+			VALUES (?, ?, ?, ?, ?, ?)
+			ON CONFLICT(company_id, key) DO UPDATE SET
+				value = excluded.value,
+				description = excluded.description,
+				updated_at = excluded.updated_at,
+				updated_by = excluded.updated_by
+		`).bind(
+			1,
+			'site_content_json',
+			JSON.stringify({ hero_note: 'Join our crypto club on https://t.me/fakepromo right now.' }),
+			'test suspicious content',
+			now,
+			'test'
+		).run();
+
+		const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+			const url = typeof input === 'string' ? input : input.url;
+			if (url.includes('api.telegram.org/')) {
+				return new Response(JSON.stringify({ ok: true, result: { message_id: 123 } }), {
+					status: 200,
+					headers: { 'content-type': 'application/json' }
+				});
+			}
+
+			return new Response('Unhandled mock URL', { status: 500 });
+		});
+
+		const request = new Request('http://localhost/api/admin/website/publish?company_id=1', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ pin: '1234' })
+		});
+
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(200);
+		const body = await response.json();
+		expect(body.ok).toBe(true);
+		expect(body.decision).toBe('review');
+		expect(body.reason_codes).toContain('suspicious_external_link');
+		expect(fetchSpy).toHaveBeenCalled();
+		const telegramPayload = JSON.parse(String(fetchSpy.mock.calls[0]?.[1]?.body || '{}'));
+		expect(String(telegramPayload.text || '')).toContain('/platform/admin.html?review=');
+		expect(telegramPayload.reply_markup?.inline_keyboard?.length || 0).toBeGreaterThan(0);
+
+		const review = await env.DB.prepare(
+			`SELECT decision, review_status, reason_codes_json FROM publish_reviews WHERE id = ? LIMIT 1`
+		).bind(body.review_id).first();
+
+		expect(String(review?.decision || '')).toBe('review');
+		expect(String(review?.review_status || '')).toBe('pending');
+		expect(String(review?.reason_codes_json || '')).toContain('suspicious_external_link');
+	});
+
+	it('allows operator to approve a pending publish review', async () => {
+		await initializeDatabase(env.DB);
+		env.TELEGRAM_BOT_TOKEN = 'telegram-test-token';
+		env.TELEGRAM_REVIEW_CHAT_ID = '-1001234567890';
+
+		const reviewId = crypto.randomUUID();
+		const now = new Date().toISOString();
+		await env.DB.prepare(`
+			INSERT INTO publish_reviews (
+				id, company_id, host, subdomain, decision, review_status, risk_score,
+				reason_codes_json, evidence_json, payload_snapshot_json, reviewer_type, created_at, updated_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'system', ?, ?)
+		`).bind(
+			reviewId,
+			2,
+			'restaurant2.gooddining.app',
+			'restaurant2',
+			'review',
+			'pending',
+			35,
+			JSON.stringify(['suspicious_external_link']),
+			'{}',
+			'{}',
+			now,
+			now
+		).run();
+
+		const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+			const url = typeof input === 'string' ? input : input.url;
+			if (url.includes('api.telegram.org/')) {
+				return new Response(JSON.stringify({ ok: true }), {
+					status: 200,
+					headers: { 'content-type': 'application/json' }
+				});
+			}
+			return new Response('Unhandled mock URL', { status: 500 });
+		});
+
+		const request = new Request(`http://localhost/api/platform/moderation/review/${reviewId}/approve`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ pin: '1234', reviewNote: 'Looks like a valid restaurant website.' })
+		});
+
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(200);
+		const body = await response.json();
+		expect(body.ok).toBe(true);
+		expect(body.action).toBe('approve');
+
+		const review = await env.DB.prepare(
+			`SELECT decision, review_status, reviewer_type, review_note FROM publish_reviews WHERE id = ? LIMIT 1`
+		).bind(reviewId).first();
+		expect(String(review?.decision || '')).toBe('allow');
+		expect(String(review?.review_status || '')).toBe('approved');
+		expect(String(review?.reviewer_type || '')).toBe('operator');
+		expect(String(review?.review_note || '')).toContain('valid restaurant');
+
+		const company = await env.DB.prepare(
+			`SELECT website_status, trust_state FROM companies WHERE id = ? LIMIT 1`
+		).bind(2).first();
+		expect(String(company?.website_status || '')).toBe('published');
+		expect(String(company?.trust_state || '')).toBe('trusted');
+		expect(fetchSpy).toHaveBeenCalled();
+	});
+
+	it('allows operator to reject a pending publish review', async () => {
+		await initializeDatabase(env.DB);
+
+		const reviewId = crypto.randomUUID();
+		const now = new Date().toISOString();
+		await env.DB.prepare(`
+			INSERT INTO publish_reviews (
+				id, company_id, host, subdomain, decision, review_status, risk_score,
+				reason_codes_json, evidence_json, payload_snapshot_json, reviewer_type, created_at, updated_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'system', ?, ?)
+		`).bind(
+			reviewId,
+			2,
+			'restaurant2.gooddining.app',
+			'restaurant2',
+			'review',
+			'pending',
+			35,
+			JSON.stringify(['suspicious_external_link']),
+			'{}',
+			'{}',
+			now,
+			now
+		).run();
+
+		const request = new Request(`http://localhost/api/platform/moderation/review/${reviewId}/reject`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ pin: '1234', reviewNote: 'Suspicious outbound link remains unresolved.' })
+		});
+
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(200);
+		const body = await response.json();
+		expect(body.ok).toBe(true);
+		expect(body.action).toBe('reject');
+
+		const review = await env.DB.prepare(
+			`SELECT decision, review_status, review_note FROM publish_reviews WHERE id = ? LIMIT 1`
+		).bind(reviewId).first();
+		expect(String(review?.decision || '')).toBe('block');
+		expect(String(review?.review_status || '')).toBe('rejected');
+		expect(String(review?.review_note || '')).toContain('Suspicious outbound link');
+
+		const company = await env.DB.prepare(
+			`SELECT website_status FROM companies WHERE id = ? LIMIT 1`
+		).bind(2).first();
+		expect(String(company?.website_status || '')).toBe('draft');
+	});
+
+	it('allows operator to suspend a tenant website', async () => {
+		await initializeDatabase(env.DB);
+
+		const request = new Request('http://localhost/api/platform/tenants/2/suspend-website', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ pin: '1234', reason: 'phishing_review_confirmed' })
+		});
+
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(200);
+		const body = await response.json();
+		expect(body.ok).toBe(true);
+		expect(body.website_status).toBe('suspended');
+		expect(body.trust_state).toBe('suspended');
+
+		const company = await env.DB.prepare(
+			`SELECT website_status, trust_state, suspended_reason FROM companies WHERE id = ? LIMIT 1`
+		).bind(2).first();
+		expect(String(company?.website_status || '')).toBe('suspended');
+		expect(String(company?.trust_state || '')).toBe('suspended');
+		expect(String(company?.suspended_reason || '')).toBe('phishing_review_confirmed');
+	});
+
+	it('allows operator to quarantine a subdomain', async () => {
+		await initializeDatabase(env.DB);
+
+		const request = new Request('http://localhost/api/platform/subdomains/restaurant2/quarantine', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ pin: '1234', reason: 'brand_protection_hold' })
+		});
+
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(200);
+		const body = await response.json();
+		expect(body.ok).toBe(true);
+		expect(body.subdomain_status).toBe('quarantine');
+
+		const reservation = await env.DB.prepare(
+			`SELECT status, reason_code FROM subdomain_reservations WHERE normalized_slug = ? ORDER BY updated_at DESC LIMIT 1`
+		).bind('restaurant2').first();
+		expect(String(reservation?.status || '')).toBe('quarantine');
+		expect(String(reservation?.reason_code || '')).toBe('brand_protection_hold');
+
+		const company = await env.DB.prepare(
+			`SELECT subdomain_status FROM companies WHERE id = ? LIMIT 1`
+		).bind(2).first();
+		expect(String(company?.subdomain_status || '')).toBe('quarantine');
+	});
+
+	it('blocks public website payload when tenant website is suspended on host-based resolution', async () => {
+		await initializeDatabase(env.DB);
+
+		await env.DB.prepare(`
+			UPDATE companies
+			SET website_status = 'suspended', trust_state = 'suspended'
+			WHERE id = ?
+		`).bind(2).run();
+
+		const request = new Request('http://restaurant2.gooddining.app/api/website/payload');
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(423);
+		const body = await response.json();
+		expect(body.ok).toBe(false);
+		expect(body.error).toBe('tenant_website_suspended');
+	});
+
+	it('blocks website-master public rendering when tenant subdomain is quarantined on host-based resolution', async () => {
+		await initializeDatabase(env.DB);
+
+		await env.DB.prepare(`
+			UPDATE companies
+			SET subdomain_status = 'quarantine'
+			WHERE id = ?
+		`).bind(2).run();
+
+		const request = new Request('http://restaurant2.gooddining.app/website-master/index.html');
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(423);
+		const html = await response.text();
+		expect(html).toContain('Website Unavailable');
+	});
+
+	it('includes moderation reviews in platform admin dashboard data', async () => {
+		await initializeDatabase(env.DB);
+
+		const now = new Date().toISOString();
+		await env.DB.prepare(`
+			INSERT INTO publish_reviews (
+				id, company_id, host, subdomain, decision, review_status, risk_score,
+				reason_codes_json, evidence_json, payload_snapshot_json, reviewer_type, created_at, updated_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'system', ?, ?)
+		`).bind(
+			crypto.randomUUID(),
+			2,
+			'restaurant2.gooddining.app',
+			'restaurant2',
+			'review',
+			'pending',
+			30,
+			JSON.stringify(['suspicious_external_link']),
+			'{}',
+			'{}',
+			now,
+			now
+		).run();
+
+		const request = new Request('http://localhost/api/platform/admin/dashboard?pin=1234');
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(200);
+		const body = await response.json();
+		expect(body.ok).toBe(true);
+		expect(Array.isArray(body.reviews)).toBe(true);
+		expect(body.reviews.length).toBeGreaterThan(0);
+		expect(String(body.reviews[0]?.company_name || '')).toContain('ESSKULTUR');
+	});
+
 	it('accepts public website contact submissions and stores them in contacts', async () => {
 		await initializeDatabase(env.DB);
 

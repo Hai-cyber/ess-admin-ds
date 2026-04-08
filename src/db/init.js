@@ -17,6 +17,13 @@ async function ensureColumn(db, tableName, columnName, columnDefinition) {
 
 async function ensureSchemaEvolution(db) {
   await ensureColumn(db, 'companies', 'organization_id', 'INTEGER');
+  await ensureColumn(db, 'companies', 'subdomain_status', "TEXT DEFAULT 'active'");
+  await ensureColumn(db, 'companies', 'website_status', "TEXT DEFAULT 'draft'");
+  await ensureColumn(db, 'companies', 'trust_state', "TEXT DEFAULT 'pending_verification'");
+  await ensureColumn(db, 'companies', 'risk_score', 'INTEGER DEFAULT 0');
+  await ensureColumn(db, 'companies', 'suspended_reason', 'TEXT');
+  await ensureColumn(db, 'companies', 'suspended_at', 'TEXT');
+  await ensureColumn(db, 'companies', 'last_reviewed_at', 'TEXT');
   await ensureColumn(db, 'customers', 'odoo_register_sync_state', "TEXT DEFAULT 'pending'");
   await ensureColumn(db, 'customers', 'odoo_register_sync_error', 'TEXT');
   await ensureColumn(db, 'customers', 'odoo_register_synced_at', 'TEXT');
@@ -134,8 +141,8 @@ export async function initializeDatabase(db) {
         await db
           .prepare(`
             INSERT INTO companies 
-            (id, organization_id, subdomain, name, email, phone, odoo_company_id, odoo_url, timezone, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (id, organization_id, subdomain, subdomain_status, website_status, trust_state, risk_score, name, email, phone, odoo_company_id, odoo_url, timezone, created_at, updated_at)
+            VALUES (?, ?, ?, 'active', 'published', 'trusted', 0, ?, ?, ?, ?, ?, ?, ?, ?)
           `)
           .bind(
             company.id, company.organization_id, company.subdomain, company.name, company.email, company.phone,
@@ -143,6 +150,24 @@ export async function initializeDatabase(db) {
             new Date().toISOString(), new Date().toISOString()
           )
           .run();
+
+        await db.prepare(`
+          INSERT INTO subdomain_reservations
+          (id, slug, normalized_slug, company_id, status, reason_code, decision_source, created_at, updated_at)
+          VALUES (?, ?, ?, ?, 'reserved', 'active_company_slug', 'seed', ?, ?)
+          ON CONFLICT(normalized_slug, status) DO UPDATE SET
+            company_id = excluded.company_id,
+            reason_code = excluded.reason_code,
+            decision_source = excluded.decision_source,
+            updated_at = excluded.updated_at
+        `).bind(
+          `reservation_${company.subdomain}`,
+          company.subdomain,
+          String(company.subdomain || '').trim().toLowerCase(),
+          company.id,
+          nowIso,
+          nowIso
+        ).run();
       }
     }
 
@@ -287,6 +312,43 @@ export async function initializeDatabase(db) {
         .prepare(`INSERT OR IGNORE INTO settings (company_id, key, value, description, updated_at) VALUES (?, ?, ?, ?, ?)`)
         .bind(setting.company_id, setting.key, setting.value, setting.description, new Date().toISOString())
         .run();
+    }
+
+    const defaultReservedTerms = [
+      { term: 'www', match_type: 'exact', category: 'internal_system', action: 'reserve', notes: 'Root web alias' },
+      { term: 'admin', match_type: 'exact', category: 'internal_system', action: 'block', notes: 'Admin host naming' },
+      { term: 'api', match_type: 'exact', category: 'internal_system', action: 'block', notes: 'API host naming' },
+      { term: 'support', match_type: 'exact', category: 'internal_system', action: 'block', notes: 'Support impersonation risk' },
+      { term: 'billing', match_type: 'exact', category: 'internal_system', action: 'block', notes: 'Billing impersonation risk' },
+      { term: 'login', match_type: 'exact', category: 'internal_system', action: 'block', notes: 'Login impersonation risk' },
+      { term: 'verify', match_type: 'exact', category: 'internal_system', action: 'block', notes: 'Verification impersonation risk' },
+      { term: 'secure', match_type: 'exact', category: 'internal_system', action: 'block', notes: 'Security impersonation risk' },
+      { term: 'telegram', match_type: 'contains', category: 'scam', action: 'review', notes: 'High-risk outbound channel naming' },
+      { term: 'crypto', match_type: 'contains', category: 'scam', action: 'review', notes: 'Crypto scam risk' },
+      { term: 'onlyfans', match_type: 'contains', category: 'sexual_explicit', action: 'block', notes: 'Explicit sexual content signal' },
+      { term: 'porn', match_type: 'contains', category: 'sexual_explicit', action: 'block', notes: 'Explicit sexual content signal' },
+      { term: 'xxx', match_type: 'contains', category: 'sexual_explicit', action: 'block', notes: 'Explicit sexual content signal' },
+      { term: 'election', match_type: 'contains', category: 'political_sensitive', action: 'review', notes: 'Political sensitivity review' },
+      { term: 'church', match_type: 'contains', category: 'religious_sensitive', action: 'review', notes: 'Religious sensitivity review' }
+    ];
+
+    for (const rule of defaultReservedTerms) {
+      const normalizedTerm = String(rule.term || '').trim().toLowerCase();
+      await db.prepare(`
+        INSERT OR IGNORE INTO reserved_terms
+        (id, term, normalized_term, match_type, category, action, notes, is_active, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+      `).bind(
+        `reserved_${normalizedTerm}_${rule.match_type}`,
+        rule.term,
+        normalizedTerm,
+        rule.match_type,
+        rule.category,
+        rule.action,
+        rule.notes,
+        nowIso,
+        nowIso
+      ).run();
     }
     
     // Add default staff if not exist

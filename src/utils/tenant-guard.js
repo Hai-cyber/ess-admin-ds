@@ -11,6 +11,8 @@ export function requireTenant(handler) {
         'override_company_not_found': [404, 'company_not_found'],
         'tenant_company_not_found': [404, 'tenant_company_not_found'],
         'tenant_subdomain_not_found': [404, 'tenant_subdomain_not_found'],
+        'tenant_subdomain_blocked': [423, 'tenant_subdomain_blocked'],
+        'tenant_website_suspended': [423, 'tenant_website_suspended'],
         'no_tenant_context': [400, 'tenant_required'],
         'unresolved': [400, 'tenant_required']
       };

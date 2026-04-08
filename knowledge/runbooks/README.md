@@ -2,3 +2,4 @@
 
 - onboard-customer.md
 - toggle-paid-modules.md
+- content-review-telegram.md

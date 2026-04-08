@@ -23,7 +23,7 @@ If validation fails, the website version must not publish.
 
 ## Validation Layers
 
-Every website version should pass all four layers.
+Every website version should pass all six layers.
 
 ### 1. Contract validation
 
@@ -116,6 +116,23 @@ Required checks:
 
 If these values are malformed, publish should fail.
 
+### 6. Abuse and trust validation
+
+Check that the tenant website version is safe to expose on a managed public subdomain or custom domain.
+
+Required checks:
+
+- subdomain slug passes reserved-term and abuse-policy checks
+- tenant trust status allows publish on the requested host type
+- public copy does not contain blocked scam, explicit sexual, hateful, or impersonation patterns
+- outbound links do not point to blocked or obviously suspicious destinations
+- moderation result is one of `allow`, `review`, or `block`
+- `review` versions do not become publicly live until an operator approves them
+- `block` versions must not publish and must persist reason codes for audit
+
+If this layer fails or returns `block`, publish must fail.
+If this layer returns `review`, publish must enter a held state and notify operators.
+
 ---
 
 ## Operational Checklist
@@ -135,6 +152,11 @@ Use this checklist before rendering or publishing a new tenant version.
 - [ ] Background controls use valid values
 - [ ] Menu sections and repeatable cards have valid item shapes
 - [ ] Optional missing data falls back safely in preview
+- [ ] Subdomain slug is not reserved, quarantined, or policy-blocked
+- [ ] Tenant trust tier allows requested publish target
+- [ ] Content moderation returns `allow` or an approved `review`
+- [ ] Suspicious outbound links are absent or explicitly approved
+- [ ] Publish decision and reason codes are written to audit history
 
 ---
 
@@ -151,6 +173,9 @@ Use this checklist before rendering or publishing a new tenant version.
 - malformed URLs in provided media fields
 - missing core business identity fields
 - missing required CTA or contact fields
+- blocked subdomain slug
+- blocked content moderation decision
+- tenant status is suspended or under abuse hold
 
 ### May warn but still publish
 
@@ -158,6 +183,7 @@ Use this checklist before rendering or publishing a new tenant version.
 - missing optional gallery items
 - missing optional journal or market-fit content
 - basic tier with membership module enabled but hidden by tier gate
+- first publish from a low-trust tenant when moderation returns `review` and an operator already approved it
 
 ---
 
@@ -189,3 +215,8 @@ This validation gate enforces the rules defined in:
 
 The template contract defines what the system is allowed to render.
 This publish validation document defines what must be checked before the system renders it.
+
+Operational design for subdomain abuse protection and Telegram-based operator review is documented in:
+
+- `knowledge/specs/subdomain-abuse-protection-spec.md`
+- `knowledge/runbooks/content-review-telegram.md`
