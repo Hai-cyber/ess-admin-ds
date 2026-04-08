@@ -16,6 +16,22 @@ async function ensureColumn(db, tableName, columnName, columnDefinition) {
 }
 
 async function ensureSchemaEvolution(db) {
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS payment_events (
+      id TEXT PRIMARY KEY,
+      signup_id TEXT,
+      company_id INTEGER,
+      payment_reference TEXT,
+      payment_method TEXT,
+      payment_status TEXT,
+      event_type TEXT NOT NULL,
+      event_source TEXT,
+      note TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (signup_id) REFERENCES platform_signups(id),
+      FOREIGN KEY (company_id) REFERENCES companies(id)
+    )
+  `).run();
   await ensureColumn(db, 'companies', 'organization_id', 'INTEGER');
   await ensureColumn(db, 'companies', 'subdomain_status', "TEXT DEFAULT 'active'");
   await ensureColumn(db, 'companies', 'website_status', "TEXT DEFAULT 'draft'");
@@ -31,6 +47,8 @@ async function ensureSchemaEvolution(db) {
   await ensureColumn(db, 'platform_signups', 'payment_method', 'TEXT');
   await ensureColumn(db, 'platform_signups', 'payment_reference', 'TEXT');
   await ensureColumn(db, 'platform_signups', 'payment_confirmed_at', 'TEXT');
+  await db.prepare(`CREATE INDEX IF NOT EXISTS idx_payment_events_signup ON payment_events(signup_id, created_at)`).run();
+  await db.prepare(`CREATE INDEX IF NOT EXISTS idx_payment_events_company ON payment_events(company_id, created_at)`).run();
 }
 
 /**

@@ -68,6 +68,9 @@
 ✅ Post-checkout confirmation path now turns `stripe_checkout_pending` into `stripe_paid` and stores confirmation state in both signup records and tenant settings
 ✅ Stripe webhook endpoint now supports lifecycle updates for checkout completion and expiry without depending on browser redirect
 ✅ SaaS Admin signup list now shows payment lifecycle clearly: pending, paid, expired, method, reference, and confirmation time
+✅ Payment audit timeline now persists in `payment_events` and is rendered inside SaaS Admin signup rows
+✅ Failed or expired Stripe checkout sessions can now be remediated with retry checkout actions from SaaS Admin and tenant admin
+✅ Stripe webhook coverage now includes a signed-payload test path, not only `mock` mode behavior
 ✅ SaaS Admin moderation queue now has summary/filter/refresh controls on top of approve/reject/suspend/quarantine actions
 ✅ Local smoke verification now covers `/api/contact/create`, platform contact, publish review, suspend, quarantine, and host-based public blocking
 ✅ Explicit `production` env now deploys against a real D1 database id

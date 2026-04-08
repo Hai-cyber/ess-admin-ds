@@ -62,6 +62,9 @@
 - [x] Bank card signup now has a post-checkout confirmation path that moves `stripe_checkout_pending` to `stripe_paid`
 - [x] Stripe webhook endpoint now updates signup payment lifecycle for completed and expired checkout sessions
 - [x] SaaS Admin signup rows now show payment status, method, reference, and confirmation timestamp
+- [x] Payment lifecycle events now persist in `payment_events` and render as an audit timeline in SaaS Admin
+- [x] Failed or expired Stripe checkout sessions can now generate a new retry checkout from SaaS Admin and tenant admin
+- [x] Stripe webhook testing now includes a signed payload path using `stripe-signature`
 - [x] Structured `opening_hours_schedule` now reaches the public website payload alongside legacy open/close fallback values
 - [x] Wildcard tenant subdomains on `gooddining.app` and demo-payment signup walkthrough have been verified live end to end
 - [x] Active Odoo runtime/helper paths removed from both worker entrypoints; active public/admin surfaces updated to first-party CRM wording
@@ -103,6 +106,7 @@
 - [x] Signup flow now has a Stripe checkout-session path for bank card instead of only demo-paid simulation
 - [x] Signup/payment state now persists `payment_method`, `payment_reference`, and `payment_confirmed_at` for Stripe confirmation
 - [x] Stripe payment lifecycle no longer depends solely on frontend redirect; webhook and post-checkout confirmation both update the same persisted state
+- [x] Payment remediation now includes retry checkout plus a persisted audit trail across checkout creation, retry, confirmation, and webhook updates
 - [ ] Restaurant config form (email/phone/hours/areas)
 - [ ] Staff PIN setup
 - [ ] Payment integration setup

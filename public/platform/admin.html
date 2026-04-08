@@ -44,6 +44,8 @@
     .lead-name { font-weight: 700; }
     .lead-meta { font-size: 0.82rem; color: var(--text-muted); }
     .lead-payment-meta { font-size: 0.82rem; color: var(--text); display:grid; gap:4px; }
+    .lead-payment-timeline { margin-top: 10px; display: grid; gap: 6px; font-size: 0.8rem; color: var(--text-muted); }
+    .lead-payment-event { padding: 8px 10px; border-radius: 10px; background: #fafafa; border: 1px solid var(--border); }
     .lead-controls { display: grid; grid-template-columns: 180px 1fr auto; gap: 10px; align-items: start; }
     .review-row { display: grid; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--border); }
     .review-row:last-child { border-bottom: none; }
@@ -223,7 +225,7 @@
     ];
 
     let saasPin = '';
-    let saasDashboard = { pricingSettings: {}, signups: [], contacts: [], reviews: [] };
+    let saasDashboard = { pricingSettings: {}, signups: [], contacts: [], reviews: [], paymentEvents: [] };
   let reviewFilter = 'all';
 
     function getReviewFocusId() {
@@ -302,6 +304,7 @@
     function renderSaasSignups() {
       const el = document.getElementById('saas-signups-list');
       const signups = Array.isArray(saasDashboard.signups) ? saasDashboard.signups : [];
+      const paymentEvents = Array.isArray(saasDashboard.paymentEvents) ? saasDashboard.paymentEvents : [];
       if (!signups.length) {
         el.innerHTML = '<p class="text-muted">No signups yet.</p>';
         return;
@@ -318,6 +321,17 @@
                 <div>Reference: ${escapeHtml(row.payment_reference || 'none')}</div>
                 <div>Confirmed: ${escapeHtml(row.payment_confirmed_at || 'not confirmed')}</div>
               </div>
+              <div class="lead-payment-timeline">
+                ${(paymentEvents
+                  .filter((event) => String(event.signup_id || '') === String(row.id || ''))
+                  .slice(0, 5)
+                  .map((event) => `
+                    <div class="lead-payment-event">
+                      <strong>${escapeHtml(event.event_type || 'payment_event')}</strong> • ${escapeHtml(event.payment_status || 'n/a')} • ${escapeHtml(event.created_at || '')}<br>
+                      ${escapeHtml(event.note || '')}
+                    </div>
+                  `).join('')) || '<div class="text-muted">No payment timeline yet.</div>'}
+              </div>
             </div>
             <div>${statusBadge(row.follow_up_status || 'new')}</div>
           </div>
@@ -326,7 +340,10 @@
               ${['new','contacted','won','lost'].map((value) => `<option value="${value}" ${String(row.follow_up_status || 'new') === value ? 'selected' : ''}>${value}</option>`).join('')}
             </select>
             <textarea id="follow_note_${row.id}" placeholder="Follow-up note">${escapeHtml(row.follow_up_note || '')}</textarea>
-            <button class="btn btn-sm btn-outline" onclick="saveFollowup('${row.id}')">Save</button>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn btn-sm btn-outline" onclick="saveFollowup('${row.id}')">Save</button>
+              ${String(row.payment_method || '') === 'bankcard' && ['stripe_failed', 'stripe_expired'].includes(String(row.payment_status || '').toLowerCase()) ? `<button class="btn btn-sm btn-outline" onclick="retrySignupPayment('${row.id}')">Retry checkout</button>` : ''}
+            </div>
           </div>
         </div>
       `).join('');
@@ -468,6 +485,21 @@
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) return alert(data.error || 'Failed to save follow-up');
+      await loadSaasDashboard();
+    }
+
+    async function retrySignupPayment(signupId) {
+      if (!saasPin) return alert('Load SaaS admin first.');
+      const res = await fetch(`/api/platform/admin/signups/${encodeURIComponent(signupId)}/retry-payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: saasPin })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) return alert(data.error || 'Failed to create retry checkout.');
+      if (data.checkout_url) {
+        window.open(data.checkout_url, '_blank', 'noopener');
+      }
       await loadSaasDashboard();
     }
 

@@ -71,6 +71,9 @@ Not Started: 0%
 - [x] Platform signup now supports post-checkout confirmation so Stripe pending payments can transition to `stripe_paid`
 - [x] Stripe webhook endpoint now updates payment lifecycle states like `stripe_paid` and `stripe_expired`
 - [x] SaaS Admin now shows payment lifecycle details directly in the signup CRM list
+- [x] Payment audit timeline is now persisted in `payment_events` and shown in SaaS Admin signup rows
+- [x] SaaS Admin and tenant admin now support retrying failed or expired Stripe checkout sessions
+- [x] Stripe webhook tests now include a valid signed payload path
 - [x] Public website payload now includes structured `opening_hours_schedule` alongside legacy open/close values
 - [x] Wildcard tenant subdomain routing and host-based website payload resolution verified live on `gooddining.app`
 - [x] Demo-payment self-service signup walkthrough verified live end to end with tenant provisioning, admin access, and website host resolution
@@ -99,6 +102,7 @@ Not Started: 0%
 - Bank card signup now returns a Stripe checkout URL in test/mock mode instead of only demo-paid simulation ✅
 - Stripe post-checkout confirmation path now persists `payment_reference`, `payment_confirmed_at`, and `stripe_paid` state ✅
 - Stripe webhook handling now updates pending checkout sessions to `paid` or `expired` without requiring the success page ✅
+- Payment lifecycle now has an audit/event trail and retry remediation path for failed or expired Stripe checkout sessions ✅
 - Wildcard subdomain routing, host-based tenant payload resolution, and demo-payment signup walkthrough verified live ✅
 - Contact route and platform contact lead flow verified on a freshly reloaded local worker ✅
 - Production workers.dev ingress currently returns Cloudflare `1050`; application deploy exists but public ingress is not finished ⚠️

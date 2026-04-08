@@ -1062,9 +1062,9 @@ async function setPlatformSignupPaymentState(env, payload = {}) {
 
   await env.DB.prepare(`
     UPDATE platform_signups
-    SET payment_status = ?, payment_confirmed_at = ?
+    SET payment_status = ?, payment_reference = ?, payment_confirmed_at = ?
     WHERE id = ?
-  `).bind(paymentStatus, confirmedAt, signupId).run();
+  `).bind(paymentStatus, sessionId || null, confirmedAt, signupId).run();
 
   await Promise.all([
     upsertSettingValue(env, companyId, 'demo_payment_status', paymentStatus, OPERATIONAL_KEY_DESCRIPTIONS.demo_payment_status, updatedBy),
@@ -1072,7 +1072,118 @@ async function setPlatformSignupPaymentState(env, payload = {}) {
     upsertSettingValue(env, companyId, 'demo_payment_reference', sessionId, OPERATIONAL_KEY_DESCRIPTIONS.demo_payment_reference, updatedBy)
   ]);
 
+  await logPlatformSignupPaymentEvent(env, {
+    signupId,
+    companyId,
+    paymentReference: sessionId,
+    paymentStatus,
+    eventType: 'payment_status_updated',
+    eventSource: updatedBy,
+    note: confirmedAt ? `Confirmed at ${confirmedAt}` : `Status set to ${paymentStatus}`
+  });
+
   return true;
+}
+
+async function logPlatformSignupPaymentEvent(env, payload = {}) {
+  const now = payload.createdAt || new Date().toISOString();
+  await env.DB.prepare(`
+    INSERT INTO payment_events (
+      id, signup_id, company_id, payment_reference, payment_method, payment_status,
+      event_type, event_source, note, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    payload.id || crypto.randomUUID(),
+    payload.signupId || null,
+    Number(payload.companyId || 0) || null,
+    payload.paymentReference || null,
+    payload.paymentMethod || null,
+    payload.paymentStatus || null,
+    String(payload.eventType || 'payment_event').trim(),
+    payload.eventSource || null,
+    payload.note || null,
+    now
+  ).run();
+}
+
+async function createPlatformSignupCheckoutRetry(env, payload = {}) {
+  const signupId = String(payload.signupId || '').trim();
+  const origin = String(payload.origin || '').trim();
+  if (!signupId || !origin) {
+    return { ok: false, status: 400, code: 'validation_failed', error: 'signupId and origin are required.' };
+  }
+
+  const signup = await env.DB.prepare(`
+    SELECT id, company_id, organization_id, restaurant_name, owner_email, plan, payment_method,
+           due_today_eur, recurring_monthly_eur, payment_status
+    FROM platform_signups
+    WHERE id = ?
+    LIMIT 1
+  `).bind(signupId).first();
+
+  if (!signup?.id) {
+    return { ok: false, status: 404, code: 'signup_not_found', error: 'Signup not found.' };
+  }
+
+  if (String(signup.payment_method || '').trim() !== 'bankcard') {
+    return { ok: false, status: 409, code: 'payment_retry_not_supported', error: 'Retry checkout is only available for bank card signups.' };
+  }
+
+  if (!canUseStripeCheckout(env)) {
+    return { ok: false, status: 503, code: 'stripe_unavailable', error: 'Stripe checkout is unavailable right now.' };
+  }
+
+  const amountEur = Number(signup.due_today_eur || 0) > 0
+    ? Number(signup.due_today_eur || 0)
+    : Number(signup.recurring_monthly_eur || 0);
+
+  const checkoutSession = await createStripeCheckoutSession(env, {
+    amountEur,
+    customerEmail: signup.owner_email,
+    productName: `${signup.restaurant_name} ${signup.plan} signup retry`,
+    successUrl: `${origin}/platform/signup.html?checkout=success&company_id=${signup.company_id}&session_id={CHECKOUT_SESSION_ID}`,
+    cancelUrl: `${origin}/platform/signup.html?checkout=cancelled&company_id=${signup.company_id}`,
+    metadata: {
+      company_id: signup.company_id,
+      organization_id: signup.organization_id,
+      restaurant_name: signup.restaurant_name,
+      plan: signup.plan,
+      signup_id: signup.id
+    }
+  });
+
+  if (!checkoutSession.ok) {
+    return checkoutSession;
+  }
+
+  await setPlatformSignupPaymentState(env, {
+    signupId: signup.id,
+    companyId: Number(signup.company_id || 0),
+    sessionId: checkoutSession.id,
+    paymentStatus: 'stripe_checkout_pending',
+    confirmedAt: null,
+    updatedBy: String(payload.updatedBy || 'stripe-retry').trim()
+  });
+
+  await logPlatformSignupPaymentEvent(env, {
+    signupId: signup.id,
+    companyId: Number(signup.company_id || 0),
+    paymentReference: checkoutSession.id,
+    paymentMethod: signup.payment_method,
+    paymentStatus: 'stripe_checkout_pending',
+    eventType: 'checkout_retry_created',
+    eventSource: String(payload.updatedBy || 'stripe-retry').trim(),
+    note: 'New Stripe checkout session created for retry.'
+  });
+
+  return {
+    ok: true,
+    signupId: signup.id,
+    companyId: Number(signup.company_id || 0),
+    checkoutUrl: checkoutSession.url,
+    sessionId: checkoutSession.id,
+    paymentStatus: 'stripe_checkout_pending'
+  };
 }
 
 function hexEncode(bytes) {
@@ -2254,7 +2365,7 @@ async function authorizePlatformOperator(env, pinRaw) {
 }
 
 async function getPlatformAdminDashboard(env) {
-  const [pricingSettings, signupsResult, contactsResult, reviewsResult] = await Promise.all([
+  const [pricingSettings, signupsResult, contactsResult, reviewsResult, paymentEventsResult] = await Promise.all([
     getPlatformMarketingSettings(env),
     env.DB.prepare(`
       SELECT id, company_id, organization_id, restaurant_name, owner_email, owner_phone, subdomain, plan,
@@ -2285,6 +2396,13 @@ async function getPlatformAdminDashboard(env) {
         END,
         pr.created_at DESC
       LIMIT 100
+    `).all(),
+    env.DB.prepare(`
+      SELECT id, signup_id, company_id, payment_reference, payment_method, payment_status,
+             event_type, event_source, note, created_at
+      FROM payment_events
+      ORDER BY created_at DESC
+      LIMIT 500
     `).all()
   ]);
 
@@ -2292,7 +2410,8 @@ async function getPlatformAdminDashboard(env) {
     pricingSettings,
     signups: signupsResult?.results || [],
     contacts: contactsResult?.results || [],
-    reviews: reviewsResult?.results || []
+    reviews: reviewsResult?.results || [],
+    paymentEvents: paymentEventsResult?.results || []
   };
 }
 
@@ -4118,6 +4237,8 @@ export default {
           );
         }
 
+        const signupRecordId = crypto.randomUUID();
+
         await env.DB.prepare(`
           INSERT INTO platform_signups (
             id, company_id, organization_id, restaurant_name, owner_email, owner_phone, subdomain, plan,
@@ -4125,7 +4246,7 @@ export default {
             due_today_eur, recurring_monthly_eur, raw_payload_json, created_at
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).bind(
-          crypto.randomUUID(),
+          signupRecordId,
           companyId,
           organizationId,
           restaurantName,
@@ -4145,6 +4266,19 @@ export default {
           JSON.stringify(body || {}),
           now
         ).run();
+
+        await logPlatformSignupPaymentEvent(env, {
+          signupId: signupRecordId,
+          companyId,
+          paymentReference: paymentSummary.checkoutSessionId || null,
+          paymentMethod: paymentSummary.paymentMethod,
+          paymentStatus: paymentSummary.paymentStatus,
+          eventType: paymentSummary.paymentStatus === 'stripe_checkout_pending' ? 'checkout_created' : 'payment_initialized',
+          eventSource: 'platform-signup',
+          note: paymentSummary.paymentStatus === 'stripe_checkout_pending'
+            ? 'Initial Stripe checkout session created.'
+            : 'Initial payment state stored during signup.'
+        });
 
         const previewAdminUrl = `${url.origin}/admin?company_id=${companyId}`;
         const previewBoardUrl = plan === 'core' ? null : url.origin + '/board?company_id=' + companyId;
@@ -4183,6 +4317,69 @@ export default {
       } catch (e) {
         return Response.json({ ok: false, error: e.message }, { status: 500 });
       }
+    }
+
+    if (url.pathname.match(/^\/api\/platform\/admin\/signups\/([^/]+)\/retry-payment$/) && request.method === "POST") {
+      try {
+        const routeMatch = url.pathname.match(/^\/api\/platform\/admin\/signups\/([^/]+)\/retry-payment$/);
+        const signupId = decodeURIComponent(String(routeMatch?.[1] || '')).trim();
+        const body = await request.json().catch(() => ({}));
+        const pin = String(body?.pin || '').trim();
+        const auth = await authorizePlatformOperator(env, pin);
+        if (!auth.ok) {
+          return Response.json({ ok: false, error: auth.error }, { status: auth.status });
+        }
+
+        const result = await createPlatformSignupCheckoutRetry(env, {
+          signupId,
+          origin: url.origin,
+          updatedBy: String(auth.staff.name || auth.staff.id || 'platform-operator')
+        });
+        if (!result.ok) {
+          return Response.json({ ok: false, code: result.code, error: result.error }, { status: result.status || 500 });
+        }
+
+        return Response.json({ ok: true, signup_id: result.signupId, company_id: result.companyId, checkout_url: result.checkoutUrl, session_id: result.sessionId, payment_status: result.paymentStatus });
+      } catch (e) {
+        return Response.json({ ok: false, error: e.message }, { status: 500 });
+      }
+    }
+
+    if (url.pathname === "/api/admin/payment/retry-checkout" && request.method === "POST") {
+      return runTenantRoute(async ({ companyId }) => {
+        try {
+        const body = await request.json().catch(() => ({}));
+        const pin = String(body?.pin || '').trim();
+        const auth = await authorizeAdminByPin(env, companyId, pin);
+        if (!auth.ok) {
+          return Response.json({ ok: false, error: auth.error }, { status: auth.status });
+        }
+
+        const signup = await env.DB.prepare(`
+          SELECT id
+          FROM platform_signups
+          WHERE company_id = ?
+          ORDER BY created_at DESC
+          LIMIT 1
+        `).bind(companyId).first();
+        if (!signup?.id) {
+          return Response.json({ ok: false, error: 'Signup not found for tenant.' }, { status: 404 });
+        }
+
+        const result = await createPlatformSignupCheckoutRetry(env, {
+          signupId: signup.id,
+          origin: url.origin,
+          updatedBy: String(auth.staff.name || auth.staff.id || 'tenant-admin')
+        });
+        if (!result.ok) {
+          return Response.json({ ok: false, code: result.code, error: result.error }, { status: result.status || 500 });
+        }
+
+        return Response.json({ ok: true, checkout_url: result.checkoutUrl, session_id: result.sessionId, payment_status: result.paymentStatus });
+        } catch (e) {
+          return Response.json({ ok: false, error: e.message }, { status: 500 });
+        }
+      });
     }
 
     if (url.pathname === "/api/integrations/stripe/webhook" && request.method === "POST") {

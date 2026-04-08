@@ -2342,6 +2342,7 @@
           <div></div>
           <div style="display:flex;justify-content:flex-end;gap:8px;">
             ${paymentStatus === 'stripe_checkout_pending' && paymentReference ? '<button class="btn-small btn-secondary" onclick="confirmTenantStripePayment()">Re-check Stripe Payment</button>' : ''}
+            ${['stripe_failed', 'stripe_expired'].includes(String(paymentStatus || '').toLowerCase()) ? '<button class="btn-small btn-secondary" onclick="retryTenantStripeCheckout()">Retry Stripe Checkout</button>' : ''}
             <button class="btn-small btn-secondary" onclick="reloadPlatformConfig()">Reload</button>
             <button class="btn-small btn-primary" onclick="savePlatformConfig()">Save Payment Setup</button>
           </div>
@@ -2516,6 +2517,33 @@
         alert(`Stripe payment confirmed: ${data.payment_status || 'stripe_paid'}`);
       } catch (error) {
         alert(error.message || 'Network error while confirming Stripe payment.');
+      }
+    }
+
+    async function retryTenantStripeCheckout() {
+      if (!currentUser?.pin) {
+        alert('Please login again.');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/admin/payment/retry-checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin: currentUser.pin })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) {
+          alert(data.error || 'Unable to create a new Stripe checkout session.');
+          return;
+        }
+
+        if (data.checkout_url) {
+          window.open(data.checkout_url, '_blank', 'noopener');
+        }
+        await reloadPlatformConfig();
+      } catch (error) {
+        alert(error.message || 'Network error while creating retry checkout.');
       }
     }
 

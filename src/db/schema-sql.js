@@ -227,6 +227,21 @@ CREATE TABLE IF NOT EXISTS platform_signups (
   FOREIGN KEY (organization_id) REFERENCES organizations(id)
 );
 
+CREATE TABLE IF NOT EXISTS payment_events (
+  id TEXT PRIMARY KEY,
+  signup_id TEXT,
+  company_id INTEGER,
+  payment_reference TEXT,
+  payment_method TEXT,
+  payment_status TEXT,
+  event_type TEXT NOT NULL,
+  event_source TEXT,
+  note TEXT,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (signup_id) REFERENCES platform_signups(id),
+  FOREIGN KEY (company_id) REFERENCES companies(id)
+);
+
 CREATE TABLE IF NOT EXISTS media_assets (
   id TEXT PRIMARY KEY,
   company_id INTEGER NOT NULL,
@@ -364,6 +379,8 @@ CREATE INDEX IF NOT EXISTS idx_settings_company ON settings(company_id);
 CREATE INDEX IF NOT EXISTS idx_platform_contacts_status ON platform_contacts(status);
 CREATE INDEX IF NOT EXISTS idx_platform_signups_company ON platform_signups(company_id);
 CREATE INDEX IF NOT EXISTS idx_platform_signups_email ON platform_signups(owner_email);
+CREATE INDEX IF NOT EXISTS idx_payment_events_signup ON payment_events(signup_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_payment_events_company ON payment_events(company_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_media_assets_company ON media_assets(company_id);
 CREATE INDEX IF NOT EXISTS idx_otp_company ON otp_cache(company_id);
 CREATE INDEX IF NOT EXISTS idx_telegram_company ON telegram_messages(company_id);

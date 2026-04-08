@@ -12,6 +12,20 @@ afterEach(() => {
 	vi.restoreAllMocks();
 });
 
+async function createStripeSignatureHeader(secret, payload) {
+	const timestamp = Math.floor(Date.now() / 1000).toString();
+	const key = await crypto.subtle.importKey(
+		'raw',
+		new TextEncoder().encode(secret),
+		{ name: 'HMAC', hash: 'SHA-256' },
+		false,
+		['sign']
+	);
+	const signatureBytes = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${timestamp}.${payload}`));
+	const signature = Array.from(new Uint8Array(signatureBytes)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
+	return `t=${timestamp},v1=${signature}`;
+}
+
 describe('ESSKULTUR worker', () => {
 	it('returns a JSON 404 for unknown unit routes', async () => {
 		const request = new Request('http://example.com/not-found');
@@ -1535,6 +1549,57 @@ describe('ESSKULTUR worker', () => {
 		expect(String(signupRow?.payment_confirmed_at || '')).not.toBe('');
 	});
 
+	it('accepts a Stripe webhook with a valid signed payload', async () => {
+		await initializeDatabase(env.DB);
+		env.STRIPE_MODE = 'mock';
+
+		let request = new Request('http://localhost/api/platform/signup', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				restaurant_name: 'Signed Webhook Diner',
+				owner_email: 'signed-webhook@example.com',
+				subdomain: 'signed-webhook-diner',
+				plan: 'core',
+				admin_pin: '1234',
+				admin_name: 'Owner',
+				demo_payment_method: 'bankcard'
+			})
+		});
+
+		let ctx = createExecutionContext();
+		let response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		const signupBody = await response.json();
+		const companyId = Number(signupBody.company_id || 0);
+		const sessionId = String(signupBody.payment?.checkoutSessionId || '');
+
+		env.STRIPE_MODE = '';
+		env.STRIPE_WEBHOOK_SECRET = 'whsec_test_signature_secret';
+		const payload = JSON.stringify({
+			type: 'checkout.session.completed',
+			data: { object: { id: sessionId, metadata: { company_id: String(companyId) } } }
+		});
+		const signatureHeader = await createStripeSignatureHeader(env.STRIPE_WEBHOOK_SECRET, payload);
+
+		request = new Request('http://localhost/api/integrations/stripe/webhook', {
+			method: 'POST',
+			headers: {
+				'content-type': 'application/json',
+				'stripe-signature': signatureHeader
+			},
+			body: payload
+		});
+
+		ctx = createExecutionContext();
+		response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		const body = await response.json();
+		expect(body.ok).toBe(true);
+		expect(String(body.payment_status || '')).toBe('stripe_paid');
+	});
+
 	it('updates pending Stripe checkout state to expired through the Stripe webhook', async () => {
 		await initializeDatabase(env.DB);
 		env.STRIPE_MODE = 'mock';
@@ -1584,6 +1649,69 @@ describe('ESSKULTUR worker', () => {
 		).bind(companyId).first();
 		expect(String(signupRow?.payment_status || '')).toBe('stripe_expired');
 		expect(String(signupRow?.payment_confirmed_at || '')).toBe('');
+	});
+
+	it('creates a new Stripe checkout session when retrying a failed signup payment', async () => {
+		await initializeDatabase(env.DB);
+		env.STRIPE_MODE = 'mock';
+
+		let request = new Request('http://localhost/api/platform/signup', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				restaurant_name: 'Retry Checkout Diner',
+				owner_email: 'retry-checkout@example.com',
+				subdomain: 'retry-checkout-diner',
+				plan: 'core',
+				admin_pin: '1234',
+				admin_name: 'Owner',
+				demo_payment_method: 'bankcard'
+			})
+		});
+
+		let ctx = createExecutionContext();
+		let response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		const signupBody = await response.json();
+		const companyId = Number(signupBody.company_id || 0);
+		const signupIdRow = await env.DB.prepare(`SELECT id FROM platform_signups WHERE company_id = ? LIMIT 1`).bind(companyId).first();
+
+		request = new Request('http://localhost/api/integrations/stripe/webhook', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				type: 'checkout.session.expired',
+				data: { object: { id: String(signupBody.payment?.checkoutSessionId || ''), metadata: { company_id: String(companyId) } } }
+			})
+		});
+		ctx = createExecutionContext();
+		response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		request = new Request(`http://localhost/api/platform/admin/signups/${encodeURIComponent(String(signupIdRow?.id || ''))}/retry-payment`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ pin: '1234' })
+		});
+		ctx = createExecutionContext();
+		response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		const retryBody = await response.json();
+		expect(retryBody.ok).toBe(true);
+		expect(String(retryBody.session_id || '')).toContain('cs_test_mock_');
+
+		const signupRow = await env.DB.prepare(
+			`SELECT payment_status, payment_reference FROM platform_signups WHERE id = ? LIMIT 1`
+		).bind(String(signupIdRow?.id || '')).first();
+		expect(String(signupRow?.payment_status || '')).toBe('stripe_checkout_pending');
+		expect(String(signupRow?.payment_reference || '')).toBe(String(retryBody.session_id || ''));
+
+		const events = await env.DB.prepare(
+			`SELECT event_type FROM payment_events WHERE signup_id = ? ORDER BY created_at DESC LIMIT 10`
+		).bind(String(signupIdRow?.id || '')).all();
+		const eventTypes = (events.results || []).map((row) => String(row.event_type || ''));
+		expect(eventTypes).toContain('checkout_retry_created');
 	});
 
 	it('redirects founder route to standard contact link when membership module is disabled', async () => {
