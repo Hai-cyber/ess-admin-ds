@@ -5,8 +5,6 @@
 
 // ── Language system ──────────────────────────────────
 
-const SUPPORTED_ROS_LANGS = ['en', 'de', 'vi'];
-
 function normalizeRosLang(lang) {
   if (!lang || typeof lang !== 'string') return null;
   const normalized = lang.toLowerCase();
@@ -1390,6 +1388,16 @@ document.addEventListener('DOMContentLoaded', () => {
   applyLang();
   loadPlatformPlans();
 
+  Object.assign(window, {
+    setLang,
+    selectLoginRole,
+    openLoginModal,
+    closeLoginModal,
+    continueLogin,
+    selectPlan,
+    wizardNext,
+  });
+
   // Subdomain live check
   const subInput = document.getElementById('f-subdomain');
   if (subInput) {
@@ -1408,6 +1416,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
     }
+  }
+
+  const contactForm = document.getElementById('contact-form');
+  if (contactForm) {
+    contactForm.addEventListener('submit', submitContact);
   }
 
   // Clear field error on input

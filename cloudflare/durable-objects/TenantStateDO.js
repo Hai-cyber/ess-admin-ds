@@ -3,7 +3,7 @@ export class TenantStateDO {
     this.state = state;
   }
 
-  async fetch(request) {
+  async fetch(_request) {
     return Response.json({
       durable_object: 'TenantStateDO',
       status: 'scaffolded'

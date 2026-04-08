@@ -1,49 +1,48 @@
 {
-  "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "ess-admin-ds",
-  "main": "src/index.js",
-  "compatibility_date": "2026-03-16",
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "ess-admin-ds",
+	"main": "src/index.js",
+	"compatibility_date": "2025-09-06",
 
-  "vars": {
-    "TURNSTILE_SITE_KEY": "0x4AAAAAACsnreaoe8DRwhYJ",
-    "FOUNDER_OTP_CHANNELS": "sms",
-    "FOUNDER_TEST_EXCEPTION_PHONES": "+491723855711",
-    "TWILIO_WHATSAPP_FROM": "whatsapp:+14155238886",
-    "TWILIO_SMS_FROM": "+15177014808",
-    "TWILIO_MESSAGING_SERVICE_SID": "MG0a4b056b926c76faf0acbd7b1921766d"
-  },
+	"vars": {
+		"TURNSTILE_SITE_KEY": "0x4AAAAAACsnreaoe8DRwhYJ",
+		"FOUNDER_OTP_CHANNELS": "sms",
+		"FOUNDER_TEST_EXCEPTION_PHONES": "+491723855711",
+		"TWILIO_WHATSAPP_FROM": "whatsapp:+14155238886",
+		"TWILIO_SMS_FROM": "+15177014808",
+		"TWILIO_MESSAGING_SERVICE_SID": "MG0a4b056b926c76faf0acbd7b1921766d",
+	},
 
-  "assets": {
-    "directory": "./public"
-  },
+	"assets": {
+		"directory": "./public",
+	},
 
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "ess_admin_ds",
-      "database_id": "55939312-121a-4fc1-91d2-061c4d9fa61e"
-    }
-  ],
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "ess_admin_ds",
+			"database_id": "55939312-121a-4fc1-91d2-061c4d9fa61e",
+		},
+	],
 
-  "env": {
-    "production": {
-      "name": "ess-admin-ds-prod",
-      "vars": {
-        "TURNSTILE_SITE_KEY": "0x4AAAAAACmwktNVObyT3tQ7",
-        "FOUNDER_OTP_CHANNELS": "sms",
-        "FOUNDER_TEST_EXCEPTION_PHONES": "+491723855711",
-        "TWILIO_WHATSAPP_FROM": "whatsapp:+14155238886",
-        "TWILIO_SMS_FROM": "+15177014808",
-        "TWILIO_MESSAGING_SERVICE_SID": "MG0a4b056b926c76faf0acbd7b1921766d"
-      },
-      "d1_databases": [
-        {
-          "binding": "DB",
-          "database_name": "esskultur-admin-prod",
-          "database_id": "your-prod-database-id"
-        }
-      ]
-    }
-  }
+	"env": {
+		"production": {
+			"name": "ess-admin-ds-prod",
+			"vars": {
+				"TURNSTILE_SITE_KEY": "0x4AAAAAACmwktNVObyT3tQ7",
+				"FOUNDER_OTP_CHANNELS": "sms",
+				"FOUNDER_TEST_EXCEPTION_PHONES": "+491723855711",
+				"TWILIO_WHATSAPP_FROM": "whatsapp:+14155238886",
+				"TWILIO_SMS_FROM": "+15177014808",
+				"TWILIO_MESSAGING_SERVICE_SID": "MG0a4b056b926c76faf0acbd7b1921766d",
+			},
+			"d1_databases": [
+				{
+					"binding": "DB",
+					"database_name": "esskultur-admin-prod",
+					"database_id": "your-prod-database-id",
+				},
+			],
+		},
+	},
 }
-

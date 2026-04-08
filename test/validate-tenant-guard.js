@@ -105,7 +105,7 @@ export function validateRouteGuardCoverage() {
   
   for (const route of TENANT_REQUIRED_ROUTES) {
     // Escape special characters for regex
-    const pathPattern = route.replace(/[:()\/]/g, c => '\\' + c);
+    const pathPattern = route.replace(/[:()/]/g, c => '\\' + c);
     
     // Look for route matcher and check if it's followed by runTenantRoute
     const routeRegex = new RegExp(

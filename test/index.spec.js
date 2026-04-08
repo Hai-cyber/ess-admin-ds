@@ -672,7 +672,7 @@ describe('ESSKULTUR worker', () => {
 			'Founder Form Registration'
 		).run();
 
-		vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+		vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, _init) => {
 			const url = typeof input === 'string' ? input : input.url;
 
 			if (url.includes('challenges.cloudflare.com/turnstile')) {
@@ -733,7 +733,7 @@ describe('ESSKULTUR worker', () => {
 	it('founder registration issues OTP without any external CRM dependency', async () => {
 		await initializeDatabase(env.DB);
 
-		vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+		vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, _init) => {
 			const url = typeof input === 'string' ? input : input.url;
 
 			if (url.includes('challenges.cloudflare.com/turnstile')) {
@@ -841,7 +841,7 @@ describe('ESSKULTUR worker', () => {
 			0
 		).run();
 
-		vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+		vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, _init) => {
 			const url = typeof input === 'string' ? input : input.url;
 
 			if (url.includes('api.twilio.com/')) {

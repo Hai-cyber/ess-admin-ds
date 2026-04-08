@@ -3,6 +3,11 @@ node_modules
 .dev.vars
 .env
 .DS_Store
+
+# VS Code local workspace artifacts
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 # Logs
 
 logs
@@ -170,3 +175,9 @@ dist
 .env*
 !.env.example
 .wrangler/
+
+# Local runtime and temp artifacts
+.tmp/
+tmp/
+temp/
+.mf/

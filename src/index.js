@@ -2130,33 +2130,6 @@ function getTwilioSenders(env, runtimeConfig = null) {
   };
 }
 
-function formatIsoToBerlinDateTime(value) {
-  const date = value instanceof Date ? value : new Date(value || Date.now());
-  const safeDate = Number.isNaN(date.getTime()) ? new Date() : date;
-
-  return new Intl.DateTimeFormat('sv-SE', {
-    timeZone: 'Europe/Berlin',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  }).format(safeDate).replace(' ', ' ');
-}
-
-function formatIsoToBerlinDate(value) {
-  const date = value instanceof Date ? value : new Date(value || Date.now());
-  const safeDate = Number.isNaN(date.getTime()) ? new Date() : date;
-
-  return new Intl.DateTimeFormat('sv-SE', {
-    timeZone: 'Europe/Berlin',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  }).format(safeDate);
-}
-
 async function sendTwilioMessage(env, { to, from, body, messagingServiceSid = '', credentials = null }) {
   const sid = credentials?.twilioAccountSid || env.TWILIO_ACCOUNT_SID;
   const token = credentials?.twilioAuthToken || env.TWILIO_AUTH_TOKEN;
@@ -2744,7 +2717,6 @@ export default {
       }
     }
 
-    let activeCompanyId = null;
     let activeCompanyResolution = { ok: false, reason: 'unresolved' };
     const skipActiveCompanyResolution = isWebsiteMasterPreviewPath(url.pathname) && canOverrideCompanyIdForHost(tenant, url);
     if (!skipActiveCompanyResolution) {
@@ -2755,9 +2727,7 @@ export default {
         activeCompanyResolution = { ok: false, reason: 'resolution_error' };
       }
 
-      if (activeCompanyResolution.ok) {
-        activeCompanyId = activeCompanyResolution.companyId;
-      } else {
+      if (!activeCompanyResolution.ok) {
         console.warn('Tenant resolution failed:', activeCompanyResolution.reason);
       }
     }
@@ -3622,7 +3592,6 @@ export default {
           notesRaw,
           requestedPathIsKc: url.pathname === '/api/kc/register'
         });
-        const membershipType = requestedMembershipProgram.membershipType;
         const founderTermsFlag = requestedMembershipProgram.founderTermsFlag;
         const kcTermsFlag = requestedMembershipProgram.kcTermsFlag;
         const notes = requestedMembershipProgram.notes;
@@ -3962,10 +3931,10 @@ export default {
       });
     }
 
-    if (url.pathname.match(/^\/api\/contacts\/([^\/]+)\/push$/) && request.method === "POST") {
+    if (url.pathname.match(/^\/api\/contacts\/([^/]+)\/push$/) && request.method === "POST") {
       return runTenantRoute(async ({ companyId }) => {
         try {
-        const routeMatch = url.pathname.match(/^\/api\/contacts\/([^\/]+)\/push$/);
+        const routeMatch = url.pathname.match(/^\/api\/contacts\/([^/]+)\/push$/);
         const contactId = decodeURIComponent(String(routeMatch?.[1] || '')).trim();
         const body = await request.json().catch(() => ({}));
         const pin = String(body?.pin || request.headers.get('x-staff-pin') || request.headers.get('x-admin-pin') || '').trim();
@@ -4855,10 +4824,10 @@ export default {
     }
 
     // ==================== API: UPDATE BOOKING STAGE ====================
-    if (url.pathname.match(/^\/api\/bookings\/([^\/]+)\/stage$/) && request.method === "POST") {
+    if (url.pathname.match(/^\/api\/bookings\/([^/]+)\/stage$/) && request.method === "POST") {
       return runTenantRoute(async ({ companyId }) => {
         try {
-        const bookingId = url.pathname.match(/^\/api\/bookings\/([^\/]+)\/stage$/)[1];
+        const bookingId = url.pathname.match(/^\/api\/bookings\/([^/]+)\/stage$/)[1];
         const body = await request.json();
         const { stage: newStage, staffId } = body;
 

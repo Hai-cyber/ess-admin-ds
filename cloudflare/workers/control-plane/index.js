@@ -1,5 +1,5 @@
 export default {
-  async fetch(request) {
+  async fetch(_request) {
     return Response.json({
       worker: 'control-plane',
       status: 'scaffolded',
