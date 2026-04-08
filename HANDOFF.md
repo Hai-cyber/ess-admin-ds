@@ -8,13 +8,15 @@
 
 ---
 
-## 📊 CURRENT PROJECT STATUS (As of 2026-04-02)
+## 📊 CURRENT PROJECT STATUS (As of 2026-04-08)
 
-### Runtime Odoo Status (2026-04-02)
+### Runtime Odoo Status (2026-04-08)
 
 - Active Odoo runtime paths have been removed from both worker entrypoints.
 - Founder/KC, booking-stage, and admin profile save flows are internal-first and no longer rely on Odoo in the critical path.
-- The outer duplicate app tree was synced to the same runtime behavior, public/admin copy, and test expectations.
+- The outer duplicate app tree was collapsed into a single root repository and the broken nested gitlink was removed.
+- Moderation review queue, operator actions, Telegram review links, and host-based tenant website gating now run in the active runtime.
+- The explicit `production` Wrangler environment deploys successfully to Cloudflare, but public ingress for that env still needs a real route or custom domain because workers.dev returns `1050`.
 - Schema/init and legacy utility artifacts still contain Odoo-era references and are intentionally left as follow-up cleanup, not active dependencies.
 
 ### ✅ What's Complete
@@ -41,7 +43,7 @@
 - [x] Staff PIN authentication
 - [x] Tenant guard middleware
 - [x] Local runtime verified for platform home/plans/contact, signup provisioning, board, admin config, staff auth, booking create, and stage updates
-- [x] Vitest baseline: 19/21 passing
+- [x] Vitest baseline is now clean on the root repo: 29/29 passing
 - [x] Platform UX/copy pass shipped locally: signup redesign, contextual login modal, browser-language detection, and localized pricing/add-on messaging
 - [x] Website master runtime preview shipped in `public/website-master/` with a universal tenant template, preset-driven content, and runtime-shaped source payload examples
 - [x] Website master now wires booking, contact, and founder/KC membership forms to current runtime endpoints with automatic preview-safe tenant injection
@@ -54,8 +56,11 @@
 - [x] Structured `opening_hours_schedule` now reaches the public website payload alongside legacy open/close fallback values
 - [x] Wildcard tenant subdomains on `gooddining.app` and demo-payment signup walkthrough have been verified live end to end
 - [x] Active Odoo runtime/helper paths removed from both worker entrypoints; active public/admin surfaces updated to first-party CRM wording
-- [x] Duplicate outer app tree synced to the same internal-only behavior and tests
-- [x] Full verification after sync: nested app `18/18`, outer workspace `35/35`
+- [x] Duplicate outer app tree collapsed into one clean root repository
+- [x] Full repo hygiene pass completed; lint is clean and CI now checks repo hygiene explicitly
+- [x] Publish moderation and operator review flow now exists in runtime and SaaS Admin
+- [x] Local smoke verification completed for health, plans, contact, signup policy, publish review, suspend, quarantine, and host-based tenant blocking
+- [x] Explicit `production` Wrangler env deployed against a real D1 database id
 - [ ] Founder/KC OTP runtime still fails locally without Twilio credentials
 - [ ] Admin UI setup wizard / go-live flow still incomplete (84% complete)
 
@@ -87,7 +92,7 @@
 - [ ] Payment integration setup
 - [ ] "Go Live" verification
 
-**What's blocked**: final UX completion, website publish/release workflow completion, plus founder/KC OTP runtime depending on Twilio credentials
+**What's blocked**: production ingress attachment, final publish/release workflow completion, payment wiring, plus founder/KC OTP runtime depending on Twilio credentials
 
 **Entry points**: `src/index.js`, `public/admin.html`, `public/platform/admin.html`, `public/website-master/index.html`
 
@@ -125,7 +130,7 @@
 | CP-1: Tenant Isolation | ✅ DONE | E2E_TEST_SUMMARY.md | None |
 | CP-2: Booking MVP | ✅ DONE | Local runtime verified on 2026-03-30 | None |
 | CP-3: Admin UI Setup | 🔄 84% | Admin routes/UI live; website content editor and structured hours added; go-live flow still incomplete | UX completion |
-| CP-10: Platform Site + Self-Service Signup | 🔄 96% | Platform home/contact/admin/signup verified live; wildcard tenant subdomains resolve; demo-payment walkthrough works; website-master boot/mobile shell polished; fixed-skin website contract and validator added | Stripe + publish/release workflow + Twilio for founder/KC |
+| CP-10: Platform Site + Self-Service Signup | 🔄 96% | Platform home/contact/admin/signup verified live; wildcard tenant subdomains resolve; demo-payment walkthrough works; moderation/review queue and host gating are active; fixed-skin website contract and validator added | Production ingress + Stripe + publish/release workflow + Twilio for founder/KC |
 | **Phase 1 Total** | **🔄 91%** | — | **Platform/founder finalization** |
 
 ---
@@ -136,6 +141,7 @@
 
 **Task 1**: Complete Admin UI setup wizard
 - Validate and harden the new website content editor end to end on live tenant subdomains
+- Finish the new tenant-side website release panel and operator moderation loop end to end
 - Implement remaining restaurant config form gaps (name, address, phone, hours)
 - Add staff PIN setup (hostess, bartender, manager)
 - Add payment integration screen (Stripe account linking)
@@ -154,9 +160,10 @@
 - Verification path: `npm test` + `wrangler dev --config wrangler.jsonc` + manual smoke tests
 
 **Task 3**: Complete website publish/domain workflow
+- Attach a real production route or custom domain for `ess-admin-ds-prod`
 - Bind the new Restaurant Admin website fields into the publish/release path beyond the current master preview adapter
 - Publish tenant website output/assets and validate custom-domain serving
-- Re-test `/api/contact/create` on a freshly reloaded worker because the active `8790` runtime did not expose the new source route during smoke test
+- Re-test tenant release/review state from Restaurant Admin to SaaS Admin to live URL
 - Time estimate: Half day
 
 **Task 4**: Fix founder/KC OTP local runtime

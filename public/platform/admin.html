@@ -49,6 +49,8 @@
     .review-reasons { font-size: 0.82rem; color: var(--text); }
     .review-links { display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.82rem; }
     .review-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .review-toolbar { display: flex; justify-content: space-between; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+    .review-summary { font-size: 0.82rem; color: var(--text-muted); }
     .btn-danger-lite { border: 1px solid #fca5a5; color: #b91c1c; background: #fff1f2; }
     .btn-warn-lite { border: 1px solid #fdba74; color: #9a3412; background: #fff7ed; }
     @media (max-width: 980px) { .saas-grid { grid-template-columns: 1fr; } .pricing-form { grid-template-columns: 1fr; } .pricing-plan-grid { grid-template-columns: 1fr; } .pricing-extras-grid { grid-template-columns: 1fr; } .lead-controls { grid-template-columns: 1fr; } }
@@ -191,6 +193,7 @@
 
     let saasPin = '';
     let saasDashboard = { pricingSettings: {}, signups: [], contacts: [], reviews: [] };
+  let reviewFilter = 'all';
 
     function getReviewFocusId() {
       const params = new URLSearchParams(window.location.search);
@@ -287,8 +290,27 @@
         return;
       }
 
+      const filteredReviews = reviews.filter((row) => {
+        const status = String(row.review_status || '').toLowerCase();
+        if (reviewFilter === 'pending') return status === 'pending';
+        if (reviewFilter === 'resolved') return ['approved', 'rejected', 'suspended'].includes(status);
+        return true;
+      });
       const focusReviewId = getReviewFocusId();
-      el.innerHTML = reviews.map((row) => {
+      const pendingCount = reviews.filter((row) => String(row.review_status || '').toLowerCase() === 'pending').length;
+      el.innerHTML = `
+        <div class="review-toolbar">
+          <div class="review-summary">${pendingCount} pending review(s), ${reviews.length} total item(s).</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+            <select id="review-filter" onchange="updateReviewFilter(this.value)">
+              <option value="all" ${reviewFilter === 'all' ? 'selected' : ''}>All reviews</option>
+              <option value="pending" ${reviewFilter === 'pending' ? 'selected' : ''}>Pending only</option>
+              <option value="resolved" ${reviewFilter === 'resolved' ? 'selected' : ''}>Resolved only</option>
+            </select>
+            <button class="btn btn-sm btn-outline" onclick="loadSaasDashboard()">Refresh</button>
+          </div>
+        </div>
+      ` + filteredReviews.map((row) => {
         const reasonCodes = (() => {
           try {
             const parsed = JSON.parse(String(row.reason_codes_json || '[]'));
@@ -330,6 +352,11 @@
           </div>
         `;
       }).join('');
+    }
+
+    function updateReviewFilter(value) {
+      reviewFilter = String(value || 'all');
+      renderSaasReviews();
     }
 
     function renderSaasContacts() {

@@ -162,14 +162,9 @@ export async function initializeDatabase(db) {
           .run();
 
         await db.prepare(`
-          INSERT INTO subdomain_reservations
+          INSERT OR IGNORE INTO subdomain_reservations
           (id, slug, normalized_slug, company_id, status, reason_code, decision_source, created_at, updated_at)
           VALUES (?, ?, ?, ?, 'reserved', 'active_company_slug', 'seed', ?, ?)
-          ON CONFLICT(normalized_slug, status) DO UPDATE SET
-            company_id = excluded.company_id,
-            reason_code = excluded.reason_code,
-            decision_source = excluded.decision_source,
-            updated_at = excluded.updated_at
         `).bind(
           `reservation_${company.subdomain}`,
           company.subdomain,
@@ -177,6 +172,19 @@ export async function initializeDatabase(db) {
           company.id,
           nowIso,
           nowIso
+        ).run();
+
+        await db.prepare(`
+          UPDATE subdomain_reservations
+          SET company_id = ?,
+              reason_code = 'active_company_slug',
+              decision_source = 'seed',
+              updated_at = ?
+          WHERE normalized_slug = ? AND status = 'reserved'
+        `).bind(
+          company.id,
+          nowIso,
+          String(company.subdomain || '').trim().toLowerCase()
         ).run();
       }
     }

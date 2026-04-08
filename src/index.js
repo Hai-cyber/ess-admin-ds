@@ -512,6 +512,23 @@ function buildTenantWebsiteUrl(subdomain) {
   return 'https://' + subdomain + '.' + PLATFORM_PUBLIC_DOMAIN;
 }
 
+function normalizePublicUrl(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  if (/^https?:\/\//i.test(raw)) return raw;
+  return `https://${raw}`;
+}
+
+function buildPublishedWebsiteUrlForCompany(company, operationalSettings = {}) {
+  const customDomain = normalizePublicUrl(operationalSettings.custom_domain);
+  if (customDomain) return customDomain;
+
+  const subdomain = String(company?.subdomain || '').trim().toLowerCase();
+  if (subdomain) return buildTenantWebsiteUrl(subdomain);
+
+  return normalizePublicUrl(operationalSettings.website_url);
+}
+
 function isValidTenantSubdomain(subdomain) {
   return /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(String(subdomain || ''));
 }
@@ -574,15 +591,9 @@ async function upsertSubdomainReservation(env, slug, companyId, status, reasonCo
   if (!normalizedSlug) return;
   const now = new Date().toISOString();
   await env.DB.prepare(`
-    INSERT INTO subdomain_reservations
+    INSERT OR IGNORE INTO subdomain_reservations
     (id, slug, normalized_slug, company_id, status, reason_code, decision_source, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(normalized_slug, status) DO UPDATE SET
-      slug = excluded.slug,
-      company_id = excluded.company_id,
-      reason_code = excluded.reason_code,
-      decision_source = excluded.decision_source,
-      updated_at = excluded.updated_at
   `).bind(
     `${status}_${normalizedSlug}`,
     slug,
@@ -593,6 +604,24 @@ async function upsertSubdomainReservation(env, slug, companyId, status, reasonCo
     decisionSource,
     now,
     now
+  ).run();
+
+  await env.DB.prepare(`
+    UPDATE subdomain_reservations
+    SET slug = ?,
+        company_id = ?,
+        reason_code = ?,
+        decision_source = ?,
+        updated_at = ?
+    WHERE normalized_slug = ? AND status = ?
+  `).bind(
+    slug,
+    companyId || null,
+    reasonCode || null,
+    decisionSource,
+    now,
+    normalizedSlug,
+    status
   ).run();
 }
 
@@ -965,6 +994,159 @@ async function getPublishReviewById(env, reviewId) {
   return review || null;
 }
 
+async function getLatestWebsiteRelease(env, companyId) {
+  if (!companyId) return null;
+  const release = await env.DB.prepare(`
+    SELECT id, company_id, review_id, release_status, publish_target, preview_url, published_url,
+           payload_snapshot_json, reason_codes_json, release_note, reviewer_type, reviewer_id,
+           published_at, suspended_at, created_at, updated_at
+    FROM website_releases
+    WHERE company_id = ?
+    ORDER BY updated_at DESC, created_at DESC
+    LIMIT 1
+  `).bind(companyId).first();
+  return release || null;
+}
+
+async function createWebsiteRelease(env, payload = {}) {
+  const now = new Date().toISOString();
+  const companyId = Number(payload.companyId || 0);
+  const releaseId = payload.id || crypto.randomUUID();
+
+  await env.DB.prepare(`
+    INSERT INTO website_releases (
+      id, company_id, review_id, release_status, publish_target, preview_url, published_url,
+      payload_snapshot_json, reason_codes_json, release_note, reviewer_type, reviewer_id,
+      published_at, suspended_at, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    releaseId,
+    companyId,
+    payload.reviewId || null,
+    String(payload.releaseStatus || 'draft').trim(),
+    String(payload.publishTarget || 'managed_subdomain').trim(),
+    String(payload.previewUrl || '').trim(),
+    String(payload.publishedUrl || '').trim(),
+    payload.payloadSnapshotJson || null,
+    JSON.stringify(Array.isArray(payload.reasonCodes) ? payload.reasonCodes : []),
+    String(payload.releaseNote || '').trim(),
+    payload.reviewerType || null,
+    payload.reviewerId || null,
+    payload.publishedAt || null,
+    payload.suspendedAt || null,
+    now,
+    now
+  ).run();
+
+  return getLatestWebsiteRelease(env, companyId);
+}
+
+async function updateWebsiteReleaseByReviewId(env, reviewId, updates = {}) {
+  if (!reviewId) return null;
+  const existing = await env.DB.prepare(`
+    SELECT id, company_id, release_status, publish_target, preview_url, published_url,
+           payload_snapshot_json, reason_codes_json, release_note, reviewer_type, reviewer_id,
+           published_at, suspended_at
+    FROM website_releases
+    WHERE review_id = ?
+    ORDER BY updated_at DESC, created_at DESC
+    LIMIT 1
+  `).bind(reviewId).first();
+
+  if (!existing) return null;
+
+  const existingReasonCodes = (() => {
+    try {
+      const parsed = JSON.parse(String(existing.reason_codes_json || '[]'));
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  })();
+  const now = new Date().toISOString();
+
+  await env.DB.prepare(`
+    UPDATE website_releases
+    SET release_status = ?,
+        publish_target = ?,
+        preview_url = ?,
+        published_url = ?,
+        payload_snapshot_json = ?,
+        reason_codes_json = ?,
+        release_note = ?,
+        reviewer_type = ?,
+        reviewer_id = ?,
+        published_at = ?,
+        suspended_at = ?,
+        updated_at = ?
+    WHERE id = ?
+  `).bind(
+    updates.releaseStatus ?? existing.release_status,
+    updates.publishTarget ?? existing.publish_target,
+    updates.previewUrl ?? existing.preview_url,
+    updates.publishedUrl ?? existing.published_url,
+    updates.payloadSnapshotJson ?? existing.payload_snapshot_json,
+    JSON.stringify(Array.isArray(updates.reasonCodes) ? updates.reasonCodes : existingReasonCodes),
+    updates.releaseNote ?? existing.release_note,
+    updates.reviewerType ?? existing.reviewer_type,
+    updates.reviewerId ?? existing.reviewer_id,
+    updates.publishedAt ?? existing.published_at,
+    updates.suspendedAt ?? existing.suspended_at,
+    now,
+    existing.id
+  ).run();
+
+  return getLatestWebsiteRelease(env, Number(existing.company_id || 0));
+}
+
+async function updateLatestWebsiteReleaseForCompany(env, companyId, updates = {}) {
+  const existing = await getLatestWebsiteRelease(env, companyId);
+  if (!existing) return null;
+
+  const existingReasonCodes = (() => {
+    try {
+      const parsed = JSON.parse(String(existing.reason_codes_json || '[]'));
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  })();
+  const now = new Date().toISOString();
+
+  await env.DB.prepare(`
+    UPDATE website_releases
+    SET release_status = ?,
+        publish_target = ?,
+        preview_url = ?,
+        published_url = ?,
+        payload_snapshot_json = ?,
+        reason_codes_json = ?,
+        release_note = ?,
+        reviewer_type = ?,
+        reviewer_id = ?,
+        published_at = ?,
+        suspended_at = ?,
+        updated_at = ?
+    WHERE id = ?
+  `).bind(
+    updates.releaseStatus ?? existing.release_status,
+    updates.publishTarget ?? existing.publish_target,
+    updates.previewUrl ?? existing.preview_url,
+    updates.publishedUrl ?? existing.published_url,
+    updates.payloadSnapshotJson ?? existing.payload_snapshot_json,
+    JSON.stringify(Array.isArray(updates.reasonCodes) ? updates.reasonCodes : existingReasonCodes),
+    updates.releaseNote ?? existing.release_note,
+    updates.reviewerType ?? existing.reviewer_type,
+    updates.reviewerId ?? existing.reviewer_id,
+    updates.publishedAt ?? existing.published_at,
+    updates.suspendedAt ?? existing.suspended_at,
+    now,
+    existing.id
+  ).run();
+
+  return getLatestWebsiteRelease(env, companyId);
+}
+
 async function updateCompanyWebsiteState(env, companyId, updates = {}) {
   const company = await getCompanyProfile(env, companyId);
   if (!company) return false;
@@ -1045,17 +1227,19 @@ async function getOrganizationProfile(env, organizationId) {
 
 async function getAdminPlatformConfig(env, companyId) {
   const company = await getCompanyProfile(env, companyId);
-  const [organization, operationalSettings, modules] = await Promise.all([
+  const [organization, operationalSettings, modules, websiteRelease] = await Promise.all([
     getOrganizationProfile(env, company?.organization_id || null),
     getOperationalSettingsMap(env, companyId),
-    getModuleSettingsMap(env, companyId)
+    getModuleSettingsMap(env, companyId),
+    getLatestWebsiteRelease(env, companyId)
   ]);
 
   return {
     organization,
     company,
     operationalSettings,
-    modules
+    modules,
+    websiteRelease
   };
 }
 
@@ -2997,6 +3181,19 @@ export default {
 
         const reviewerId = String(auth.staff.name || auth.staff.id || 'platform-operator');
         const reviewLinks = buildPlatformReviewLinks(url.origin, reviewId, Number(existingReview.company_id));
+        const [company, operationalSettings] = await Promise.all([
+          getCompanyProfile(env, Number(existingReview.company_id)),
+          getOperationalSettingsMap(env, Number(existingReview.company_id))
+        ]);
+        const publishedUrl = buildPublishedWebsiteUrlForCompany(company, operationalSettings);
+        const releaseReasonCodes = (() => {
+          try {
+            const parsed = JSON.parse(String(existingReview.reason_codes_json || '[]'));
+            return Array.isArray(parsed) ? parsed : [];
+          } catch {
+            return [];
+          }
+        })();
         const updatedReview = await updatePublishReviewDecision(env, reviewId, {
           decision: action === 'approve' ? 'allow' : 'block',
           reviewStatus: action === 'approve' ? 'approved' : 'rejected',
@@ -3011,7 +3208,16 @@ export default {
           lastReviewedAt: new Date().toISOString()
         });
 
-        const company = await getCompanyProfile(env, Number(existingReview.company_id));
+        await updateWebsiteReleaseByReviewId(env, reviewId, {
+          releaseStatus: action === 'approve' ? 'published' : 'rejected',
+          publishedUrl: action === 'approve' ? publishedUrl : '',
+          releaseNote: reviewNote,
+          reviewerType: 'operator',
+          reviewerId,
+          publishedAt: action === 'approve' ? new Date().toISOString() : null,
+          reasonCodes: releaseReasonCodes
+        });
+
         if (action === 'approve') {
           await upsertSubdomainReservation(
             env,
@@ -3080,6 +3286,15 @@ export default {
           lastReviewedAt: now
         });
 
+        await updateLatestWebsiteReleaseForCompany(env, companyId, {
+          releaseStatus: 'suspended',
+          releaseNote: reason,
+          reviewerType: 'operator',
+          reviewerId: String(auth.staff.name || auth.staff.id || 'platform-operator'),
+          suspendedAt: now,
+          reasonCodes: [reason]
+        });
+
         await sendTelegramReviewAlert(env, {
           eventType: 'website_suspended',
           companyId,
@@ -3136,6 +3351,14 @@ export default {
 
         if (company?.id) {
           await updateCompanySubdomainState(env, Number(company.id), 'quarantine');
+          await updateLatestWebsiteReleaseForCompany(env, Number(company.id), {
+            releaseStatus: 'quarantined',
+            releaseNote: reason,
+            reviewerType: 'operator',
+            reviewerId: String(auth.staff.name || auth.staff.id || 'platform-operator'),
+            suspendedAt: new Date().toISOString(),
+            reasonCodes: [reason]
+          });
         }
 
         await sendTelegramReviewAlert(env, {
@@ -4272,15 +4495,17 @@ export default {
         try {
         const body = await request.json().catch(() => ({}));
         const pin = String(body?.pin || '').trim();
+        const reviewNote = String(body?.reviewNote || body?.note || '').trim();
         const auth = await authorizeAdminByPin(env, companyId, pin);
 
         if (!auth.ok) {
           return Response.json({ ok: false, error: auth.error }, { status: auth.status });
         }
 
-        const [source, company] = await Promise.all([
+        const [source, company, operationalSettings] = await Promise.all([
           buildPublicWebsitePayload(env, companyId, url),
-          getCompanyProfile(env, companyId)
+          getCompanyProfile(env, companyId),
+          getOperationalSettingsMap(env, companyId)
         ]);
         const slugDecision = await evaluateSubdomainPolicy(env, company?.subdomain || '', { companyId, allowEmpty: true });
         const contentDecision = reviewWebsitePayload(source);
@@ -4302,6 +4527,7 @@ export default {
         const reviewStatus = decision === 'allow' ? 'approved' : 'pending';
         const websiteStatus = decision === 'allow' ? 'published' : decision === 'review' ? 'review' : 'draft';
         const previewUrl = `${url.origin}/website-master/index.html?company_id=${companyId}`;
+        const publishedUrl = decision === 'allow' ? buildPublishedWebsiteUrlForCompany(company, operationalSettings) : '';
         const reviewLinks = buildPlatformReviewLinks(url.origin, reviewId, companyId);
 
         await env.DB.prepare(`
@@ -4335,6 +4561,22 @@ export default {
           WHERE id = ?
         `).bind(websiteStatus, riskScore, now, now, companyId).run();
 
+        const releaseStatus = decision === 'allow' ? 'published' : decision === 'review' ? 'pending_review' : 'rejected';
+        await createWebsiteRelease(env, {
+          companyId,
+          reviewId,
+          releaseStatus,
+          publishTarget: String(operationalSettings.custom_domain || '').trim() ? 'custom_domain' : 'managed_subdomain',
+          previewUrl,
+          publishedUrl,
+          payloadSnapshotJson: JSON.stringify(source),
+          reasonCodes: combinedReasonCodes,
+          releaseNote: reviewNote || (decision === 'allow' ? 'Auto-approved publish' : 'Awaiting moderation review'),
+          reviewerType: 'system',
+          reviewerId: 'publish-gate',
+          publishedAt: decision === 'allow' ? now : null
+        });
+
         if (decision !== 'allow') {
           await sendTelegramReviewAlert(env, {
             eventType: 'website_publish_review',
@@ -4360,7 +4602,9 @@ export default {
           website_status: websiteStatus,
           risk_score: riskScore,
           reason_codes: combinedReasonCodes,
-          preview_url: previewUrl
+          preview_url: previewUrl,
+          published_url: publishedUrl,
+          release_status: releaseStatus
         });
         } catch (e) {
           console.error('Admin website publish POST error:', e);

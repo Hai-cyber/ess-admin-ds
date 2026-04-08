@@ -17,7 +17,7 @@
 ### "I need to understand the project RIGHT NOW"
 → Read **[QUICKSTART.md](./QUICKSTART.md)** (5 min)
 
-Summary: You're building Restaurant OS (vertical SaaS). Phase 1 (Booking + Platform Entry) is 88% done. Admin UI, website publish/domain completion, Stripe, and founder/KC runtime hardening remain.
+Summary: You're building Restaurant OS (vertical SaaS). Phase 1 (Booking + Platform Entry) is 91% done. Moderation/review queue and tenant host gating are live; production ingress, Stripe, publish/release completion, and founder/KC runtime hardening remain.
 
 ### "I need to know what's blocked / what to work on?"
 → Read **[STATUS.md](./STATUS.md)** (3 min)
@@ -174,7 +174,7 @@ Multi-tenant system = restaurants are isolated. One restaurant can't see another
 ## 📊 Current Status (Right Now)
 
 **Phase**: 1 of 5 (Booking System)  
-**Progress**: 88% complete  
+**Progress**: 91% complete  
 **ETA**: April 15, 2026  
 **Status**: 🟡 ON TRACK (remaining: Stripe wiring, website publish/domain workflow, founder/KC OTP local fix)
 
@@ -186,16 +186,21 @@ Multi-tenant system = restaurants are isolated. One restaurant can't see another
 - ✅ Platform site, SaaS admin, and self-service signup verified locally on 2026-03-30
 - ✅ Platform login/signup/pricing experience now includes browser-language auto-detect, contextual login, and localized pricing/add-on messaging
 - ✅ Website master preview now exists under `public/website-master/` with preset-driven content, runtime form wiring, and automatic preview tenant injection
+- ✅ Moderation gate now evaluates tenant website publish attempts, writes review records, and exposes operator approve/reject/suspend/quarantine actions in SaaS Admin
+- ✅ Host-based public gating now blocks suspended websites and quarantined subdomains on tenant-facing routes
+- ✅ Repository hygiene pass completed: nested gitlink removed, lint clean, formatter checks pass, and CI now includes repo hygiene
 
 **What's in progress** (your focus):
-- 🔄 Admin UI setup wizard (75% complete)
-- 🔄 Tenant website publish/domain workflow after the delivered master preview/runtime adapter
+- 🔄 Production ingress/domain attachment for the explicit `production` environment (workers.dev returns Cloudflare `1050` until route/custom domain is attached)
+- 🔄 Tenant website publish/release workflow beyond the current moderation + release-status foundation
 - 🔄 Founder/KC OTP runtime hardening
+- 🔄 Stripe checkout and tenant payment onboarding
 
 **What's next**:
-1. Complete admin UI (3-4 days)
-2. Finish website publish/domain workflow and re-verify the new public contact route on a fresh worker reload
-3. Fix founder/KC OTP local runtime and rerun tests
+1. Attach a real production route/custom domain for `ess-admin-ds-prod`
+2. Finish tenant publish/release workflow from tenant admin to operator approval to live URL
+3. Wire Stripe test checkout and payment onboarding
+4. Fix founder/KC OTP local runtime and rerun tests
 
 **For full details** → Read [STATUS.md](./STATUS.md)
 
@@ -203,18 +208,18 @@ Multi-tenant system = restaurants are isolated. One restaurant can't see another
 
 ## 🎯 Your First Task (If You Don't Know What to Do)
 
-**Task**: Complete Admin UI Setup Wizard
+**Task**: Finish Production Ingress + Website Release Workflow
 
 **What to do**:
 1. Read [QUICKSTART.md](./QUICKSTART.md) (5 min)
 2. Read [STATUS.md](./STATUS.md) → "What Happens Next" (3 min)
 3. Read [docs/contracts/API_CONTRACTS.md](./docs/contracts/API_CONTRACTS.md) → search "admin" (5 min)
-4. Start in `src/index.js` and `public/admin.html`
+4. Start in `src/index.js`, `public/admin.html`, and `public/platform/admin.html`
 5. Validate with `npm test` and `wrangler dev --config wrangler.jsonc`
 
 **Est. time**: 3-4 days
 
-**Blocker**: Stripe/Twilio credential wiring and final go-live UX completion
+**Blocker**: production route/domain attachment plus Stripe/Twilio credential wiring
 
 **Questions?** → Read relevant contract or ask in PR comments
 

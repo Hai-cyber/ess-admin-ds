@@ -314,6 +314,27 @@ CREATE TABLE IF NOT EXISTS publish_reviews (
   FOREIGN KEY (company_id) REFERENCES companies(id)
 );
 
+CREATE TABLE IF NOT EXISTS website_releases (
+  id TEXT PRIMARY KEY,
+  company_id INTEGER NOT NULL,
+  review_id TEXT,
+  release_status TEXT NOT NULL DEFAULT 'draft',
+  publish_target TEXT NOT NULL DEFAULT 'managed_subdomain',
+  preview_url TEXT,
+  published_url TEXT,
+  payload_snapshot_json TEXT,
+  reason_codes_json TEXT NOT NULL DEFAULT '[]',
+  release_note TEXT,
+  reviewer_type TEXT,
+  reviewer_id TEXT,
+  published_at TEXT,
+  suspended_at TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (company_id) REFERENCES companies(id),
+  FOREIGN KEY (review_id) REFERENCES publish_reviews(id)
+);
+
 CREATE TABLE IF NOT EXISTS abuse_reports (
   id TEXT PRIMARY KEY,
   company_id INTEGER,
@@ -348,6 +369,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_subdomain_reservation_slug_status ON subdo
 CREATE INDEX IF NOT EXISTS idx_subdomain_reservation_company ON subdomain_reservations(company_id);
 CREATE INDEX IF NOT EXISTS idx_publish_reviews_company ON publish_reviews(company_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_publish_reviews_status ON publish_reviews(review_status, decision, created_at);
+CREATE INDEX IF NOT EXISTS idx_website_releases_company ON website_releases(company_id, updated_at);
+CREATE INDEX IF NOT EXISTS idx_website_releases_review ON website_releases(review_id, updated_at);
 CREATE INDEX IF NOT EXISTS idx_abuse_reports_host ON abuse_reports(host, created_at);
 CREATE INDEX IF NOT EXISTS idx_abuse_reports_status ON abuse_reports(status, created_at);
 `;

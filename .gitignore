@@ -3,6 +3,7 @@ node_modules
 .dev.vars
 .env
 .DS_Store
+ess-admin-ds/
 
 # VS Code local workspace artifacts
 .vscode/*

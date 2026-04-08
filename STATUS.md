@@ -2,16 +2,17 @@
 
 **Purpose**: Real-time snapshot of project state. Update before/after every session.
 
-**Last Updated**: 2026-04-02  
+**Last Updated**: 2026-04-08  
 **By**: AI Agent  
-**Next Update**: 2026-04-02 (or sooner if major change)
+**Next Update**: 2026-04-08 (or sooner if major change)
 
-## Runtime Note (2026-04-02)
+## Runtime Note (2026-04-08)
 
 - Active runtime Odoo paths have been removed from both worker entrypoints and active admin/public UI surfaces.
 - Founder/KC, booking-stage, and admin company-profile flows now run without Odoo in the critical path.
-- The duplicate outer app tree was synced to the same behavior and test expectations.
-- Intentional leftovers remain in schema/init and legacy utility artifacts for now; they are documented debt, not active runtime dependencies.
+- The duplicate outer app tree was collapsed into a single root repository and the broken nested gitlink was removed.
+- Publish moderation, operator review actions, tenant host gating, and release-status tracking now run in the active runtime.
+- The explicit `production` Wrangler environment deploys successfully, but its workers.dev ingress still returns Cloudflare `1050` until a real route or custom domain is attached.
 
 ---
 
@@ -65,11 +66,14 @@ Not Started: 0%
 - [x] Wildcard tenant subdomain routing and host-based website payload resolution verified live on `gooddining.app`
 - [x] Demo-payment self-service signup walkthrough verified live end to end with tenant provisioning, admin access, and website host resolution
 - [x] Active Odoo runtime paths removed from both worker entrypoints; active admin/public UI copy synced to first-party CRM wording
-- [x] Full test verification passed after duplicate-tree sync: nested app `18/18`, outer workspace `35/35`
+- [x] Full repo hygiene pass completed: lint clean, format check clean, CI hygiene step added, and root repository unified
+- [x] Platform moderation review queue, operator actions, Telegram review links, and host-based tenant website gating verified locally
+- [x] Local smoke tests verified health, plans, signup policy, platform contact, platform admin dashboard, website payload, publish review, suspend, and quarantine actions on localhost
+- [x] Explicit `production` Wrangler environment deploy executed successfully against a real D1 database id
 
 **Evidence**:
 - Local live verification on 2026-03-30 ✅
-- Vitest: nested app `18/18`, outer workspace `35/35` ✅
+- Vitest: outer workspace `29/29` ✅
 - Booking form render + localhost booking submission verified ✅
 - Board and stage updates verified live ✅
 - Platform home + signup copy verified locally after pricing/i18n updates ✅
@@ -81,7 +85,8 @@ Not Started: 0%
 - Shared mobile drawer navigation verified live across the website-master page set ✅
 - Restaurant Admin website-content editor and structured-hours payload compile cleanly and persist through the current worker path ✅
 - Wildcard subdomain routing, host-based tenant payload resolution, and demo-payment signup walkthrough verified live ✅
-- Contact route exists in source but still needs verification on a freshly reloaded local worker because the active `8790` runtime did not expose the new route during smoke test ⚠️
+- Contact route and platform contact lead flow verified on a freshly reloaded local worker ✅
+- Production workers.dev ingress currently returns Cloudflare `1050`; application deploy exists but public ingress is not finished ⚠️
 - Known failures isolated to founder/KC OTP delivery paths ⚠️
 - Legacy Odoo references still exist in schema/init and archive-style utility files, but not in active runtime entrypoints or active admin/public UI ⚠️
 
@@ -108,13 +113,14 @@ Not Started: 0%
 - [x] Wildcard tenant subdomain routing and demo-payment signup walkthrough are verified live
 
 **What needs work** (next 3-4 days):
+- [ ] Attach a real production route or custom domain to `ess-admin-ds-prod` and verify public ingress beyond workers.dev
 - [ ] Stripe test checkout flow (replace demo-paid simulation)
-- [ ] Connect the new tenant website-content editor to a fully explicit publish/release workflow for tenant websites (beyond the current master preview/runtime adapter)
+- [ ] Connect the new tenant website-content editor to a fully explicit publish/release workflow for tenant websites (beyond the current moderation/release foundation)
 - [ ] Enforce the new website validator inside the actual publish path, not only as a repo script
 - [ ] Publish tenant website output + assets to deployment storage and validate custom-domain serving path
 - [ ] Tenant custom domain connection workflow (DNS + validation + ops guidance)
 - [ ] Tenant payment method onboarding UX (Stripe + manual modes)
-- [ ] End-to-end QA for tenant website editor save/reload flow from Restaurant Admin to live tenant subdomain
+- [ ] End-to-end QA for tenant website editor save/reload/review flow from Restaurant Admin to live tenant subdomain
 - [ ] Wire structured opening hours into shop and online-order availability once those modules land
 - [ ] Founder/KC OTP delivery path needs working Twilio credentials or a dedicated local stub
 - [ ] Document the local-dev caveat: Turnstile bypass only applies on localhost/workers.dev, not Host-header tenant simulation
@@ -167,12 +173,12 @@ All other phases (2-5) planned, not started:
 - **Owner**: @dev-lead
 - **Action Item**: Decide whether local OTP should require live Twilio or use a development stub
 
-### Blocker 2: Platform Billing + Website Publish Path
-- **Issue**: Stripe checkout is not wired and tenant website publishing/custom-domain flow is not yet completed beyond the working website-master preview/runtime adapter
+### Blocker 2: Production Ingress + Website Publish Path
+- **Issue**: Stripe checkout is not wired, tenant website publishing/custom-domain flow is not yet completed beyond the working moderation/release foundation, and the explicit production env still lacks usable public ingress
 - **Impact**: CP-10 remains partial, not ship-ready
 - **ETA Fix**: Mar 31 onward
 - **Owner**: @dev-lead
-- **Action Item**: Wire Stripe test checkout and finish tenant website publish/domain workflow
+- **Action Item**: Attach production route/custom domain, wire Stripe test checkout, and finish tenant website publish/domain workflow
 
 ---
 
@@ -228,12 +234,13 @@ PHASE 1 TOTAL                                        91%
 ### This Week (Apr 2-5)
 
 **Priority 1** (Must do):
+- [ ] Attach a real production route or custom domain for `ess-admin-ds-prod`
 - [ ] Wire Stripe test checkout for signup and recurring invoices
-- [ ] Turn the new Restaurant Admin website-content editor into a publish-safe tenant website workflow
-- [ ] Finish tenant website publish/domain workflow on top of the delivered website-master preview adapter
+- [ ] Turn the new Restaurant Admin website-content editor into a publish-safe tenant website workflow with release status
+- [ ] Finish tenant website publish/domain workflow on top of the delivered moderation/release foundation
 - [ ] Re-test tenant website editor end to end on live tenant subdomains after save/reload cycles
 - [ ] Configure or stub Twilio so founder/KC OTP works in local runtime and tests
-- [ ] Reload dev worker and confirm `/api/contact/create` on the active local runtime
+- [x] Reload dev worker and confirm `/api/contact/create` on the active local runtime
 - **Owner**: @dev-lead
 - **Time**: 3-4 days
 - **Blocker**: External credentials / final local-dev behavior decisions

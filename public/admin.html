@@ -793,6 +793,10 @@
             <div id="websiteContentList"></div>
           </div>
           <div class="settings-section">
+            <div class="settings-section-title">Website Release & Go Live</div>
+            <div id="websiteReleaseList"></div>
+          </div>
+          <div class="settings-section">
             <div class="settings-section-title">Operations & Capacity</div>
             <div id="operationalSettingsList"></div>
           </div>
@@ -833,6 +837,7 @@
     let companyProfile = null;
     let operationalSettings = {};
     let moduleSettings = {};
+    let websiteRelease = null;
     let integrationConfig = {};
     let mediaAssets = [];
     let platformConfigError = '';
@@ -847,6 +852,7 @@
 
     const OPERATIONAL_SETTING_KEYS = [
       'website_url',
+      'custom_domain',
       'standard_contact_link',
       'booking_email',
       'social_instagram_url',
@@ -967,6 +973,7 @@
 
     const WEBSITE_OPERATIONAL_HIDDEN_KEYS = new Set([
       'website_url',
+      'custom_domain',
       'standard_contact_link',
       'booking_email',
       'social_instagram_url',
@@ -1779,6 +1786,7 @@
         companyProfile = data.company || null;
         operationalSettings = data.operationalSettings || {};
         moduleSettings = data.modules || {};
+        websiteRelease = data.websiteRelease || null;
         platformConfigError = '';
       } catch (error) {
         platformConfigError = error.message || 'Network error while loading platform settings.';
@@ -1983,6 +1991,88 @@
       });
     }
 
+    function parseReleaseReasonCodes(rawValue) {
+      try {
+        const parsed = JSON.parse(String(rawValue || '[]'));
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function renderWebsiteReleaseSection() {
+      const container = document.getElementById('websiteReleaseList');
+      if (!container) return;
+
+      if (!isAdminUser()) {
+        container.innerHTML = '<div class="integration-note">Admin only.</div>';
+        return;
+      }
+
+      if (platformConfigError) {
+        container.innerHTML = `<div class="integration-note" style="color: var(--danger);">${escapeHtml(platformConfigError)}</div>`;
+        return;
+      }
+
+      const company = companyProfile || {};
+      const release = websiteRelease || null;
+      const reasonCodes = parseReleaseReasonCodes(release?.reason_codes_json);
+      const reviewId = String(release?.review_id || '').trim();
+      const previewUrl = String(release?.preview_url || `${window.location.origin}/website-master/index.html?company_id=${encodeURIComponent(currentUser?.companyId || 1)}`).trim();
+      const publishedUrl = String(release?.published_url || document.getElementById('op_custom_domain')?.value.trim() || document.getElementById('op_website_url')?.value.trim() || '').trim();
+      const queueUrl = reviewId ? `/platform/admin.html?review=${encodeURIComponent(reviewId)}` : '/platform/admin.html';
+
+      container.innerHTML = `
+        <div class="integration-note">Current website state and latest publish/review outcome. Use this panel to run publish validation and then continue moderation or go-live checks.</div>
+        <div class="setting-row">
+          <div class="setting-label">Website Status</div>
+          <div class="setting-value" style="padding-top: 10px;">${escapeHtml(company.website_status || 'draft')}</div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Subdomain Status</div>
+          <div class="setting-value" style="padding-top: 10px;">${escapeHtml(company.subdomain_status || 'active')}</div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Trust State</div>
+          <div class="setting-value" style="padding-top: 10px;">${escapeHtml(company.trust_state || 'pending_verification')}</div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Latest Release Status</div>
+          <div class="setting-value" style="padding-top: 10px;">${escapeHtml(release?.release_status || 'draft')}</div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Latest Review ID</div>
+          <div class="setting-value" style="padding-top: 10px;">${escapeHtml(reviewId || 'none')}</div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Latest Reason Codes</div>
+          <div class="setting-value" style="padding-top: 10px;">${escapeHtml(reasonCodes.join(', ') || 'none')}</div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Preview URL</div>
+          <div class="setting-value" style="padding-top: 10px; word-break: break-all;">${escapeHtml(previewUrl)}</div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Published URL</div>
+          <div class="setting-value" style="padding-top: 10px; word-break: break-all;">${escapeHtml(publishedUrl || 'not published yet')}</div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Operator Note</div>
+          <textarea class="setting-value" id="website_release_note" rows="3" placeholder="Optional note for publish review">${escapeHtml(release?.release_note || '')}</textarea>
+        </div>
+        <div class="setting-row">
+          <div></div>
+          <div style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;">
+            <button class="btn-small btn-secondary" onclick="reloadPlatformConfig()">Reload</button>
+            <button class="btn-small btn-secondary" onclick="window.open('${escapeHtml(previewUrl)}', '_blank', 'noopener')">Open Preview</button>
+            ${publishedUrl ? `<button class="btn-small btn-secondary" onclick="window.open('${escapeHtml(publishedUrl)}', '_blank', 'noopener')">Open Live URL</button>` : ''}
+            <button class="btn-small btn-secondary" onclick="window.open('${escapeHtml(queueUrl)}', '_blank', 'noopener')">Open Operator Queue</button>
+            <button class="btn-small btn-primary" onclick="runWebsitePublishReview()">Run Publish Review</button>
+          </div>
+        </div>
+      `;
+    }
+
     function renderCompanyProfileSection() {
       const container = document.getElementById('companyProfileList');
       if (!container) return;
@@ -2019,6 +2109,10 @@
         <div class="setting-row">
           <div class="setting-label">Website URL</div>
           <input type="text" class="setting-value" id="op_website_url" value="${escapeHtml(getOperationalValue('website_url'))}">
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Custom Domain</div>
+          <input type="text" class="setting-value" id="op_custom_domain" value="${escapeHtml(getOperationalValue('custom_domain'))}" placeholder="restaurant.example.com">
         </div>
         <div class="setting-row">
           <div class="setting-label">Booking Email</div>
@@ -2158,9 +2252,42 @@
       await loadPlatformConfig();
       renderCompanyProfileSection();
       renderWebsiteContentSection();
+      renderWebsiteReleaseSection();
       renderOperationalSettingsSection();
       renderSocialSettingsSection();
       renderModuleSettingsSection();
+    }
+
+    async function runWebsitePublishReview() {
+      if (!currentUser?.pin) {
+        alert('Please login again.');
+        return;
+      }
+
+      if (!isAdminUser()) {
+        alert('Admin only.');
+        return;
+      }
+
+      const reviewNote = document.getElementById('website_release_note')?.value.trim() || '';
+
+      try {
+        const res = await fetch('/api/admin/website/publish', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin: currentUser.pin, reviewNote })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) {
+          alert(data.error || 'Failed to run publish review.');
+          return;
+        }
+
+        await reloadPlatformConfig();
+        alert(`Publish review completed: ${data.decision || 'unknown'} (${data.release_status || data.website_status || 'no-status'})`);
+      } catch (error) {
+        alert(error.message || 'Network error while running publish review.');
+      }
     }
 
     function buildWebsiteContentOperationalSettings() {
@@ -2759,6 +2886,7 @@
     function renderSettingsPage() {
       renderCompanyProfileSection();
       renderWebsiteContentSection();
+      renderWebsiteReleaseSection();
       renderOperationalSettingsSection();
       renderSocialSettingsSection();
       renderModuleSettingsSection();

@@ -1,7 +1,7 @@
 /* ESLint config for Cloudflare Workers + ES Modules */
 module.exports = {
   root: true,
-  ignorePatterns: ['node_modules/', '.wrangler/', 'coverage/', 'dist/'],
+  ignorePatterns: ['node_modules/', '.wrangler/', 'coverage/', 'dist/', 'ess-admin-ds/'],
   env: {
     es2022: true,
     browser: true,   // Cloudflare Workers use browser-like globals (fetch, Request, Response)
