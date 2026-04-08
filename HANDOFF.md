@@ -53,6 +53,12 @@
 - [x] Shared mobile drawer navigation now replaces the old mobile tab strip across the website-master page set
 - [x] Luxury A/B polish shipped: luxury B light-surface menu contrast fixed and luxury A secondary header items removed from the active runtime path
 - [x] Restaurant Admin now includes a tenant-facing Website Content & Opening Hours editor for presentation-only website fields
+- [x] Restaurant Admin now includes a backend-driven go-live readiness checklist in the Website Release & Go Live panel
+- [x] Restaurant Admin now includes release history and rollback controls backed by published website snapshots
+- [x] Platform signup and tenant admin now support demo payment methods for PayPal, bank card, cash, and pick up at store
+- [x] SaaS Admin now includes platform-level payment method toggles that enforce which signup and tenant payment methods are allowed
+- [x] Tenant Admin payment setup now shows methods disabled by SaaS policy directly in the UI
+- [x] Bank card signup now creates a Stripe test checkout session when `STRIPE_API_KEY` is configured or `STRIPE_MODE=mock`
 - [x] Structured `opening_hours_schedule` now reaches the public website payload alongside legacy open/close fallback values
 - [x] Wildcard tenant subdomains on `gooddining.app` and demo-payment signup walkthrough have been verified live end to end
 - [x] Active Odoo runtime/helper paths removed from both worker entrypoints; active public/admin surfaces updated to first-party CRM wording
@@ -62,7 +68,7 @@
 - [x] Local smoke verification completed for health, plans, contact, signup policy, publish review, suspend, quarantine, and host-based tenant blocking
 - [x] Explicit `production` Wrangler env deployed against a real D1 database id
 - [ ] Founder/KC OTP runtime still fails locally without Twilio credentials
-- [ ] Admin UI setup wizard / go-live flow still incomplete (84% complete)
+- [ ] Admin UI setup wizard / go-live flow still incomplete (89% complete)
 
 #### Contracts & Specifications (100%)
 - [x] API Contracts (all endpoints defined)
@@ -76,7 +82,7 @@
 
 ### 🔄 In Progress (Current Sprint)
 
-#### CP-3: Admin UI Setup (84% complete)
+#### CP-3: Admin UI Setup (89% complete)
 
 **What's done**:
 - [x] Restaurant admin page + platform-config API + staff API are live
@@ -87,6 +93,11 @@
 - [x] Website master preview can consume runtime-shaped website settings and preview tenant/company context without hardcoded tenant pages
 - [x] Tenant website editor now exists inside Restaurant Admin for text, images, button labels, navigation labels, career copy, and opening hours schedule
 - [x] Website payload now includes structured opening hours for future reuse by shop and online-order availability
+- [x] Website Release & Go Live panel now includes a backend-driven readiness checklist for missing setup items
+- [x] Public tenant payload now serves the latest published release snapshot, and tenant admin can roll back to an older published snapshot
+- [x] Payment setup now includes Stripe account id, accepted payment methods, and demo payment method selection
+- [x] Platform operator pricing config now also controls allowed payment methods with global toggles
+- [x] Signup flow now has a Stripe checkout-session path for bank card instead of only demo-paid simulation
 - [ ] Restaurant config form (email/phone/hours/areas)
 - [ ] Staff PIN setup
 - [ ] Payment integration setup

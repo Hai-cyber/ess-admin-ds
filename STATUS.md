@@ -62,6 +62,12 @@ Not Started: 0%
 - [x] Website master boot now renders from embedded source first and hydrates runtime payload plus theme presets in parallel, eliminating the visible master-template flash on first load
 - [x] Shared full-height mobile drawer navigation shipped across all website-master routes, replacing the old mobile tab strip
 - [x] Restaurant Admin now exposes a tenant-facing Website Content & Opening Hours editor for presentation-only website fields
+- [x] Restaurant Admin now exposes a backend-driven go-live readiness checklist inside the Website Release & Go Live panel
+- [x] Restaurant Admin now exposes release history and rollback controls backed by published website release snapshots
+- [x] Platform signup and tenant admin now support demo payment methods for PayPal, bank card, cash, and pick up at store
+- [x] SaaS Admin now exposes platform-level payment method toggles that control signup and tenant payment choices
+- [x] Tenant Admin now shows SaaS-policy-disabled payment methods directly in the payment setup UI
+- [x] Platform signup now supports Stripe test checkout for bank card when Stripe test or mock mode is available
 - [x] Public website payload now includes structured `opening_hours_schedule` alongside legacy open/close values
 - [x] Wildcard tenant subdomain routing and host-based website payload resolution verified live on `gooddining.app`
 - [x] Demo-payment self-service signup walkthrough verified live end to end with tenant provisioning, admin access, and website host resolution
@@ -84,6 +90,10 @@ Not Started: 0%
 - Live website-master preview now boots visibly faster after the embedded-first render + parallel hydration change ✅
 - Shared mobile drawer navigation verified live across the website-master page set ✅
 - Restaurant Admin website-content editor and structured-hours payload compile cleanly and persist through the current worker path ✅
+- Tenant admin go-live readiness checklist now renders from the `platform-config` payload and is covered by Vitest ✅
+- Public tenant website payload now resolves from the latest published release snapshot, and rollback restores older published snapshots ✅
+- SaaS admin payment method toggles now feed `/api/platform/plans` and block disabled payment methods during signup ✅
+- Bank card signup now returns a Stripe checkout URL in test/mock mode instead of only demo-paid simulation ✅
 - Wildcard subdomain routing, host-based tenant payload resolution, and demo-payment signup walkthrough verified live ✅
 - Contact route and platform contact lead flow verified on a freshly reloaded local worker ✅
 - Production workers.dev ingress currently returns Cloudflare `1050`; application deploy exists but public ingress is not finished ⚠️
@@ -114,9 +124,9 @@ Not Started: 0%
 
 **What needs work** (next 3-4 days):
 - [ ] Attach a real production route or custom domain to `ess-admin-ds-prod` and verify public ingress beyond workers.dev
-- [ ] Stripe test checkout flow (replace demo-paid simulation)
+- [ ] Stripe test checkout flow (replace demo-paid simulation while keeping the new demo/manual payment method options)
 - [ ] Connect the new tenant website-content editor to a fully explicit publish/release workflow for tenant websites (beyond the current moderation/release foundation)
-- [ ] Enforce the new website validator inside the actual publish path, not only as a repo script
+- [ ] Enforce the new website validator inside the actual publish path, not only as a repo script or snapshot rollback workflow
 - [ ] Publish tenant website output + assets to deployment storage and validate custom-domain serving path
 - [ ] Tenant custom domain connection workflow (DNS + validation + ops guidance)
 - [ ] Tenant payment method onboarding UX (Stripe + manual modes)

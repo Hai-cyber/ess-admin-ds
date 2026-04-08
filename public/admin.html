@@ -797,6 +797,10 @@
             <div id="websiteReleaseList"></div>
           </div>
           <div class="settings-section">
+            <div class="settings-section-title">Payments & Billing</div>
+            <div id="paymentSetupList"></div>
+          </div>
+          <div class="settings-section">
             <div class="settings-section-title">Operations & Capacity</div>
             <div id="operationalSettingsList"></div>
           </div>
@@ -838,6 +842,9 @@
     let operationalSettings = {};
     let moduleSettings = {};
     let websiteRelease = null;
+    let websiteReleaseHistory = [];
+    let goLiveReadiness = null;
+    let paymentMethodPolicy = { enabled: ['bankcard', 'paypal', 'cash', 'pickup_at_store'], toggles: {} };
     let integrationConfig = {};
     let mediaAssets = [];
     let platformConfigError = '';
@@ -855,6 +862,12 @@
       'custom_domain',
       'standard_contact_link',
       'booking_email',
+      'stripe_account_id',
+      'accepted_payment_methods_json',
+      'demo_payment_method',
+      'demo_payment_status',
+      'demo_payment_due_today_eur',
+      'demo_payment_recurring_monthly_eur',
       'social_instagram_url',
       'social_facebook_url',
       'social_tiktok_url',
@@ -899,8 +912,15 @@
 
     const OPERATIONAL_LABELS = {
       website_url: 'Website URL',
+      custom_domain: 'Custom Domain',
       standard_contact_link: 'Standard Contact Link',
       booking_email: 'Booking Email',
+      stripe_account_id: 'Stripe Account ID',
+      accepted_payment_methods_json: 'Accepted Payment Methods',
+      demo_payment_method: 'Demo Payment Method',
+      demo_payment_status: 'Demo Payment Status',
+      demo_payment_due_today_eur: 'Demo Due Today (EUR)',
+      demo_payment_recurring_monthly_eur: 'Demo Recurring Monthly (EUR)',
       social_instagram_url: 'Instagram URL',
       social_facebook_url: 'Facebook URL',
       social_tiktok_url: 'TikTok URL',
@@ -976,6 +996,12 @@
       'custom_domain',
       'standard_contact_link',
       'booking_email',
+      'stripe_account_id',
+      'accepted_payment_methods_json',
+      'demo_payment_method',
+      'demo_payment_status',
+      'demo_payment_due_today_eur',
+      'demo_payment_recurring_monthly_eur',
       'social_instagram_url',
       'social_facebook_url',
       'social_tiktok_url',
@@ -1787,6 +1813,9 @@
         operationalSettings = data.operationalSettings || {};
         moduleSettings = data.modules || {};
         websiteRelease = data.websiteRelease || null;
+        websiteReleaseHistory = Array.isArray(data.websiteReleaseHistory) ? data.websiteReleaseHistory : [];
+        goLiveReadiness = data.goLiveReadiness || null;
+        paymentMethodPolicy = data.paymentMethodPolicy || { enabled: ['bankcard', 'paypal', 'cash', 'pickup_at_store'], toggles: {} };
         platformConfigError = '';
       } catch (error) {
         platformConfigError = error.message || 'Network error while loading platform settings.';
@@ -2000,6 +2029,26 @@
       }
     }
 
+    function getAcceptedPaymentMethods() {
+      return ['paypal', 'bankcard', 'cash', 'pickup_at_store']
+        .filter((method) => document.getElementById(`payment_method_${method}`)?.checked);
+    }
+
+    function humanizePaymentMethod(method) {
+      return {
+        paypal: 'PayPal',
+        bankcard: 'Bank card',
+        cash: 'Cash',
+        pickup_at_store: 'Pick up at store'
+      }[String(method || '').trim()] || String(method || '');
+    }
+
+    function formatDateTime(value) {
+      const date = value ? new Date(value) : null;
+      if (!date || Number.isNaN(date.getTime())) return 'n/a';
+      return date.toLocaleString();
+    }
+
     function renderWebsiteReleaseSection() {
       const container = document.getElementById('websiteReleaseList');
       if (!container) return;
@@ -2016,6 +2065,8 @@
 
       const company = companyProfile || {};
       const release = websiteRelease || null;
+      const readiness = goLiveReadiness || { ready: false, summary: 'Go-live readiness not loaded.', items: [] };
+      const history = Array.isArray(websiteReleaseHistory) ? websiteReleaseHistory : [];
       const reasonCodes = parseReleaseReasonCodes(release?.reason_codes_json);
       const reviewId = String(release?.review_id || '').trim();
       const previewUrl = String(release?.preview_url || `${window.location.origin}/website-master/index.html?company_id=${encodeURIComponent(currentUser?.companyId || 1)}`).trim();
@@ -2024,6 +2075,7 @@
 
       container.innerHTML = `
         <div class="integration-note">Current website state and latest publish/review outcome. Use this panel to run publish validation and then continue moderation or go-live checks.</div>
+        <div class="integration-note" style="color:${readiness.ready ? 'var(--success)' : 'var(--warning)'};">${escapeHtml(readiness.summary || 'Go-live readiness not loaded.')}</div>
         <div class="setting-row">
           <div class="setting-label">Website Status</div>
           <div class="setting-value" style="padding-top: 10px;">${escapeHtml(company.website_status || 'draft')}</div>
@@ -2060,6 +2112,35 @@
           <div class="setting-label">Operator Note</div>
           <textarea class="setting-value" id="website_release_note" rows="3" placeholder="Optional note for publish review">${escapeHtml(release?.release_note || '')}</textarea>
         </div>
+        <div class="settings-subsection-title">Go-Live Checklist</div>
+        ${(Array.isArray(readiness.items) ? readiness.items : []).map((item) => `
+          <div class="setting-row">
+            <div class="setting-label">${escapeHtml(item.label || item.key || 'check')}</div>
+            <div class="setting-value" style="padding-top: 10px; color:${item.ok ? 'var(--success)' : 'var(--warning)'};">
+              ${item.ok ? 'PASS' : 'TODO'}: ${escapeHtml(item.detail || '')}
+            </div>
+          </div>
+        `).join('')}
+        <div class="settings-subsection-title">Release History</div>
+        ${history.length ? history.map((item) => {
+          const itemReasons = parseReleaseReasonCodes(item.reason_codes_json);
+          const rollbackDisabled = !item.payload_snapshot_json || item.release_status === 'published';
+          return `
+            <div class="setting-row">
+              <div class="setting-label">${escapeHtml(item.release_status || 'draft')} · ${escapeHtml(formatDateTime(item.updated_at || item.created_at))}</div>
+              <div class="setting-value" style="padding-top: 10px; display:grid; gap:8px;">
+                <div>ID: ${escapeHtml(item.id || '')}</div>
+                <div>Published URL: ${escapeHtml(item.published_url || 'n/a')}</div>
+                <div>Reason codes: ${escapeHtml(itemReasons.join(', ') || 'none')}</div>
+                <div>Note: ${escapeHtml(item.release_note || 'n/a')}</div>
+                <div style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;">
+                  ${item.preview_url ? `<button class="btn-small btn-secondary" onclick="window.open('${escapeHtml(item.preview_url)}', '_blank', 'noopener')">Open Preview</button>` : ''}
+                  <button class="btn-small btn-primary" ${rollbackDisabled ? 'disabled' : ''} onclick="runWebsiteReleaseRollback('${escapeHtml(item.id || '')}')">Rollback To This Release</button>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('') : '<div class="integration-note">No release history yet.</div>'}
         <div class="setting-row">
           <div></div>
           <div style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;">
@@ -2176,6 +2257,77 @@
       }).join('');
     }
 
+    function renderPaymentSetupSection() {
+      const container = document.getElementById('paymentSetupList');
+      if (!container) return;
+
+      if (!isAdminUser()) {
+        container.innerHTML = '<div class="integration-note">Admin only.</div>';
+        return;
+      }
+
+      if (platformConfigError) {
+        container.innerHTML = `<div class="integration-note" style="color: var(--danger);">${escapeHtml(platformConfigError)}</div>`;
+        return;
+      }
+
+      const acceptedMethods = (() => {
+        try {
+          const parsed = JSON.parse(String(getOperationalValue('accepted_payment_methods_json') || '[]'));
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [];
+        }
+      })();
+      const enabledMethods = Array.isArray(paymentMethodPolicy?.enabled) ? paymentMethodPolicy.enabled : ['bankcard', 'paypal', 'cash', 'pickup_at_store'];
+      const demoPaymentMethod = String(getOperationalValue('demo_payment_method') || 'bankcard').trim() || 'bankcard';
+
+      container.innerHTML = `
+        <div class="integration-note">Stripe is still the long-term online payment path. Until then, you can declare demo or manual methods explicitly for onboarding and go-live.</div>
+        <div class="integration-note">Enabled by SaaS admin policy: ${escapeHtml(enabledMethods.map(humanizePaymentMethod).join(', ') || 'none')}.</div>
+        <div class="setting-row">
+          <div class="setting-label">Stripe Account ID</div>
+          <input type="text" class="setting-value" id="op_stripe_account_id" value="${escapeHtml(getOperationalValue('stripe_account_id'))}" placeholder="acct_...">
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Demo Payment Method</div>
+          <select class="setting-value" id="op_demo_payment_method">
+            ${['bankcard', 'paypal', 'cash', 'pickup_at_store'].map((method) => `<option value="${method}" ${demoPaymentMethod === method ? 'selected' : ''} ${enabledMethods.includes(method) ? '' : 'disabled'}>${escapeHtml(humanizePaymentMethod(method))}${enabledMethods.includes(method) ? '' : ' (disabled by SaaS admin)'}</option>`).join('')}
+          </select>
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Accepted Payment Methods</div>
+          <div class="setting-value" style="padding-top:10px; display:grid; gap:8px;">
+            ${['paypal', 'bankcard', 'cash', 'pickup_at_store'].map((method) => `
+              <label style="position:static !important;width:auto !important;height:auto !important;margin:0 !important;clip:auto !important;white-space:normal !important;overflow:visible !important;">
+                <input type="checkbox" id="payment_method_${method}" ${acceptedMethods.includes(method) ? 'checked' : ''} ${enabledMethods.includes(method) ? '' : 'disabled'}>
+                ${escapeHtml(humanizePaymentMethod(method))}${enabledMethods.includes(method) ? '' : ' (disabled by SaaS admin)'}
+              </label>
+            `).join('')}
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Demo Payment Status</div>
+          <input type="text" class="setting-value" id="op_demo_payment_status" value="${escapeHtml(getOperationalValue('demo_payment_status'))}" placeholder="demo_paid">
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Due Today (EUR)</div>
+          <input type="number" step="0.01" class="setting-value" id="op_demo_payment_due_today_eur" value="${escapeHtml(getOperationalValue('demo_payment_due_today_eur'))}">
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Recurring Monthly (EUR)</div>
+          <input type="number" step="0.01" class="setting-value" id="op_demo_payment_recurring_monthly_eur" value="${escapeHtml(getOperationalValue('demo_payment_recurring_monthly_eur'))}">
+        </div>
+        <div class="setting-row">
+          <div></div>
+          <div style="display:flex;justify-content:flex-end;gap:8px;">
+            <button class="btn-small btn-secondary" onclick="reloadPlatformConfig()">Reload</button>
+            <button class="btn-small btn-primary" onclick="savePlatformConfig()">Save Payment Setup</button>
+          </div>
+        </div>
+      `;
+    }
+
     function renderSocialSettingsSection() {
       const container = document.getElementById('socialSettingsList');
       if (!container) return;
@@ -2253,6 +2405,7 @@
       renderCompanyProfileSection();
       renderWebsiteContentSection();
       renderWebsiteReleaseSection();
+      renderPaymentSetupSection();
       renderOperationalSettingsSection();
       renderSocialSettingsSection();
       renderModuleSettingsSection();
@@ -2287,6 +2440,38 @@
         alert(`Publish review completed: ${data.decision || 'unknown'} (${data.release_status || data.website_status || 'no-status'})`);
       } catch (error) {
         alert(error.message || 'Network error while running publish review.');
+      }
+    }
+
+    async function runWebsiteReleaseRollback(releaseId) {
+      if (!currentUser?.pin) {
+        alert('Please login again.');
+        return;
+      }
+
+      if (!isAdminUser()) {
+        alert('Admin only.');
+        return;
+      }
+
+      const rollbackNote = prompt('Rollback note (optional):', 'Rollback to previous published snapshot') || '';
+
+      try {
+        const res = await fetch(`/api/admin/website/releases/${encodeURIComponent(releaseId)}/rollback`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin: currentUser.pin, rollbackNote })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) {
+          alert(data.error || 'Rollback failed.');
+          return;
+        }
+
+        await reloadPlatformConfig();
+        alert(`Rollback completed from release ${data.restored_from_release_id || releaseId}.`);
+      } catch (error) {
+        alert(error.message || 'Network error while rolling back release.');
       }
     }
 
@@ -2384,6 +2569,10 @@
       });
 
       if (canManageFullPlatform) {
+        nextOperationalSettings.accepted_payment_methods_json = JSON.stringify(getAcceptedPaymentMethods());
+      }
+
+      if (canManageFullPlatform) {
         Object.assign(nextOperationalSettings, buildWebsiteContentOperationalSettings());
       }
 
@@ -2415,6 +2604,9 @@
         companyProfile = data.company || null;
         operationalSettings = data.operationalSettings || {};
         moduleSettings = data.modules || {};
+        websiteRelease = data.websiteRelease || null;
+        websiteReleaseHistory = Array.isArray(data.websiteReleaseHistory) ? data.websiteReleaseHistory : [];
+        goLiveReadiness = data.goLiveReadiness || null;
         renderSettingsPage();
         alert(canManageFullPlatform ? 'Platform config saved.' : 'Social profiles saved.');
       } catch (error) {
@@ -2521,8 +2713,8 @@
           localStorage.setItem('esskultur_user', JSON.stringify(currentUser));
         }
 
-        await loadStaffData();
-        renderStaffSection();
+        await Promise.all([loadStaffData(), loadPlatformConfig()]);
+        renderSettingsPage();
         alert('Staff saved.');
       } catch (error) {
         alert(error.message || 'Network error while saving staff.');
@@ -2887,6 +3079,7 @@
       renderCompanyProfileSection();
       renderWebsiteContentSection();
       renderWebsiteReleaseSection();
+      renderPaymentSetupSection();
       renderOperationalSettingsSection();
       renderSocialSettingsSection();
       renderModuleSettingsSection();

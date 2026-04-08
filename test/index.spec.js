@@ -95,6 +95,96 @@ describe('ESSKULTUR worker', () => {
 		expect(company).toBeNull();
 	});
 
+	it('saves SaaS admin payment method toggles and exposes them in platform plans', async () => {
+		await initializeDatabase(env.DB);
+
+		const saveRequest = new Request('http://localhost/api/platform/admin/config', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				pin: '1234',
+				values: {
+					platform_payment_method_bankcard: 'enabled',
+					platform_payment_method_paypal: 'disabled',
+					platform_payment_method_cash: 'enabled',
+					platform_payment_method_pickup_at_store: 'disabled'
+				}
+			})
+		});
+
+		let ctx = createExecutionContext();
+		let response = await worker.fetch(saveRequest, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+
+		const plansRequest = new Request('http://localhost/api/platform/plans');
+		ctx = createExecutionContext();
+		response = await worker.fetch(plansRequest, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		const body = await response.json();
+		expect(body.ok).toBe(true);
+		expect(Array.isArray(body.paymentMethods?.enabled)).toBe(true);
+		expect(body.paymentMethods.enabled).toContain('bankcard');
+		expect(body.paymentMethods.enabled).toContain('cash');
+		expect(body.paymentMethods.enabled).not.toContain('paypal');
+		expect(body.paymentMethods.enabled).not.toContain('pickup_at_store');
+	});
+
+	it('rejects signup when selected payment method is disabled by SaaS admin', async () => {
+		await initializeDatabase(env.DB);
+
+		await env.DB.prepare(`
+			INSERT INTO settings (company_id, key, value, description, updated_at, updated_by)
+			VALUES (?, ?, ?, ?, ?, ?)
+			ON CONFLICT(company_id, key) DO UPDATE SET
+				value = excluded.value,
+				description = excluded.description,
+				updated_at = excluded.updated_at,
+				updated_by = excluded.updated_by
+		`).bind(1, 'platform_payment_method_paypal', 'disabled', 'test', new Date().toISOString(), 'test').run();
+
+		const request = new Request('http://localhost/api/platform/signup', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				restaurant_name: 'Disabled Payment Diner',
+				owner_email: 'disabled-payment@example.com',
+				subdomain: 'disabled-payment-diner',
+				plan: 'core',
+				admin_pin: '1234',
+				admin_name: 'Owner',
+				demo_payment_method: 'paypal'
+			})
+		});
+
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(409);
+		const body = await response.json();
+		expect(body.ok).toBe(false);
+		expect(String(body.code || '')).toBe('payment_method_disabled');
+		expect(Array.isArray(body.enabled_payment_methods)).toBe(true);
+		expect(body.enabled_payment_methods).not.toContain('paypal');
+	});
+
+	it('returns tenant admin payment method policy in platform config payload', async () => {
+		await initializeDatabase(env.DB);
+
+		const request = new Request('http://localhost/api/admin/platform-config?company_id=1&pin=1234');
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(200);
+		const body = await response.json();
+		expect(body.success).toBe(true);
+		expect(Array.isArray(body.paymentMethodPolicy?.enabled)).toBe(true);
+		expect(typeof body.paymentMethodPolicy?.toggles).toBe('object');
+	});
+
 	it('rejects tenant admin subdomain updates that hit blocked policy terms', async () => {
 		await initializeDatabase(env.DB);
 
@@ -410,6 +500,121 @@ describe('ESSKULTUR worker', () => {
 		expect(response.status).toBe(423);
 		const html = await response.text();
 		expect(html).toContain('Website Unavailable');
+	});
+
+	it('serves the latest published release snapshot for public website payloads', async () => {
+		await initializeDatabase(env.DB);
+		const now = new Date().toISOString();
+
+		await env.DB.prepare(`
+			INSERT INTO website_releases (
+				id, company_id, review_id, release_status, publish_target, preview_url, published_url,
+				payload_snapshot_json, reason_codes_json, release_note, reviewer_type, reviewer_id,
+				published_at, suspended_at, created_at, updated_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`).bind(
+			'release_snapshot_live',
+			2,
+			null,
+			'published',
+			'managed_subdomain',
+			'http://localhost/website-master/index.html?company_id=2',
+			'https://restaurant2.gooddining.app',
+			JSON.stringify({ company: { name: 'Published Snapshot Bistro' }, pages: { home: { title: 'Snapshot Hero' } } }),
+			JSON.stringify([]),
+			'Published snapshot',
+			'system',
+			'publish-gate',
+			now,
+			null,
+			now,
+			now
+		).run();
+
+		const request = new Request('http://restaurant2.gooddining.app/api/website/payload');
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(200);
+		const body = await response.json();
+		expect(body.ok).toBe(true);
+		expect(String(body.source?.company?.name || '')).toBe('Published Snapshot Bistro');
+	});
+
+	it('allows tenant admin to roll back to an older published release snapshot', async () => {
+		await initializeDatabase(env.DB);
+		const earlier = '2026-04-01T08:00:00.000Z';
+		const later = '2026-04-02T08:00:00.000Z';
+
+		for (const row of [
+			{
+				id: 'release_old_live',
+				note: 'Old stable live',
+				payload: { company: { name: 'Old Stable Live' } },
+				publishedAt: earlier,
+				updatedAt: earlier
+			},
+			{
+				id: 'release_current_live',
+				note: 'Current live',
+				payload: { company: { name: 'Current Live' } },
+				publishedAt: later,
+				updatedAt: later
+			}
+		]) {
+			await env.DB.prepare(`
+				INSERT INTO website_releases (
+					id, company_id, review_id, release_status, publish_target, preview_url, published_url,
+					payload_snapshot_json, reason_codes_json, release_note, reviewer_type, reviewer_id,
+					published_at, suspended_at, created_at, updated_at
+				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			`).bind(
+				row.id,
+				1,
+				null,
+				'published',
+				'managed_subdomain',
+				'http://localhost/website-master/index.html?company_id=1',
+				'https://restaurant1.gooddining.app',
+				JSON.stringify(row.payload),
+				JSON.stringify([]),
+				row.note,
+				'system',
+				'publish-gate',
+				row.publishedAt,
+				null,
+				row.publishedAt,
+				row.updatedAt
+			).run();
+		}
+
+		let request = new Request('http://restaurant1.gooddining.app/api/website/payload');
+		let ctx = createExecutionContext();
+		let response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		let body = await response.json();
+		expect(String(body.source?.company?.name || '')).toBe('Current Live');
+
+		const rollbackRequest = new Request('http://localhost/api/admin/website/releases/release_old_live/rollback?company_id=1', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ pin: '1234', rollbackNote: 'Restore stable version' })
+		});
+		ctx = createExecutionContext();
+		response = await worker.fetch(rollbackRequest, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		body = await response.json();
+		expect(body.ok).toBe(true);
+		expect(String(body.action || '')).toBe('rollback');
+
+		request = new Request('http://restaurant1.gooddining.app/api/website/payload');
+		ctx = createExecutionContext();
+		response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		body = await response.json();
+		expect(String(body.source?.company?.name || '')).toBe('Old Stable Live');
 	});
 
 	it('includes moderation reviews in platform admin dashboard data', async () => {
@@ -1136,6 +1341,99 @@ describe('ESSKULTUR worker', () => {
 		const mediaGetRes = await worker.fetch(mediaGetReq, env, ctx);
 		await waitOnExecutionContext(ctx);
 		expect(mediaGetRes.status).toBe(200);
+	});
+
+	it('returns go-live readiness checklist in admin platform config payload', async () => {
+		await initializeDatabase(env.DB);
+
+		const request = new Request('http://localhost/api/admin/platform-config?company_id=1&pin=1234');
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(200);
+		const body = await response.json();
+		expect(body.success).toBe(true);
+		expect(body.goLiveReadiness).toBeTruthy();
+		expect(Array.isArray(body.goLiveReadiness.items)).toBe(true);
+		expect(body.goLiveReadiness.items.some((item) => item.key === 'payment_setup')).toBe(true);
+		expect(body.goLiveReadiness.items.some((item) => item.key === 'staff_setup')).toBe(true);
+
+		const paymentItem = body.goLiveReadiness.items.find((item) => item.key === 'payment_setup');
+		expect(paymentItem?.ok).toBe(false);
+	});
+
+	it('stores selected demo payment method during platform signup', async () => {
+		await initializeDatabase(env.DB);
+
+		const request = new Request('http://localhost/api/platform/signup', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				restaurant_name: 'Pay Method Diner',
+				owner_email: 'pay-method@example.com',
+				subdomain: 'pay-method-diner',
+				plan: 'core',
+				admin_pin: '1234',
+				admin_name: 'Owner',
+				demo_payment_method: 'paypal'
+			})
+		});
+
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(201);
+		const body = await response.json();
+		expect(body.ok).toBe(true);
+		expect(String(body.payment?.paymentMethod || '')).toBe('paypal');
+
+		const companyId = Number(body.company_id || 0);
+		const methodSetting = await env.DB.prepare(
+			`SELECT value FROM settings WHERE company_id = ? AND key = 'demo_payment_method' LIMIT 1`
+		).bind(companyId).first();
+		const acceptedSetting = await env.DB.prepare(
+			`SELECT value FROM settings WHERE company_id = ? AND key = 'accepted_payment_methods_json' LIMIT 1`
+		).bind(companyId).first();
+
+		expect(String(methodSetting?.value || '')).toBe('paypal');
+		expect(String(acceptedSetting?.value || '')).toContain('paypal');
+	});
+
+	it('creates a Stripe test checkout session in mock mode for bank card signup', async () => {
+		await initializeDatabase(env.DB);
+		env.STRIPE_MODE = 'mock';
+
+		const request = new Request('http://localhost/api/platform/signup', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				restaurant_name: 'Stripe Test Diner',
+				owner_email: 'stripe-test@example.com',
+				subdomain: 'stripe-test-diner',
+				plan: 'core',
+				admin_pin: '1234',
+				admin_name: 'Owner',
+				demo_payment_method: 'bankcard'
+			})
+		});
+
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(201);
+		const body = await response.json();
+		expect(body.ok).toBe(true);
+		expect(String(body.payment?.paymentStatus || '')).toBe('stripe_checkout_pending');
+		expect(String(body.checkout_url || '')).toContain('mock_stripe_session=1');
+
+		const companyId = Number(body.company_id || 0);
+		const statusSetting = await env.DB.prepare(
+			`SELECT value FROM settings WHERE company_id = ? AND key = 'demo_payment_status' LIMIT 1`
+		).bind(companyId).first();
+		expect(String(statusSetting?.value || '')).toBe('stripe_checkout_pending');
 	});
 
 	it('redirects founder route to standard contact link when membership module is disabled', async () => {

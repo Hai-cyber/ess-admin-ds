@@ -136,6 +136,28 @@
           <div class="form-group"><label>IT retainer monthly €</label><input id="cfg_platform_it_support_monthly" type="number" step="0.01"></div>
           <div class="form-group full"><label>Pricing note</label><textarea id="cfg_platform_price_note"></textarea></div>
         </div>
+        <div style="margin-top:18px;padding-top:18px;border-top:1px solid var(--border);">
+          <h3 style="margin:0 0 8px;font-size:0.98rem;">Payment Method Controls</h3>
+          <p class="meta" style="margin-bottom:14px;">These toggles control which payment methods may appear in self-serve signup and tenant payment setup.</p>
+          <div class="pricing-extras-grid">
+            <label class="form-group" style="display:flex;gap:10px;align-items:center;">
+              <input id="cfg_platform_payment_method_bankcard" type="checkbox" style="width:auto;">
+              <span>Bank card</span>
+            </label>
+            <label class="form-group" style="display:flex;gap:10px;align-items:center;">
+              <input id="cfg_platform_payment_method_paypal" type="checkbox" style="width:auto;">
+              <span>PayPal</span>
+            </label>
+            <label class="form-group" style="display:flex;gap:10px;align-items:center;">
+              <input id="cfg_platform_payment_method_cash" type="checkbox" style="width:auto;">
+              <span>Cash</span>
+            </label>
+            <label class="form-group" style="display:flex;gap:10px;align-items:center;">
+              <input id="cfg_platform_payment_method_pickup_at_store" type="checkbox" style="width:auto;">
+              <span>Pick up at store</span>
+            </label>
+          </div>
+        </div>
         <div style="display:flex;justify-content:flex-end;margin-top:14px;">
           <button class="btn btn-primary" onclick="saveSaasConfig()">Save pricing</button>
         </div>
@@ -188,7 +210,11 @@
       'platform_tse_fee_monthly',
       'platform_it_support_hourly',
       'platform_it_support_monthly',
-      'platform_price_note'
+      'platform_price_note',
+      'platform_payment_method_paypal',
+      'platform_payment_method_bankcard',
+      'platform_payment_method_cash',
+      'platform_payment_method_pickup_at_store'
     ];
 
     let saasPin = '';
@@ -250,7 +276,12 @@
       const settings = saasDashboard.pricingSettings || {};
       SAAS_PRICING_KEYS.forEach((key) => {
         const input = document.getElementById(`cfg_${key}`);
-        if (input) input.value = settings[key] || '';
+        if (!input) return;
+        if (input.type === 'checkbox') {
+          input.checked = ['enabled', 'true', '1', 'yes', 'on'].includes(String(settings[key] || '').toLowerCase());
+          return;
+        }
+        input.value = settings[key] || '';
       });
     }
 
@@ -391,7 +422,9 @@
       if (!saasPin) return alert('Load SaaS admin first.');
       const values = Object.fromEntries(SAAS_PRICING_KEYS.map((key) => [
         key,
-        document.getElementById(`cfg_${key}`)?.value || ''
+        document.getElementById(`cfg_${key}`)?.type === 'checkbox'
+          ? (document.getElementById(`cfg_${key}`)?.checked ? 'enabled' : 'disabled')
+          : (document.getElementById(`cfg_${key}`)?.value || '')
       ]));
       const res = await fetch('/api/platform/admin/config', {
         method: 'POST',

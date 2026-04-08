@@ -833,6 +833,16 @@
 
               <div class="signup-summary-card">
                 <h4 data-i18n="su.options_title">Demo invoice options</h4>
+                <div class="form-group">
+                  <label for="f-demo-payment-method" data-i18n="su.pay_method_label">Demo payment method</label>
+                  <select id="f-demo-payment-method">
+                    <option value="bankcard" data-i18n="su.pay_method_bankcard">Bank card</option>
+                    <option value="paypal" data-i18n="su.pay_method_paypal">PayPal</option>
+                    <option value="cash" data-i18n="su.pay_method_cash">Cash</option>
+                    <option value="pickup_at_store" data-i18n="su.pay_method_pickup">Pick up at store</option>
+                  </select>
+                  <div class="form-hint" data-i18n="su.pay_method_hint">Choose how this demo onboarding payment should be marked for the tenant account.</div>
+                </div>
                 <div class="signup-choice-stack">
                   <label class="signup-check"><input id="f-extra-setup" type="checkbox" checked /> <span data-i18n="su.extra_setup">Include one-time setup package for onboarding, import, and go-live preparation.</span></label>
                   <label class="signup-check"><input id="f-extra-tse" type="checkbox" /> <span data-i18n="su.extra_tse">Include TSE package for German fiscal compliance needs.</span></label>

@@ -53,7 +53,11 @@ const PLATFORM_PRICING_DEFAULTS = {
   platform_tse_fee_monthly: '19',
   platform_it_support_hourly: '95',
   platform_it_support_monthly: '249',
-  platform_price_note: 'Billed per active user. Included: hosting, platform maintenance, SSL, and a managed gooddining.app subdomain. Add-ons only apply for SMS usage, TSE, onboarding, and optional IT support.'
+  platform_price_note: 'Billed per active user. Included: hosting, platform maintenance, SSL, and a managed gooddining.app subdomain. Add-ons only apply for SMS usage, TSE, onboarding, and optional IT support.',
+  platform_payment_method_paypal: 'enabled',
+  platform_payment_method_bankcard: 'enabled',
+  platform_payment_method_cash: 'enabled',
+  platform_payment_method_pickup_at_store: 'enabled'
 };
 const PLATFORM_PLAN_DEFINITIONS = [
   {
@@ -258,6 +262,7 @@ const WEBSITE_SUPPORTED_THEME_VARIANTS = new Set([
   'theme-diner-b'
 ]);
 const WEBSITE_SUPPORTED_LANGUAGES = new Set(['en', 'de']);
+const DEMO_PAYMENT_METHODS = new Set(['paypal', 'bankcard', 'cash', 'pickup_at_store']);
 const OPERATIONAL_SETTING_KEYS = [
   'website_url',
   'standard_contact_link',
@@ -272,6 +277,8 @@ const OPERATIONAL_SETTING_KEYS = [
   'platform_price_note',
   'custom_domain',
   'stripe_account_id',
+  'accepted_payment_methods_json',
+  'demo_payment_method',
   'company_plan',
   'billable_staff_count',
   'billing_include_tse',
@@ -379,6 +386,8 @@ const OPERATIONAL_KEY_DESCRIPTIONS = {
   platform_price_note: 'Pricing note displayed under the public platform pricing section',
   custom_domain: 'Custom domain mapped for the tenant website',
   stripe_account_id: 'Tenant-owned Stripe account id / payment method binding',
+  accepted_payment_methods_json: 'Accepted payment methods exposed to the tenant and checkout flow',
+  demo_payment_method: 'Chosen payment method for the demo payment signup flow',
   company_plan: 'Current tenant subscription plan',
   billable_staff_count: 'Current count of active billable staff users',
   billing_include_tse: 'Whether the tenant invoice includes TSE monthly surcharge',
@@ -814,6 +823,129 @@ function parseJsonArray(rawValue) {
   }
 }
 
+function normalizeDemoPaymentMethod(value, fallback = 'bankcard') {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (!normalized) return fallback;
+  return DEMO_PAYMENT_METHODS.has(normalized) ? normalized : fallback;
+}
+
+function parseAcceptedPaymentMethods(rawValue) {
+  const source = Array.isArray(rawValue)
+    ? rawValue
+    : (typeof rawValue === 'string' ? parseJsonArray(rawValue) : []);
+
+  return source
+    .map((item) => normalizeDemoPaymentMethod(item, ''))
+    .filter(Boolean)
+    .filter((item, index, arr) => arr.indexOf(item) === index);
+}
+
+function getPlatformPaymentMethodSettingKey(method) {
+  return `platform_payment_method_${normalizeDemoPaymentMethod(method, '')}`;
+}
+
+function getEnabledPlatformPaymentMethods(settingsMap = {}) {
+  const enabled = [];
+  for (const method of DEMO_PAYMENT_METHODS) {
+    const key = getPlatformPaymentMethodSettingKey(method);
+    const fallback = PLATFORM_PRICING_DEFAULTS[key] || 'disabled';
+    if (parseBooleanLike(settingsMap[key], parseBooleanLike(fallback, false))) {
+      enabled.push(method);
+    }
+  }
+  return enabled;
+}
+
+function buildPaymentMethodPolicy(settingsMap = {}) {
+  const enabled = getEnabledPlatformPaymentMethods(settingsMap);
+  return {
+    enabled,
+    toggles: Object.fromEntries(Array.from(DEMO_PAYMENT_METHODS).map((method) => [method, enabled.includes(method)]))
+  };
+}
+
+function normalizeDemoPaymentMethodForPlatform(method, platformSettings = {}, fallback = 'bankcard') {
+  const enabled = getEnabledPlatformPaymentMethods(platformSettings);
+  const preferred = normalizeDemoPaymentMethod(method, fallback);
+  if (enabled.includes(preferred)) return preferred;
+  if (enabled.includes(fallback)) return fallback;
+  return enabled[0] || fallback;
+}
+
+function canUseStripeCheckout(env) {
+  const stripeMode = String(env?.STRIPE_MODE || '').trim().toLowerCase();
+  return stripeMode === 'mock' || !!String(env?.STRIPE_API_KEY || '').trim();
+}
+
+async function createStripeCheckoutSession(env, payload = {}) {
+  const amountEur = Number(payload.amountEur || 0);
+  const amountCents = Math.round(amountEur * 100);
+  if (!Number.isFinite(amountCents) || amountCents <= 0) {
+    return { ok: false, status: 400, code: 'validation_failed', error: 'Stripe checkout amount must be greater than zero.' };
+  }
+
+  const stripeMode = String(env?.STRIPE_MODE || '').trim().toLowerCase();
+  if (stripeMode === 'mock') {
+    const sessionId = `cs_test_mock_${crypto.randomUUID()}`;
+    const successUrl = String(payload.successUrl || '').trim();
+    const joiner = successUrl.includes('?') ? '&' : '?';
+    return {
+      ok: true,
+      id: sessionId,
+      url: `${successUrl}${joiner}mock_stripe_session=1&session_id=${encodeURIComponent(sessionId)}`
+    };
+  }
+
+  const stripeKey = String(env?.STRIPE_API_KEY || '').trim();
+  if (!stripeKey) {
+    return { ok: false, status: 503, code: 'stripe_unavailable', error: 'Stripe API key is not configured.' };
+  }
+
+  const form = new URLSearchParams();
+  form.set('mode', 'payment');
+  form.set('success_url', String(payload.successUrl || '').trim());
+  form.set('cancel_url', String(payload.cancelUrl || '').trim());
+  form.append('payment_method_types[]', 'card');
+  form.set('line_items[0][price_data][currency]', 'eur');
+  form.set('line_items[0][price_data][unit_amount]', String(amountCents));
+  form.set('line_items[0][price_data][product_data][name]', String(payload.productName || 'Restaurant OS signup').trim());
+  form.set('line_items[0][quantity]', '1');
+  if (payload.customerEmail) {
+    form.set('customer_email', String(payload.customerEmail).trim());
+  }
+
+  const metadata = payload.metadata && typeof payload.metadata === 'object' ? payload.metadata : {};
+  for (const [key, value] of Object.entries(metadata)) {
+    form.set(`metadata[${key}]`, String(value || '').trim());
+  }
+
+  const response = await fetch('https://api.stripe.com/v1/checkout/sessions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${stripeKey}`,
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: form.toString()
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    return {
+      ok: false,
+      status: 503,
+      code: 'stripe_unavailable',
+      error: String(data?.error?.message || 'Unable to create Stripe checkout session.'),
+      stripeErrorCode: String(data?.error?.code || '').trim()
+    };
+  }
+
+  return {
+    ok: true,
+    id: String(data?.id || '').trim(),
+    url: String(data?.url || '').trim()
+  };
+}
+
 function normalizeMediaTags(rawTags) {
   let source = [];
 
@@ -1006,6 +1138,179 @@ async function getLatestWebsiteRelease(env, companyId) {
     LIMIT 1
   `).bind(companyId).first();
   return release || null;
+}
+
+async function getWebsiteReleaseHistory(env, companyId, limit = 8) {
+  if (!companyId) return [];
+  const result = await env.DB.prepare(`
+    SELECT id, company_id, review_id, release_status, publish_target, preview_url, published_url,
+           payload_snapshot_json, reason_codes_json, release_note, reviewer_type, reviewer_id,
+           published_at, suspended_at, created_at, updated_at
+    FROM website_releases
+    WHERE company_id = ?
+    ORDER BY updated_at DESC, created_at DESC
+    LIMIT ?
+  `).bind(companyId, Math.max(1, Number(limit || 8))).all();
+  return result?.results || [];
+}
+
+async function getLatestPublishedWebsiteRelease(env, companyId) {
+  if (!companyId) return null;
+  const release = await env.DB.prepare(`
+    SELECT id, company_id, review_id, release_status, publish_target, preview_url, published_url,
+           payload_snapshot_json, reason_codes_json, release_note, reviewer_type, reviewer_id,
+           published_at, suspended_at, created_at, updated_at
+    FROM website_releases
+    WHERE company_id = ? AND release_status = 'published'
+    ORDER BY published_at DESC, updated_at DESC, created_at DESC
+    LIMIT 1
+  `).bind(companyId).first();
+  return release || null;
+}
+
+function parseWebsiteReleaseSnapshot(release) {
+  try {
+    const parsed = JSON.parse(String(release?.payload_snapshot_json || ''));
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+async function getGoLiveReadiness(env, companyId, context = {}) {
+  const company = context.company || await getCompanyProfile(env, companyId);
+  const operationalSettings = context.operationalSettings || await getOperationalSettingsMap(env, companyId);
+  const websiteRelease = context.websiteRelease || await getLatestWebsiteRelease(env, companyId);
+  const activeStaffRow = await env.DB.prepare(
+    `SELECT COUNT(*) AS count FROM staff WHERE company_id = ? AND is_active = 1`
+  ).bind(companyId).first();
+
+  const normalizeScheduleTime = (value) => /^([01]\d|2[0-3]):[0-5]\d$/.test(String(value || '').trim());
+  const schedule = (() => {
+    try {
+      const parsed = JSON.parse(String(operationalSettings.business_hours_schedule_json || ''));
+      if (Array.isArray(parsed) && parsed.length) return parsed;
+    } catch {
+      // Ignore invalid JSON and fall back to legacy open/close values.
+    }
+
+    const fallbackOpen = String(operationalSettings.business_hours_open || '').trim();
+    const fallbackClose = String(operationalSettings.business_hours_close || '').trim();
+    if (!normalizeScheduleTime(fallbackOpen) || !normalizeScheduleTime(fallbackClose)) return [];
+
+    return ['1', '2', '3', '4', '5', '6', '0'].map((day) => ({
+      day,
+      closed: String(operationalSettings.closed_weekday || '').trim() === day,
+      open: fallbackOpen,
+      close: fallbackClose
+    }));
+  })();
+
+  const hasOpeningHours = schedule.some((row) => row?.closed !== true && normalizeScheduleTime(row?.open) && normalizeScheduleTime(row?.close));
+  const hasCapacity = ['area_capacity_indoor', 'area_capacity_outdoor', 'area_capacity_garden', 'area_capacity_bar']
+    .some((key) => Number(operationalSettings[key] || 0) > 0);
+  const activeStaffCount = Number(activeStaffRow?.count || 0);
+  const bookingEmail = String(operationalSettings.booking_email || company?.email || '').trim();
+  const hostTarget = buildPublishedWebsiteUrlForCompany(company, operationalSettings);
+  const stripeAccountId = String(operationalSettings.stripe_account_id || '').trim();
+  const acceptedPaymentMethods = parseAcceptedPaymentMethods(operationalSettings.accepted_payment_methods_json);
+  const paymentStatus = String(operationalSettings.demo_payment_status || '').trim().toLowerCase();
+  const demoPaymentMethod = normalizeDemoPaymentMethod(operationalSettings.demo_payment_method || paymentStatus || 'bankcard');
+  const releaseStatus = String(websiteRelease?.release_status || '').trim().toLowerCase();
+
+  const items = [
+    {
+      key: 'restaurant_identity',
+      label: 'Restaurant identity',
+      ok: !!String(company?.name || '').trim(),
+      detail: String(company?.name || '').trim() ? 'Restaurant name saved.' : 'Restaurant name is still missing.',
+      required: true
+    },
+    {
+      key: 'contact_email',
+      label: 'Contact email',
+      ok: !!String(company?.email || '').trim(),
+      detail: String(company?.email || '').trim() ? 'Public contact email saved.' : 'Company email is still missing.',
+      required: true
+    },
+    {
+      key: 'contact_phone',
+      label: 'Contact phone',
+      ok: !!String(company?.phone || '').trim(),
+      detail: String(company?.phone || '').trim() ? 'Public contact phone saved.' : 'Company phone is still missing.',
+      required: true
+    },
+    {
+      key: 'booking_email',
+      label: 'Booking inbox',
+      ok: !!bookingEmail,
+      detail: bookingEmail ? `Booking notices go to ${bookingEmail}.` : 'Booking email is still missing.',
+      required: true
+    },
+    {
+      key: 'opening_hours',
+      label: 'Opening hours',
+      ok: hasOpeningHours,
+      detail: hasOpeningHours ? 'Structured opening hours exist for at least one open day.' : 'Opening hours need at least one valid open day.',
+      required: true
+    },
+    {
+      key: 'area_capacity',
+      label: 'Area capacities',
+      ok: hasCapacity,
+      detail: hasCapacity ? 'At least one seating area capacity is configured.' : 'At least one seating area capacity should be configured.',
+      required: true
+    },
+    {
+      key: 'staff_setup',
+      label: 'Staff PIN setup',
+      ok: activeStaffCount > 0,
+      detail: activeStaffCount > 0 ? `${activeStaffCount} active staff account(s) exist.` : 'No active staff accounts exist yet.',
+      required: true
+    },
+    {
+      key: 'public_host',
+      label: 'Public host target',
+      ok: !!hostTarget,
+      detail: hostTarget ? `Public host target: ${hostTarget}` : 'Set a tenant subdomain, custom domain, or website URL.',
+      required: true
+    },
+    {
+      key: 'payment_setup',
+      label: 'Payment setup',
+      ok: !!stripeAccountId || acceptedPaymentMethods.length > 0,
+      detail: stripeAccountId
+        ? `Stripe account linked: ${stripeAccountId}`
+        : acceptedPaymentMethods.length > 0
+          ? `Configured methods: ${acceptedPaymentMethods.join(', ')}. Demo signup method: ${demoPaymentMethod}.`
+          : paymentStatus === 'demo_paid'
+            ? 'Only demo payment is configured. Select at least one payment method or link Stripe.'
+            : 'Stripe account is not linked yet.',
+      required: true
+    },
+    {
+      key: 'publish_status',
+      label: 'Publish status',
+      ok: releaseStatus === 'published',
+      detail: releaseStatus === 'published'
+        ? 'Latest release is already published.'
+        : releaseStatus === 'pending_review'
+          ? 'Latest release is waiting for operator approval.'
+          : 'Run publish review and complete operator approval.',
+      required: true
+    }
+  ];
+
+  const requiredItems = items.filter((item) => item.required);
+  const passedRequired = requiredItems.filter((item) => item.ok).length;
+
+  return {
+    ready: requiredItems.every((item) => item.ok),
+    passed_required: passedRequired,
+    total_required: requiredItems.length,
+    items,
+    summary: `${passedRequired}/${requiredItems.length} required go-live checks passed.`
+  };
 }
 
 async function createWebsiteRelease(env, payload = {}) {
@@ -1227,20 +1532,41 @@ async function getOrganizationProfile(env, organizationId) {
 
 async function getAdminPlatformConfig(env, companyId) {
   const company = await getCompanyProfile(env, companyId);
-  const [organization, operationalSettings, modules, websiteRelease] = await Promise.all([
+  const [organization, operationalSettings, modules, websiteRelease, websiteReleaseHistory, platformPricingSettings] = await Promise.all([
     getOrganizationProfile(env, company?.organization_id || null),
     getOperationalSettingsMap(env, companyId),
     getModuleSettingsMap(env, companyId),
-    getLatestWebsiteRelease(env, companyId)
+    getLatestWebsiteRelease(env, companyId),
+    getWebsiteReleaseHistory(env, companyId),
+    getPlatformMarketingSettings(env)
   ]);
+  const goLiveReadiness = await getGoLiveReadiness(env, companyId, {
+    company,
+    operationalSettings,
+    websiteRelease
+  });
 
   return {
     organization,
     company,
     operationalSettings,
     modules,
-    websiteRelease
+    websiteRelease,
+    websiteReleaseHistory,
+    paymentMethodPolicy: buildPaymentMethodPolicy(platformPricingSettings),
+    goLiveReadiness
   };
+}
+
+async function resolveWebsitePayloadForRequest(env, companyId, currentUrl) {
+  const hasExplicitPreviewOverride = String(currentUrl?.searchParams?.get('company_id') || '').trim().length > 0;
+  if (!hasExplicitPreviewOverride) {
+    const release = await getLatestPublishedWebsiteRelease(env, companyId);
+    const snapshot = parseWebsiteReleaseSnapshot(release);
+    if (snapshot) return snapshot;
+  }
+
+  return buildPublicWebsitePayload(env, companyId, currentUrl);
 }
 
 function safeParseJsonObject(rawValue, fallback = {}) {
@@ -1608,6 +1934,7 @@ function buildPlatformPlansResponse(settingsMap) {
     ok: true,
     billingModel: 'per_user_monthly',
     pricingNote: String(settingsMap.platform_price_note || PLATFORM_PRICING_DEFAULTS.platform_price_note),
+    paymentMethods: buildPaymentMethodPolicy(settingsMap),
     extras: {
       oneTimeSetupFeeEur: setupFee,
       tseMonthlyFeeEur: tseFee,
@@ -1676,7 +2003,8 @@ function normalizeWebsiteTemplate(templateRaw) {
   return ['minimal', 'modern', 'premium'].includes(normalized) ? normalized : WEBSITE_BUILDER_DEFAULTS.site_template;
 }
 
-function computeDemoPaymentSummary(planId, userCount, extras, settingsMap) {
+function computeDemoPaymentSummary(planId, userCount, extras, settingsMap, paymentMethodRaw = 'bankcard') {
+  const paymentMethod = normalizeDemoPaymentMethod(paymentMethodRaw, 'bankcard');
   const perUserMap = {
     core: Number(settingsMap.platform_core_price_per_user || PLATFORM_PRICING_DEFAULTS.platform_core_price_per_user || 0),
     commerce: Number(settingsMap.platform_commerce_price_per_user || PLATFORM_PRICING_DEFAULTS.platform_commerce_price_per_user || 0),
@@ -1710,7 +2038,8 @@ function computeDemoPaymentSummary(planId, userCount, extras, settingsMap) {
       tseFeeEur: tseFee,
       supportRetainerMonthlyEur: supportMonthly
     },
-    paymentStatus: 'demo_paid'
+    paymentStatus: 'demo_paid',
+    paymentMethod
   };
 }
 
@@ -1721,7 +2050,8 @@ async function recalculateCompanyBillingSummary(env, companyId) {
       'company_plan',
       'billing_include_tse',
       'billing_include_support_retainer',
-      'billing_include_setup'
+      'billing_include_setup',
+      'demo_payment_method'
     ]),
     env.DB.prepare(`SELECT COUNT(*) AS count FROM staff WHERE company_id = ? AND is_active = 1`).bind(companyId).first()
   ]);
@@ -1733,7 +2063,13 @@ async function recalculateCompanyBillingSummary(env, companyId) {
     includeSetup: parseBooleanLike(companySettings.billing_include_setup, false)
   };
   const activeStaff = Math.max(1, Number(staffCountRow?.count || 1));
-  const summary = computeDemoPaymentSummary(plan, activeStaff, extras, pricingSettings);
+  const summary = computeDemoPaymentSummary(
+    plan,
+    activeStaff,
+    extras,
+    pricingSettings,
+    normalizeDemoPaymentMethodForPlatform(companySettings.demo_payment_method || 'bankcard', pricingSettings, 'bankcard')
+  );
 
   await upsertSettingValue(env, companyId, 'billable_staff_count', String(activeStaff), OPERATIONAL_KEY_DESCRIPTIONS.billable_staff_count, 'billing-automation');
   await upsertSettingValue(env, companyId, 'demo_payment_recurring_monthly_eur', String(summary.recurringMonthlyEur), OPERATIONAL_KEY_DESCRIPTIONS.demo_payment_recurring_monthly_eur, 'billing-automation');
@@ -2943,7 +3279,7 @@ export default {
     if (url.pathname === "/api/website/payload" && request.method === "GET") {
       return runTenantRoute(async ({ companyId }) => {
         try {
-          const source = await buildPublicWebsitePayload(env, companyId, url);
+          const source = await resolveWebsitePayloadForRequest(env, companyId, url);
           return Response.json({ ok: true, companyId, source });
         } catch (e) {
           console.error('Website payload GET error:', e);
@@ -3400,6 +3736,7 @@ export default {
         const websiteTemplate = normalizeWebsiteTemplate(body?.website_template || 'modern');
         const staffUsers = Math.max(1, Number(body?.staff_users || 1));
         const demoPayment = parseBooleanLike(body?.demo_payment, true);
+        const demoPaymentMethod = normalizeDemoPaymentMethod(body?.demo_payment_method || 'bankcard');
         const extras = body?.extras && typeof body.extras === 'object' ? body.extras : {};
 
         if (!restaurantName || !ownerEmail || !requestedSlug || !plan) {
@@ -3460,7 +3797,55 @@ export default {
           getPlatformMarketingSettings(env)
         ]);
 
-        const paymentSummary = computeDemoPaymentSummary(plan, staffUsers, extras, pricingSettings);
+        const enabledPlatformMethods = getEnabledPlatformPaymentMethods(pricingSettings);
+        if (!enabledPlatformMethods.length) {
+          return Response.json({ ok: false, code: 'payment_methods_unavailable', message: 'No payment methods are currently enabled for signup.' }, { status: 409 });
+        }
+
+        if (!enabledPlatformMethods.includes(demoPaymentMethod)) {
+          return Response.json({
+            ok: false,
+            code: 'payment_method_disabled',
+            message: 'Selected payment method is currently disabled by the platform.',
+            enabled_payment_methods: enabledPlatformMethods
+          }, { status: 409 });
+        }
+
+        let paymentSummary = computeDemoPaymentSummary(plan, staffUsers, extras, pricingSettings, demoPaymentMethod);
+        if (demoPaymentMethod === 'bankcard' && canUseStripeCheckout(env)) {
+          const chargeAmountEur = Number(paymentSummary.dueTodayEur || 0) > 0
+            ? Number(paymentSummary.dueTodayEur || 0)
+            : Number(paymentSummary.recurringMonthlyEur || 0);
+          const checkoutSession = await createStripeCheckoutSession(env, {
+            amountEur: chargeAmountEur,
+            customerEmail: ownerEmail,
+            productName: `${restaurantName} ${plan} signup`,
+            successUrl: `${url.origin}/platform/signup.html?checkout=success&company_id=${companyId}`,
+            cancelUrl: `${url.origin}/platform/signup.html?checkout=cancelled`,
+            metadata: {
+              company_id: companyId,
+              organization_id: organizationId,
+              restaurant_name: restaurantName,
+              plan
+            }
+          });
+
+          if (!checkoutSession.ok) {
+            return Response.json({
+              ok: false,
+              code: checkoutSession.code || 'stripe_unavailable',
+              message: checkoutSession.error || 'Stripe checkout is unavailable right now.'
+            }, { status: checkoutSession.status || 503 });
+          }
+
+          paymentSummary = {
+            ...paymentSummary,
+            billingModel: 'stripe_checkout',
+            paymentStatus: 'stripe_checkout_pending',
+            checkoutUrl: checkoutSession.url,
+            checkoutSessionId: checkoutSession.id
+          };
+        }
 
         await env.DB.prepare(`
           INSERT INTO organizations (id, slug, name, billing_email, phone, is_active, timezone, created_at, updated_at)
@@ -3535,8 +3920,10 @@ export default {
           billing_include_tse: String(parseBooleanLike(extras?.includeTse, false)),
           billing_include_support_retainer: String(parseBooleanLike(extras?.includeSupportRetainer, false)),
           demo_payment_status: paymentSummary.paymentStatus,
+          demo_payment_method: paymentSummary.paymentMethod,
           demo_payment_due_today_eur: String(paymentSummary.dueTodayEur),
           demo_payment_recurring_monthly_eur: String(paymentSummary.recurringMonthlyEur),
+          accepted_payment_methods_json: JSON.stringify([paymentSummary.paymentMethod]),
           billable_staff_count: String(Math.max(1, staffUsers)),
           country_code: country
         };
@@ -3587,13 +3974,16 @@ export default {
 
         return Response.json({
           ok: true,
-          message: demoPayment ? 'Demo payment completed. Account created.' : 'Account created.',
+          message: paymentSummary.paymentStatus === 'stripe_checkout_pending'
+            ? 'Account created. Continue with Stripe test checkout.'
+            : (demoPayment ? 'Demo payment completed. Account created.' : 'Account created.'),
           company_id: companyId,
           organization_id: organizationId,
           subdomain: requestedSlug,
           website_url: websiteUrl,
           preview_admin_url: previewAdminUrl,
           preview_board_url: previewBoardUrl,
+          checkout_url: paymentSummary.checkoutUrl || '',
           payment: paymentSummary,
           admin_pin_hint: adminPin,
           status: 'trial_active'
@@ -4383,6 +4773,7 @@ export default {
         const company = body?.company && typeof body.company === 'object' ? body.company : null;
         const operationalSettings = body?.operationalSettings && typeof body.operationalSettings === 'object' ? body.operationalSettings : {};
         const modules = body?.modules && typeof body.modules === 'object' ? body.modules : {};
+        const platformPricingSettings = await getPlatformMarketingSettings(env);
 
         if (company) {
           if (!callerIsAdmin) {
@@ -4442,15 +4833,33 @@ export default {
           }
         }
 
+        const normalizedOperationalSettings = { ...operationalSettings };
+        if (callerIsAdmin) {
+          const allowedMethods = getEnabledPlatformPaymentMethods(platformPricingSettings);
+          if ('accepted_payment_methods_json' in normalizedOperationalSettings) {
+            normalizedOperationalSettings.accepted_payment_methods_json = JSON.stringify(
+              parseAcceptedPaymentMethods(normalizedOperationalSettings.accepted_payment_methods_json)
+                .filter((method) => allowedMethods.includes(method))
+            );
+          }
+          if ('demo_payment_method' in normalizedOperationalSettings) {
+            normalizedOperationalSettings.demo_payment_method = normalizeDemoPaymentMethodForPlatform(
+              normalizedOperationalSettings.demo_payment_method,
+              platformPricingSettings,
+              'bankcard'
+            );
+          }
+        }
+
         for (const key of OPERATIONAL_SETTING_KEYS) {
-          if (!(key in operationalSettings)) continue;
+          if (!(key in normalizedOperationalSettings)) continue;
           if (!callerIsAdmin && !MANAGER_EDITABLE_OPERATIONAL_SETTING_KEYS.has(key)) continue;
 
           await upsertSettingValue(
             env,
             companyId,
             key,
-            String(operationalSettings[key] ?? '').trim(),
+            String(normalizedOperationalSettings[key] ?? '').trim(),
             OPERATIONAL_KEY_DESCRIPTIONS[key] || 'Operational setting',
             updatedBy
           );
@@ -4608,6 +5017,80 @@ export default {
         });
         } catch (e) {
           console.error('Admin website publish POST error:', e);
+          return Response.json({ ok: false, error: e.message }, { status: 500 });
+        }
+      });
+    }
+
+    if (url.pathname.match(/^\/api\/admin\/website\/releases\/([^/]+)\/rollback$/) && request.method === "POST") {
+      return runTenantRoute(async ({ companyId }) => {
+        try {
+        const routeMatch = url.pathname.match(/^\/api\/admin\/website\/releases\/([^/]+)\/rollback$/);
+        const releaseId = decodeURIComponent(String(routeMatch?.[1] || '')).trim();
+        const body = await request.json().catch(() => ({}));
+        const pin = String(body?.pin || '').trim();
+        const rollbackNote = String(body?.rollbackNote || body?.note || '').trim();
+        const auth = await authorizeAdminByPin(env, companyId, pin);
+
+        if (!auth.ok) {
+          return Response.json({ ok: false, error: auth.error }, { status: auth.status });
+        }
+
+        if (!releaseId) {
+          return Response.json({ ok: false, error: 'Release id is required' }, { status: 400 });
+        }
+
+        const targetRelease = await env.DB.prepare(`
+          SELECT id, company_id, review_id, release_status, publish_target, preview_url, published_url,
+                 payload_snapshot_json, reason_codes_json, release_note, reviewer_type, reviewer_id,
+                 published_at, suspended_at, created_at, updated_at
+          FROM website_releases
+          WHERE id = ? AND company_id = ?
+          LIMIT 1
+        `).bind(releaseId, companyId).first();
+
+        if (!targetRelease) {
+          return Response.json({ ok: false, error: 'Release not found' }, { status: 404 });
+        }
+
+        const snapshot = parseWebsiteReleaseSnapshot(targetRelease);
+        if (!snapshot) {
+          return Response.json({ ok: false, error: 'Release snapshot is missing' }, { status: 409 });
+        }
+
+        const now = new Date().toISOString();
+        const rollbackRelease = await createWebsiteRelease(env, {
+          companyId,
+          reviewId: targetRelease.review_id || null,
+          releaseStatus: 'published',
+          publishTarget: String(targetRelease.publish_target || 'managed_subdomain').trim(),
+          previewUrl: String(targetRelease.preview_url || '').trim(),
+          publishedUrl: String(targetRelease.published_url || '').trim(),
+          payloadSnapshotJson: JSON.stringify(snapshot),
+          reasonCodes: ['rollback_restore'],
+          releaseNote: rollbackNote || `Rollback restore from release ${targetRelease.id}`,
+          reviewerType: 'tenant_admin',
+          reviewerId: String(auth.staff.name || auth.staff.id || 'admin'),
+          publishedAt: now
+        });
+
+        await updateCompanyWebsiteState(env, companyId, {
+          websiteStatus: 'published',
+          trustState: 'trusted',
+          suspendedReason: null,
+          suspendedAt: null,
+          lastReviewedAt: now
+        });
+
+        return Response.json({
+          ok: true,
+          action: 'rollback',
+          release_id: rollbackRelease?.id || '',
+          restored_from_release_id: targetRelease.id,
+          release_status: 'published'
+        });
+        } catch (e) {
+          console.error('Admin website release rollback POST error:', e);
           return Response.json({ ok: false, error: e.message }, { status: 500 });
         }
       });

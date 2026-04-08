@@ -224,6 +224,12 @@ const T = {
     'su.users_label':     'Expected active users',
     'su.users_hint':      'Used for recurring billing and staffing assumptions.',
     'su.options_title':   'Demo invoice options',
+    'su.pay_method_label': 'Demo payment method',
+    'su.pay_method_hint': 'Choose how this demo onboarding payment should be marked for the tenant account.',
+    'su.pay_method_bankcard': 'Bank card',
+    'su.pay_method_paypal': 'PayPal',
+    'su.pay_method_cash': 'Cash',
+    'su.pay_method_pickup': 'Pick up at store',
     'su.extra_setup':     'Include one-time setup package for onboarding, import, and go-live preparation.',
     'su.extra_tse':       'Include TSE package for German fiscal compliance needs.',
     'su.extra_support':   'Include monthly IT support retainer for hands-on operational support.',
@@ -440,6 +446,12 @@ const T = {
     'su.users_label':     'Erwartete aktive Nutzer',
     'su.users_hint':      'Wird für laufende Abrechnung und Personalplanung verwendet.',
     'su.options_title':   'Demo-Rechnungsoptionen',
+    'su.pay_method_label': 'Demo-Zahlungsart',
+    'su.pay_method_hint': 'Wähle, wie diese Demo-Onboarding-Zahlung im Tenant-Konto markiert werden soll.',
+    'su.pay_method_bankcard': 'Bankkarte',
+    'su.pay_method_paypal': 'PayPal',
+    'su.pay_method_cash': 'Barzahlung',
+    'su.pay_method_pickup': 'Abholung im Store',
     'su.extra_setup':     'Einmaliges Setup-Paket für Onboarding, Import und Go-live-Vorbereitung einschließen.',
     'su.extra_tse':       'TSE-Paket für deutsche Fiskal-Compliance einschließen.',
     'su.extra_support':   'Monatlichen IT-Support-Retainer für operative Unterstützung einschließen.',
@@ -655,6 +667,12 @@ const T = {
     'su.users_label':     'Số người dùng hoạt động dự kiến',
     'su.users_hint':      'Dùng để ước tính phí định kỳ và nhu cầu nhân sự.',
     'su.options_title':   'Tùy chọn hóa đơn demo',
+    'su.pay_method_label': 'Phương thức thanh toán demo',
+    'su.pay_method_hint': 'Chọn cách ghi nhận khoản thanh toán onboarding demo này cho tenant.',
+    'su.pay_method_bankcard': 'Thẻ ngân hàng',
+    'su.pay_method_paypal': 'PayPal',
+    'su.pay_method_cash': 'Tiền mặt',
+    'su.pay_method_pickup': 'Thanh toán khi nhận tại cửa hàng',
     'su.extra_setup':     'Bao gồm gói setup một lần cho onboarding, import và chuẩn bị go-live.',
     'su.extra_tse':       'Bao gồm gói TSE cho nhu cầu tuân thủ tài chính tại Đức.',
     'su.extra_support':   'Bao gồm gói hỗ trợ IT hàng tháng cho vận hành thực tế.',
@@ -1122,6 +1140,7 @@ async function loadPlatformPlans() {
       platformPlansData = data;
       applyPlatformPlansToPage();
       updateSignupPricingSummary();
+      syncSignupPaymentMethodOptions();
     }
   } catch {
     // Keep static fallback content if API unavailable.
@@ -1186,6 +1205,23 @@ function applyPlatformPlansToPage() {
 
 function getSelectedPlanData() {
   return platformPlansData?.plans?.find((plan) => plan.id === state.plan) || null;
+}
+
+function syncSignupPaymentMethodOptions() {
+  const select = document.getElementById('f-demo-payment-method');
+  if (!select) return;
+
+  const enabledMethods = Array.isArray(platformPlansData?.paymentMethods?.enabled)
+    ? platformPlansData.paymentMethods.enabled
+    : ['bankcard', 'paypal', 'cash', 'pickup_at_store'];
+
+  Array.from(select.options || []).forEach((option) => {
+    option.disabled = !enabledMethods.includes(option.value);
+  });
+
+  if (!enabledMethods.includes(select.value)) {
+    select.value = enabledMethods[0] || 'bankcard';
+  }
 }
 
 function updateSignupPricingSummary() {
@@ -1303,6 +1339,7 @@ async function submitSignup() {
     staff_users:     Number(document.getElementById('f-staff-users')?.value || 1),
     website_template: document.getElementById('f-template')?.value || 'modern',
     demo_payment:    true,
+    demo_payment_method: document.getElementById('f-demo-payment-method')?.value || 'bankcard',
     extras: {
       includeSetup: document.getElementById('f-extra-setup')?.checked !== false,
       includeTse: document.getElementById('f-extra-tse')?.checked || false,
@@ -1323,8 +1360,10 @@ async function submitSignup() {
       const body = `
         Account created for <strong>${payload.restaurant_name}</strong>.<br>
         Demo payment status: <strong>${data.payment?.paymentStatus || 'demo_paid'}</strong><br>
+        Demo payment method: <strong>${data.payment?.paymentMethod || payload.demo_payment_method || 'bankcard'}</strong><br>
         Due today: <strong>${euro(data.payment?.dueTodayEur || 0)}</strong><br>
         Recurring monthly: <strong>${euro(data.payment?.recurringMonthlyEur || 0)}</strong><br><br>
+        ${data.checkout_url ? `Stripe test checkout: <a href="${data.checkout_url}" target="_blank" rel="noopener">open checkout</a><br>` : ''}
         Preview admin: <a href="${data.preview_admin_url}" target="_blank" rel="noopener">open admin</a><br>
         ${data.preview_board_url ? `Preview board: <a href="${data.preview_board_url}" target="_blank" rel="noopener">open board</a><br>` : ''}
         Future public URL: <strong>${data.website_url}</strong><br>

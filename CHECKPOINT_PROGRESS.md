@@ -2,7 +2,7 @@
 
 **Purpose**: Track checkpoint completion as you move through phases. Update this weekly.
 
-**Last Updated**: 2026-04-02  
+**Last Updated**: 2026-04-08  
 **Current Phase**: Phase 1 (Booking + Platform Entry) — 91% complete
 
 ---
@@ -16,8 +16,8 @@
 |-----------|-----------|--------|----------|-------|-----|
 | CP-1 | Tenant Isolation | ✅ DONE | E2E_TEST_SUMMARY.md | Team | ✅ Done |
 | CP-2 | Booking MVP | ✅ DONE | Local runtime verified: booking form render, board, staff-create, booking list, stage updates | Team | ✅ Done |
-| CP-3 | Admin UI Setup | ⏳ 84% | Tenant admin now includes website content and opening-hours editor; final go-live and publish flow still pending | @dev-lead | Apr 05 |
-| CP-10 | Platform Site + Self-Service Signup | ⏳ 96% | Live runtime verified, wildcard tenant subdomains resolve, demo-payment signup walkthrough works, and website-master boot/mobile shell are production-ready | @dev-lead | Apr 05 |
+| CP-3 | Admin UI Setup | ⏳ 89% | Tenant admin now includes website content, opening-hours editor, website release/go-live panel, backend-driven readiness checklist, payment setup section, and release history rollback primitive | @dev-lead | Apr 10 |
+| CP-10 | Platform Site + Self-Service Signup | ⏳ 98% | Live runtime verified, wildcard tenant subdomains resolve, moderation/review queue is live, public tenant payload now serves latest published release snapshot, and signup supports explicit demo payment methods | @dev-lead | Apr 10 |
 | **Phase 1 Total** | — | **91%** | — | — | **Apr 15** |
 
 ### CP-1 Evidence ✅
@@ -58,16 +58,28 @@
 ✅ Structured `opening_hours_schedule` now reaches the public website payload while keeping legacy open/close fallbacks intact
 ✅ Wildcard `*.gooddining.app` tenant routing and host-based payload resolution verified live
 ✅ Demo-payment self-service signup walkthrough verified live end to end with tenant provisioning and tenant subdomain access
-📌 Proposal added for next working session: build a tenant website content editor in Restaurant Admin so tenants can edit presentation-surface text, photos, button labels, opening hours, and public owner/house information without exposure to technical keys
-⏳ Tenant website publish/release workflow still pending beyond the current preview/runtime adapter and host-based preview
-⏳ Tenant website publish/custom-domain workflow still pending beyond the current preview/runtime adapter
-⏳ `/api/contact/create` source route still needs smoke-test verification on a freshly reloaded worker
-⏳ Founder/KC OTP runtime blocked locally by missing Twilio credentials
-**Blockers**: Stripe test credentials, website publish/release workflow completion, worker reload for the new contact route, and Twilio credentials or a local OTP stub
+✅ Tenant admin now includes a website release/go-live panel with preview URL, published URL, latest review state, and operator queue hand-off
+✅ Tenant admin now renders a backend-driven go-live readiness checklist from `platform-config` so missing setup items are explicit before publish
+✅ Tenant admin now shows release history and can roll back public website output to an older published snapshot
+✅ Platform signup and tenant admin now support demo payment methods: PayPal, bank card, cash, and pick up at store
+✅ SaaS Admin now controls payment method availability with platform-level toggles that enforce signup choices
+✅ Tenant admin payment setup now shows which methods are disabled by SaaS policy, instead of silently clamping them
+✅ Bank card signup can now open Stripe test checkout when `STRIPE_API_KEY` is configured or `STRIPE_MODE=mock`
+✅ SaaS Admin moderation queue now has summary/filter/refresh controls on top of approve/reject/suspend/quarantine actions
+✅ Local smoke verification now covers `/api/contact/create`, platform contact, publish review, suspend, quarantine, and host-based public blocking
+✅ Explicit `production` env now deploys against a real D1 database id
+⏳ Production public ingress still blocked by Cloudflare `1050` until a real route or custom domain is attached
+⏳ Tenant website publish/release workflow still pending beyond the current moderation/release foundation
+⏳ Tenant website publish/custom-domain workflow still pending beyond the current moderation/release foundation
+⏳ Founder/KC OTP runtime blocked locally by missing Twilio credentials or a local OTP stub decision
+**Blockers**: production route/custom-domain attachment, Stripe test credentials, website publish/custom-domain completion, and Twilio credentials or a local OTP stub
 
-**Next**: QA the new tenant website content editor end to end on live tenant subdomains + wire the validator into actual publish/release flow + complete tenant website publish/domain ops workflow + reload worker and verify `/api/contact/create` + fix founder/KC OTP local runtime path
-
-**Next**: Build the tenant website content editor in Restaurant Admin + wire the validator into actual publish flow + complete tenant website publish/domain flow + reload worker and verify `/api/contact/create` + fix founder/KC OTP local runtime path
+**Next checkpoint steps**:
+1. Attach a real production route or custom domain for `ess-admin-ds-prod` and verify `/api/health`, platform home, and tenant host routing on that hostname.
+2. Finish Stripe test checkout and payment onboarding beyond the current signup checkout session foundation and pending-state handling.
+3. Enforce the website validator inside the actual publish path beyond the current moderation gate and published snapshot workflow.
+4. Run end-to-end QA from tenant admin save → publish review → SaaS admin moderation → live tenant URL.
+5. Decide Twilio strategy for founder/KC locally, then close the OTP runtime gap.
 
 ---
 
@@ -237,6 +249,8 @@ Board updates: < 1s ✅
 SSE notifications: < 200ms ✅
 Cross-tenant data leak: 0 ✅
 Success rate: 99.5% ✅
+Lint clean: yes ✅
+Vitest root suite: 29/29 ✅
 ```
 
 ### Phase 2 Metrics (TBD)
