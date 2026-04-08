@@ -39,8 +39,8 @@
 			"d1_databases": [
 				{
 					"binding": "DB",
-					"database_name": "esskultur-admin-prod",
-					"database_id": "your-prod-database-id",
+					"database_name": "ess_admin_ds",
+					"database_id": "55939312-121a-4fc1-91d2-061c4d9fa61e",
 				},
 			],
 		},

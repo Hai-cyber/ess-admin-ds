@@ -36,18 +36,18 @@ async function ensureSchemaEvolution(db) {
  */
 export async function initializeDatabase(db) {
   try {
-    // Split SQL statements and execute each individually using prepare
     const statements = sql
       .split(';')
       .map(stmt => stmt.trim())
-      .filter(stmt => stmt.length > 0 && stmt.match(/^(CREATE|INSERT)/i));
-    
-    for (const statement of statements) {
+      .filter(stmt => stmt.length > 0);
+
+    const setupStatements = statements.filter(stmt => /^(CREATE TABLE|INSERT)/i.test(stmt));
+    const indexStatements = statements.filter(stmt => /^CREATE INDEX/i.test(stmt));
+
+    for (const statement of setupStatements) {
       try {
-        // Use prepare + run for each statement
         await db.prepare(statement + ';').run();
       } catch (e) {
-        // Log but continue - tables might already exist
         if (!e.message?.toLowerCase().includes('already exists')) {
           console.warn('Statement error (non-fatal):', statement.substring(0, 40), e.message);
         }
@@ -55,6 +55,16 @@ export async function initializeDatabase(db) {
     }
 
     await ensureSchemaEvolution(db);
+
+    for (const statement of indexStatements) {
+      try {
+        await db.prepare(statement + ';').run();
+      } catch (e) {
+        if (!e.message?.toLowerCase().includes('already exists')) {
+          console.warn('Index creation error (non-fatal):', statement.substring(0, 40), e.message);
+        }
+      }
+    }
 
     const nowIso = new Date().toISOString();
 
