@@ -33,7 +33,7 @@ Not an ERP. Not Odoo. Not generic.
 ## 📋 Project Structure
 
 ```
-ess-admin-ds/
+./
 ├── src/                  -- Current implementation (Workers, APIs, databases)
 ├── public/               -- Static assets (forms, pages)
 ├── cloudflare/           -- Target runtime architecture (coming)
