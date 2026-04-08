@@ -12,7 +12,7 @@
 - Founder/KC, booking-stage, and admin company-profile flows now run without Odoo in the critical path.
 - The duplicate outer app tree was collapsed into a single root repository and the broken nested gitlink was removed.
 - Publish moderation, operator review actions, tenant host gating, and release-status tracking now run in the active runtime.
-- The explicit `production` Wrangler environment deploys successfully, but its workers.dev ingress still returns Cloudflare `1050` until a real route or custom domain is attached.
+- The explicit `production` Wrangler environment deploys successfully, but its workers.dev ingress still returns Cloudflare `1050` until a real route is attached.
 
 ---
 
@@ -21,14 +21,14 @@
 ### Phase
 **Phase 1: Booking + Platform Entry (91% complete)**
 - ETA: April 15, 2026
-- Status: 🟡 ON TRACK (remaining: Stripe checkout wiring + tenant website publish/domain workflow + founder/KC OTP runtime fix)
+- Status: 🟡 ON TRACK (remaining: tenant custom-domain upgrade workflow + production route attachment + founder/KC OTP runtime fix)
 
 ### Overall Progress
 ```
 █████████░ 91%
 
 Completed: 91%
-In Progress: 5% (platform billing/admin/domain finalization)
+In Progress: 5% (platform domain-upgrade/admin finalization)
 Blocked: 4% (founder/KC OTP delivery in local runtime)
 Not Started: 0%
 ```
@@ -132,12 +132,13 @@ Not Started: 0%
 - [x] Wildcard tenant subdomain routing and demo-payment signup walkthrough are verified live
 
 **What needs work** (next 3-4 days):
-- [ ] Attach a real production route or custom domain to `ess-admin-ds-prod` and verify public ingress beyond workers.dev
+- [ ] Attach a real production route to `ess-admin-ds-prod` and verify public ingress beyond workers.dev
 - [ ] Stripe test checkout flow (replace demo-paid simulation while keeping the new demo/manual payment method options)
 - [ ] Connect the new tenant website-content editor to a fully explicit publish/release workflow for tenant websites (beyond the current moderation/release foundation)
 - [ ] Enforce the new website validator inside the actual publish path, not only as a repo script or snapshot rollback workflow
-- [ ] Publish tenant website output + assets to deployment storage and validate custom-domain serving path
-- [ ] Tenant custom domain connection workflow (DNS + validation + ops guidance)
+- [ ] Publish tenant website output + assets to deployment storage and validate subdomain-first public serving path
+- [ ] Tenant custom-domain upgrade workflow (request, approval, DNS guidance, validation, activation)
+- [ ] Optional managed domain registration flow after BYOD custom-domain upgrade is stable
 - [ ] Tenant payment method onboarding UX (Stripe + manual modes)
 - [ ] End-to-end QA for tenant website editor save/reload/review flow from Restaurant Admin to live tenant subdomain
 - [ ] Wire structured opening hours into shop and online-order availability once those modules land
@@ -193,11 +194,11 @@ All other phases (2-5) planned, not started:
 - **Action Item**: Decide whether local OTP should require live Twilio or use a development stub
 
 ### Blocker 2: Production Ingress + Website Publish Path
-- **Issue**: Stripe checkout is not wired, tenant website publishing/custom-domain flow is not yet completed beyond the working moderation/release foundation, and the explicit production env still lacks usable public ingress
+- **Issue**: The new subdomain-first strategy is correct, but tenant custom-domain upgrade, domain registration commercial policy, and explicit production route attachment are not yet implemented end to end.
 - **Impact**: CP-10 remains partial, not ship-ready
 - **ETA Fix**: Mar 31 onward
 - **Owner**: @dev-lead
-- **Action Item**: Attach production route/custom domain, wire Stripe test checkout, and finish tenant website publish/domain workflow
+- **Action Item**: Attach production route, finish custom-domain upgrade workflow, and separate BYOD custom-domain activation from later managed domain registration.
 
 ---
 
@@ -253,7 +254,7 @@ PHASE 1 TOTAL                                        91%
 ### This Week (Apr 2-5)
 
 **Priority 1** (Must do):
-- [ ] Attach a real production route or custom domain for `ess-admin-ds-prod`
+- [ ] Attach a real production route for `ess-admin-ds-prod`
 - [ ] Wire Stripe test checkout for signup and recurring invoices
 - [ ] Turn the new Restaurant Admin website-content editor into a publish-safe tenant website workflow with release status
 - [ ] Finish tenant website publish/domain workflow on top of the delivered moderation/release foundation

@@ -2,7 +2,7 @@
 
 ## Phase 1: Booking System + Platform Foundation (NOW → Q2 2026)
 
-**Goal**: Restaurants can book online, manage bookings in real-time; new restaurants can self-serve sign up.
+**Goal**: Restaurants can book online, manage bookings in real-time; new restaurants can self-serve sign up on a managed subdomain first.
 
 ### Deliverables
 
@@ -13,14 +13,15 @@
 - Admin UI (setup wizard, config, reporting)
 - Multi-tenant infrastructure (tenant isolation verified)
 - **Platform marketing site** (`restaurantos.app`): features overview, pricing tiers, signup CTA
-- **Self-service signup + onboarding**: restaurant creates account → tenant provisioned → setup wizard
+- **Self-service signup + onboarding**: restaurant creates account → tenant provisioned → setup wizard → managed subdomain live
 - **Tenant template website**: restaurant gets their own hosted site at `{subdomain}.restaurantos.app` (3 templates: Minimal, Modern, Premium)
+- **Custom-domain upgrade foundation**: request + approval + DNS verification designed as a separate flow from signup
 
 ### Definition of Done
 
 - Booking form working for 5+ test restaurants (online + onsite)
 - Platform site live at `restaurantos.app` with pricing + working signup
-- Restaurant can self-serve: sign up → subdomain chosen → template live → booking form active
+- Restaurant can self-serve: sign up → subdomain chosen → template live → booking form active, without waiting for a custom domain
 - E2E tests passing (booking → confirmation → staff notification)
 - D1 schema optimized, indexes in place
 - < 500ms API latency for all endpoints
@@ -186,3 +187,43 @@
 - Phase 1 must complete before Phase 2 (staff needs booking data)
 - Phase 3 depends on Phase 2 (staff uses POS on mobile)
 - Phase 4 can run parallel to Phase 3 (just requires feature flag)
+
+---
+
+## Domain & Upgrade Program
+
+### Stage 0 — Managed Subdomain Default
+
+- Every tenant launches on `{subdomain}.gooddining.app`
+- No custom domain is required during signup
+
+### Stage 1 — Capability Gating
+
+- Introduce `custom_domain` as an entitlement or add-on, not a hard-coded plan-name check
+- Tenant admin exposes `Request custom domain upgrade`
+
+### Stage 2 — Operator Approval
+
+- SaaS Admin reviews upgrade requests
+- Commercial approval remains manual/dev-friendly until later billing automation
+
+### Stage 3 — DNS Onboarding
+
+- Tenant receives exact DNS instructions
+- Ownership verification and activation state are tracked explicitly
+
+### Stage 4 — Domain Activation
+
+- Custom domain becomes live once verified
+- Managed subdomain remains as fallback and preview host
+
+### Stage 5 — Managed Domain Registration
+
+- Optional flow to register a domain through the platform
+- Renewal, billing, and support remain visible in the same operator surface
+
+### Sequencing Rules
+
+- Subdomain-first onboarding ships before custom-domain activation UX
+- Custom-domain upgrade flow ships before automated domain registration resale
+- Payment automation can remain dev/manual while the domain-upgrade state machine is built

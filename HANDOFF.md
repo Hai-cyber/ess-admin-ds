@@ -16,7 +16,7 @@
 - Founder/KC, booking-stage, and admin profile save flows are internal-first and no longer rely on Odoo in the critical path.
 - The outer duplicate app tree was collapsed into a single root repository and the broken nested gitlink was removed.
 - Moderation review queue, operator actions, Telegram review links, and host-based tenant website gating now run in the active runtime.
-- The explicit `production` Wrangler environment deploys successfully to Cloudflare, but public ingress for that env still needs a real route or custom domain because workers.dev returns `1050`.
+- The explicit `production` Wrangler environment deploys successfully to Cloudflare, but public ingress for that env still needs a real route because workers.dev returns `1050`.
 - Schema/init and legacy utility artifacts still contain Odoo-era references and are intentionally left as follow-up cleanup, not active dependencies.
 
 ### ✅ What's Complete
@@ -65,6 +65,8 @@
 - [x] Payment lifecycle events now persist in `payment_events` and render as an audit timeline in SaaS Admin
 - [x] Failed or expired Stripe checkout sessions can now generate a new retry checkout from SaaS Admin and tenant admin
 - [x] Stripe webhook testing now includes a signed payload path using `stripe-signature`
+- [x] Product direction is now subdomain-first: custom domain is no longer a signup prerequisite and should ship as a later upgrade flow
+- [x] Managed domain registration is now treated as an optional convenience product after BYOD custom-domain upgrade is stable
 - [x] Structured `opening_hours_schedule` now reaches the public website payload alongside legacy open/close fallback values
 - [x] Wildcard tenant subdomains on `gooddining.app` and demo-payment signup walkthrough have been verified live end to end
 - [x] Active Odoo runtime/helper paths removed from both worker entrypoints; active public/admin surfaces updated to first-party CRM wording
@@ -112,9 +114,37 @@
 - [ ] Payment integration setup
 - [ ] "Go Live" verification
 
-**What's blocked**: production ingress attachment, final publish/release workflow completion, payment wiring, plus founder/KC OTP runtime depending on Twilio credentials
+**What's blocked**: production route attachment, final publish/release workflow completion, custom-domain upgrade workflow, plus founder/KC OTP runtime depending on Twilio credentials
 
 **Entry points**: `src/index.js`, `public/admin.html`, `public/platform/admin.html`, `public/website-master/index.html`
+
+### Domain Strategy Proposal (Approved Direction)
+
+- Keep signup and first go-live on the managed subdomain by default.
+- Treat custom domain as a later upgrade capability, not as a signup prerequisite.
+- Separate commercial approval from DNS verification and activation.
+- Keep the managed subdomain alive after custom-domain activation for preview, rollback, and support.
+- Ship bring-your-own-domain first; defer managed domain registration until the upgrade flow is stable.
+
+### Domain Program Dev Stages
+
+1. **Stage 0 — Subdomain-first baseline**
+   New tenants launch on `{subdomain}.gooddining.app` with no custom-domain dependency.
+2. **Stage 1 — Upgrade request**
+   Tenant admin adds `Request custom domain upgrade` and SaaS Admin gets an approval queue.
+3. **Stage 2 — DNS onboarding**
+   Show exact DNS instructions, ownership verification, and activation state.
+4. **Stage 3 — Domain activation**
+   Route the live site to the verified custom domain while keeping the managed subdomain as fallback.
+5. **Stage 4 — Managed registration**
+   Offer platform-handled domain purchase and renewal only after BYOD upgrade is operationally stable.
+
+### Commercial Recommendation
+
+- Do not compete with Cloudflare on raw domain price.
+- Use managed subdomain as the default included host.
+- Charge separately for custom-domain capability, DNS/setup work, and later managed registration/renewal handling.
+- If managed registration is offered, keep pricing at pass-through or slight markup plus explicit support value, rather than hiding ops cost in the base plan.
 
 ---
 
@@ -179,12 +209,13 @@
 - Owner: QA
 - Verification path: `npm test` + `wrangler dev --config wrangler.jsonc` + manual smoke tests
 
-**Task 3**: Complete website publish/domain workflow
-- Attach a real production route or custom domain for `ess-admin-ds-prod`
-- Bind the new Restaurant Admin website fields into the publish/release path beyond the current master preview adapter
-- Publish tenant website output/assets and validate custom-domain serving
-- Re-test tenant release/review state from Restaurant Admin to SaaS Admin to live URL
-- Time estimate: Half day
+**Task 3**: Complete subdomain-first publish/domain-upgrade workflow
+- Attach a real production route for `ess-admin-ds-prod`
+- Keep managed subdomain as the default live host for all new tenants
+- Add custom-domain upgrade request + operator approval + DNS verification flow
+- Defer managed domain registration until the BYOD upgrade path is stable
+- Re-test tenant release/review state from Restaurant Admin to SaaS Admin to live tenant URL
+- Time estimate: 2-3 days
 
 **Task 4**: Fix founder/KC OTP local runtime
 - Configure Twilio test credentials or add an explicit development stub

@@ -16,8 +16,8 @@
 |-----------|-----------|--------|----------|-------|-----|
 | CP-1 | Tenant Isolation | ✅ DONE | E2E_TEST_SUMMARY.md | Team | ✅ Done |
 | CP-2 | Booking MVP | ✅ DONE | Local runtime verified: booking form render, board, staff-create, booking list, stage updates | Team | ✅ Done |
-| CP-3 | Admin UI Setup | ⏳ 89% | Tenant admin now includes website content, opening-hours editor, website release/go-live panel, backend-driven readiness checklist, payment setup section, and release history rollback primitive | @dev-lead | Apr 10 |
-| CP-10 | Platform Site + Self-Service Signup | ⏳ 98% | Live runtime verified, wildcard tenant subdomains resolve, moderation/review queue is live, public tenant payload now serves latest published release snapshot, and signup supports explicit demo payment methods | @dev-lead | Apr 10 |
+| CP-3 | Admin UI Setup | ⏳ 90% | Tenant admin now includes website content, opening-hours editor, website release/go-live panel, backend-driven readiness checklist, payment lifecycle remediation, and the basis for a future custom-domain upgrade flow | @dev-lead | Apr 10 |
+| CP-10 | Platform Site + Self-Service Signup | ⏳ 98% | Live runtime verified, wildcard tenant subdomains resolve, moderation/review queue is live, public tenant payload now serves latest published release snapshot, and signup is officially subdomain-first instead of custom-domain-first | @dev-lead | Apr 10 |
 | **Phase 1 Total** | — | **91%** | — | — | **Apr 15** |
 
 ### CP-1 Evidence ✅
@@ -74,17 +74,17 @@
 ✅ SaaS Admin moderation queue now has summary/filter/refresh controls on top of approve/reject/suspend/quarantine actions
 ✅ Local smoke verification now covers `/api/contact/create`, platform contact, publish review, suspend, quarantine, and host-based public blocking
 ✅ Explicit `production` env now deploys against a real D1 database id
-⏳ Production public ingress still blocked by Cloudflare `1050` until a real route or custom domain is attached
+⏳ Production public ingress still blocked by Cloudflare `1050` until a real route is attached
 ⏳ Tenant website publish/release workflow still pending beyond the current moderation/release foundation
-⏳ Tenant website publish/custom-domain workflow still pending beyond the current moderation/release foundation
+⏳ Tenant custom-domain upgrade workflow still pending beyond the current moderation/release foundation
 ⏳ Founder/KC OTP runtime blocked locally by missing Twilio credentials or a local OTP stub decision
-**Blockers**: production route/custom-domain attachment, Stripe test credentials, website publish/custom-domain completion, and Twilio credentials or a local OTP stub
+**Blockers**: production route attachment, Stripe test credentials, custom-domain upgrade workflow completion, and Twilio credentials or a local OTP stub
 
 **Next checkpoint steps**:
-1. Attach a real production route or custom domain for `ess-admin-ds-prod` and verify `/api/health`, platform home, and tenant host routing on that hostname.
-2. Finish Stripe test checkout and payment onboarding beyond the current signup checkout session foundation and pending-state handling.
-3. Enforce the website validator inside the actual publish path beyond the current moderation gate and published snapshot workflow.
-4. Run end-to-end QA from tenant admin save → publish review → SaaS admin moderation → live tenant URL.
+1. Keep subdomain-first signup as the default and add entitlement-based custom-domain upgrade requests.
+2. Build the custom-domain upgrade state machine: request, operator approval, DNS instructions, verification, activation.
+3. Add optional managed domain registration after the bring-your-own-domain upgrade flow is stable.
+4. Enforce the website validator inside the actual publish path beyond the current moderation gate and published snapshot workflow.
 5. Decide Twilio strategy for founder/KC locally, then close the OTP runtime gap.
 
 ---

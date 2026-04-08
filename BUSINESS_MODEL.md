@@ -7,6 +7,7 @@
 **For restaurants starting out**
 
 Includes:
+- Managed subdomain on `gooddining.app`
 - Website builder (basic templates)
 - Online booking system ✅
 - POS basic (table layout, simple orders)
@@ -28,6 +29,7 @@ Everything in Core +
 - Advanced booking (recurring, group bookings, waitlist)
 - Marketing templates
 - Discount / voucher system
+- Eligible for custom-domain upgrade workflow
 
 **Use case**: Multi-purpose venue, online sales, delivery
 
@@ -42,7 +44,7 @@ Everything in Commerce +
 - Marketing automation (email campaigns, SMS)
 - SEO tools
 - Advanced reporting & analytics
-- Custom domain (white-label option)
+- Priority custom-domain onboarding and operator handling
 
 **Use case**: Popular restaurants, loyal customers, active marketing
 
@@ -83,6 +85,12 @@ Example: 10 users on Core = €29 × 10 × 12 = €3,480/year per restaurant
 - POS hardware configuration: €99
 - Custom brand package: €199
 
+### 2b. Domain Upgrades & Registration
+
+- Custom-domain capability upgrade or add-on
+- Managed domain registration setup
+- Annual domain renewal handling fee
+
 ---
 
 ### 3. Services (10%)
@@ -97,6 +105,7 @@ Example: 10 users on Core = €29 × 10 × 12 = €3,480/year per restaurant
 
 - TSE fees (Fiskaly): direct cost pass-through
 - Payment processing: Stripe fees (standard)
+- Domain registry wholesale cost: pass-through or lightly marked up depending on support model
 
 ---
 
@@ -111,6 +120,11 @@ Example: 10 users on Core = €29 × 10 × 12 = €3,480/year per restaurant
    → Auto-assign subdomain (tenant.restaurantos.app)
    → Provision D1 schema
    → Create admin user
+
+2b. Optional later upgrade
+   → Request custom-domain capability
+   → Operator approves commercial upgrade
+   → Tenant connects own domain or buys managed registration
 
 3. Configure
    → Setup wizard:
@@ -128,7 +142,8 @@ Example: 10 users on Core = €29 × 10 × 12 = €3,480/year per restaurant
      - Growth: add loyalty + marketing
 
 5. Go live
-   → Enable domain
+   → Go live on managed subdomain first
+   → Enable custom domain later if requested and verified
    → Start accepting bookings
    → Staff begins using POS
 
@@ -154,6 +169,28 @@ Example: 10 users on Core = €29 × 10 × 12 = €3,480/year per restaurant
 - Security updates
 - Email support
 - Mobile apps (iOS via web, Android APK)
+- Managed subdomain hosting
+
+### Domain Commercial Policy
+
+- **Default**: every tenant gets a managed subdomain at no extra domain-purchase step.
+- **Bring your own domain**: supported as the first upgrade path.
+- **Managed registration**: optional later add-on for customers who want one invoice and less operational friction.
+
+### Recommendation on domain resale pricing
+
+- Do **not** try to beat Cloudflare on raw domain price.
+- Selling domains at the same price as Cloudflare or only a tiny markup becomes structurally weak once support, failed renewals, tax, ownership disputes, and manual ops are included.
+- Better default policy:
+   - pass through registry or Cloudflare-level cost
+   - add a small transparent management margin
+   - keep setup / migration / DNS work as a separate service fee when needed
+
+### Recommended commercial model
+
+- **MVP**: bring-your-own-domain first, with a one-time DNS/domain setup fee.
+- **Managed registration later**: offer domain purchase and renewal as a convenience product with small markup and bundled operator support.
+- **Billing rule**: custom-domain capability and domain registration should be separate invoice lines, even if billed together.
 
 ### Pricing adjustments
 

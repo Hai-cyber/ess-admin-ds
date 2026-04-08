@@ -49,7 +49,7 @@
 1. **`gooddining.app`** — Platform marketing site: features, pricing tiers, signup (no tenant context)
 2. **`{subdomain}.gooddining.app`** — Tenant website template: the restaurant's public-facing site (website, contact, service-tier modules)
 3. **`gooddining.app/platform/admin`** — SaaS Admin: pricing, web builder studio defaults, signup CRM-lite, follow-up workflow
-4. **`{subdomain}.gooddining.app/admin`** — Restaurant Admin (tenant admin): domain, payment method, website builder studio, staff, reports, restaurant operations config
+4. **`{subdomain}.gooddining.app/admin`** — Restaurant Admin (tenant admin): domain upgrade flow, payment method, website builder studio, staff, reports, restaurant operations config
 5. **`{subdomain}.gooddining.app/app`** — Staff app: booking board, stage management, POS
 
 ---
@@ -58,15 +58,25 @@
 
 - **Prospect** (restaurant owner browsing): visits `gooddining.app`, compares tiers, signs up
 - **Platform Operator**: manages SaaS pricing, signup CRM-lite, follow-up, global web-builder defaults
-- **Restaurant Owner/Admin**: completes setup wizard, configures tenant settings, domain, payment method, manages staff
+- **Restaurant Owner/Admin**: completes setup wizard, starts on a managed subdomain, requests custom-domain upgrade when needed, configures payment method, manages staff
 - **Staff (hostess, bartender, manager)**: Mobile app, daily operations
 - **Table Guest**: visits tenant website, fills in booking form, no account needed
 
 ## Admin Separation
 
 - **SaaS Admin**: simple operator console for the platform business itself. Scope: pricing, signup leads, CRM-lite follow-up, global platform copy, builder defaults.
-- **Restaurant Admin**: tenant-scoped operational console for each restaurant. Scope: domain, payment setup, website builder content, staff, bookings, reports, module toggles.
+- **Restaurant Admin**: tenant-scoped operational console for each restaurant. Scope: managed subdomain, custom-domain upgrade request, payment setup, website builder content, staff, bookings, reports, module toggles.
 - Rule: platform business concerns must not be mixed into tenant restaurant admin.
+
+---
+
+## Domain Strategy
+
+- **Managed subdomain first**: every tenant starts on `{subdomain}.gooddining.app` with no domain purchase required.
+- **Custom domain is an upgrade capability**: it must not block signup, provisioning, or first go-live.
+- **Commercial approval is separate from DNS activation**: a tenant can be approved for custom-domain use before DNS is connected.
+- **Fallback stays alive**: the managed subdomain remains available for preview, rollback, and support after a custom domain goes live.
+- **Domain registration is optional**: tenants can either bring their own domain or later buy a managed domain through the platform.
 
 ---
 
@@ -95,6 +105,8 @@
 - IT support / customization
 - TSE integration (pass-through cost)
 - Premium support tier
+- Custom-domain capability upgrade or add-on
+- Managed domain registration / renewal handling
 
 ---
 
