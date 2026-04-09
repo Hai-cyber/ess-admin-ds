@@ -129,9 +129,9 @@
 - [ ] Restaurant config form (email/phone/hours/areas)
 - [ ] Staff PIN setup
 - [ ] Payment integration setup
-- [ ] "Go Live" verification
+- [ ] Final deployment publish path verification
 
-**What's blocked**: final publish/release workflow completion, custom-domain upgrade hardening beyond MVP, plus founder/KC OTP runtime depending on Twilio credentials
+**What's blocked**: deployment publish path completion, custom-domain upgrade hardening beyond MVP, plus founder/KC OTP runtime depending on Twilio credentials
 
 **CP-3 execution plan now fixed into four sub-checkpoints**:
 - `CP-3A` Go-Live Console Gating
@@ -204,9 +204,9 @@ Recommended order: `3A -> 3B -> 3C -> 3D`
 |-----------|--------|----------|----------|
 | CP-1: Tenant Isolation | ✅ DONE | E2E_TEST_SUMMARY.md | None |
 | CP-2: Booking MVP | ✅ DONE | Local runtime verified on 2026-03-30 | None |
-| CP-3: Admin UI Setup | 🔄 84% | Admin routes/UI live; website content editor and structured hours added; go-live flow still incomplete | UX completion |
-| CP-10: Platform Site + Self-Service Signup | 🔄 96% | Platform home/contact/admin/signup verified live; wildcard tenant subdomains resolve; demo-payment walkthrough works; moderation/review queue and host gating are active; fixed-skin website contract and validator added | Production ingress + Stripe + publish/release workflow + Twilio for founder/KC |
-| **Phase 1 Total** | **🔄 91%** | — | **Platform/founder finalization** |
+| CP-3: Admin UI Setup | 🔄 95% | Admin routes/UI live; go-live console and explicit release workflow are now active; remaining work is operator polish + IA cleanup | CP-3C / CP-3D |
+| CP-10: Platform Site + Self-Service Signup | 🔄 99% | Platform home/contact/admin/signup verified live; wildcard tenant subdomains resolve; moderation/release workflow is explicit; fixed-skin website contract and validator run in the real submit path | Deployment publish path + custom-domain hardening + Twilio for founder/KC |
+| **Phase 1 Total** | **🔄 93%** | — | **Deployment/custom-domain/founder finalization** |
 
 ---
 
@@ -214,30 +214,24 @@ Recommended order: `3A -> 3B -> 3C -> 3D`
 
 ### Immediate (This week - Apr 2-5)
 
-**Task 1**: Complete Admin UI setup wizard
-- Validate and harden the new website content editor end to end on live tenant subdomains
-- Finish the new tenant-side website release panel and operator moderation loop end to end
-- Implement remaining restaurant config form gaps (name, address, phone, hours)
-- Add staff PIN setup (hostess, bartender, manager)
-- Add payment integration screen (Stripe account linking)
-- Add "Setup Complete" → "Go Live" button
-- Time estimate: 3-4 days
+**Task 1**: Complete CP-3C operator surface
+- unify signup follow-up, payment remediation, release workflow, and domain operations into one operator flow
+- make operator context explain why a tenant is blocked from live release
+- Time estimate: 2-3 days
 - Owner: @dev-lead
-- Files: `src/index.js` + `public/admin.html`
+- Files: `src/index.js` + `public/platform/admin.html`
 
-**Task 2**: Test CP-3 end-to-end
-- Run signup flow (tenant creation)
-- Fill in all config fields
-- Click "Go Live"
-- Verify booking form now works
-- Time estimate: 1 day
-- Owner: QA
-- Verification path: `npm test` + `wrangler dev --config wrangler.jsonc` + manual smoke tests
+**Task 2**: Finish deployment publish path
+- publish tenant website output and assets to the delivery/storage layer
+- verify latest approved-and-published release is what public hosts actually serve after deployment
+- Time estimate: 2-3 days
+- Owner: @dev-lead
+- Verification path: `npm test` + `wrangler dev --config wrangler.jsonc` + deployment smoke tests
 
-**Task 3**: Complete subdomain-first publish/domain-upgrade workflow
-- Verify and extend production ingress beyond `prod.gooddining.app` only if additional hostnames are needed
-- Keep managed subdomain as the default live host for all new tenants
-- Add custom-domain upgrade request + operator approval + DNS verification flow
+**Task 3**: Harden subdomain-first custom-domain upgrade workflow
+- keep managed subdomain as the default live host for all new tenants
+- extend the current custom-domain request MVP into a fuller cutover/reminder/ops flow
+- verify production ingress beyond `prod.gooddining.app` only if additional hostnames are actually needed
 - Defer managed domain registration until the BYOD upgrade path is stable
 - Re-test tenant release/review state from Restaurant Admin to SaaS Admin to live tenant URL
 - Time estimate: 2-3 days
@@ -412,13 +406,13 @@ Performance:
 - **What**: Staging needs real Stripe test account
 - **Why**: Payment endpoint can't be tested with mocks only
 - **Impact**: CP-6 (Phase 3) testing delayed
-**Blocker 3**: Website publish/domain flow completion
-- **What**: Website master runtime preview is working, but publish-to-storage and custom-domain serving are not complete yet
-- **Why**: Current implementation proves rendering/runtime wiring, not the full go-live delivery pipeline
+**Blocker 3**: Website deployment publish/domain flow completion
+- **What**: Website release workflow state machine is complete, but publish-to-storage and custom-domain serving are not complete yet
+- **Why**: Current implementation now proves release workflow rigor, but not the full deployment delivery pipeline
 - **Impact**: CP-10 remains partial
-- **ETA**: Mar 31
+- **ETA**: Apr 12
 - **Owner**: @dev-lead
-- **Resolution**: Bind Website Builder Studio settings into publish output, reload worker, and validate custom-domain path plus `/api/contact/create`
+- **Resolution**: Bind Website Builder Studio settings into deployment output, validate published host serving, then harden custom-domain path plus `/api/contact/create`
 - **ETA**: Will be resolved by Phase 3 start (Aug 1)
 - **Owner**: @infra-lead
 - **Resolution**: Set up Stripe Connect in staging by Jul 15

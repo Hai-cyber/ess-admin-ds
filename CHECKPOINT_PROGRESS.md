@@ -2,23 +2,23 @@
 
 **Purpose**: Track checkpoint completion as you move through phases. Update this weekly.
 
-**Last Updated**: 2026-04-08  
-**Current Phase**: Phase 1 (Booking + Platform Entry) — 91% complete
+**Last Updated**: 2026-04-09  
+**Current Phase**: Phase 1 (Booking + Platform Entry) — 93% complete
 
 ---
 
 ## Phase 1: Booking System + Platform Entry
 
 **ETA**: Q2 2026  
-**Status**: ⏳ IN PROGRESS (91% complete)
+**Status**: ⏳ IN PROGRESS (93% complete)
 
 | Checkpoint | Component | Status | Evidence | Owner | ETA |
 |-----------|-----------|--------|----------|-------|-----|
 | CP-1 | Tenant Isolation | ✅ DONE | E2E_TEST_SUMMARY.md | Team | ✅ Done |
 | CP-2 | Booking MVP | ✅ DONE | Local runtime verified: booking form render, board, staff-create, booking list, stage updates | Team | ✅ Done |
-| CP-3 | Admin UI Setup | ⏳ 92% | Tenant admin now includes website content, opening-hours editor, website release/go-live panel, backend-driven readiness checklist, payment lifecycle remediation, and a working custom-domain upgrade request MVP; remaining work is now split into CP-3A/3B/3C/3D | @dev-lead | Apr 10 |
-| CP-10 | Platform Site + Self-Service Signup | ⏳ 98% | Live runtime verified, wildcard tenant subdomains resolve, moderation/review queue is live, public tenant payload now serves latest published release snapshot, and signup is officially subdomain-first instead of custom-domain-first | @dev-lead | Apr 10 |
-| **Phase 1 Total** | — | **91%** | — | — | **Apr 15** |
+| CP-3 | Admin UI Setup | ⏳ 95% | Tenant admin now includes the go-live gating console, release lifecycle timeline, explicit submit/approve/publish/rollback workflow, payment remediation, and a custom-domain upgrade MVP; remaining work is now centered on CP-3C/3D plus storage/custom-domain hardening | @dev-lead | Apr 12 |
+| CP-10 | Platform Site + Self-Service Signup | ⏳ 99% | Live runtime verified, wildcard tenant subdomains resolve, moderation/release workflow is now explicit end to end, public tenant payload serves latest published release snapshots, and signup remains subdomain-first | @dev-lead | Apr 12 |
+| **Phase 1 Total** | — | **93%** | — | — | **Apr 15** |
 
 ### CP-1 Evidence ✅
 
@@ -86,19 +86,23 @@
 ✅ Production ingress strategy has been simplified to a single hostname `prod.gooddining.app`
 ⚠️ Cloudflare dashboard still shows `Event Triggers` empty for `ess-admin-ds-prod`, but Wrangler CLI confirms the cron trigger is attached
 ✅ SaaS Admin moderation queue now has summary/filter/refresh controls on top of approve/reject/suspend/quarantine actions
+✅ CP-3A go-live console gating is now wired into the tenant admin release panel with actionable blocker summaries
+✅ CP-3B publish/release workflow is now an explicit state machine: `draft -> pending_review -> approved -> published -> rolled_back`
+✅ Tenant admin now separates release submission from live publish, and approved releases must be published through a dedicated action
+✅ SaaS Admin now renders workflow-oriented release status, hints, and mini timelines instead of a raw review list only
 ✅ Local smoke verification now covers `/api/contact/create`, platform contact, publish review, suspend, quarantine, and host-based public blocking
 ✅ Explicit `production` env now deploys against a real D1 database id
 ⏳ Production public ingress still blocked by Cloudflare `1050` until a real route is attached
-⏳ Tenant website publish/release workflow still pending beyond the current moderation/release foundation
+⏳ Tenant website publish-to-storage and deployment-asset path still pending beyond the current release-state foundation
 ⏳ Tenant custom-domain upgrade workflow still pending beyond the current moderation/release foundation
 ⏳ Founder/KC OTP runtime blocked locally by missing Twilio credentials or a local OTP stub decision
-**Blockers**: production route attachment, Stripe test credentials, custom-domain upgrade workflow completion, and Twilio credentials or a local OTP stub
+**Blockers**: deployment-storage publish path, custom-domain upgrade hardening, Stripe test credentials, and Twilio credentials or a local OTP stub
 
 **Next checkpoint steps**:
-1. CP-3A — unify the go-live checklist into one authoritative gating console for restaurant profile, website, staff, payment, and hours.
-2. CP-3B — enforce validator and release states inside the real publish path so tenant website publishing becomes a complete workflow.
-3. CP-3C — finish operator tooling so signup, payment remediation, publish review, and domain ops form one coherent operating surface.
-4. CP-3D — clean up admin navigation and permissions after the critical go-live and publish flow is stable.
+1. CP-3C — finish operator tooling so signup, payment remediation, release workflow, and domain ops form one coherent operating surface.
+2. CP-3D — clean up admin navigation and permissions after the critical go-live and release flow is stable.
+3. Publish tenant website output + assets to deployment storage and validate the subdomain-first public serving path.
+4. Harden the tenant custom-domain upgrade workflow beyond the current MVP.
 5. Keep subdomain-first signup as the default and add entitlement-based custom-domain upgrade requests.
 6. Decide Twilio strategy for founder/KC locally, then close the OTP runtime gap.
 7. Trust CLI trigger state over the empty dashboard `Event Triggers` panel unless Wrangler stops reporting `schedule: 0 9 * * *`.

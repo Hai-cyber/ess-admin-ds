@@ -444,6 +444,8 @@ The remaining CP-3 work should be executed in this order.
 
 **Goal**: Make tenant website publishing an explicit state machine, not a loose collection of preview and moderation features.
 
+**2026-04-09 update**: Completed in runtime and both admin surfaces. Tenant release submission, operator review, approved-release publishing, rollback, and workflow visibility now use the same explicit release-state model.
+
 **Must be true**:
 - validator runs inside the real publish path
 - release states are explicit: draft, pending review, approved, published, rolled back

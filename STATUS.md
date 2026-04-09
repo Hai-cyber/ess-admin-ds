@@ -2,7 +2,7 @@
 
 **Purpose**: Real-time snapshot of project state. Update before/after every session.
 
-**Last Updated**: 2026-04-08  
+**Last Updated**: 2026-04-09  
 **By**: AI Agent  
 **Next Update**: 2026-04-08 (or sooner if major change)
 
@@ -19,17 +19,17 @@
 ## 🎯 Current State (Right Now)
 
 ### Phase
-**Phase 1: Booking + Platform Entry (91% complete)**
+**Phase 1: Booking + Platform Entry (93% complete)**
 - ETA: April 15, 2026
 - Status: 🟡 ON TRACK (remaining: tenant custom-domain upgrade workflow + founder/KC OTP runtime fix)
 
 ### Overall Progress
 ```
-█████████░ 91%
+█████████▒ 93%
 
-Completed: 91%
-In Progress: 5% (platform domain-upgrade/admin finalization)
-Blocked: 4% (founder/KC OTP delivery in local runtime)
+Completed: 93%
+In Progress: 4% (deployment publish path + operator surface polish)
+Blocked: 3% (founder/KC OTP delivery in local runtime)
 Not Started: 0%
 ```
 
@@ -92,6 +92,10 @@ Not Started: 0%
 - [x] Active Odoo runtime paths removed from both worker entrypoints; active admin/public UI copy synced to first-party CRM wording
 - [x] Full repo hygiene pass completed: lint clean, format check clean, CI hygiene step added, and root repository unified
 - [x] Platform moderation review queue, operator actions, Telegram review links, and host-based tenant website gating verified locally
+- [x] CP-3A go-live gating is now reflected directly in tenant admin blocker summaries and CTA state
+- [x] CP-3B release workflow is now explicit across tenant admin, SaaS admin, and runtime APIs (`draft`, `pending_review`, `approved`, `published`, `rolled_back`)
+- [x] Tenant admin now separates release submission from live publish through a dedicated approved-release publish action
+- [x] SaaS Admin now shows workflow-oriented release states, hints, and mini timelines for moderation items
 - [x] Local smoke tests verified health, plans, signup policy, platform contact, platform admin dashboard, website payload, publish review, suspend, and quarantine actions on localhost
 - [x] Explicit `production` Wrangler environment deploy executed successfully against a real D1 database id
 
@@ -146,8 +150,8 @@ Not Started: 0%
 **What needs work** (next 3-4 days):
 - [x] Attach a real production custom-domain ingress to `ess-admin-ds-prod` and verify public ingress beyond workers.dev
 - [ ] Stripe test checkout flow (replace demo-paid simulation while keeping the new demo/manual payment method options)
-- [ ] Connect the new tenant website-content editor to a fully explicit publish/release workflow for tenant websites (beyond the current moderation/release foundation)
-- [ ] Enforce the new website validator inside the actual publish path, not only as a repo script or snapshot rollback workflow
+- [x] Connect the new tenant website-content editor to an explicit publish/release workflow with release states and rollback history
+- [x] Enforce the website validator inside the actual tenant publish submission path
 - [ ] Publish tenant website output + assets to deployment storage and validate subdomain-first public serving path
 - [ ] Harden tenant custom-domain upgrade workflow beyond current MVP (real reminder delivery, public cutover checks beyond payload/health, richer renewal operations)
 - [ ] Optional managed domain registration flow after BYOD custom-domain upgrade is stable
@@ -205,12 +209,12 @@ All other phases (2-5) planned, not started:
 - **Owner**: @dev-lead
 - **Action Item**: Decide whether local OTP should require live Twilio or use a development stub
 
-### Blocker 2: Production Ingress + Website Publish Path
-- **Issue**: The new subdomain-first strategy is correct, but tenant custom-domain upgrade and domain registration commercial policy are not yet implemented end to end.
+### Blocker 2: Deployment Publish Path + Custom Domain Hardening
+- **Issue**: Release state management is complete, but publish-to-storage/output delivery and custom-domain hardening are still not end to end.
 - **Impact**: CP-10 remains partial, not ship-ready
-- **ETA Fix**: Mar 31 onward
+- **ETA Fix**: Apr 12 onward
 - **Owner**: @dev-lead
-- **Action Item**: Finish custom-domain upgrade workflow, and separate BYOD custom-domain activation from later managed domain registration.
+- **Action Item**: Finish deployment output path, then harden BYOD custom-domain upgrade/activation beyond the current MVP.
 
 ---
 
