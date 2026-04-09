@@ -5486,6 +5486,50 @@ export default {
       }
     }
 
+    if (url.pathname.match(/^\/api\/platform\/admin\/tenants\/([^/]+)\/go-live-readiness$/) && request.method === "GET") {
+      try {
+        const routeMatch = url.pathname.match(/^\/api\/platform\/admin\/tenants\/([^/]+)\/go-live-readiness$/);
+        const companyId = Number(decodeURIComponent(String(routeMatch?.[1] || '')).trim() || 0);
+        const pin = String(url.searchParams.get('pin') || request.headers.get('x-admin-pin') || '').trim();
+        const auth = await authorizePlatformOperator(env, pin);
+        if (!auth.ok) {
+          return Response.json({ ok: false, error: auth.error }, { status: auth.status });
+        }
+
+        if (!companyId) {
+          return Response.json({ ok: false, error: 'Company id is required' }, { status: 400 });
+        }
+
+        const [company, operationalSettings, websiteRelease, latestDomainRequest] = await Promise.all([
+          getCompanyProfile(env, companyId),
+          getOperationalSettingsMap(env, companyId),
+          getLatestWebsiteRelease(env, companyId),
+          getLatestCustomDomainRequest(env, companyId)
+        ]);
+
+        if (!company?.id) {
+          return Response.json({ ok: false, error: 'Tenant not found' }, { status: 404 });
+        }
+
+        const readiness = await getGoLiveReadiness(env, companyId, {
+          company,
+          operationalSettings,
+          websiteRelease
+        });
+
+        return Response.json({
+          ok: true,
+          company_id: companyId,
+          company,
+          release: websiteRelease,
+          latest_domain_request: latestDomainRequest,
+          goLiveReadiness: readiness
+        });
+      } catch (e) {
+        return Response.json({ ok: false, error: e.message }, { status: 500 });
+      }
+    }
+
     if (url.pathname === "/api/admin/payment/retry-checkout" && request.method === "POST") {
       return runTenantRoute(async ({ companyId }) => {
         try {

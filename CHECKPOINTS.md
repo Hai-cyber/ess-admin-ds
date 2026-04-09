@@ -462,6 +462,8 @@ The remaining CP-3 work should be executed in this order.
 
 **Goal**: Align SaaS Admin with the business model so onboarding, billing, publish review, and domain ops can be operated without hidden manual steps.
 
+**2026-04-09 update**: Completed in the current operator surface. SaaS Admin now combines signup/payment context, release workflow state, domain state, and operator-only go-live blocker inspection in one console.
+
 **Must be true**:
 - operator can follow a tenant from signup to paid to provisioned to live
 - billing/payment issues are visible and remediable from SaaS Admin

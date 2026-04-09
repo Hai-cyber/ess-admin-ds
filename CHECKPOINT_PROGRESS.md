@@ -16,7 +16,7 @@
 |-----------|-----------|--------|----------|-------|-----|
 | CP-1 | Tenant Isolation | ✅ DONE | E2E_TEST_SUMMARY.md | Team | ✅ Done |
 | CP-2 | Booking MVP | ✅ DONE | Local runtime verified: booking form render, board, staff-create, booking list, stage updates | Team | ✅ Done |
-| CP-3 | Admin UI Setup | ⏳ 95% | Tenant admin now includes the go-live gating console, release lifecycle timeline, explicit submit/approve/publish/rollback workflow, payment remediation, and a custom-domain upgrade MVP; remaining work is now centered on CP-3C/3D plus storage/custom-domain hardening | @dev-lead | Apr 12 |
+| CP-3 | Admin UI Setup | ⏳ 96% | Tenant admin now includes the go-live gating console, release lifecycle timeline, explicit submit/approve/publish/rollback workflow, while SaaS admin now includes a tenant workflow overview with operator blocker inspection; remaining work is now centered on CP-3D plus storage/custom-domain hardening | @dev-lead | Apr 12 |
 | CP-10 | Platform Site + Self-Service Signup | ⏳ 99% | Live runtime verified, wildcard tenant subdomains resolve, moderation/release workflow is now explicit end to end, public tenant payload serves latest published release snapshots, and signup remains subdomain-first | @dev-lead | Apr 12 |
 | **Phase 1 Total** | — | **93%** | — | — | **Apr 15** |
 
@@ -90,6 +90,7 @@
 ✅ CP-3B publish/release workflow is now an explicit state machine: `draft -> pending_review -> approved -> published -> rolled_back`
 ✅ Tenant admin now separates release submission from live publish, and approved releases must be published through a dedicated action
 ✅ SaaS Admin now renders workflow-oriented release status, hints, and mini timelines instead of a raw review list only
+✅ SaaS Admin now includes a tenant workflow overview card layer and operator-only go-live blocker inspection per tenant
 ✅ Local smoke verification now covers `/api/contact/create`, platform contact, publish review, suspend, quarantine, and host-based public blocking
 ✅ Explicit `production` env now deploys against a real D1 database id
 ⏳ Production public ingress still blocked by Cloudflare `1050` until a real route is attached
@@ -99,10 +100,9 @@
 **Blockers**: deployment-storage publish path, custom-domain upgrade hardening, Stripe test credentials, and Twilio credentials or a local OTP stub
 
 **Next checkpoint steps**:
-1. CP-3C — finish operator tooling so signup, payment remediation, release workflow, and domain ops form one coherent operating surface.
-2. CP-3D — clean up admin navigation and permissions after the critical go-live and release flow is stable.
-3. Publish tenant website output + assets to deployment storage and validate the subdomain-first public serving path.
-4. Harden the tenant custom-domain upgrade workflow beyond the current MVP.
+1. CP-3D — clean up admin navigation and permissions after the critical go-live and release flow is stable.
+2. Publish tenant website output + assets to deployment storage and validate the subdomain-first public serving path.
+3. Harden the tenant custom-domain upgrade workflow beyond the current MVP.
 5. Keep subdomain-first signup as the default and add entitlement-based custom-domain upgrade requests.
 6. Decide Twilio strategy for founder/KC locally, then close the OTP runtime gap.
 7. Trust CLI trigger state over the empty dashboard `Event Triggers` panel unless Wrangler stops reporting `schedule: 0 9 * * *`.

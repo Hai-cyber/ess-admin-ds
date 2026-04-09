@@ -50,6 +50,13 @@
     .lead-payment-timeline { margin-top: 10px; display: grid; gap: 6px; font-size: 0.8rem; color: var(--text-muted); }
     .lead-payment-event { padding: 8px 10px; border-radius: 10px; background: #fafafa; border: 1px solid var(--border); }
     .lead-controls { display: grid; grid-template-columns: 180px 1fr auto; gap: 10px; align-items: start; }
+    .operator-overview-grid { display: grid; gap: 14px; }
+    .operator-overview-card { border: 1px solid var(--border); border-radius: 16px; padding: 18px; background: #fafafa; display: grid; gap: 12px; }
+    .operator-overview-top { display: flex; justify-content: space-between; gap: 12px; align-items: start; }
+    .operator-overview-meta { font-size: 0.82rem; color: var(--text-muted); display: grid; gap: 4px; }
+    .operator-overview-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+    .operator-overview-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .operator-blockers { display: grid; gap: 6px; font-size: 0.82rem; color: var(--text-muted); }
     .review-row { display: grid; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--border); }
     .review-row:last-child { border-bottom: none; }
     .review-row.highlight { background: #fff7ed; border-radius: 16px; padding: 16px; margin: 0 -8px; border: 1px solid #fdba74; }
@@ -185,6 +192,12 @@
 
     <div class="saas-grid-bottom">
       <div class="saas-card">
+        <h2>Tenant Workflow Overview</h2>
+        <p class="meta">Follow each tenant from signup and payment through release workflow, domain state, and go-live blockers without leaving the operator console.</p>
+        <div id="saas-tenant-overview-list"></div>
+      </div>
+
+      <div class="saas-card">
         <h2>Custom Domain Upgrade Queue</h2>
         <p class="meta">Approve, verify, activate, or reject tenant custom-domain requests without blocking subdomain-first onboarding.</p>
         <div id="saas-domain-requests-list"></div>
@@ -238,10 +251,11 @@
 
     let saasPin = '';
     let saasDashboard = { pricingSettings: {}, signups: [], contacts: [], reviews: [], paymentEvents: [], customDomainRequests: [], customDomainRequestEvents: [] };
-  let reviewFilter = 'all';
-  let domainRequestFilter = 'all';
-  let domainRequestSearch = '';
-  let lastDomainRenewalRunSummary = null;
+    const operatorGoLiveReadinessByCompany = new Map();
+    let reviewFilter = 'all';
+    let domainRequestFilter = 'all';
+    let domainRequestSearch = '';
+    let lastDomainRenewalRunSummary = null;
 
     function getReviewFocusId() {
       const params = new URLSearchParams(window.location.search);
@@ -412,6 +426,7 @@
       msg.textContent = `Loaded ${data.signups.length} signups, ${data.reviews.length} review items, and ${data.contacts.length} contact leads.`;
       renderSaasPricing();
       renderSaasSignups();
+      renderSaasTenantOverview();
       renderSaasDomainRequests();
       renderSaasReviews();
       renderSaasContacts();
@@ -483,6 +498,121 @@
           </div>
         </div>
       `).join('');
+    }
+
+    function buildOperatorOverviewRows() {
+      const signups = Array.isArray(saasDashboard.signups) ? saasDashboard.signups : [];
+      const reviews = Array.isArray(saasDashboard.reviews) ? saasDashboard.reviews : [];
+      const requests = Array.isArray(saasDashboard.customDomainRequests) ? saasDashboard.customDomainRequests : [];
+      const rows = new Map();
+
+      for (const signup of signups) {
+        const companyId = Number(signup.company_id || 0);
+        if (!companyId) continue;
+        rows.set(companyId, {
+          companyId,
+          signup,
+          review: null,
+          domainRequest: null
+        });
+      }
+
+      for (const review of reviews) {
+        const companyId = Number(review.company_id || 0);
+        if (!companyId) continue;
+        const current = rows.get(companyId) || { companyId, signup: null, review: null, domainRequest: null };
+        if (!current.review) current.review = review;
+        rows.set(companyId, current);
+      }
+
+      for (const request of requests) {
+        const companyId = Number(request.company_id || 0);
+        if (!companyId) continue;
+        const current = rows.get(companyId) || { companyId, signup: null, review: null, domainRequest: null };
+        if (!current.domainRequest) current.domainRequest = request;
+        rows.set(companyId, current);
+      }
+
+      return Array.from(rows.values()).sort((left, right) => {
+        const leftTime = new Date(left.signup?.created_at || left.review?.created_at || left.domainRequest?.created_at || 0).getTime();
+        const rightTime = new Date(right.signup?.created_at || right.review?.created_at || right.domainRequest?.created_at || 0).getTime();
+        return rightTime - leftTime;
+      });
+    }
+
+    function summarizeOperatorBlockers(row, readinessPayload) {
+      const blockers = [];
+      const paymentStatus = String(row.signup?.payment_status || '').toLowerCase();
+      if (paymentStatus && !['demo_paid', 'stripe_paid'].includes(paymentStatus)) {
+        blockers.push(`Payment status is ${paymentStatus}.`);
+      }
+
+      const workflowState = row.review ? getReviewWorkflowState(row.review) : 'draft';
+      if (row.review && workflowState === 'pending_review') {
+        blockers.push('Release is still pending operator review.');
+      }
+      if (row.review && workflowState === 'approved') {
+        blockers.push('Release is approved but the tenant still needs to publish it live.');
+      }
+
+      const domainStatus = String(row.domainRequest?.request_status || '').toLowerCase();
+      if (domainStatus && !['active', 'rejected'].includes(domainStatus)) {
+        blockers.push(`Custom domain request is ${domainStatus.replace(/_/g, ' ')}.`);
+      }
+
+      const readinessItems = Array.isArray(readinessPayload?.goLiveReadiness?.items) ? readinessPayload.goLiveReadiness.items : [];
+      blockers.push(
+        ...readinessItems
+          .filter((item) => item.requiredForGoLive && !item.ok)
+          .slice(0, 3)
+          .map((item) => item.detail || item.label || item.key || 'Missing go-live requirement.')
+      );
+
+      return blockers.length ? blockers : ['No immediate blocker detected from the current operator view.'];
+    }
+
+    function renderSaasTenantOverview() {
+      const el = document.getElementById('saas-tenant-overview-list');
+      if (!el) return;
+      const rows = buildOperatorOverviewRows();
+      if (!rows.length) {
+        el.innerHTML = '<p class="text-muted">No tenant workflow items yet.</p>';
+        return;
+      }
+
+      el.innerHTML = `<div class="operator-overview-grid">${rows.map((row) => {
+        const signup = row.signup || {};
+        const review = row.review || {};
+        const domainRequest = row.domainRequest || {};
+        const readinessPayload = operatorGoLiveReadinessByCompany.get(row.companyId);
+        const blockers = summarizeOperatorBlockers(row, readinessPayload);
+        const workflowState = row.review ? getReviewWorkflowState(review) : 'draft';
+        const domainBadgeStatus = String(domainRequest.request_status || '').toLowerCase();
+        return `
+          <div class="operator-overview-card">
+            <div class="operator-overview-top">
+              <div>
+                <div class="lead-name">${escapeHtml(signup.restaurant_name || review.company_name || `Tenant ${row.companyId}`)}</div>
+                <div class="operator-overview-meta">
+                  <div>company: ${escapeHtml(String(row.companyId))} • plan: ${escapeHtml(signup.plan || 'n/a')} • subdomain: ${escapeHtml(signup.subdomain || review.subdomain || 'n/a')}</div>
+                  <div>payment: ${escapeHtml(String(signup.payment_status || 'n/a'))} • release: ${escapeHtml(humanizeReviewWorkflowState(workflowState))} • domain: ${escapeHtml(domainBadgeStatus ? domainBadgeStatus.replace(/_/g, ' ') : 'none')}</div>
+                </div>
+              </div>
+              <div class="operator-overview-badges">
+                ${signup.payment_status ? statusBadge(signup.payment_status) : ''}
+                ${row.review ? statusBadge(workflowState) : statusBadge('new')}
+                ${domainBadgeStatus ? statusBadge(domainBadgeStatus === 'active' ? 'approved' : 'pending') : ''}
+              </div>
+            </div>
+            <div class="operator-blockers">${blockers.map((item) => `<div>${escapeHtml(item)}</div>`).join('')}</div>
+            <div class="operator-overview-actions">
+              <button class="btn btn-sm btn-outline" onclick="loadTenantGoLiveReadiness('${row.companyId}')">${readinessPayload ? 'Refresh blockers' : 'Load blockers'}</button>
+              <button class="btn btn-sm btn-outline" onclick="window.open('/admin?company_id=${encodeURIComponent(row.companyId)}', '_blank', 'noopener')">Open tenant admin</button>
+              <button class="btn btn-sm btn-outline" onclick="window.open('/website-master/index.html?company_id=${encodeURIComponent(row.companyId)}', '_blank', 'noopener')">Open preview</button>
+            </div>
+          </div>
+        `;
+      }).join('')}</div>`;
     }
 
     function renderSaasDomainRequests() {
@@ -792,6 +922,15 @@
         window.open(data.checkout_url, '_blank', 'noopener');
       }
       await loadSaasDashboard();
+    }
+
+    async function loadTenantGoLiveReadiness(companyId) {
+      if (!saasPin) return alert('Load SaaS admin first.');
+      const res = await fetch(`/api/platform/admin/tenants/${encodeURIComponent(companyId)}/go-live-readiness?pin=${encodeURIComponent(saasPin)}`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) return alert(data.error || 'Failed to load tenant go-live blockers.');
+      operatorGoLiveReadinessByCompany.set(Number(companyId), data);
+      renderSaasTenantOverview();
     }
 
     async function runDomainRequestAction(requestId, action) {

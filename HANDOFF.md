@@ -131,7 +131,7 @@
 - [ ] Payment integration setup
 - [ ] Final deployment publish path verification
 
-**What's blocked**: deployment publish path completion, custom-domain upgrade hardening beyond MVP, plus founder/KC OTP runtime depending on Twilio credentials
+**What's blocked**: deployment publish path completion, custom-domain upgrade hardening beyond MVP, admin IA cleanup, plus founder/KC OTP runtime depending on Twilio credentials
 
 **CP-3 execution plan now fixed into four sub-checkpoints**:
 - `CP-3A` Go-Live Console Gating
@@ -204,7 +204,7 @@ Recommended order: `3A -> 3B -> 3C -> 3D`
 |-----------|--------|----------|----------|
 | CP-1: Tenant Isolation | ✅ DONE | E2E_TEST_SUMMARY.md | None |
 | CP-2: Booking MVP | ✅ DONE | Local runtime verified on 2026-03-30 | None |
-| CP-3: Admin UI Setup | 🔄 95% | Admin routes/UI live; go-live console and explicit release workflow are now active; remaining work is operator polish + IA cleanup | CP-3C / CP-3D |
+| CP-3: Admin UI Setup | 🔄 96% | Admin routes/UI live; go-live console, explicit release workflow, and operator overview are now active; remaining work is IA cleanup plus deployment/custom-domain hardening | CP-3D |
 | CP-10: Platform Site + Self-Service Signup | 🔄 99% | Platform home/contact/admin/signup verified live; wildcard tenant subdomains resolve; moderation/release workflow is explicit; fixed-skin website contract and validator run in the real submit path | Deployment publish path + custom-domain hardening + Twilio for founder/KC |
 | **Phase 1 Total** | **🔄 93%** | — | **Deployment/custom-domain/founder finalization** |
 
@@ -214,12 +214,12 @@ Recommended order: `3A -> 3B -> 3C -> 3D`
 
 ### Immediate (This week - Apr 2-5)
 
-**Task 1**: Complete CP-3C operator surface
-- unify signup follow-up, payment remediation, release workflow, and domain operations into one operator flow
-- make operator context explain why a tenant is blocked from live release
+**Task 1**: Complete CP-3D admin IA and permissions cleanup
+- regroup tenant/admin surfaces around clearer information architecture and reduce leftover duplicated actions
+- verify permissions still match the final release/go-live workflow
 - Time estimate: 2-3 days
 - Owner: @dev-lead
-- Files: `src/index.js` + `public/platform/admin.html`
+- Files: `src/index.js` + `public/admin.html` + `public/platform/admin.html`
 
 **Task 2**: Finish deployment publish path
 - publish tenant website output and assets to the delivery/storage layer

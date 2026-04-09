@@ -1225,6 +1225,28 @@ describe('ESSKULTUR worker', () => {
 		expect(body.reviews.some((item) => Object.prototype.hasOwnProperty.call(item, 'release_status'))).toBe(true);
 	});
 
+	it('returns tenant go-live blockers for platform operators', async () => {
+		await initializeDatabase(env.DB);
+
+		await env.DB.prepare(
+			`UPDATE companies SET email = '', phone = '' WHERE id = ?`
+		).bind(1).run();
+
+		const request = new Request('http://localhost/api/platform/admin/tenants/1/go-live-readiness?pin=1234');
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(200);
+		const body = await response.json();
+		expect(body.ok).toBe(true);
+		expect(Number(body.company_id || 0)).toBe(1);
+		expect(Array.isArray(body.goLiveReadiness?.items)).toBe(true);
+		const phoneItem = body.goLiveReadiness.items.find((item) => String(item.key || '') === 'contact_phone');
+		expect(phoneItem).toBeTruthy();
+		expect(Boolean(phoneItem?.ok)).toBe(false);
+	});
+
 	it('accepts public website contact submissions and stores them in contacts', async () => {
 		await initializeDatabase(env.DB);
 
