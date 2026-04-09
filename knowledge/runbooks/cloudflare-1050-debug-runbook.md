@@ -7,6 +7,9 @@ Provide a concrete, screen-by-screen procedure for debugging Cloudflare `1050` r
 This runbook is specifically written for the current production hostnames:
 
 - `prod.gooddining.app`
+
+Historical optional hostnames that were tested and later removed from the active Wrangler config:
+
 - `api.prod.gooddining.app`
 - `platform.prod.gooddining.app`
 
@@ -25,8 +28,8 @@ Do not start in application code unless one of the checks below proves the reque
 As of 2026-04-09:
 
 - `prod.gooddining.app` is working
-- `api.prod.gooddining.app` returns `1050`
-- `platform.prod.gooddining.app` returns `1050`
+- `api.prod.gooddining.app` returned `1050` when it was tested as an additional production hostname
+- `platform.prod.gooddining.app` returned `1050` when it was tested as an additional production hostname
 - DNS resolves for both failing hosts
 - TLS certificates are presented for both failing hosts
 
@@ -34,7 +37,7 @@ This means the highest-probability failure area is Cloudflare custom-domain host
 
 ## Preconditions
 
-Before opening the dashboard, confirm these from terminal:
+Before opening the dashboard, confirm these from terminal when debugging optional extra hostnames:
 
 1. `dig +short api.prod.gooddining.app`
 2. `dig +short platform.prod.gooddining.app`
@@ -240,7 +243,7 @@ Current observed behavior:
 
 ## Recommended Recovery Sequence For This Project
 
-For `api.prod.gooddining.app` and `platform.prod.gooddining.app`:
+For optional hostnames like `api.prod.gooddining.app` and `platform.prod.gooddining.app`:
 
 1. Open Worker `ess-admin-ds-prod`
 2. Open `Domains` / `Custom Domains`
