@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ESSKULTUR Staff Admin</title>
+  <title>ESSKULTUR Restaurant Admin</title>
   <style>
     :root {
       --brand: #A54A7B;
@@ -452,6 +452,59 @@
       gap: 20px;
     }
 
+    .settings-shell {
+      display: grid;
+      gap: 16px;
+    }
+
+    .settings-quicknav {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .settings-quicknav-btn {
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .settings-quicknav-btn:hover {
+      border-color: var(--brand);
+      color: var(--brand);
+    }
+
+    .settings-role-summary {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .settings-section.hidden-by-role {
+      display: none;
+    }
+
+    .settings-section-meta {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .access-pill {
+      display: inline-block;
+      margin-left: 8px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      background: var(--bg-tertiary);
+    }
+
     .settings-section {
       background: var(--bg-secondary);
       border: 1px solid var(--border);
@@ -767,12 +820,12 @@
   <div class="container">
     <!-- HEADER -->
     <div class="header">
-      <div class="header-title">🍽️ ESSKULTUR Staff Admin</div>
+      <div class="header-title">🍽️ ESSKULTUR Restaurant Admin</div>
       <div class="header-nav">
-        <button class="nav-btn active" data-page="contacts">💬 Messages Board</button>
+        <button class="nav-btn active" data-page="contacts">💬 Inbox</button>
         <button class="nav-btn" data-page="bookings">📅 Bookings</button>
-        <button class="nav-btn" data-page="customers">👥 Customers</button>
-        <button class="nav-btn" data-page="settings">⚙️ Settings</button>
+        <button class="nav-btn" data-page="customers">👥 Guests</button>
+        <button class="nav-btn" data-page="settings">⚙️ Restaurant Setup</button>
       </div>
       <div class="user-info">
         <span>👤 <span id="userName">Admin</span></span>
@@ -784,7 +837,7 @@
     <div class="main">
       <!-- PAGE 1: CONTACTS -->
       <div class="page active" data-page="contacts">
-        <h2 class="page-title">💬 Messages Board</h2>
+        <h2 class="page-title">💬 Inbox</h2>
         <div class="page-search">
           <input
             type="search"
@@ -814,7 +867,7 @@
 
       <!-- PAGE 3: CUSTOMERS -->
       <div class="page" data-page="customers">
-        <h2 class="page-title">👥 Customer Book</h2>
+        <h2 class="page-title">👥 Guest CRM</h2>
         <div class="page-search">
           <input
             type="search"
@@ -829,51 +882,66 @@
 
       <!-- PAGE 4: SETTINGS -->
       <div class="page" data-page="settings">
-        <h2 class="page-title">⚙️ Settings & Admin</h2>
-        <div class="settings-grid">
-          <div class="settings-section" id="settings-company-profile">
-            <div class="settings-section-title">Restaurant Profile</div>
+        <h2 class="page-title">⚙️ Restaurant Setup</h2>
+        <div class="settings-shell">
+          <div class="settings-role-summary" id="settingsRoleSummary"></div>
+          <div class="settings-quicknav" id="settingsQuickNav"></div>
+          <div class="settings-grid">
+          <div class="settings-section" id="settings-company-profile" data-access="admin">
+            <div class="settings-section-title">Restaurant Profile <span class="access-pill">Admin</span></div>
+            <div class="settings-section-meta">Core restaurant identity, contact details, timezone, and tenant slug.</div>
             <div id="companyProfileList"></div>
           </div>
-          <div class="settings-section" id="settings-website-content">
-            <div class="settings-section-title">Website Content & Opening Hours</div>
+          <div class="settings-section" id="settings-website-content" data-access="admin">
+            <div class="settings-section-title">Website Content & Opening Hours <span class="access-pill">Admin</span></div>
+            <div class="settings-section-meta">Presentation-layer website copy, visuals, navigation labels, and machine-readable opening hours.</div>
             <div id="websiteContentList"></div>
           </div>
-          <div class="settings-section" id="settings-website-release">
-            <div class="settings-section-title">Website Release & Go Live</div>
+          <div class="settings-section" id="settings-website-release" data-access="admin">
+            <div class="settings-section-title">Website Release & Go Live <span class="access-pill">Admin</span></div>
+            <div class="settings-section-meta">Readiness checks, release lifecycle, submit/publish actions, and rollback history.</div>
             <div id="websiteReleaseList"></div>
           </div>
-          <div class="settings-section" id="settings-domain-upgrade">
-            <div class="settings-section-title">Custom Domain Upgrade</div>
+          <div class="settings-section" id="settings-domain-upgrade" data-access="admin">
+            <div class="settings-section-title">Custom Domain Upgrade <span class="access-pill">Admin</span></div>
+            <div class="settings-section-meta">Request a commercial domain upgrade, review DNS state, and track activation events.</div>
             <div id="domainUpgradeList"></div>
           </div>
-          <div class="settings-section" id="settings-payment-billing">
-            <div class="settings-section-title">Payments & Billing</div>
+          <div class="settings-section" id="settings-payment-billing" data-access="admin">
+            <div class="settings-section-title">Payments & Billing <span class="access-pill">Admin</span></div>
+            <div class="settings-section-meta">Stripe identity, accepted payment methods, and payment lifecycle visibility for the tenant.</div>
             <div id="paymentSetupList"></div>
           </div>
-          <div class="settings-section" id="settings-operations-capacity">
-            <div class="settings-section-title">Operations & Capacity</div>
+          <div class="settings-section" id="settings-operations-capacity" data-access="admin">
+            <div class="settings-section-title">Operations & Capacity <span class="access-pill">Admin</span></div>
+            <div class="settings-section-meta">Business hours, lead times, and area-capacity controls that affect booking operations.</div>
             <div id="operationalSettingsList"></div>
           </div>
-          <div class="settings-section">
-            <div class="settings-section-title">Social Profiles & Public IDs</div>
+          <div class="settings-section" id="settings-social-profiles" data-access="manager-admin">
+            <div class="settings-section-title">Social Profiles & Public IDs <span class="access-pill">Manager + Admin</span></div>
+            <div class="settings-section-meta">Public-facing social links used in outbound messages and website CTA surfaces.</div>
             <div id="socialSettingsList"></div>
           </div>
-          <div class="settings-section">
-            <div class="settings-section-title">Extra Service Modules</div>
+          <div class="settings-section" id="settings-module-toggles" data-access="admin">
+            <div class="settings-section-title">Extra Service Modules <span class="access-pill">Admin</span></div>
+            <div class="settings-section-meta">Tenant module entitlements and optional service surfaces.</div>
             <div id="moduleToggleList"></div>
           </div>
-          <div class="settings-section">
-            <div class="settings-section-title">Integrations (Founder OTP)</div>
+          <div class="settings-section" id="settings-integrations" data-access="admin">
+            <div class="settings-section-title">Integrations (Founder OTP) <span class="access-pill">Admin</span></div>
+            <div class="settings-section-meta">Integration status for Founder/KC OTP and related secrets-managed runtime config.</div>
             <div id="integrationConfigList"></div>
           </div>
-          <div class="settings-section">
-            <div class="settings-section-title">Marketing Media Library</div>
+          <div class="settings-section" id="settings-media-library" data-access="manager-admin">
+            <div class="settings-section-title">Marketing Media Library <span class="access-pill">Manager + Admin</span></div>
+            <div class="settings-section-meta">Reusable restaurant imagery for outbound campaigns and marketing surfaces.</div>
             <div id="mediaAssetsList"></div>
           </div>
-          <div class="settings-section" id="settings-staff-management">
-            <div class="settings-section-title">Staff Management</div>
+          <div class="settings-section" id="settings-staff-management" data-access="admin">
+            <div class="settings-section-title">Staff Management <span class="access-pill">Admin</span></div>
+            <div class="settings-section-meta">PIN users, roles, permissions, and active staff access.</div>
             <div class="staff-list" id="staffList"></div>
+          </div>
           </div>
         </div>
       </div>
@@ -1427,6 +1495,49 @@
       requestAnimationFrame(() => {
         const target = document.getElementById(sectionId);
         target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+
+    function canAccessSettingsSection(access) {
+      const normalized = String(access || 'admin').trim().toLowerCase();
+      if (normalized === 'manager-admin') return isManagerOrAdminUser();
+      if (normalized === 'admin') return isAdminUser();
+      return true;
+    }
+
+    function renderSettingsQuickNav() {
+      const summary = document.getElementById('settingsRoleSummary');
+      const nav = document.getElementById('settingsQuickNav');
+      if (!summary || !nav) return;
+
+      summary.textContent = isAdminUser()
+        ? 'Admin scope: full restaurant setup, release/go-live controls, team access, billing, and integrations.'
+        : isManagerUser()
+          ? 'Manager scope: public profile, social links, and media surfaces allowed by the current backend policy.'
+          : 'Staff scope: setup surfaces are hidden until a manager or admin signs in.';
+
+      const items = [
+        ['settings-company-profile', 'Business', 'admin'],
+        ['settings-website-content', 'Website', 'admin'],
+        ['settings-website-release', 'Go Live', 'admin'],
+        ['settings-payment-billing', 'Billing', 'admin'],
+        ['settings-domain-upgrade', 'Domain', 'admin'],
+        ['settings-staff-management', 'Team', 'admin'],
+        ['settings-social-profiles', 'Public Links', 'manager-admin'],
+        ['settings-media-library', 'Media', 'manager-admin'],
+        ['settings-integrations', 'Integrations', 'admin']
+      ];
+
+      nav.innerHTML = items
+        .filter(([, , access]) => canAccessSettingsSection(access))
+        .map(([sectionId, label]) => `<button class="settings-quicknav-btn" onclick="navigateToAdminSection('settings', '${sectionId}')">${escapeHtml(label)}</button>`)
+        .join('');
+    }
+
+    function applySettingsSectionVisibility() {
+      document.querySelectorAll('.settings-section[data-access]').forEach((section) => {
+        const access = section.getAttribute('data-access') || 'admin';
+        section.classList.toggle('hidden-by-role', !canAccessSettingsSection(access));
       });
     }
 
@@ -3653,6 +3764,8 @@
 
     // ==================== PAGE 4: SETTINGS ====================
     function renderSettingsPage() {
+      renderSettingsQuickNav();
+      applySettingsSectionVisibility();
       renderCompanyProfileSection();
       renderWebsiteContentSection();
       renderWebsiteReleaseSection();

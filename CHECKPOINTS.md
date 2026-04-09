@@ -477,6 +477,8 @@ The remaining CP-3 work should be executed in this order.
 
 #### CP-3D — Admin Information Architecture And Permissions Cleanup
 
+**2026-04-09 update**: Completed for the current admin surfaces. Restaurant Admin now uses product-correct naming, grouped setup navigation, and role-aware section visibility that better matches the delivered manager/admin permission split.
+
 **Goal**: Make the admin surfaces durable enough for future phases without a large navigation or permissions refactor.
 
 **Must be true**:

@@ -19,16 +19,16 @@
 ## 🎯 Current State (Right Now)
 
 ### Phase
-**Phase 1: Booking + Platform Entry (94% complete)**
+**Phase 1: Booking + Platform Entry (95% complete)**
 - ETA: April 15, 2026
 - Status: 🟡 ON TRACK (remaining: tenant custom-domain upgrade workflow + founder/KC OTP runtime fix)
 
 ### Overall Progress
 ```
-█████████▓ 94%
+██████████ 95%
 
-Completed: 94%
-In Progress: 3% (deployment publish path + admin IA cleanup)
+Completed: 95%
+In Progress: 2% (deployment publish path + custom-domain hardening)
 Blocked: 3% (founder/KC OTP delivery in local runtime)
 Not Started: 0%
 ```
@@ -97,6 +97,7 @@ Not Started: 0%
 - [x] Tenant admin now separates release submission from live publish through a dedicated approved-release publish action
 - [x] SaaS Admin now shows workflow-oriented release states, hints, and mini timelines for moderation items
 - [x] SaaS Admin now includes a tenant workflow overview and operator-only go-live blocker inspection per tenant
+- [x] Restaurant Admin now uses a role-aware setup shell with product-correct naming, grouped settings quick navigation, and section visibility aligned to manager/admin scope
 - [x] Local smoke tests verified health, plans, signup policy, platform contact, platform admin dashboard, website payload, publish review, suspend, and quarantine actions on localhost
 - [x] Explicit `production` Wrangler environment deploy executed successfully against a real D1 database id
 
@@ -215,7 +216,7 @@ All other phases (2-5) planned, not started:
 - **Impact**: CP-10 remains partial, not ship-ready
 - **ETA Fix**: Apr 12 onward
 - **Owner**: @dev-lead
-- **Action Item**: Finish deployment output path, then harden BYOD custom-domain upgrade/activation beyond the current MVP and complete CP-3D cleanup.
+- **Action Item**: Finish deployment output path, then harden BYOD custom-domain upgrade/activation beyond the current MVP.
 
 ---
 
