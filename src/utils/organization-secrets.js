@@ -77,23 +77,35 @@ export async function decryptOrganizationSecret(record, masterKeyRaw) {
 
 export async function upsertOrganizationSecret(env, organizationId, key, plainValue, updatedBy) {
   const encrypted = await encryptOrganizationSecret(plainValue, env.TENANT_SECRETS_MASTER_KEY);
+  const now = new Date().toISOString();
+  const updateResult = await env.DB.prepare(`
+    UPDATE organization_secrets
+    SET encrypted_value = ?, iv = ?, algorithm = ?, updated_at = ?, updated_by = ?
+    WHERE organization_id = ? AND key = ?
+  `).bind(
+    encrypted.encryptedValue,
+    encrypted.iv,
+    encrypted.algorithm,
+    now,
+    updatedBy,
+    organizationId,
+    key
+  ).run();
+
+  if (Number(updateResult?.meta?.changes || 0) > 0) {
+    return;
+  }
 
   await env.DB.prepare(`
     INSERT INTO organization_secrets (organization_id, key, encrypted_value, iv, algorithm, updated_at, updated_by)
     VALUES (?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(organization_id, key) DO UPDATE SET
-      encrypted_value = excluded.encrypted_value,
-      iv = excluded.iv,
-      algorithm = excluded.algorithm,
-      updated_at = excluded.updated_at,
-      updated_by = excluded.updated_by
   `).bind(
     organizationId,
     key,
     encrypted.encryptedValue,
     encrypted.iv,
     encrypted.algorithm,
-    new Date().toISOString(),
+    now,
     updatedBy
   ).run();
 }

@@ -1488,22 +1488,21 @@ async function getModuleSettingsMap(env, companyId) {
 }
 
 async function upsertSettingValue(env, companyId, key, value, description, updatedBy) {
+  const now = new Date().toISOString();
+  const updateResult = await env.DB.prepare(`
+    UPDATE settings
+    SET value = ?, description = ?, updated_at = ?, updated_by = ?
+    WHERE company_id = ? AND key = ?
+  `).bind(value, description, now, updatedBy, companyId, key).run();
+
+  if (Number(updateResult?.meta?.changes || 0) > 0) {
+    return;
+  }
+
   await env.DB.prepare(`
     INSERT INTO settings (company_id, key, value, description, updated_at, updated_by)
     VALUES (?, ?, ?, ?, ?, ?)
-    ON CONFLICT(company_id, key) DO UPDATE SET
-      value = excluded.value,
-      description = excluded.description,
-      updated_at = excluded.updated_at,
-      updated_by = excluded.updated_by
-  `).bind(
-    companyId,
-    key,
-    value,
-    description,
-    new Date().toISOString(),
-    updatedBy
-  ).run();
+  `).bind(companyId, key, value, description, now, updatedBy).run();
 }
 
 async function getCompanyProfile(env, companyId) {
@@ -4120,29 +4119,30 @@ async function upsertFounderOtpRecord(env, companyId, phone, otpCode, nowIso) {
   const otpId = `otp_${companyId}_${Date.now()}`;
   const expiresAt = new Date(Date.now() + FOUNDER_OTP_EXPIRES_SECONDS * 1000).toISOString();
 
-  await env.DB.prepare(`
-    INSERT INTO otp_cache (
-      id, company_id, phone, otp_code, expires_at,
-      created_at, attempts, last_attempt, verified
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(company_id, phone) DO UPDATE SET
-      otp_code = excluded.otp_code,
-      expires_at = excluded.expires_at,
-      created_at = excluded.created_at,
-      attempts = 0,
-      last_attempt = excluded.last_attempt,
-      verified = 0
-  `).bind(
-    otpId,
-    companyId,
-    phone,
-    otpCode,
-    expiresAt,
-    nowIso,
-    0,
-    nowIso,
-    0
-  ).run();
+  const updateResult = await env.DB.prepare(`
+    UPDATE otp_cache
+    SET otp_code = ?, expires_at = ?, created_at = ?, attempts = 0, last_attempt = ?, verified = 0
+    WHERE company_id = ? AND phone = ?
+  `).bind(otpCode, expiresAt, nowIso, nowIso, companyId, phone).run();
+
+  if (Number(updateResult?.meta?.changes || 0) === 0) {
+    await env.DB.prepare(`
+      INSERT INTO otp_cache (
+        id, company_id, phone, otp_code, expires_at,
+        created_at, attempts, last_attempt, verified
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      otpId,
+      companyId,
+      phone,
+      otpCode,
+      expiresAt,
+      nowIso,
+      0,
+      nowIso,
+      0
+    ).run();
+  }
 
   return { otpId, expiresAt };
 }
@@ -5294,6 +5294,7 @@ export default {
     }
 
     if (url.pathname === "/api/platform/signup" && request.method === "POST") {
+      let signupStage = 'parse_request';
       try {
         const body = await request.json().catch(() => ({}));
         const restaurantName = String(body?.restaurant_name || '').trim();
@@ -5315,6 +5316,7 @@ export default {
           return Response.json({ ok: false, code: 'validation_failed', message: 'Restaurant name, owner email, plan, and subdomain are required.' }, { status: 400 });
         }
 
+        signupStage = 'evaluate_subdomain_policy';
         const subdomainPolicy = await evaluateSubdomainPolicy(env, requestedSlug);
         if (subdomainPolicy.reasonCodes.includes('subdomain_invalid_syntax')) {
           return Response.json({ ok: false, code: 'validation_failed', message: 'Subdomain must use lowercase letters, numbers, and hyphens.' }, { status: 400 });
@@ -5357,11 +5359,13 @@ export default {
           return Response.json({ ok: false, code: 'validation_failed', message: 'Admin PIN must be exactly 4 digits.' }, { status: 400 });
         }
 
+        signupStage = 'check_existing_email';
         const existingEmail = await env.DB.prepare(`SELECT id FROM companies WHERE lower(email) = lower(?) LIMIT 1`).bind(ownerEmail).first();
         if (existingEmail?.id) {
           return Response.json({ ok: false, code: 'email_already_registered', message: 'This owner email is already registered.' }, { status: 409 });
         }
 
+        signupStage = 'allocate_ids';
         const now = new Date().toISOString();
         const [organizationId, companyId, pricingSettings] = await Promise.all([
           getNextIntegerId(env, 'organizations'),
@@ -5369,6 +5373,7 @@ export default {
           getPlatformMarketingSettings(env)
         ]);
 
+        signupStage = 'validate_payment_methods';
         const enabledPlatformMethods = getEnabledPlatformPaymentMethods(pricingSettings);
         if (!enabledPlatformMethods.length) {
           return Response.json({ ok: false, code: 'payment_methods_unavailable', message: 'No payment methods are currently enabled for signup.' }, { status: 409 });
@@ -5383,8 +5388,10 @@ export default {
           }, { status: 409 });
         }
 
+        signupStage = 'build_payment_summary';
         let paymentSummary = computeDemoPaymentSummary(plan, staffUsers, extras, pricingSettings, demoPaymentMethod);
         if (demoPaymentMethod === 'bankcard' && canUseStripeCheckout(env)) {
+          signupStage = 'create_stripe_checkout';
           const chargeAmountEur = Number(paymentSummary.dueTodayEur || 0) > 0
             ? Number(paymentSummary.dueTodayEur || 0)
             : Number(paymentSummary.recurringMonthlyEur || 0);
@@ -5419,6 +5426,7 @@ export default {
           };
         }
 
+        signupStage = 'insert_organization';
         await env.DB.prepare(`
           INSERT INTO organizations (id, slug, name, billing_email, phone, is_active, timezone, created_at, updated_at)
           VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?)
@@ -5433,8 +5441,10 @@ export default {
           now
         ).run();
 
+        signupStage = 'clone_organization_defaults';
         await cloneOrganizationDefaults(env, PLATFORM_OPERATOR_COMPANY_ID, organizationId, 'platform-signup');
 
+        signupStage = 'insert_company';
         await env.DB.prepare(`
           INSERT INTO companies (id, organization_id, subdomain, name, email, phone, is_active, timezone, created_at, updated_at)
           VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
@@ -5450,14 +5460,17 @@ export default {
           now
         ).run();
 
+        signupStage = 'update_company_state';
         await env.DB.prepare(`
           UPDATE companies
           SET subdomain_status = 'active', website_status = 'draft', trust_state = 'trial_limited', risk_score = 0
           WHERE id = ?
         `).bind(companyId).run();
 
+        signupStage = 'reserve_subdomain';
         await upsertSubdomainReservation(env, requestedSlug, companyId, 'reserved', 'active_company_slug', 'platform-signup');
 
+        signupStage = 'insert_admin_staff';
         await env.DB.prepare(`
           INSERT INTO staff (id, company_id, name, pin, role, is_active, permissions, created_at, updated_at, created_by, updated_by)
           VALUES (?, ?, ?, ?, 'admin', 1, ?, ?, ?, ?, ?)
@@ -5502,10 +5515,12 @@ export default {
           country_code: country
         };
 
+        signupStage = 'write_initial_settings';
         for (const [key, value] of Object.entries(initialSettings)) {
           await upsertSettingValue(env, companyId, key, String(value || ''), `Platform signup setting: ${key}`, 'platform-signup');
         }
 
+        signupStage = 'write_plan_module_overrides';
         const planModuleOverrides = getPlanModuleOverrides(plan);
         for (const [key, enabled] of Object.entries(planModuleOverrides)) {
           await upsertSettingValue(
@@ -5520,6 +5535,7 @@ export default {
 
         const signupRecordId = crypto.randomUUID();
 
+        signupStage = 'insert_platform_signup_record';
         await env.DB.prepare(`
           INSERT INTO platform_signups (
             id, company_id, organization_id, restaurant_name, owner_email, owner_phone, subdomain, plan,
@@ -5548,6 +5564,7 @@ export default {
           now
         ).run();
 
+        signupStage = 'log_payment_event';
         await logPlatformSignupPaymentEvent(env, {
           signupId: signupRecordId,
           companyId,
@@ -5581,6 +5598,11 @@ export default {
           status: 'trial_active'
         }, { status: 201 });
       } catch (e) {
+        console.error('platform_signup_failed', {
+          stage: typeof signupStage === 'string' ? signupStage : 'unknown',
+          error: e.message,
+          stack: e.stack || null
+        });
         return Response.json({ ok: false, error: e.message }, { status: 500 });
       }
     }
@@ -6054,47 +6076,69 @@ export default {
         const now = new Date().toISOString();
         const customerId = existing?.id || `customer_${companyId}_${Date.now()}`;
 
-        await env.DB.prepare(`
-          INSERT INTO customers (
-            id, company_id, phone, name, email,
-            founder_status, founder_level, founder_terms_accepted, kc_terms_accepted,
-            otp_verified, sms_opt_in, opt_in_text, opt_in_timestamp,
-            created_at, updated_at, created_by, updated_by, notes
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          ON CONFLICT(company_id, phone) DO UPDATE SET
-            name = excluded.name,
-            email = COALESCE(excluded.email, customers.email),
-            founder_status = excluded.founder_status,
-            founder_level = excluded.founder_level,
-            founder_terms_accepted = excluded.founder_terms_accepted,
-            kc_terms_accepted = excluded.kc_terms_accepted,
-            otp_verified = excluded.otp_verified,
-            sms_opt_in = excluded.sms_opt_in,
-            opt_in_text = excluded.opt_in_text,
-            opt_in_timestamp = excluded.opt_in_timestamp,
-            updated_at = excluded.updated_at,
-            updated_by = excluded.updated_by,
-            notes = excluded.notes
-        `).bind(
-          customerId,
-          companyId,
-          phone,
-          name,
-          email || null,
-          'pending_verification',
-          'trial',
-          founderTermsFlag,
-          kcTermsFlag,
-          0,
-          1,
-          optInText,
-          now,
-          now,
-          now,
-          'founder_form',
-          'founder_form',
-          notes
-        ).run();
+        if (existing?.id) {
+          await env.DB.prepare(`
+            UPDATE customers
+            SET name = ?,
+                email = COALESCE(?, email),
+                founder_status = ?,
+                founder_level = ?,
+                founder_terms_accepted = ?,
+                kc_terms_accepted = ?,
+                otp_verified = ?,
+                sms_opt_in = ?,
+                opt_in_text = ?,
+                opt_in_timestamp = ?,
+                updated_at = ?,
+                updated_by = ?,
+                notes = ?
+            WHERE company_id = ? AND phone = ?
+          `).bind(
+            name,
+            email || null,
+            'pending_verification',
+            'trial',
+            founderTermsFlag,
+            kcTermsFlag,
+            0,
+            1,
+            optInText,
+            now,
+            now,
+            'founder_form',
+            notes,
+            companyId,
+            phone
+          ).run();
+        } else {
+          await env.DB.prepare(`
+            INSERT INTO customers (
+              id, company_id, phone, name, email,
+              founder_status, founder_level, founder_terms_accepted, kc_terms_accepted,
+              otp_verified, sms_opt_in, opt_in_text, opt_in_timestamp,
+              created_at, updated_at, created_by, updated_by, notes
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).bind(
+            customerId,
+            companyId,
+            phone,
+            name,
+            email || null,
+            'pending_verification',
+            'trial',
+            founderTermsFlag,
+            kcTermsFlag,
+            0,
+            1,
+            optInText,
+            now,
+            now,
+            now,
+            'founder_form',
+            'founder_form',
+            notes
+          ).run();
+        }
 
         const skipRegisterSyncForTestException = isFounderTestExceptionPhone && existingStatus === 'live' && alreadyActiveForRequestedProgram;
         const shouldSendFreshOtp = !skipRegisterSyncForTestException || isPendingRegistration;
@@ -6446,7 +6490,6 @@ export default {
           );
         }
 
-        const now = new Date().toISOString();
         const saved = [];
         const rejected = [];
 
@@ -6477,22 +6520,14 @@ export default {
             continue;
           }
 
-          await env.DB.prepare(`
-            INSERT INTO settings (company_id, key, value, description, updated_at, updated_by)
-            VALUES (?, ?, ?, ?, ?, ?)
-            ON CONFLICT(company_id, key) DO UPDATE SET
-              value = excluded.value,
-              description = excluded.description,
-              updated_at = excluded.updated_at,
-              updated_by = excluded.updated_by
-          `).bind(
+          await upsertSettingValue(
+            env,
             companyId,
             normalizedKey,
             rawValue,
             INTEGRATION_KEY_DESCRIPTIONS[normalizedKey] || 'Integration setting',
-            now,
             String(auth.staff.name || auth.staff.id || 'admin')
-          ).run();
+          );
 
           saved.push(normalizedKey);
         }
