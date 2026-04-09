@@ -48,14 +48,6 @@
 				{
 					"pattern": "prod.gooddining.app",
 					"custom_domain": true
-				},
-				{
-					"pattern": "api.prod.gooddining.app",
-					"custom_domain": true
-				},
-				{
-					"pattern": "platform.prod.gooddining.app",
-					"custom_domain": true
 				}
 			],
 			"triggers": {

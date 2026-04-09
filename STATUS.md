@@ -83,9 +83,8 @@ Not Started: 0%
 - [x] Managed domain renewal reminder flow now has a runnable platform-admin trigger plus a scheduled handler path
 - [x] Production env now has a dedicated custom-domain ingress target at `prod.gooddining.app`
 - [x] Managed domain renewal flow now supports reminder preview, forced overdue escalation, and operator digest delivery
-- [x] Production ingress config now includes `api.prod.gooddining.app` and `platform.prod.gooddining.app`
-- [ ] Additional production hostnames `api.prod.gooddining.app` and `platform.prod.gooddining.app` still need re-check because they currently return Cloudflare `1050`
-- [x] Investigation confirmed those hostnames already resolve in DNS and present TLS certificates; the remaining problem is Cloudflare-side host activation/routing
+- [x] Production ingress strategy is simplified to a single hostname: `prod.gooddining.app`
+- [x] Extra production sub-hosts were removed from Wrangler config because they were only adding Cloudflare `1050` debugging noise
 - [x] Cloudflare dashboard `Event Triggers` view can remain empty even though Wrangler confirms `schedule: 0 9 * * *` is attached to `ess-admin-ds-prod`
 - [x] Public website payload now includes structured `opening_hours_schedule` alongside legacy open/close values
 - [x] Wildcard tenant subdomain routing and host-based website payload resolution verified live on `gooddining.app`
