@@ -406,6 +406,7 @@
               <option value="renewal" ${domainRequestFilter === 'renewal' ? 'selected' : ''}>Renewal attention</option>
               <option value="health" ${domainRequestFilter === 'health' ? 'selected' : ''}>Health issues</option>
             </select>
+            <button class="btn btn-sm btn-outline" onclick="runDomainRenewalReminders()">Run renewal reminders</button>
           </div>
         </div>
       ` + filteredRequests.map((row) => `
@@ -454,6 +455,20 @@
     function updateDomainRequestSearch(value) {
       domainRequestSearch = String(value || '');
       renderSaasDomainRequests();
+    }
+
+    async function runDomainRenewalReminders() {
+      if (!saasPin) return alert('Load SaaS admin first.');
+      const res = await fetch('/api/platform/admin/domain-renewals/run-reminders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: saasPin })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) return alert(data.error || 'Failed to run renewal reminders.');
+      const summary = data.summary || {};
+      await loadSaasDashboard();
+      alert(`Renewal reminder run complete. Reminded: ${Number(summary.reminded || 0)}, updated: ${Number(summary.updated || 0)}, skipped: ${Number(summary.skipped || 0)}.`);
     }
 
     function renderSaasReviews() {

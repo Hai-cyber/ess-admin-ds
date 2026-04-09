@@ -16,7 +16,7 @@
 - Founder/KC, booking-stage, and admin profile save flows are internal-first and no longer rely on Odoo in the critical path.
 - The outer duplicate app tree was collapsed into a single root repository and the broken nested gitlink was removed.
 - Moderation review queue, operator actions, Telegram review links, and host-based tenant website gating now run in the active runtime.
-- The explicit `production` Wrangler environment deploys successfully to Cloudflare, but public ingress for that env still needs a real route because workers.dev returns `1050`.
+- The explicit `production` Wrangler environment now has a verified custom-domain ingress at `prod.gooddining.app`; workers.dev still returns `1050`, but it is no longer the public production path.
 - Schema/init and legacy utility artifacts still contain Odoo-era references and are intentionally left as follow-up cleanup, not active dependencies.
 
 ### ✅ What's Complete
@@ -77,6 +77,9 @@
 - [x] Public tenant resolution now supports custom-domain hosts directly instead of only tenant subdomains
 - [x] Activation health checks now validate both `/api/health` and `/api/website/payload` on the custom host
 - [x] Managed domain renewal reminder job design now exists as a separate runbook for future cron/queue implementation
+- [x] Managed domain renewal reminder flow now has both a scheduled handler and a manual SaaS admin trigger route
+- [x] Production env now targets `prod.gooddining.app` as a real custom-domain ingress path instead of relying on workers.dev
+- [x] `prod.gooddining.app` has been verified live for `/api/health` and `/api/platform/plans`
 - [x] Structured `opening_hours_schedule` now reaches the public website payload alongside legacy open/close fallback values
 - [x] Wildcard tenant subdomains on `gooddining.app` and demo-payment signup walkthrough have been verified live end to end
 - [x] Active Odoo runtime/helper paths removed from both worker entrypoints; active public/admin surfaces updated to first-party CRM wording
@@ -124,7 +127,7 @@
 - [ ] Payment integration setup
 - [ ] "Go Live" verification
 
-**What's blocked**: production route attachment, final publish/release workflow completion, custom-domain upgrade hardening beyond MVP, plus founder/KC OTP runtime depending on Twilio credentials
+**What's blocked**: final publish/release workflow completion, custom-domain upgrade hardening beyond MVP, plus founder/KC OTP runtime depending on Twilio credentials
 
 **Entry points**: `src/index.js`, `public/admin.html`, `public/platform/admin.html`, `public/website-master/index.html`
 
@@ -220,7 +223,7 @@
 - Verification path: `npm test` + `wrangler dev --config wrangler.jsonc` + manual smoke tests
 
 **Task 3**: Complete subdomain-first publish/domain-upgrade workflow
-- Attach a real production route for `ess-admin-ds-prod`
+- Verify and extend production ingress beyond `prod.gooddining.app` only if additional hostnames are needed
 - Keep managed subdomain as the default live host for all new tenants
 - Add custom-domain upgrade request + operator approval + DNS verification flow
 - Defer managed domain registration until the BYOD upgrade path is stable

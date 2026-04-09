@@ -1589,6 +1589,115 @@ function annotateCustomDomainRequest(domainRequest) {
   };
 }
 
+const DOMAIN_RENEWAL_REMINDER_THRESHOLDS = [30, 14, 7, 1, -1, -7];
+
+function getDomainRenewalReminderEventType(daysUntilDue) {
+  if (daysUntilDue >= 0) return `renewal_reminder_${daysUntilDue}d`;
+  return `renewal_overdue_${Math.abs(daysUntilDue)}d`;
+}
+
+function getApplicableRenewalReminderThreshold(daysUntilDue) {
+  for (const threshold of DOMAIN_RENEWAL_REMINDER_THRESHOLDS) {
+    if (daysUntilDue === threshold) return threshold;
+  }
+  return null;
+}
+
+async function hasCustomDomainRequestEvent(env, requestId, eventType) {
+  const row = await env.DB.prepare(
+    `SELECT id FROM custom_domain_request_events WHERE request_id = ? AND event_type = ? LIMIT 1`
+  ).bind(requestId, eventType).first();
+  return !!row?.id;
+}
+
+async function processManagedDomainRenewalReminders(env, options = {}) {
+  const dryRun = !!options.dryRun;
+  const actorId = String(options.actorId || 'system-renewal-job').trim();
+  const result = await env.DB.prepare(`
+    SELECT id, company_id, organization_id, requested_domain, registration_mode, request_status,
+           dns_record_type, dns_name, dns_value, request_note, operator_note, renewal_mode,
+           renewal_status, renewal_due_at, renewal_last_reminded_at, auto_renew_enabled,
+           approved_at, approved_by, dns_ready_at, verified_at, activated_at, activated_by,
+           last_health_check_at, last_health_check_status, last_health_check_note,
+           rejected_at, rejected_by, created_at, updated_at
+    FROM custom_domain_requests
+    WHERE request_status = 'active' AND renewal_mode = 'platform_managed'
+    ORDER BY renewal_due_at ASC, updated_at DESC
+  `).all();
+
+  const requests = (result?.results || []).map((item) => annotateCustomDomainRequest(item));
+  const summary = {
+    scanned: requests.length,
+    reminded: 0,
+    updated: 0,
+    skipped: 0,
+    dryRun,
+    reminders: []
+  };
+
+  for (const request of requests) {
+    const daysUntilDue = Number(request.daysUntilDue);
+    const renewalStatus = String(request.renewalStatus || request.renewal_status || 'managed_active');
+    const shouldUpdateStatus = renewalStatus !== String(request.renewal_status || '').trim();
+    const threshold = Number.isFinite(daysUntilDue) ? getApplicableRenewalReminderThreshold(daysUntilDue) : null;
+
+    if (shouldUpdateStatus && !dryRun) {
+      await updateCustomDomainRequestState(env, request.id, {
+        renewalStatus,
+        actorType: 'system',
+        actorId,
+        eventType: 'renewal_status_recomputed',
+        eventNote: `Renewal status recomputed to ${renewalStatus}.`
+      });
+      summary.updated += 1;
+    }
+
+    if (threshold === null) {
+      summary.skipped += 1;
+      continue;
+    }
+
+    const eventType = getDomainRenewalReminderEventType(threshold);
+    const alreadySent = await hasCustomDomainRequestEvent(env, request.id, eventType);
+    if (alreadySent) {
+      summary.skipped += 1;
+      continue;
+    }
+
+    const note = threshold >= 0
+      ? `Managed domain renewal is due in ${threshold} day(s).`
+      : `Managed domain renewal is overdue by ${Math.abs(threshold)} day(s).`;
+
+    if (!dryRun) {
+      await updateCustomDomainRequestState(env, request.id, {
+        renewalStatus,
+        renewalLastRemindedAt: new Date().toISOString(),
+        actorType: 'system',
+        actorId,
+        eventType,
+        eventNote: note,
+        metadataJson: {
+          daysUntilDue,
+          renewalDueAt: request.renewal_due_at || null,
+          autoRenewEnabled: Number(request.auto_renew_enabled || 0)
+        }
+      });
+    }
+
+    summary.reminded += 1;
+    summary.reminders.push({
+      requestId: request.id,
+      companyId: Number(request.company_id || 0),
+      requestedDomain: request.requested_domain,
+      eventType,
+      daysUntilDue,
+      renewalStatus
+    });
+  }
+
+  return summary;
+}
+
 async function runCustomDomainActivationHealthCheck(env, domainRequest) {
   const requestedDomain = normalizeCustomDomainHostname(domainRequest?.requested_domain || '');
   const healthCheckMode = String(env?.CUSTOM_DOMAIN_ACTIVATION_HEALTHCHECK_MODE || '').trim().toLowerCase();
@@ -4221,6 +4330,25 @@ export default {
         `).bind(followUpStatus, followUpNote, new Date().toISOString(), signupId).run();
 
         return Response.json({ ok: true, signupId, followUpStatus });
+      } catch (e) {
+        return Response.json({ ok: false, error: e.message }, { status: 500 });
+      }
+    }
+
+    if (url.pathname === "/api/platform/admin/domain-renewals/run-reminders" && request.method === "POST") {
+      try {
+        const body = await request.json().catch(() => ({}));
+        const pin = String(body?.pin || '').trim();
+        const auth = await authorizePlatformOperator(env, pin);
+        if (!auth.ok) {
+          return Response.json({ ok: false, error: auth.error }, { status: auth.status });
+        }
+
+        const summary = await processManagedDomainRenewalReminders(env, {
+          dryRun: !!body?.dryRun,
+          actorId: String(auth.staff.name || auth.staff.id || 'platform-operator')
+        });
+        return Response.json({ ok: true, summary });
       } catch (e) {
         return Response.json({ ok: false, error: e.message }, { status: 500 });
       }
@@ -6965,5 +7093,11 @@ export default {
       { ok: false, error: "Not found" },
       { status: 404 }
     );
+  },
+
+  async scheduled(controller, env, ctx) {
+    ctx.waitUntil(processManagedDomainRenewalReminders(env, {
+      actorId: `cron:${String(controller?.cron || 'scheduled').trim() || 'scheduled'}`
+    }));
   }
 };

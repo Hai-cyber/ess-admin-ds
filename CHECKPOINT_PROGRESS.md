@@ -79,6 +79,9 @@
 ✅ SaaS Admin domain queue now supports search/filter for open, active, renewal, and health-issue requests
 ✅ Public tenant resolution now supports custom-domain hosts directly and activation checks validate tenant website payload resolution on those hosts
 ✅ Managed domain renewal reminder job design is documented for future cron/queue automation
+✅ Managed domain renewal reminder flow now has manual operator trigger + scheduled execution path
+✅ Production env now targets a real custom-domain ingress path at `prod.gooddining.app`
+✅ `prod.gooddining.app` verified live with `200` responses for `/api/health` and `/api/platform/plans`
 ✅ SaaS Admin moderation queue now has summary/filter/refresh controls on top of approve/reject/suspend/quarantine actions
 ✅ Local smoke verification now covers `/api/contact/create`, platform contact, publish review, suspend, quarantine, and host-based public blocking
 ✅ Explicit `production` env now deploys against a real D1 database id

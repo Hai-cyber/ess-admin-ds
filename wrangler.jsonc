@@ -29,6 +29,15 @@
 		"production": {
 			"name": "ess-admin-ds-prod",
 			"workers_dev": true,
+			"routes": [
+				{
+					"pattern": "prod.gooddining.app",
+					"custom_domain": true
+				}
+			],
+			"triggers": {
+				"crons": ["0 9 * * *"]
+			},
 			"vars": {
 				"TURNSTILE_SITE_KEY": "0x4AAAAAACmwktNVObyT3tQ7",
 				"FOUNDER_OTP_CHANNELS": "sms",

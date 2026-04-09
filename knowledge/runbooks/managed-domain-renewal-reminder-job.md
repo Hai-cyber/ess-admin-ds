@@ -54,6 +54,12 @@ Initial channels can be manual/operator-facing:
 - operator email digest
 - future queue/cron worker output
 
+## Implemented Runtime Shape
+
+- A platform-admin route can run reminders manually: `/api/platform/admin/domain-renewals/run-reminders`
+- The Worker now exposes a `scheduled` handler for production cron execution
+- The production env cron is configured in `wrangler.jsonc`
+
 ## Suggested Future Worker Shape
 
 1. Select active managed-registration domains.

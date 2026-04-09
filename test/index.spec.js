@@ -358,6 +358,49 @@ describe('ESSKULTUR worker', () => {
 		expect(Number(body.request?.auto_renew_enabled || 0)).toBe(1);
 	});
 
+	it('runs managed domain renewal reminders from the platform admin route', async () => {
+		await initializeDatabase(env.DB);
+
+		let request = new Request('http://localhost/api/admin/domain-upgrade/request?company_id=1', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				pin: '1234',
+				requestedDomain: 'www.renewal-reminder.de',
+				registrationMode: 'managed_registration',
+				requestNote: 'Run renewal reminder test.'
+			})
+		});
+		let ctx = createExecutionContext();
+		let response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		const createBody = await response.json();
+		const requestId = String(createBody.request?.id || '');
+		expect(requestId).not.toBe('');
+
+		await env.DB.prepare(
+			`UPDATE custom_domain_requests SET request_status = 'active', renewal_due_at = ?, renewal_mode = 'platform_managed', renewal_status = 'managed_active' WHERE id = ?`
+		).bind(new Date(Date.now() + 30 * 86400000).toISOString(), requestId).run();
+
+		request = new Request('http://localhost/api/platform/admin/domain-renewals/run-reminders', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ pin: '1234' })
+		});
+		ctx = createExecutionContext();
+		response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		const body = await response.json();
+		expect(body.ok).toBe(true);
+		expect(Number(body.summary?.reminded || 0)).toBeGreaterThanOrEqual(1);
+
+		const reminderEvent = await env.DB.prepare(
+			`SELECT event_type FROM custom_domain_request_events WHERE request_id = ? AND event_type = 'renewal_reminder_30d' LIMIT 1`
+		).bind(requestId).first();
+		expect(String(reminderEvent?.event_type || '')).toBe('renewal_reminder_30d');
+	});
+
 	it('rejects tenant admin subdomain updates that hit blocked policy terms', async () => {
 		await initializeDatabase(env.DB);
 

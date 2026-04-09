@@ -12,7 +12,7 @@
 - Founder/KC, booking-stage, and admin company-profile flows now run without Odoo in the critical path.
 - The duplicate outer app tree was collapsed into a single root repository and the broken nested gitlink was removed.
 - Publish moderation, operator review actions, tenant host gating, and release-status tracking now run in the active runtime.
-- The explicit `production` Wrangler environment deploys successfully, but its workers.dev ingress still returns Cloudflare `1050` until a real route is attached.
+- The explicit `production` Wrangler environment now serves public traffic on `https://prod.gooddining.app`; workers.dev still returns Cloudflare `1050`, but that is no longer the production ingress path.
 
 ---
 
@@ -21,7 +21,7 @@
 ### Phase
 **Phase 1: Booking + Platform Entry (91% complete)**
 - ETA: April 15, 2026
-- Status: 🟡 ON TRACK (remaining: tenant custom-domain upgrade workflow + production route attachment + founder/KC OTP runtime fix)
+- Status: 🟡 ON TRACK (remaining: tenant custom-domain upgrade workflow + founder/KC OTP runtime fix)
 
 ### Overall Progress
 ```
@@ -80,6 +80,8 @@ Not Started: 0%
 - [x] Custom-domain activation now persists a health-check result and the SaaS queue now exposes health/renewal visibility with search and filters
 - [x] Public tenant resolution now recognizes activated custom-domain hosts and activation health checks validate tenant website payload resolution on that host
 - [x] Managed domain renewal reminder job design now exists for future scheduled execution
+- [x] Managed domain renewal reminder flow now has a runnable platform-admin trigger plus a scheduled handler path
+- [x] Production env now has a dedicated custom-domain ingress target at `prod.gooddining.app`
 - [x] Public website payload now includes structured `opening_hours_schedule` alongside legacy open/close values
 - [x] Wildcard tenant subdomain routing and host-based website payload resolution verified live on `gooddining.app`
 - [x] Demo-payment self-service signup walkthrough verified live end to end with tenant provisioning, admin access, and website host resolution
@@ -111,7 +113,7 @@ Not Started: 0%
 - Payment lifecycle now has an audit/event trail and retry remediation path for failed or expired Stripe checkout sessions ✅
 - Wildcard subdomain routing, host-based tenant payload resolution, and demo-payment signup walkthrough verified live ✅
 - Contact route and platform contact lead flow verified on a freshly reloaded local worker ✅
-- Production workers.dev ingress currently returns Cloudflare `1050`; application deploy exists but public ingress is not finished ⚠️
+- Production custom-domain ingress is live at `prod.gooddining.app`; workers.dev still returns Cloudflare `1050`, but production ingress is finished on the custom domain ✅
 - Known failures isolated to founder/KC OTP delivery paths ⚠️
 - Legacy Odoo references still exist in schema/init and archive-style utility files, but not in active runtime entrypoints or active admin/public UI ⚠️
 
@@ -138,7 +140,7 @@ Not Started: 0%
 - [x] Wildcard tenant subdomain routing and demo-payment signup walkthrough are verified live
 
 **What needs work** (next 3-4 days):
-- [ ] Attach a real production route to `ess-admin-ds-prod` and verify public ingress beyond workers.dev
+- [x] Attach a real production custom-domain ingress to `ess-admin-ds-prod` and verify public ingress beyond workers.dev
 - [ ] Stripe test checkout flow (replace demo-paid simulation while keeping the new demo/manual payment method options)
 - [ ] Connect the new tenant website-content editor to a fully explicit publish/release workflow for tenant websites (beyond the current moderation/release foundation)
 - [ ] Enforce the new website validator inside the actual publish path, not only as a repo script or snapshot rollback workflow
@@ -200,11 +202,11 @@ All other phases (2-5) planned, not started:
 - **Action Item**: Decide whether local OTP should require live Twilio or use a development stub
 
 ### Blocker 2: Production Ingress + Website Publish Path
-- **Issue**: The new subdomain-first strategy is correct, but tenant custom-domain upgrade, domain registration commercial policy, and explicit production route attachment are not yet implemented end to end.
+- **Issue**: The new subdomain-first strategy is correct, but tenant custom-domain upgrade and domain registration commercial policy are not yet implemented end to end.
 - **Impact**: CP-10 remains partial, not ship-ready
 - **ETA Fix**: Mar 31 onward
 - **Owner**: @dev-lead
-- **Action Item**: Attach production route, finish custom-domain upgrade workflow, and separate BYOD custom-domain activation from later managed domain registration.
+- **Action Item**: Finish custom-domain upgrade workflow, and separate BYOD custom-domain activation from later managed domain registration.
 
 ---
 
@@ -260,7 +262,7 @@ PHASE 1 TOTAL                                        91%
 ### This Week (Apr 2-5)
 
 **Priority 1** (Must do):
-- [ ] Attach a real production route for `ess-admin-ds-prod`
+- [x] Attach a real production custom-domain ingress for `ess-admin-ds-prod`
 - [ ] Wire Stripe test checkout for signup and recurring invoices
 - [ ] Turn the new Restaurant Admin website-content editor into a publish-safe tenant website workflow with release status
 - [ ] Finish tenant website publish/domain workflow on top of the delivered moderation/release foundation
