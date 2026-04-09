@@ -784,27 +784,27 @@
       <div class="page" data-page="settings">
         <h2 class="page-title">⚙️ Settings & Admin</h2>
         <div class="settings-grid">
-          <div class="settings-section">
+          <div class="settings-section" id="settings-company-profile">
             <div class="settings-section-title">Restaurant Profile</div>
             <div id="companyProfileList"></div>
           </div>
-          <div class="settings-section">
+          <div class="settings-section" id="settings-website-content">
             <div class="settings-section-title">Website Content & Opening Hours</div>
             <div id="websiteContentList"></div>
           </div>
-          <div class="settings-section">
+          <div class="settings-section" id="settings-website-release">
             <div class="settings-section-title">Website Release & Go Live</div>
             <div id="websiteReleaseList"></div>
           </div>
-          <div class="settings-section">
+          <div class="settings-section" id="settings-domain-upgrade">
             <div class="settings-section-title">Custom Domain Upgrade</div>
             <div id="domainUpgradeList"></div>
           </div>
-          <div class="settings-section">
+          <div class="settings-section" id="settings-payment-billing">
             <div class="settings-section-title">Payments & Billing</div>
             <div id="paymentSetupList"></div>
           </div>
-          <div class="settings-section">
+          <div class="settings-section" id="settings-operations-capacity">
             <div class="settings-section-title">Operations & Capacity</div>
             <div id="operationalSettingsList"></div>
           </div>
@@ -824,7 +824,7 @@
             <div class="settings-section-title">Marketing Media Library</div>
             <div id="mediaAssetsList"></div>
           </div>
-          <div class="settings-section">
+          <div class="settings-section" id="settings-staff-management">
             <div class="settings-section-title">Staff Management</div>
             <div class="staff-list" id="staffList"></div>
           </div>
@@ -1372,6 +1372,15 @@
           }
           break;
       }
+    }
+
+    function navigateToAdminSection(page, sectionId) {
+      switchPage(page);
+      if (!sectionId) return;
+      requestAnimationFrame(() => {
+        const target = document.getElementById(sectionId);
+        target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
     }
 
     // ==================== PAGE 1: CONTACTS ====================
@@ -2086,8 +2095,22 @@
 
       const company = companyProfile || {};
       const release = websiteRelease || null;
-      const readiness = goLiveReadiness || { ready: false, summary: 'Go-live readiness not loaded.', items: [] };
+      const readiness = goLiveReadiness || {
+        ready: false,
+        publishReady: false,
+        publishSummary: 'Publish readiness not loaded.',
+        goLiveReady: false,
+        goLiveSummary: 'Go-live readiness not loaded.',
+        items: []
+      };
       const history = Array.isArray(websiteReleaseHistory) ? websiteReleaseHistory : [];
+      const readinessItems = Array.isArray(readiness.items) ? readiness.items : [];
+      const readinessSections = Array.from(readinessItems.reduce((map, item) => {
+        const sectionKey = String(item?.section || 'Other').trim() || 'Other';
+        if (!map.has(sectionKey)) map.set(sectionKey, []);
+        map.get(sectionKey).push(item);
+        return map;
+      }, new Map()).entries());
       const reasonCodes = parseReleaseReasonCodes(release?.reason_codes_json);
       const reviewId = String(release?.review_id || '').trim();
       const previewUrl = String(release?.preview_url || `${window.location.origin}/website-master/index.html?company_id=${encodeURIComponent(currentUser?.companyId || 1)}`).trim();
@@ -2096,7 +2119,8 @@
 
       container.innerHTML = `
         <div class="integration-note">Current website state and latest publish/review outcome. Use this panel to run publish validation and then continue moderation or go-live checks.</div>
-        <div class="integration-note" style="color:${readiness.ready ? 'var(--success)' : 'var(--warning)'};">${escapeHtml(readiness.summary || 'Go-live readiness not loaded.')}</div>
+        <div class="integration-note" style="color:${readiness.publishReady ? 'var(--success)' : 'var(--warning)'};">${escapeHtml(readiness.publishSummary || 'Publish readiness not loaded.')}</div>
+        <div class="integration-note" style="color:${readiness.goLiveReady ? 'var(--success)' : 'var(--warning)'};">${escapeHtml(readiness.goLiveSummary || 'Go-live readiness not loaded.')}</div>
         <div class="setting-row">
           <div class="setting-label">Website Status</div>
           <div class="setting-value" style="padding-top: 10px;">${escapeHtml(company.website_status || 'draft')}</div>
@@ -2134,13 +2158,21 @@
           <textarea class="setting-value" id="website_release_note" rows="3" placeholder="Optional note for publish review">${escapeHtml(release?.release_note || '')}</textarea>
         </div>
         <div class="settings-subsection-title">Go-Live Checklist</div>
-        ${(Array.isArray(readiness.items) ? readiness.items : []).map((item) => `
-          <div class="setting-row">
-            <div class="setting-label">${escapeHtml(item.label || item.key || 'check')}</div>
-            <div class="setting-value" style="padding-top: 10px; color:${item.ok ? 'var(--success)' : 'var(--warning)'};">
-              ${item.ok ? 'PASS' : 'TODO'}: ${escapeHtml(item.detail || '')}
+        ${readinessSections.map(([sectionLabel, items]) => `
+          <div class="settings-subsection-title">${escapeHtml(sectionLabel)}</div>
+          ${items.map((item) => `
+            <div class="setting-row">
+              <div class="setting-label">${escapeHtml(item.label || item.key || 'check')}</div>
+              <div class="setting-value" style="padding-top: 10px; color:${item.ok ? 'var(--success)' : 'var(--warning)'}; display:grid; gap:8px;">
+                <div>${item.ok ? 'PASS' : 'TODO'}: ${escapeHtml(item.detail || '')}</div>
+                <div style="font-size:0.85rem;color:var(--text-muted);">${escapeHtml([
+                  item.requiredForPublish ? 'publish' : '',
+                  item.requiredForGoLive ? 'go-live' : ''
+                ].filter(Boolean).join(' + ') || 'informational')}</div>
+                ${!item.ok && item.targetPage && item.targetSection ? `<div><button class="btn-small btn-secondary" onclick="navigateToAdminSection('${escapeHtml(item.targetPage)}', '${escapeHtml(item.targetSection)}')">${escapeHtml(item.actionLabel || 'Fix this')}</button></div>` : ''}
+              </div>
             </div>
-          </div>
+          `).join('')}
         `).join('')}
         <div class="settings-subsection-title">Release History</div>
         ${history.length ? history.map((item) => {

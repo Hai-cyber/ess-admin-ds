@@ -1674,11 +1674,17 @@ describe('ESSKULTUR worker', () => {
 		expect(body.success).toBe(true);
 		expect(body.goLiveReadiness).toBeTruthy();
 		expect(Array.isArray(body.goLiveReadiness.items)).toBe(true);
+		expect(typeof body.goLiveReadiness.publishReady).toBe('boolean');
+		expect(typeof body.goLiveReadiness.goLiveReady).toBe('boolean');
+		expect(String(body.goLiveReadiness.publishSummary || '')).toContain('publish');
+		expect(String(body.goLiveReadiness.goLiveSummary || '')).toContain('go-live');
 		expect(body.goLiveReadiness.items.some((item) => item.key === 'payment_setup')).toBe(true);
 		expect(body.goLiveReadiness.items.some((item) => item.key === 'staff_setup')).toBe(true);
 
 		const paymentItem = body.goLiveReadiness.items.find((item) => item.key === 'payment_setup');
 		expect(paymentItem?.ok).toBe(false);
+		expect(paymentItem?.requiredForPublish).toBe(false);
+		expect(paymentItem?.requiredForGoLive).toBe(true);
 	});
 
 	it('stores selected demo payment method during platform signup', async () => {

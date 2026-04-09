@@ -2109,62 +2109,111 @@ async function getGoLiveReadiness(env, companyId, context = {}) {
   const items = [
     {
       key: 'restaurant_identity',
+      section: 'Restaurant profile',
       label: 'Restaurant identity',
       ok: !!String(company?.name || '').trim(),
       detail: String(company?.name || '').trim() ? 'Restaurant name saved.' : 'Restaurant name is still missing.',
-      required: true
+      required: true,
+      requiredForPublish: true,
+      requiredForGoLive: true,
+      targetPage: 'settings',
+      targetSection: 'settings-company-profile',
+      actionLabel: 'Open restaurant profile'
     },
     {
       key: 'contact_email',
+      section: 'Restaurant profile',
       label: 'Contact email',
       ok: !!String(company?.email || '').trim(),
       detail: String(company?.email || '').trim() ? 'Public contact email saved.' : 'Company email is still missing.',
-      required: true
+      required: true,
+      requiredForPublish: true,
+      requiredForGoLive: true,
+      targetPage: 'settings',
+      targetSection: 'settings-company-profile',
+      actionLabel: 'Open restaurant profile'
     },
     {
       key: 'contact_phone',
+      section: 'Restaurant profile',
       label: 'Contact phone',
       ok: !!String(company?.phone || '').trim(),
       detail: String(company?.phone || '').trim() ? 'Public contact phone saved.' : 'Company phone is still missing.',
-      required: true
+      required: true,
+      requiredForPublish: true,
+      requiredForGoLive: true,
+      targetPage: 'settings',
+      targetSection: 'settings-company-profile',
+      actionLabel: 'Open restaurant profile'
     },
     {
       key: 'booking_email',
+      section: 'Restaurant profile',
       label: 'Booking inbox',
       ok: !!bookingEmail,
       detail: bookingEmail ? `Booking notices go to ${bookingEmail}.` : 'Booking email is still missing.',
-      required: true
+      required: true,
+      requiredForPublish: true,
+      requiredForGoLive: true,
+      targetPage: 'settings',
+      targetSection: 'settings-company-profile',
+      actionLabel: 'Open restaurant profile'
     },
     {
       key: 'opening_hours',
+      section: 'Operations',
       label: 'Opening hours',
       ok: hasOpeningHours,
       detail: hasOpeningHours ? 'Structured opening hours exist for at least one open day.' : 'Opening hours need at least one valid open day.',
-      required: true
+      required: true,
+      requiredForPublish: true,
+      requiredForGoLive: true,
+      targetPage: 'settings',
+      targetSection: 'settings-website-content',
+      actionLabel: 'Open website content'
     },
     {
       key: 'area_capacity',
+      section: 'Operations',
       label: 'Area capacities',
       ok: hasCapacity,
       detail: hasCapacity ? 'At least one seating area capacity is configured.' : 'At least one seating area capacity should be configured.',
-      required: true
+      required: true,
+      requiredForPublish: false,
+      requiredForGoLive: true,
+      targetPage: 'settings',
+      targetSection: 'settings-operations-capacity',
+      actionLabel: 'Open operations settings'
     },
     {
       key: 'staff_setup',
+      section: 'Staff',
       label: 'Staff PIN setup',
       ok: activeStaffCount > 0,
       detail: activeStaffCount > 0 ? `${activeStaffCount} active staff account(s) exist.` : 'No active staff accounts exist yet.',
-      required: true
+      required: true,
+      requiredForPublish: false,
+      requiredForGoLive: true,
+      targetPage: 'settings',
+      targetSection: 'settings-staff-management',
+      actionLabel: 'Open staff management'
     },
     {
       key: 'public_host',
+      section: 'Go live',
       label: 'Public host target',
       ok: !!hostTarget,
       detail: hostTarget ? `Public host target: ${hostTarget}` : 'Set a tenant subdomain, custom domain, or website URL.',
-      required: true
+      required: true,
+      requiredForPublish: false,
+      requiredForGoLive: true,
+      targetPage: 'settings',
+      targetSection: 'settings-domain-upgrade',
+      actionLabel: 'Open domain settings'
     },
     {
       key: 'payment_setup',
+      section: 'Payments',
       label: 'Payment setup',
       ok: !!stripeAccountId || acceptedPaymentMethods.length > 0,
       detail: stripeAccountId
@@ -2174,10 +2223,16 @@ async function getGoLiveReadiness(env, companyId, context = {}) {
           : paymentStatus === 'demo_paid'
             ? 'Only demo payment is configured. Select at least one payment method or link Stripe.'
             : 'Stripe account is not linked yet.',
-      required: true
+      required: true,
+      requiredForPublish: false,
+      requiredForGoLive: true,
+      targetPage: 'settings',
+      targetSection: 'settings-payment-billing',
+      actionLabel: 'Open payments & billing'
     },
     {
       key: 'publish_status',
+      section: 'Go live',
       label: 'Publish status',
       ok: releaseStatus === 'published',
       detail: releaseStatus === 'published'
@@ -2185,19 +2240,34 @@ async function getGoLiveReadiness(env, companyId, context = {}) {
         : releaseStatus === 'pending_review'
           ? 'Latest release is waiting for operator approval.'
           : 'Run publish review and complete operator approval.',
-      required: true
+      required: true,
+      requiredForPublish: false,
+      requiredForGoLive: true,
+      targetPage: 'settings',
+      targetSection: 'settings-website-release',
+      actionLabel: 'Open website release'
     }
   ];
 
-  const requiredItems = items.filter((item) => item.required);
-  const passedRequired = requiredItems.filter((item) => item.ok).length;
+  const publishRequiredItems = items.filter((item) => item.requiredForPublish);
+  const goLiveRequiredItems = items.filter((item) => item.requiredForGoLive);
+  const publishPassedRequired = publishRequiredItems.filter((item) => item.ok).length;
+  const goLivePassedRequired = goLiveRequiredItems.filter((item) => item.ok).length;
 
   return {
-    ready: requiredItems.every((item) => item.ok),
-    passed_required: passedRequired,
-    total_required: requiredItems.length,
+    ready: goLiveRequiredItems.every((item) => item.ok),
+    publishReady: publishRequiredItems.every((item) => item.ok),
+    publishPassedRequired,
+    publishTotalRequired: publishRequiredItems.length,
+    publishSummary: `${publishPassedRequired}/${publishRequiredItems.length} required publish checks passed.`,
+    goLiveReady: goLiveRequiredItems.every((item) => item.ok),
+    goLivePassedRequired,
+    goLiveTotalRequired: goLiveRequiredItems.length,
+    goLiveSummary: `${goLivePassedRequired}/${goLiveRequiredItems.length} required go-live checks passed.`,
+    passed_required: goLivePassedRequired,
+    total_required: goLiveRequiredItems.length,
     items,
-    summary: `${passedRequired}/${requiredItems.length} required go-live checks passed.`
+    summary: `${goLivePassedRequired}/${goLiveRequiredItems.length} required go-live checks passed.`
   };
 }
 
