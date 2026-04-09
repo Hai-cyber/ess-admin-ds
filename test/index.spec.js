@@ -602,6 +602,71 @@ describe('ESSKULTUR worker', () => {
 		expect(String(review?.reason_codes_json || '')).toContain('suspicious_external_link');
 	});
 
+	it('rejects a new publish submission while another release is pending review', async () => {
+		await initializeDatabase(env.DB);
+
+		const now = new Date().toISOString();
+		await env.DB.prepare(`
+			INSERT INTO publish_reviews (
+				id, company_id, host, subdomain, decision, review_status, risk_score,
+				reason_codes_json, evidence_json, payload_snapshot_json, reviewer_type, created_at, updated_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'system', ?, ?)
+		`).bind(
+			'review_pending_1',
+			1,
+			'restaurant1.gooddining.app',
+			'restaurant1',
+			'review',
+			'pending',
+			25,
+			JSON.stringify(['manual_review_required']),
+			'{}',
+			JSON.stringify({ company: { name: 'Pending Review Bistro' } }),
+			now,
+			now
+		).run();
+
+		await env.DB.prepare(`
+			INSERT INTO website_releases (
+				id, company_id, review_id, release_status, publish_target, preview_url, published_url,
+				payload_snapshot_json, reason_codes_json, release_note, reviewer_type, reviewer_id,
+				published_at, suspended_at, created_at, updated_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`).bind(
+			'pending_release_1',
+			1,
+			'review_pending_1',
+			'pending_review',
+			'managed_subdomain',
+			'http://localhost/website-master/index.html?company_id=1',
+			'',
+			JSON.stringify({ company: { name: 'Pending Review Bistro' } }),
+			JSON.stringify(['manual_review_required']),
+			'Already waiting for operator review',
+			'system',
+			'publish-gate',
+			null,
+			null,
+			now,
+			now
+		).run();
+
+		const request = new Request('http://localhost/api/admin/website/publish?company_id=1', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ pin: '1234', reviewNote: 'Try to resubmit while pending.' })
+		});
+
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(409);
+		const body = await response.json();
+		expect(body.ok).toBe(false);
+		expect(String(body.code || '')).toBe('release_pending_review');
+	});
+
 	it('allows operator to approve a pending publish review', async () => {
 		await initializeDatabase(env.DB);
 		env.TELEGRAM_BOT_TOKEN = 'telegram-test-token';
@@ -945,6 +1010,51 @@ describe('ESSKULTUR worker', () => {
 			`SELECT release_status FROM website_releases WHERE id = ? LIMIT 1`
 		).bind('release_current_live').first();
 		expect(String(rolledBackRelease?.release_status || '')).toBe('rolled_back');
+	});
+
+	it('rejects rollback for releases that were never published', async () => {
+		await initializeDatabase(env.DB);
+		const now = new Date().toISOString();
+
+		await env.DB.prepare(`
+			INSERT INTO website_releases (
+				id, company_id, review_id, release_status, publish_target, preview_url, published_url,
+				payload_snapshot_json, reason_codes_json, release_note, reviewer_type, reviewer_id,
+				published_at, suspended_at, created_at, updated_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`).bind(
+			'rejected_release_1',
+			1,
+			null,
+			'rejected',
+			'managed_subdomain',
+			'http://localhost/website-master/index.html?company_id=1',
+			'',
+			JSON.stringify({ company: { name: 'Rejected Draft' } }),
+			JSON.stringify(['blocked_content']),
+			'Rejected release snapshot',
+			'system',
+			'publish-gate',
+			null,
+			null,
+			now,
+			now
+		).run();
+
+		const rollbackRequest = new Request('http://localhost/api/admin/website/releases/rejected_release_1/rollback?company_id=1', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ pin: '1234', rollbackNote: 'Should fail' })
+		});
+
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(rollbackRequest, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(409);
+		const body = await response.json();
+		expect(body.ok).toBe(false);
+		expect(String(body.code || '')).toBe('rollback_invalid_release_state');
 	});
 
 	it('includes moderation reviews in platform admin dashboard data', async () => {

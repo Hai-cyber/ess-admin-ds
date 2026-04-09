@@ -2072,6 +2072,27 @@ function normalizeWebsiteReleaseStatus(value, fallback = 'draft') {
     : fallback;
 }
 
+function isAllowedWebsiteReleaseTransition(currentStatus, nextStatus) {
+  const current = normalizeWebsiteReleaseStatus(currentStatus, 'draft');
+  const next = normalizeWebsiteReleaseStatus(nextStatus, current);
+  if (current === next) return true;
+
+  return {
+    draft: new Set(['pending_review', 'rejected', 'published']),
+    pending_review: new Set(['approved', 'rejected']),
+    approved: new Set(['published', 'rejected']),
+    published: new Set(['rolled_back']),
+    rejected: new Set([]),
+    rolled_back: new Set([])
+  }[current]?.has(next) === true;
+}
+
+function assertAllowedWebsiteReleaseTransition(currentStatus, nextStatus) {
+  if (!isAllowedWebsiteReleaseTransition(currentStatus, nextStatus)) {
+    throw new Error(`Invalid website release transition: ${currentStatus || 'draft'} -> ${nextStatus || currentStatus || 'draft'}`);
+  }
+}
+
 async function getGoLiveReadiness(env, companyId, context = {}) {
   const company = context.company || await getCompanyProfile(env, companyId);
   const operationalSettings = context.operationalSettings || await getOperationalSettingsMap(env, companyId);
@@ -2339,6 +2360,9 @@ async function updateWebsiteReleaseByReviewId(env, reviewId, updates = {}) {
     }
   })();
   const now = new Date().toISOString();
+  const nextReleaseStatus = normalizeWebsiteReleaseStatus(updates.releaseStatus ?? existing.release_status, 'draft');
+
+  assertAllowedWebsiteReleaseTransition(existing.release_status, nextReleaseStatus);
 
   await env.DB.prepare(`
     UPDATE website_releases
@@ -2356,7 +2380,7 @@ async function updateWebsiteReleaseByReviewId(env, reviewId, updates = {}) {
         updated_at = ?
     WHERE id = ?
   `).bind(
-    normalizeWebsiteReleaseStatus(updates.releaseStatus ?? existing.release_status, 'draft'),
+    nextReleaseStatus,
     updates.publishTarget ?? existing.publish_target,
     updates.previewUrl ?? existing.preview_url,
     updates.publishedUrl ?? existing.published_url,
@@ -2387,6 +2411,9 @@ async function updateLatestWebsiteReleaseForCompany(env, companyId, updates = {}
     }
   })();
   const now = new Date().toISOString();
+  const nextReleaseStatus = normalizeWebsiteReleaseStatus(updates.releaseStatus ?? existing.release_status, 'draft');
+
+  assertAllowedWebsiteReleaseTransition(existing.release_status, nextReleaseStatus);
 
   await env.DB.prepare(`
     UPDATE website_releases
@@ -2404,7 +2431,7 @@ async function updateLatestWebsiteReleaseForCompany(env, companyId, updates = {}
         updated_at = ?
     WHERE id = ?
   `).bind(
-    normalizeWebsiteReleaseStatus(updates.releaseStatus ?? existing.release_status, 'draft'),
+    nextReleaseStatus,
     updates.publishTarget ?? existing.publish_target,
     updates.previewUrl ?? existing.preview_url,
     updates.publishedUrl ?? existing.published_url,
@@ -6459,6 +6486,18 @@ export default {
           return Response.json({ ok: false, error: auth.error }, { status: auth.status });
         }
 
+        const latestRelease = await getLatestWebsiteRelease(env, companyId);
+        const latestReleaseStatus = normalizeWebsiteReleaseStatus(latestRelease?.release_status, 'draft');
+        if (latestRelease && latestReleaseStatus === 'pending_review') {
+          return Response.json({
+            ok: false,
+            error: 'A website release is already pending operator review. Resolve that release before submitting a new one.',
+            code: 'release_pending_review',
+            release_status: latestReleaseStatus,
+            release_id: latestRelease.id
+          }, { status: 409 });
+        }
+
         const [source, company, operationalSettings] = await Promise.all([
           buildPublicWebsitePayload(env, companyId, url),
           getCompanyProfile(env, companyId),
@@ -6599,6 +6638,16 @@ export default {
 
         if (!targetRelease) {
           return Response.json({ ok: false, error: 'Release not found' }, { status: 404 });
+        }
+
+        const targetReleaseStatus = normalizeWebsiteReleaseStatus(targetRelease.release_status, 'draft');
+        if (!['published', 'rolled_back'].includes(targetReleaseStatus)) {
+          return Response.json({
+            ok: false,
+            error: 'Only previously published release snapshots can be restored.',
+            code: 'rollback_invalid_release_state',
+            release_status: targetReleaseStatus
+          }, { status: 409 });
         }
 
         const snapshot = parseWebsiteReleaseSnapshot(targetRelease);
