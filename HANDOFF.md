@@ -131,7 +131,7 @@
 - [ ] Payment integration setup
 - [ ] Final deployment publish path verification
 
-**What's blocked**: deployment publish path completion, custom-domain upgrade hardening beyond MVP, plus founder/KC OTP runtime depending on Twilio credentials
+**What's blocked**: storage bucket provisioning + deployment publish validation, richer custom-domain ops beyond activation hardening, plus founder/KC OTP runtime depending on Twilio credentials
 
 **CP-3 execution plan now fixed into four sub-checkpoints**:
 - `CP-3A` Go-Live Console Gating
@@ -204,7 +204,7 @@ Recommended order: `3A -> 3B -> 3C -> 3D`
 |-----------|--------|----------|----------|
 | CP-1: Tenant Isolation | ✅ DONE | E2E_TEST_SUMMARY.md | None |
 | CP-2: Booking MVP | ✅ DONE | Local runtime verified on 2026-03-30 | None |
-| CP-3: Admin UI Setup | 🔄 97% | Admin routes/UI live; go-live console, explicit release workflow, operator overview, and role-aware Restaurant Admin IA are now active; remaining work is deployment/custom-domain hardening | Deployment/custom-domain |
+| CP-3: Admin UI Setup | 🔄 98% | Admin routes/UI live; go-live console, explicit release workflow, operator overview, role-aware Restaurant Admin IA, and storage-ready publish/runtime hardening are active; remaining work is infra provisioning + richer domain ops | Deployment/custom-domain |
 | CP-10: Platform Site + Self-Service Signup | 🔄 99% | Platform home/contact/admin/signup verified live; wildcard tenant subdomains resolve; moderation/release workflow is explicit; fixed-skin website contract and validator run in the real submit path | Deployment publish path + custom-domain hardening + Twilio for founder/KC |
 | **Phase 1 Total** | **🔄 93%** | — | **Deployment/custom-domain/founder finalization** |
 

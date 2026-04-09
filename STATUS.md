@@ -98,6 +98,8 @@ Not Started: 0%
 - [x] SaaS Admin now shows workflow-oriented release states, hints, and mini timelines for moderation items
 - [x] SaaS Admin now includes a tenant workflow overview and operator-only go-live blocker inspection per tenant
 - [x] Restaurant Admin now uses a role-aware setup shell with product-correct naming, grouped settings quick navigation, and section visibility aligned to manager/admin scope
+- [x] Runtime now supports storage-backed publish artifacts for live tenant releases when a `WEBSITE_PUBLISH_R2` bucket binding is configured
+- [x] Custom-domain activation now requires a published release and rejects conflicting reserved/active domains before cutover
 - [x] Local smoke tests verified health, plans, signup policy, platform contact, platform admin dashboard, website payload, publish review, suspend, and quarantine actions on localhost
 - [x] Explicit `production` Wrangler environment deploy executed successfully against a real D1 database id
 
@@ -154,8 +156,8 @@ Not Started: 0%
 - [ ] Stripe test checkout flow (replace demo-paid simulation while keeping the new demo/manual payment method options)
 - [x] Connect the new tenant website-content editor to an explicit publish/release workflow with release states and rollback history
 - [x] Enforce the website validator inside the actual tenant publish submission path
-- [ ] Publish tenant website output + assets to deployment storage and validate subdomain-first public serving path
-- [ ] Harden tenant custom-domain upgrade workflow beyond current MVP (real reminder delivery, public cutover checks beyond payload/health, richer renewal operations)
+- [ ] Provision the real `WEBSITE_PUBLISH_R2` bucket binding in deploy config and validate storage-backed publish output on the target environment
+- [ ] Extend custom-domain ops beyond the hardened activation path with richer reminder, cutover, and renewal workflows
 - [ ] Optional managed domain registration flow after BYOD custom-domain upgrade is stable
 - [ ] Tenant payment method onboarding UX (Stripe + manual modes)
 - [ ] End-to-end QA for tenant website editor save/reload/review flow from Restaurant Admin to live tenant subdomain

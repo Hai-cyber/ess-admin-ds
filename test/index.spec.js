@@ -236,6 +236,32 @@ describe('ESSKULTUR worker', () => {
 		await initializeDatabase(env.DB);
 		env.CUSTOM_DOMAIN_DNS_VERIFY_MODE = 'mock';
 		env.CUSTOM_DOMAIN_ACTIVATION_HEALTHCHECK_MODE = 'mock';
+		const now = new Date().toISOString();
+
+		await env.DB.prepare(`
+			INSERT INTO website_releases (
+				id, company_id, review_id, release_status, publish_target, preview_url, published_url,
+				payload_snapshot_json, reason_codes_json, release_note, reviewer_type, reviewer_id,
+				published_at, suspended_at, created_at, updated_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`).bind(
+			'domain_activation_live_release',
+			1,
+			null,
+			'published',
+			'managed_subdomain',
+			'http://localhost/website-master/index.html?company_id=1',
+			'https://restaurant1.gooddining.app',
+			JSON.stringify({ company: { name: 'Activation Ready Restaurant' } }),
+			JSON.stringify([]),
+			'Published before domain activation',
+			'system',
+			'publish-gate',
+			now,
+			null,
+			now,
+			now
+		).run();
 
 		let request = new Request('http://localhost/api/admin/domain-upgrade/request?company_id=1', {
 			method: 'POST',
@@ -1060,6 +1086,102 @@ describe('ESSKULTUR worker', () => {
 		const body = await response.json();
 		expect(body.ok).toBe(true);
 		expect(String(body.source?.company?.name || '')).toBe('Published Snapshot Bistro');
+	});
+
+	it('writes published release artifacts to storage and serves the stored snapshot for public payloads', async () => {
+		await initializeDatabase(env.DB);
+		const storedObjects = new Map();
+		env.WEBSITE_PUBLISH_R2 = {
+			async put(key, value) {
+				storedObjects.set(String(key), String(value));
+			},
+			async get(key) {
+				const value = storedObjects.get(String(key));
+				if (typeof value !== 'string') return null;
+				return {
+					async text() {
+						return value;
+					}
+				};
+			}
+		};
+
+		const now = new Date().toISOString();
+		await env.DB.prepare(`
+			INSERT INTO publish_reviews (
+				id, company_id, host, subdomain, decision, review_status, risk_score,
+				reason_codes_json, evidence_json, payload_snapshot_json, reviewer_type, created_at, updated_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'system', ?, ?)
+		`).bind(
+			'review_storage_publish',
+			2,
+			'restaurant2.gooddining.app',
+			'restaurant2',
+			'allow',
+			'approved',
+			0,
+			JSON.stringify([]),
+			'{}',
+			JSON.stringify({ company: { name: 'Storage Publish Bistro' }, pages: { home: { title: 'Stored Hero' } } }),
+			now,
+			now
+		).run();
+
+		await env.DB.prepare(`
+			INSERT INTO website_releases (
+				id, company_id, review_id, release_status, publish_target, preview_url, published_url,
+				payload_snapshot_json, reason_codes_json, release_note, reviewer_type, reviewer_id,
+				published_at, suspended_at, created_at, updated_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`).bind(
+			'approved_release_storage',
+			2,
+			'review_storage_publish',
+			'approved',
+			'managed_subdomain',
+			'http://localhost/website-master/index.html?company_id=2',
+			'',
+			JSON.stringify({ company: { name: 'Storage Publish Bistro' }, pages: { home: { title: 'Stored Hero' } } }),
+			JSON.stringify([]),
+			'Approved and waiting to go live',
+			'system',
+			'publish-gate',
+			null,
+			null,
+			now,
+			now
+		).run();
+
+		let request = new Request('http://localhost/api/admin/website/publish-approved?company_id=2', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ pin: '1234', releaseNote: 'Publish to storage.' })
+		});
+		let ctx = createExecutionContext();
+		let response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(200);
+		let body = await response.json();
+		expect(body.ok).toBe(true);
+		expect(body.storage?.stored).toBe(true);
+		expect(storedObjects.has('sites/2/current/tenant-source.json')).toBe(true);
+
+		await env.DB.prepare(`
+			UPDATE website_releases
+			SET payload_snapshot_json = ?
+			WHERE company_id = ? AND release_status = 'published'
+		`).bind(JSON.stringify({ company: { name: 'Tampered DB Snapshot' } }), 2).run();
+
+		request = new Request('http://restaurant2.gooddining.app/api/website/payload');
+		ctx = createExecutionContext();
+		response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(200);
+		body = await response.json();
+		expect(body.ok).toBe(true);
+		expect(String(body.source?.company?.name || '')).toBe('Storage Publish Bistro');
 	});
 
 	it('allows tenant admin to roll back to an older published release snapshot', async () => {

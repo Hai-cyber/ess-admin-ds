@@ -92,13 +92,15 @@
 ✅ SaaS Admin now renders workflow-oriented release status, hints, and mini timelines instead of a raw review list only
 ✅ SaaS Admin now includes a tenant workflow overview card layer and operator-only go-live blocker inspection per tenant
 ✅ Restaurant Admin shell now uses product-correct naming, grouped setup navigation, and role-aware section visibility for manager/admin scopes
+✅ Runtime now supports storage-backed publish artifacts for live website releases when a `WEBSITE_PUBLISH_R2` binding is provisioned
+✅ Custom-domain activation now requires an already-published release and blocks conflicting reserved/active domains before cutover
 ✅ Local smoke verification now covers `/api/contact/create`, platform contact, publish review, suspend, quarantine, and host-based public blocking
 ✅ Explicit `production` env now deploys against a real D1 database id
 ⏳ Production public ingress still blocked by Cloudflare `1050` until a real route is attached
-⏳ Tenant website publish-to-storage and deployment-asset path still pending beyond the current release-state foundation
-⏳ Tenant custom-domain upgrade workflow still pending beyond the current moderation/release foundation
+⏳ Tenant website publish-to-storage still needs real bucket provisioning/binding plus deployment validation in the target environment
+⏳ Tenant custom-domain upgrade workflow still needs richer reminder/cutover ops beyond the newly hardened activation guards
 ⏳ Founder/KC OTP runtime blocked locally by missing Twilio credentials or a local OTP stub decision
-**Blockers**: deployment-storage publish path, custom-domain upgrade hardening, Stripe test credentials, and Twilio credentials or a local OTP stub
+**Blockers**: storage bucket provisioning/deployment validation, richer custom-domain ops beyond activation hardening, Stripe test credentials, and Twilio credentials or a local OTP stub
 
 **Next checkpoint steps**:
 1. Publish tenant website output + assets to deployment storage and validate the subdomain-first public serving path.

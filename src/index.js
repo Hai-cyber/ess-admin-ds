@@ -1938,6 +1938,26 @@ async function createCustomDomainUpgradeRequest(env, payload = {}) {
     };
   }
 
+  const conflictingRequest = await findConflictingCustomDomainRequest(env, requestedDomain, companyId);
+  if (conflictingRequest?.id) {
+    return {
+      ok: false,
+      status: 409,
+      code: 'custom_domain_already_reserved',
+      error: 'This custom domain is already reserved by another tenant workflow.'
+    };
+  }
+
+  const conflictingMapping = await findConflictingActiveCustomDomainMapping(env, requestedDomain, companyId);
+  if (conflictingMapping?.company_id) {
+    return {
+      ok: false,
+      status: 409,
+      code: 'custom_domain_already_active',
+      error: 'This custom domain is already active for another tenant.'
+    };
+  }
+
   const openRequest = await env.DB.prepare(`
     SELECT id, request_status
     FROM custom_domain_requests
@@ -2065,6 +2085,98 @@ function parseWebsiteReleaseSnapshot(release) {
   }
 }
 
+function buildWebsitePublishStoragePrefix(companyId, stage = 'current') {
+  return `sites/${Number(companyId || 0)}/${String(stage || 'current').trim() || 'current'}`;
+}
+
+async function writeWebsitePublishArtifacts(env, companyId, payload, options = {}) {
+  const bucket = env?.WEBSITE_PUBLISH_R2;
+  if (!bucket || !companyId || !payload || typeof payload !== 'object') {
+    return { ok: false, stored: false };
+  }
+
+  const prefix = buildWebsitePublishStoragePrefix(companyId, options.stage || 'current');
+  const publishedAt = String(options.publishedAt || new Date().toISOString()).trim();
+  const publishedUrl = String(options.publishedUrl || '').trim();
+  const releaseId = String(options.releaseId || '').trim();
+  const assets = Array.isArray(options.assets) ? options.assets : [];
+  const manifest = {
+    company_id: Number(companyId || 0),
+    release_id: releaseId || null,
+    published_at: publishedAt,
+    published_url: publishedUrl,
+    asset_count: assets.length,
+    storage_prefix: prefix
+  };
+
+  await Promise.all([
+    bucket.put(`${prefix}/tenant-source.json`, JSON.stringify(payload, null, 2), {
+      httpMetadata: { contentType: 'application/json; charset=utf-8' }
+    }),
+    bucket.put(`${prefix}/media-assets.json`, JSON.stringify(assets, null, 2), {
+      httpMetadata: { contentType: 'application/json; charset=utf-8' }
+    }),
+    bucket.put(`${prefix}/publish-manifest.json`, JSON.stringify(manifest, null, 2), {
+      httpMetadata: { contentType: 'application/json; charset=utf-8' }
+    })
+  ]);
+
+  return { ok: true, stored: true, prefix };
+}
+
+async function readPublishedWebsitePayloadFromStorage(env, companyId) {
+  const bucket = env?.WEBSITE_PUBLISH_R2;
+  if (!bucket || !companyId) return null;
+
+  const stored = await bucket.get(`${buildWebsitePublishStoragePrefix(companyId, 'current')}/tenant-source.json`);
+  if (!stored) return null;
+
+  const text = typeof stored.text === 'function'
+    ? await stored.text()
+    : typeof stored === 'string'
+      ? stored
+      : String(stored || '');
+  try {
+    const parsed = JSON.parse(text);
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+async function findConflictingCustomDomainRequest(env, requestedDomain, excludeCompanyId = 0) {
+  const normalizedDomain = normalizeCustomDomainHostname(requestedDomain || '');
+  if (!normalizedDomain) return null;
+
+  const existing = await env.DB.prepare(`
+    SELECT id, company_id, request_status, requested_domain
+    FROM custom_domain_requests
+    WHERE LOWER(requested_domain) = LOWER(?)
+      AND company_id != ?
+      AND request_status IN ('requested', 'approved_waiting_dns', 'verification_pending', 'verified_waiting_activation', 'active')
+    ORDER BY updated_at DESC, created_at DESC
+    LIMIT 1
+  `).bind(normalizedDomain, Number(excludeCompanyId || 0)).first();
+
+  return existing || null;
+}
+
+async function findConflictingActiveCustomDomainMapping(env, requestedDomain, excludeCompanyId = 0) {
+  const normalizedDomain = normalizeCustomDomainHostname(requestedDomain || '');
+  if (!normalizedDomain) return null;
+
+  const existing = await env.DB.prepare(`
+    SELECT company_id, value
+    FROM settings
+    WHERE key = 'custom_domain'
+      AND LOWER(value) = LOWER(?)
+      AND company_id != ?
+    LIMIT 1
+  `).bind(normalizedDomain, Number(excludeCompanyId || 0)).first();
+
+  return existing || null;
+}
+
 function normalizeWebsiteReleaseStatus(value, fallback = 'draft') {
   const normalized = String(value || '').trim().toLowerCase();
   return ['draft', 'pending_review', 'approved', 'published', 'rejected', 'rolled_back'].includes(normalized)
@@ -2123,6 +2235,7 @@ async function publishApprovedWebsiteRelease(env, companyId, payload = {}) {
 
   const company = payload.company || await getCompanyProfile(env, companyId);
   const operationalSettings = payload.operationalSettings || await getOperationalSettingsMap(env, companyId);
+  const assets = payload.assets || await getActiveWebsiteMediaAssets(env, companyId);
   const publishedUrl = buildPublishedWebsiteUrlForCompany(company, operationalSettings);
   const now = new Date().toISOString();
   const reasonCodes = (() => {
@@ -2154,13 +2267,21 @@ async function publishApprovedWebsiteRelease(env, companyId, payload = {}) {
     lastReviewedAt: now
   });
 
+  const storage = await writeWebsitePublishArtifacts(env, companyId, snapshot, {
+    releaseId: publishedRelease?.id,
+    publishedAt: now,
+    publishedUrl,
+    assets
+  });
+
   return {
     ok: true,
     action: 'publish_approved_release',
     release: publishedRelease,
     release_status: 'published',
     published_url: publishedUrl,
-    published_at: now
+    published_at: now,
+    storage
   };
 }
 
@@ -2637,6 +2758,9 @@ async function getAdminPlatformConfig(env, companyId) {
 async function resolveWebsitePayloadForRequest(env, companyId, currentUrl) {
   const hasExplicitPreviewOverride = String(currentUrl?.searchParams?.get('company_id') || '').trim().length > 0;
   if (!hasExplicitPreviewOverride) {
+    const storedSnapshot = await readPublishedWebsitePayloadFromStorage(env, companyId);
+    if (storedSnapshot) return storedSnapshot;
+
     const release = await getLatestPublishedWebsiteRelease(env, companyId);
     const snapshot = parseWebsiteReleaseSnapshot(release);
     if (snapshot) return snapshot;
@@ -4825,6 +4949,22 @@ export default {
           if (String(domainRequest.request_status || '') !== 'verified_waiting_activation') {
             return Response.json({ ok: false, error: 'Only verified domains can be activated.' }, { status: 409 });
           }
+
+          const latestPublishedRelease = await getLatestPublishedWebsiteRelease(env, Number(domainRequest.company_id || 0));
+          if (!latestPublishedRelease?.id) {
+            return Response.json({ ok: false, error: 'A tenant must have a published release before a custom domain can go live.' }, { status: 409 });
+          }
+
+          const conflictingRequest = await findConflictingCustomDomainRequest(env, domainRequest.requested_domain, Number(domainRequest.company_id || 0));
+          if (conflictingRequest?.id && String(conflictingRequest.id || '') !== String(domainRequest.id || '')) {
+            return Response.json({ ok: false, error: 'This custom domain is already reserved by another tenant workflow.' }, { status: 409 });
+          }
+
+          const conflictingMapping = await findConflictingActiveCustomDomainMapping(env, domainRequest.requested_domain, Number(domainRequest.company_id || 0));
+          if (conflictingMapping?.company_id) {
+            return Response.json({ ok: false, error: 'This custom domain is already active for another tenant.' }, { status: 409 });
+          }
+
           const activationHealth = await runCustomDomainActivationHealthCheck(env, domainRequest);
           const renewalTracking = computeRenewalTrackingForRequest(domainRequest);
           updatedRequest = await updateCustomDomainRequestState(env, requestId, {
@@ -6856,12 +6996,20 @@ export default {
           lastReviewedAt: now
         });
 
+        const storage = await writeWebsitePublishArtifacts(env, companyId, snapshot, {
+          releaseId: rollbackRelease?.id,
+          publishedAt: now,
+          publishedUrl: String(targetRelease.published_url || '').trim(),
+          assets: await getActiveWebsiteMediaAssets(env, companyId)
+        });
+
         return Response.json({
           ok: true,
           action: 'rollback',
           release_id: rollbackRelease?.id || '',
           restored_from_release_id: targetRelease.id,
-          release_status: 'published'
+          release_status: 'published',
+          storage
         });
         } catch (e) {
           console.error('Admin website release rollback POST error:', e);
