@@ -979,6 +979,45 @@
     let bookingsSearchTerm = '';
     let customersSearchTerm = '';
 
+    const nativeFetch = window.fetch.bind(window);
+
+    function getTenantCompanyId() {
+      const fromUrl = Number(new URLSearchParams(window.location.search).get('company_id') || 0);
+      if (fromUrl > 0) return fromUrl;
+
+      const fromUser = Number(currentUser?.companyId || 0);
+      if (fromUser > 0) return fromUser;
+
+      try {
+        const storedUser = JSON.parse(localStorage.getItem('esskultur_user') || 'null');
+        const storedCompanyId = Number(storedUser?.companyId || 0);
+        return storedCompanyId > 0 ? storedCompanyId : 0;
+      } catch {
+        return 0;
+      }
+    }
+
+    function withTenantCompanyId(input) {
+      const companyId = getTenantCompanyId();
+      if (!companyId) return input;
+
+      const rawInput = typeof input === 'string' ? input : String(input || '');
+      if (!rawInput) return input;
+
+      const resolvedUrl = rawInput.startsWith('http://') || rawInput.startsWith('https://')
+        ? new URL(rawInput)
+        : new URL(rawInput, window.location.origin);
+
+      if (resolvedUrl.origin !== window.location.origin) return input;
+      if (!resolvedUrl.pathname.startsWith('/api/')) return input;
+      if (resolvedUrl.searchParams.has('company_id')) return resolvedUrl.pathname + resolvedUrl.search;
+
+      resolvedUrl.searchParams.set('company_id', String(companyId));
+      return resolvedUrl.pathname + resolvedUrl.search;
+    }
+
+    const fetch = (input, init) => nativeFetch(withTenantCompanyId(input), init);
+
     const OPERATIONAL_SETTING_KEYS = [
       'website_url',
       'custom_domain',
