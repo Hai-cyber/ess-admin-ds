@@ -80,6 +80,9 @@
 - [x] Managed domain renewal reminder flow now has both a scheduled handler and a manual SaaS admin trigger route
 - [x] Production env now targets `prod.gooddining.app` as a real custom-domain ingress path instead of relying on workers.dev
 - [x] `prod.gooddining.app` has been verified live for `/api/health` and `/api/platform/plans`
+- [x] Managed domain renewal flow now supports operator reminder preview, forced overdue escalation, and digest delivery channels
+- [x] Production ingress config now includes `api.prod.gooddining.app` and `platform.prod.gooddining.app` alongside `prod.gooddining.app`
+- [ ] Additional production hostnames `api.prod.gooddining.app` and `platform.prod.gooddining.app` still return Cloudflare `1050` and need a later re-check after activation/certificate readiness
 - [x] Structured `opening_hours_schedule` now reaches the public website payload alongside legacy open/close fallback values
 - [x] Wildcard tenant subdomains on `gooddining.app` and demo-payment signup walkthrough have been verified live end to end
 - [x] Active Odoo runtime/helper paths removed from both worker entrypoints; active public/admin surfaces updated to first-party CRM wording

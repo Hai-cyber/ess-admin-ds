@@ -437,6 +437,8 @@
             <input id="domain_note_${row.id}" type="text" placeholder="Operator note" value="${escapeHtml(row.operator_note || '')}">
             <div></div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              ${String(row.renewal_mode || '') === 'platform_managed' ? `<button class="btn btn-sm btn-outline" onclick="previewDomainRenewalReminder('${row.id}')">Preview reminder</button>` : ''}
+              ${String(row.request_status || '') === 'active' && String(row.renewal_mode || '') === 'platform_managed' ? `<button class="btn btn-sm btn-warn-lite" onclick="forceDomainRenewalOverdue('${row.id}')">Force overdue</button>` : ''}
               ${String(row.request_status || '') === 'requested' ? `<button class="btn btn-sm btn-outline" onclick="runDomainRequestAction('${row.id}', 'approve')">Approve</button>` : ''}
               ${String(row.request_status || '') === 'verification_pending' ? `<button class="btn btn-sm btn-outline" onclick="runDomainRequestAction('${row.id}', 'verify')">Verify DNS</button>` : ''}
               ${String(row.request_status || '') === 'verified_waiting_activation' ? `<button class="btn btn-sm btn-outline" onclick="runDomainRequestAction('${row.id}', 'activate')">Activate</button>` : ''}
@@ -462,13 +464,40 @@
       const res = await fetch('/api/platform/admin/domain-renewals/run-reminders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin: saasPin })
+        body: JSON.stringify({ pin: saasPin, sendDigest: true })
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) return alert(data.error || 'Failed to run renewal reminders.');
       const summary = data.summary || {};
       await loadSaasDashboard();
-      alert(`Renewal reminder run complete. Reminded: ${Number(summary.reminded || 0)}, updated: ${Number(summary.updated || 0)}, skipped: ${Number(summary.skipped || 0)}.`);
+      const digestChannels = Array.isArray(summary.digest?.channels) ? summary.digest.channels.map((item) => `${item.channel}:${item.ok ? 'sent' : item.skipped ? 'skipped' : 'failed'}`).join(', ') : 'none';
+      alert(`Renewal reminder run complete. Reminded: ${Number(summary.reminded || 0)}, updated: ${Number(summary.updated || 0)}, skipped: ${Number(summary.skipped || 0)}. Digest: ${digestChannels}.`);
+    }
+
+    async function previewDomainRenewalReminder(requestId) {
+      if (!saasPin) return alert('Load SaaS admin first.');
+      const res = await fetch(`/api/platform/admin/domain-renewals/${encodeURIComponent(requestId)}/preview`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: saasPin })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) return alert(data.error || 'Failed to preview reminder.');
+      const preview = data.preview || {};
+      alert(`${preview.subject || 'Reminder preview'}\n\n${preview.text || ''}`);
+    }
+
+    async function forceDomainRenewalOverdue(requestId) {
+      if (!saasPin) return alert('Load SaaS admin first.');
+      const note = document.getElementById(`domain_note_${requestId}`)?.value || '';
+      const res = await fetch(`/api/platform/admin/domain-renewals/${encodeURIComponent(requestId)}/force-overdue`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: saasPin, note })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) return alert(data.error || 'Failed to force overdue escalation.');
+      await loadSaasDashboard();
     }
 
     function renderSaasReviews() {

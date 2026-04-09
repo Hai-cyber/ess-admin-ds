@@ -39,26 +39,30 @@ Recommended reminder windows:
 
 ## Outputs
 
-The first implementation does not need external sending. It should at least:
+Current implementation now:
 
 - update `renewal_status`
 - stamp `renewal_last_reminded_at`
 - create a `custom_domain_request_events` reminder event
 - surface renewal attention in SaaS admin filters
+- send an operator digest to configured channels when reminders are generated
 
 ## Delivery Channels
 
-Initial channels can be manual/operator-facing:
+Current channels:
 
 - SaaS Admin queue filter
-- operator email digest
-- future queue/cron worker output
+- operator email digest via MailChannels
+- operator Telegram digest via existing bot/chat configuration
 
 ## Implemented Runtime Shape
 
 - A platform-admin route can run reminders manually: `/api/platform/admin/domain-renewals/run-reminders`
+- A platform-admin route can preview a reminder: `/api/platform/admin/domain-renewals/:id/preview`
+- A platform-admin route can force overdue escalation: `/api/platform/admin/domain-renewals/:id/force-overdue`
 - The Worker now exposes a `scheduled` handler for production cron execution
 - The production env cron is configured in `wrangler.jsonc`
+- SaaS Admin exposes `Preview reminder` and `Force overdue` actions per managed domain
 
 ## Suggested Future Worker Shape
 
@@ -77,6 +81,5 @@ Initial channels can be manual/operator-facing:
 ## Follow-up Implementation
 
 - Add scheduled worker or cron trigger
-- Add operator digest channel
 - Add customer-facing renewal notification channel
 - Add billing hook for managed renewal invoices

@@ -11,10 +11,12 @@ Document how the explicit `production` Wrangler environment is exposed publicly 
 - Production D1 database id: `55939312-121a-4fc1-91d2-061c4d9fa61e`
 - Current workers.dev URL: `https://ess-admin-ds-prod.divine-shape-9f0a.workers.dev`
 - Production custom domain target: `prod.gooddining.app`
+- Additional production hostnames: `api.prod.gooddining.app`, `platform.prod.gooddining.app`
 - workers.dev still returns `403` with `error code: 1050`, but the production ingress path should now use the custom domain instead of workers.dev.
 - Verified live on 2026-04-09:
 	- `GET https://prod.gooddining.app/api/health` returns `200`
 	- `GET https://prod.gooddining.app/api/platform/plans` returns `200`
+- Additional hostnames `api.prod.gooddining.app` and `platform.prod.gooddining.app` are configured in Cloudflare, but currently still return `1050` and should be treated as pending Cloudflare-side activation/certificate readiness.
 
 This means the production Worker version exists and public ingress is now available through the explicit custom domain, not workers.dev.
 
@@ -25,6 +27,7 @@ This means the production Worker version exists and public ingress is now availa
 - Production deploy succeeds and returns a valid version id.
 - The same D1 database binding used by the main env is configured for production.
 - `wrangler.jsonc` now defines `prod.gooddining.app` as a production custom domain.
+- `wrangler.jsonc` now also defines `api.prod.gooddining.app` and `platform.prod.gooddining.app` as production custom domains.
 - `wrangler.jsonc` now defines a production cron trigger for managed-domain renewal reminders.
 
 ## What Still Needs To Happen
@@ -36,6 +39,8 @@ Primary public ingress path:
 Attach the Worker to a real custom domain in the same zone:
 
 - `prod.gooddining.app`
+- `api.prod.gooddining.app`
+- `platform.prod.gooddining.app`
 
 Requirements:
 
@@ -60,6 +65,7 @@ After deploy and custom-domain attachment:
 - `GET /api/health` returns `200`
 - `GET https://prod.gooddining.app/api/health` returns `200`
 - `GET https://prod.gooddining.app/api/website/payload?company_id=1` returns tenant payload when override is allowed
+- `api.prod.gooddining.app` and `platform.prod.gooddining.app` should be re-checked after Cloudflare-side activation; they currently return `1050`
 - platform home loads
 - platform admin loads
 - `/api/platform/plans` returns pricing payload

@@ -82,6 +82,9 @@ Not Started: 0%
 - [x] Managed domain renewal reminder job design now exists for future scheduled execution
 - [x] Managed domain renewal reminder flow now has a runnable platform-admin trigger plus a scheduled handler path
 - [x] Production env now has a dedicated custom-domain ingress target at `prod.gooddining.app`
+- [x] Managed domain renewal flow now supports reminder preview, forced overdue escalation, and operator digest delivery
+- [x] Production ingress config now includes `api.prod.gooddining.app` and `platform.prod.gooddining.app`
+- [ ] Additional production hostnames `api.prod.gooddining.app` and `platform.prod.gooddining.app` still need re-check because they currently return Cloudflare `1050`
 - [x] Public website payload now includes structured `opening_hours_schedule` alongside legacy open/close values
 - [x] Wildcard tenant subdomain routing and host-based website payload resolution verified live on `gooddining.app`
 - [x] Demo-payment self-service signup walkthrough verified live end to end with tenant provisioning, admin access, and website host resolution

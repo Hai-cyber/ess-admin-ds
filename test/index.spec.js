@@ -401,6 +401,108 @@ describe('ESSKULTUR worker', () => {
 		expect(String(reminderEvent?.event_type || '')).toBe('renewal_reminder_30d');
 	});
 
+	it('supports renewal reminder preview and forced overdue escalation for operators', async () => {
+		await initializeDatabase(env.DB);
+
+		let request = new Request('http://localhost/api/admin/domain-upgrade/request?company_id=1', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				pin: '1234',
+				requestedDomain: 'www.preview-overdue.de',
+				registrationMode: 'managed_registration',
+				requestNote: 'Preview and escalation test.'
+			})
+		});
+		let ctx = createExecutionContext();
+		let response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		const createBody = await response.json();
+		const requestId = String(createBody.request?.id || '');
+
+		await env.DB.prepare(
+			`UPDATE custom_domain_requests SET request_status = 'active', renewal_mode = 'platform_managed', renewal_due_at = ? WHERE id = ?`
+		).bind(new Date(Date.now() + 14 * 86400000).toISOString(), requestId).run();
+
+		request = new Request(`http://localhost/api/platform/admin/domain-renewals/${encodeURIComponent(requestId)}/preview`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ pin: '1234' })
+		});
+		ctx = createExecutionContext();
+		response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		let body = await response.json();
+		expect(body.ok).toBe(true);
+		expect(String(body.preview?.text || '')).toContain('due in 14 day');
+
+		request = new Request(`http://localhost/api/platform/admin/domain-renewals/${encodeURIComponent(requestId)}/force-overdue`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ pin: '1234', note: 'Manual escalation' })
+		});
+		ctx = createExecutionContext();
+		response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		body = await response.json();
+		expect(body.ok).toBe(true);
+		expect(String(body.request?.renewalStatus || body.request?.renewal_status || '')).toBe('renewal_overdue');
+	});
+
+	it('sends operator digest channels when renewal reminders are generated', async () => {
+		await initializeDatabase(env.DB);
+
+		const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+			const url = String(input || '');
+			if (url.startsWith('https://api.telegram.org/') || url === 'https://api.mailchannels.net/tx/v1/send') {
+				return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } });
+			}
+			throw new Error(`Unexpected fetch: ${url}`);
+		});
+
+		env.TELEGRAM_BOT_TOKEN = 'test-bot-token';
+		env.TELEGRAM_REVIEW_CHAT_ID = '123456';
+		env.OPERATOR_DIGEST_EMAIL_TO = 'ops@example.com';
+		env.OPERATOR_DIGEST_EMAIL_FROM = 'noreply@gooddining.app';
+
+		let request = new Request('http://localhost/api/admin/domain-upgrade/request?company_id=1', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				pin: '1234',
+				requestedDomain: 'www.digest-test.de',
+				registrationMode: 'managed_registration',
+				requestNote: 'Digest test.'
+			})
+		});
+		let ctx = createExecutionContext();
+		let response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		const createBody = await response.json();
+		const requestId = String(createBody.request?.id || '');
+		await env.DB.prepare(
+			`UPDATE custom_domain_requests SET request_status = 'active', renewal_mode = 'platform_managed', renewal_due_at = ? WHERE id = ?`
+		).bind(new Date(Date.now() + 7 * 86400000).toISOString(), requestId).run();
+
+		request = new Request('http://localhost/api/platform/admin/domain-renewals/run-reminders', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ pin: '1234', sendDigest: true })
+		});
+		ctx = createExecutionContext();
+		response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		const body = await response.json();
+		expect(body.ok).toBe(true);
+		expect(Array.isArray(body.summary?.digest?.channels)).toBe(true);
+		expect(body.summary.digest.channels.some((item) => item.channel === 'telegram' && item.ok)).toBe(true);
+		expect(body.summary.digest.channels.some((item) => item.channel === 'email' && item.ok)).toBe(true);
+		expect(fetchSpy).toHaveBeenCalled();
+	});
+
 	it('rejects tenant admin subdomain updates that hit blocked policy terms', async () => {
 		await initializeDatabase(env.DB);
 

@@ -822,6 +822,106 @@ async function sendTelegramReviewAlert(env, payload) {
   return { ok: response.ok, status: response.status };
 }
 
+async function sendMailChannelsEmail({ from, to, subject, text }) {
+  const recipients = String(to || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+  if (!from || !recipients.length || !subject || !text) {
+    return { ok: false, skipped: true };
+  }
+
+  const response = await fetch('https://api.mailchannels.net/tx/v1/send', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      personalizations: [{ to: recipients.map((email) => ({ email })) }],
+      from: { email: from },
+      subject,
+      content: [{ type: 'text/plain', value: text }]
+    })
+  });
+
+  return { ok: response.ok, status: response.status };
+}
+
+function buildDomainRenewalReminderPreview(domainRequest) {
+  const request = annotateCustomDomainRequest(domainRequest);
+  const dueAt = String(request?.renewal_due_at || '').trim();
+  const daysUntilDue = Number.isFinite(Number(request?.daysUntilDue)) ? Number(request.daysUntilDue) : null;
+  const timingLine = daysUntilDue == null
+    ? 'Renewal timing: not scheduled'
+    : (daysUntilDue >= 0
+      ? `Renewal timing: due in ${daysUntilDue} day(s)`
+      : `Renewal timing: overdue by ${Math.abs(daysUntilDue)} day(s)`);
+
+  const subject = `Managed domain renewal: ${String(request?.requested_domain || 'unknown-domain').trim()}`;
+  const text = [
+    'Managed domain renewal reminder',
+    `Domain: ${String(request?.requested_domain || '').trim()}`,
+    `Company ID: ${Number(request?.company_id || 0)}`,
+    `Request status: ${String(request?.request_status || 'n/a').trim()}`,
+    `Renewal status: ${String(request?.renewalStatus || request?.renewal_status || 'n/a').trim()}`,
+    dueAt ? `Renewal due at: ${dueAt}` : '',
+    timingLine,
+    `Auto renew: ${Number(request?.auto_renew_enabled || 0) === 1 ? 'enabled' : 'disabled'}`,
+    request?.operator_note ? `Operator note: ${String(request.operator_note).trim()}` : ''
+  ].filter(Boolean).join('\n');
+
+  return { subject, text };
+}
+
+async function sendManagedDomainRenewalDigest(env, payload = {}) {
+  const summary = payload.summary || { reminders: [] };
+  const reminders = Array.isArray(summary.reminders) ? summary.reminders : [];
+  if (!reminders.length) {
+    return { ok: false, skipped: true, channels: [] };
+  }
+
+  const subject = `Domain renewal digest: ${reminders.length} reminder(s)`;
+  const text = [
+    'Managed domain renewal digest',
+    `Reminded: ${Number(summary.reminded || 0)}`,
+    `Updated: ${Number(summary.updated || 0)}`,
+    `Skipped: ${Number(summary.skipped || 0)}`,
+    '',
+    ...reminders.map((item) => `- ${item.requestedDomain} | company ${item.companyId} | ${item.renewalStatus} | ${item.daysUntilDue} day(s) | ${item.eventType}`)
+  ].join('\n');
+
+  const channels = [];
+
+  const telegramResult = await sendTelegramReviewAlert(env, {
+    eventType: 'domain_renewal_digest',
+    companyId: 'platform',
+    companyName: `reminders=${reminders.length}`,
+    decision: 'digest',
+    reasonCodes: reminders.map((item) => `${item.requestedDomain}:${item.eventType}`),
+    reviewId: '',
+    reviewUrl: String(payload.reviewUrl || '').trim(),
+    tenantAdminUrl: '',
+    previewUrl: ''
+  });
+  channels.push({ channel: 'telegram', ...telegramResult });
+
+  const emailTo = String(env.OPERATOR_DIGEST_EMAIL_TO || '').trim();
+  const emailFrom = String(env.OPERATOR_DIGEST_EMAIL_FROM || '').trim();
+  const emailResult = await sendMailChannelsEmail({
+    from: emailFrom,
+    to: emailTo,
+    subject,
+    text
+  });
+  channels.push({ channel: 'email', ...emailResult });
+
+  return {
+    ok: channels.some((item) => item.ok),
+    skipped: channels.every((item) => item.skipped),
+    channels,
+    subject,
+    text
+  };
+}
+
 function buildPlatformReviewLinks(origin, reviewId, companyId) {
   const baseOrigin = String(origin || '').trim();
   const reviewPart = reviewId ? `?review=${encodeURIComponent(reviewId)}` : '';
@@ -1556,22 +1656,26 @@ function addDaysIso(value, days) {
 
 function computeRenewalTrackingForRequest(domainRequest) {
   const renewalMode = String(domainRequest?.renewal_mode || 'external').trim() || 'external';
+  const persistedStatus = String(domainRequest?.renewal_status || '').trim() || 'external';
   const renewalDueAt = String(domainRequest?.renewal_due_at || '').trim();
   const now = Date.now();
   if (!renewalDueAt) {
     return {
       renewalMode,
-      renewalStatus: renewalMode === 'platform_managed' ? 'managed_active' : 'external',
+      renewalStatus: persistedStatus === 'renewal_overdue' ? 'renewal_overdue' : (renewalMode === 'platform_managed' ? 'managed_active' : 'external'),
       reminderDue: false
     };
   }
 
   const dueTime = new Date(renewalDueAt).getTime();
   if (Number.isNaN(dueTime)) {
-    return { renewalMode, renewalStatus: renewalMode === 'platform_managed' ? 'managed_active' : 'external', reminderDue: false };
+    return { renewalMode, renewalStatus: persistedStatus === 'renewal_overdue' ? 'renewal_overdue' : (renewalMode === 'platform_managed' ? 'managed_active' : 'external'), reminderDue: false };
   }
 
   const daysUntilDue = Math.ceil((dueTime - now) / 86400000);
+  if (['renewal_overdue', 'transfer_out_requested', 'transferred_out'].includes(persistedStatus)) {
+    return { renewalMode, renewalStatus: persistedStatus, reminderDue: true, daysUntilDue };
+  }
   if (daysUntilDue < 0) {
     return { renewalMode, renewalStatus: 'renewal_overdue', reminderDue: true, daysUntilDue };
   }
@@ -1613,6 +1717,7 @@ async function hasCustomDomainRequestEvent(env, requestId, eventType) {
 async function processManagedDomainRenewalReminders(env, options = {}) {
   const dryRun = !!options.dryRun;
   const actorId = String(options.actorId || 'system-renewal-job').trim();
+  const sendDigest = options.sendDigest !== false;
   const result = await env.DB.prepare(`
     SELECT id, company_id, organization_id, requested_domain, registration_mode, request_status,
            dns_record_type, dns_name, dns_value, request_note, operator_note, renewal_mode,
@@ -1632,7 +1737,8 @@ async function processManagedDomainRenewalReminders(env, options = {}) {
     updated: 0,
     skipped: 0,
     dryRun,
-    reminders: []
+    reminders: [],
+    digest: null
   };
 
   for (const request of requests) {
@@ -1693,6 +1799,10 @@ async function processManagedDomainRenewalReminders(env, options = {}) {
       daysUntilDue,
       renewalStatus
     });
+  }
+
+  if (!dryRun && sendDigest) {
+    summary.digest = await sendManagedDomainRenewalDigest(env, { summary });
   }
 
   return summary;
@@ -4346,9 +4456,67 @@ export default {
 
         const summary = await processManagedDomainRenewalReminders(env, {
           dryRun: !!body?.dryRun,
+          sendDigest: body?.sendDigest !== false,
           actorId: String(auth.staff.name || auth.staff.id || 'platform-operator')
         });
         return Response.json({ ok: true, summary });
+      } catch (e) {
+        return Response.json({ ok: false, error: e.message }, { status: 500 });
+      }
+    }
+
+    if (url.pathname.match(/^\/api\/platform\/admin\/domain-renewals\/([^/]+)\/preview$/) && request.method === "POST") {
+      try {
+        const routeMatch = url.pathname.match(/^\/api\/platform\/admin\/domain-renewals\/([^/]+)\/preview$/);
+        const requestId = decodeURIComponent(String(routeMatch?.[1] || '')).trim();
+        const body = await request.json().catch(() => ({}));
+        const pin = String(body?.pin || '').trim();
+        const auth = await authorizePlatformOperator(env, pin);
+        if (!auth.ok) {
+          return Response.json({ ok: false, error: auth.error }, { status: auth.status });
+        }
+
+        const domainRequest = await getCustomDomainRequestById(env, requestId);
+        if (!domainRequest?.id) {
+          return Response.json({ ok: false, error: 'Domain request not found.' }, { status: 404 });
+        }
+
+        const preview = buildDomainRenewalReminderPreview(domainRequest);
+        return Response.json({ ok: true, preview });
+      } catch (e) {
+        return Response.json({ ok: false, error: e.message }, { status: 500 });
+      }
+    }
+
+    if (url.pathname.match(/^\/api\/platform\/admin\/domain-renewals\/([^/]+)\/force-overdue$/) && request.method === "POST") {
+      try {
+        const routeMatch = url.pathname.match(/^\/api\/platform\/admin\/domain-renewals\/([^/]+)\/force-overdue$/);
+        const requestId = decodeURIComponent(String(routeMatch?.[1] || '')).trim();
+        const body = await request.json().catch(() => ({}));
+        const pin = String(body?.pin || '').trim();
+        const note = String(body?.note || body?.operatorNote || '').trim();
+        const auth = await authorizePlatformOperator(env, pin);
+        if (!auth.ok) {
+          return Response.json({ ok: false, error: auth.error }, { status: auth.status });
+        }
+
+        const domainRequest = await getCustomDomainRequestById(env, requestId);
+        if (!domainRequest?.id) {
+          return Response.json({ ok: false, error: 'Domain request not found.' }, { status: 404 });
+        }
+        if (String(domainRequest.request_status || '').trim().toLowerCase() !== 'active') {
+          return Response.json({ ok: false, error: 'Only active domains can be escalated.' }, { status: 409 });
+        }
+
+        const updatedRequest = await updateCustomDomainRequestState(env, requestId, {
+          renewalStatus: 'renewal_overdue',
+          actorType: 'platform_operator',
+          actorId: String(auth.staff.name || auth.staff.id || 'platform-operator'),
+          eventType: 'renewal_force_overdue',
+          eventNote: note || 'Operator forced overdue escalation.'
+        });
+
+        return Response.json({ ok: true, request: annotateCustomDomainRequest(updatedRequest) });
       } catch (e) {
         return Response.json({ ok: false, error: e.message }, { status: 500 });
       }

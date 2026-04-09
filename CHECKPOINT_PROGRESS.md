@@ -82,6 +82,9 @@
 ✅ Managed domain renewal reminder flow now has manual operator trigger + scheduled execution path
 ✅ Production env now targets a real custom-domain ingress path at `prod.gooddining.app`
 ✅ `prod.gooddining.app` verified live with `200` responses for `/api/health` and `/api/platform/plans`
+✅ Renewal operator flow now supports preview, forced overdue escalation, and digest delivery channels
+✅ Production ingress config now includes `api.prod.gooddining.app` and `platform.prod.gooddining.app`
+⚠️ Additional production hostnames `api.prod.gooddining.app` and `platform.prod.gooddining.app` are configured but still return `1050` as of 2026-04-09 and need a later re-check
 ✅ SaaS Admin moderation queue now has summary/filter/refresh controls on top of approve/reject/suspend/quarantine actions
 ✅ Local smoke verification now covers `/api/contact/create`, platform contact, publish review, suspend, quarantine, and host-based public blocking
 ✅ Explicit `production` env now deploys against a real D1 database id
