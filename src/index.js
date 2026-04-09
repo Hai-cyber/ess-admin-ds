@@ -532,6 +532,28 @@ function normalizePublicUrl(value) {
   return `https://${raw}`;
 }
 
+function normalizeCustomDomainHostname(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//i, '')
+    .replace(/\/.*$/, '')
+    .replace(/\.+$/, '');
+}
+
+function isValidCustomDomainHostname(hostname) {
+  const normalized = normalizeCustomDomainHostname(hostname);
+  if (!normalized) return false;
+  if (normalized === PLATFORM_PUBLIC_DOMAIN || normalized.endsWith(`.${PLATFORM_PUBLIC_DOMAIN}`)) return false;
+  if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/.test(normalized)) return false;
+  return normalized.split('.').length >= 3;
+}
+
+function buildCustomDomainDnsTarget(company) {
+  const subdomain = normalizeTenantSubdomain(company?.subdomain || '');
+  return subdomain ? `${subdomain}.${PLATFORM_PUBLIC_DOMAIN}` : '';
+}
+
 function buildPublishedWebsiteUrlForCompany(company, operationalSettings = {}) {
   const customDomain = normalizePublicUrl(operationalSettings.custom_domain);
   if (customDomain) return customDomain;
@@ -1451,6 +1473,253 @@ async function getLatestPublishedWebsiteRelease(env, companyId) {
   return release || null;
 }
 
+async function getCustomDomainRequestHistory(env, companyId, limit = 12) {
+  if (!companyId) return [];
+  const result = await env.DB.prepare(`
+    SELECT id, company_id, organization_id, requested_domain, registration_mode, request_status,
+           dns_record_type, dns_name, dns_value, request_note, operator_note, renewal_mode,
+           approved_at, approved_by, dns_ready_at, verified_at, activated_at, activated_by,
+           rejected_at, rejected_by, created_at, updated_at
+    FROM custom_domain_requests
+    WHERE company_id = ?
+    ORDER BY updated_at DESC, created_at DESC
+    LIMIT ?
+  `).bind(companyId, Math.max(1, Number(limit || 12))).all();
+  return result?.results || [];
+}
+
+async function getLatestCustomDomainRequest(env, companyId) {
+  const history = await getCustomDomainRequestHistory(env, companyId, 1);
+  return history[0] || null;
+}
+
+async function getCustomDomainRequestById(env, requestId) {
+  if (!requestId) return null;
+  const request = await env.DB.prepare(`
+    SELECT id, company_id, organization_id, requested_domain, registration_mode, request_status,
+           dns_record_type, dns_name, dns_value, request_note, operator_note, renewal_mode,
+           approved_at, approved_by, dns_ready_at, verified_at, activated_at, activated_by,
+           rejected_at, rejected_by, created_at, updated_at
+    FROM custom_domain_requests
+    WHERE id = ?
+    LIMIT 1
+  `).bind(requestId).first();
+  return request || null;
+}
+
+async function getCustomDomainRequestEvents(env, requestId, limit = 20) {
+  if (!requestId) return [];
+  const result = await env.DB.prepare(`
+    SELECT id, request_id, company_id, event_type, request_status, actor_type, actor_id, note, metadata_json, created_at
+    FROM custom_domain_request_events
+    WHERE request_id = ?
+    ORDER BY created_at DESC
+    LIMIT ?
+  `).bind(requestId, Math.max(1, Number(limit || 20))).all();
+  return result?.results || [];
+}
+
+async function logCustomDomainRequestEvent(env, payload = {}) {
+  const now = String(payload.createdAt || new Date().toISOString());
+  await env.DB.prepare(`
+    INSERT INTO custom_domain_request_events (
+      id, request_id, company_id, event_type, request_status, actor_type, actor_id, note, metadata_json, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    payload.id || crypto.randomUUID(),
+    String(payload.requestId || '').trim(),
+    Number(payload.companyId || 0),
+    String(payload.eventType || 'domain_event').trim(),
+    String(payload.requestStatus || '').trim() || null,
+    String(payload.actorType || '').trim() || null,
+    String(payload.actorId || '').trim() || null,
+    String(payload.note || '').trim() || null,
+    payload.metadataJson ? JSON.stringify(payload.metadataJson) : null,
+    now
+  ).run();
+}
+
+function normalizeDnsHostnameValue(value) {
+  return String(value || '').trim().toLowerCase().replace(/\.+$/, '');
+}
+
+async function verifyCustomDomainDns(env, domainRequest) {
+  const requestedDomain = normalizeCustomDomainHostname(domainRequest?.requested_domain || '');
+  const expectedTarget = normalizeDnsHostnameValue(domainRequest?.dns_value || '');
+  const verifyMode = String(env?.CUSTOM_DOMAIN_DNS_VERIFY_MODE || '').trim().toLowerCase();
+
+  if (!requestedDomain || !expectedTarget) {
+    return { ok: false, code: 'dns_verification_unavailable', error: 'DNS verification data is incomplete.' };
+  }
+
+  if (verifyMode === 'mock') {
+    return {
+      ok: true,
+      matched: true,
+      dnsAnswers: [{ name: requestedDomain, type: 'CNAME', data: expectedTarget }],
+      expectedTarget
+    };
+  }
+
+  const response = await fetch(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(requestedDomain)}&type=CNAME`, {
+    headers: {
+      accept: 'application/dns-json'
+    }
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    return { ok: false, code: 'dns_lookup_failed', error: 'Unable to verify DNS right now.' };
+  }
+
+  const answers = Array.isArray(data?.Answer) ? data.Answer : [];
+  const normalizedAnswers = answers.map((answer) => ({
+    name: normalizeDnsHostnameValue(answer?.name || requestedDomain),
+    type: Number(answer?.type || 0) === 5 ? 'CNAME' : String(answer?.type || ''),
+    data: normalizeDnsHostnameValue(answer?.data || '')
+  }));
+  const matched = normalizedAnswers.some((answer) => answer.type === 'CNAME' && answer.data === expectedTarget);
+
+  if (!matched) {
+    return {
+      ok: false,
+      code: 'dns_record_mismatch',
+      error: `Expected ${requestedDomain} to CNAME to ${expectedTarget}.`,
+      expectedTarget,
+      dnsAnswers: normalizedAnswers
+    };
+  }
+
+  return {
+    ok: true,
+    matched: true,
+    expectedTarget,
+    dnsAnswers: normalizedAnswers
+  };
+}
+
+async function createCustomDomainUpgradeRequest(env, payload = {}) {
+  const companyId = Number(payload.companyId || 0);
+  const company = payload.company || await getCompanyProfile(env, companyId);
+  const requestedDomain = normalizeCustomDomainHostname(payload.requestedDomain || '');
+  const registrationMode = ['byod', 'managed_registration'].includes(String(payload.registrationMode || '').trim())
+    ? String(payload.registrationMode || '').trim()
+    : 'byod';
+  const requestNote = String(payload.requestNote || '').trim();
+
+  if (!companyId || !company?.id) {
+    return { ok: false, status: 404, code: 'company_not_found', error: 'Company not found.' };
+  }
+
+  if (!isValidCustomDomainHostname(requestedDomain)) {
+    return {
+      ok: false,
+      status: 400,
+      code: 'invalid_custom_domain',
+      error: 'Use a hostname like www.example.com for the current CNAME-based custom-domain MVP.'
+    };
+  }
+
+  const openRequest = await env.DB.prepare(`
+    SELECT id, request_status
+    FROM custom_domain_requests
+    WHERE company_id = ? AND request_status IN ('requested', 'approved_waiting_dns', 'verification_pending', 'verified_waiting_activation')
+    ORDER BY updated_at DESC, created_at DESC
+    LIMIT 1
+  `).bind(companyId).first();
+  if (openRequest?.id) {
+    return { ok: false, status: 409, code: 'domain_request_already_open', error: 'There is already an open custom-domain request for this tenant.' };
+  }
+
+  const dnsTarget = buildCustomDomainDnsTarget(company);
+  const now = new Date().toISOString();
+  const requestId = crypto.randomUUID();
+  await env.DB.prepare(`
+    INSERT INTO custom_domain_requests (
+      id, company_id, organization_id, requested_domain, registration_mode, request_status,
+      dns_record_type, dns_name, dns_value, request_note, renewal_mode, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, 'requested', 'CNAME', ?, ?, ?, ?, ?, ?)
+  `).bind(
+    requestId,
+    companyId,
+    company.organization_id || null,
+    requestedDomain,
+    registrationMode,
+    requestedDomain,
+    dnsTarget,
+    requestNote,
+    registrationMode === 'managed_registration' ? 'platform_managed' : 'external',
+    now,
+    now
+  ).run();
+
+  await logCustomDomainRequestEvent(env, {
+    requestId,
+    companyId,
+    eventType: 'request_created',
+    requestStatus: 'requested',
+    actorType: 'tenant_admin',
+    actorId: String(payload.actorId || 'tenant-admin'),
+    note: requestNote || 'Custom-domain upgrade requested.',
+    metadataJson: {
+      requestedDomain,
+      registrationMode,
+      dnsTarget
+    }
+  });
+
+  return { ok: true, request: await getCustomDomainRequestById(env, requestId) };
+}
+
+async function updateCustomDomainRequestState(env, requestId, updates = {}) {
+  const existing = await getCustomDomainRequestById(env, requestId);
+  if (!existing) return null;
+
+  const now = new Date().toISOString();
+  await env.DB.prepare(`
+    UPDATE custom_domain_requests
+    SET request_status = ?,
+        operator_note = ?,
+        approved_at = ?,
+        approved_by = ?,
+        dns_ready_at = ?,
+        verified_at = ?,
+        activated_at = ?,
+        activated_by = ?,
+        rejected_at = ?,
+        rejected_by = ?,
+        updated_at = ?
+    WHERE id = ?
+  `).bind(
+    updates.requestStatus ?? existing.request_status,
+    updates.operatorNote ?? existing.operator_note ?? null,
+    updates.approvedAt ?? existing.approved_at ?? null,
+    updates.approvedBy ?? existing.approved_by ?? null,
+    updates.dnsReadyAt ?? existing.dns_ready_at ?? null,
+    updates.verifiedAt ?? existing.verified_at ?? null,
+    updates.activatedAt ?? existing.activated_at ?? null,
+    updates.activatedBy ?? existing.activated_by ?? null,
+    updates.rejectedAt ?? existing.rejected_at ?? null,
+    updates.rejectedBy ?? existing.rejected_by ?? null,
+    now,
+    requestId
+  ).run();
+
+  const nextRequest = await getCustomDomainRequestById(env, requestId);
+  await logCustomDomainRequestEvent(env, {
+    requestId,
+    companyId: Number(existing.company_id || 0),
+    eventType: String(updates.eventType || 'status_updated').trim(),
+    requestStatus: String((updates.requestStatus ?? nextRequest?.request_status ?? existing.request_status) || '').trim(),
+    actorType: String(updates.actorType || 'system').trim(),
+    actorId: String(updates.actorId || '').trim(),
+    note: String(updates.eventNote || updates.operatorNote || '').trim(),
+    metadataJson: updates.metadataJson || null
+  });
+
+  return nextRequest;
+}
+
 function parseWebsiteReleaseSnapshot(release) {
   try {
     const parsed = JSON.parse(String(release?.payload_snapshot_json || ''));
@@ -1815,19 +2084,23 @@ async function getOrganizationProfile(env, organizationId) {
 
 async function getAdminPlatformConfig(env, companyId) {
   const company = await getCompanyProfile(env, companyId);
-  const [organization, operationalSettings, modules, websiteRelease, websiteReleaseHistory, platformPricingSettings] = await Promise.all([
+  const [organization, operationalSettings, modules, websiteRelease, websiteReleaseHistory, platformPricingSettings, customDomainRequestHistory] = await Promise.all([
     getOrganizationProfile(env, company?.organization_id || null),
     getOperationalSettingsMap(env, companyId),
     getModuleSettingsMap(env, companyId),
     getLatestWebsiteRelease(env, companyId),
     getWebsiteReleaseHistory(env, companyId),
-    getPlatformMarketingSettings(env)
+    getPlatformMarketingSettings(env),
+    getCustomDomainRequestHistory(env, companyId)
   ]);
   const goLiveReadiness = await getGoLiveReadiness(env, companyId, {
     company,
     operationalSettings,
     websiteRelease
   });
+  const customDomainRequestEvents = customDomainRequestHistory[0]?.id
+    ? await getCustomDomainRequestEvents(env, customDomainRequestHistory[0].id)
+    : [];
 
   return {
     organization,
@@ -1836,6 +2109,9 @@ async function getAdminPlatformConfig(env, companyId) {
     modules,
     websiteRelease,
     websiteReleaseHistory,
+    customDomainRequest: customDomainRequestHistory[0] || null,
+    customDomainRequestHistory,
+    customDomainRequestEvents,
     paymentMethodPolicy: buildPaymentMethodPolicy(platformPricingSettings),
     goLiveReadiness
   };
@@ -2365,7 +2641,7 @@ async function authorizePlatformOperator(env, pinRaw) {
 }
 
 async function getPlatformAdminDashboard(env) {
-  const [pricingSettings, signupsResult, contactsResult, reviewsResult, paymentEventsResult] = await Promise.all([
+  const [pricingSettings, signupsResult, contactsResult, reviewsResult, paymentEventsResult, customDomainRequestsResult, customDomainRequestEventsResult] = await Promise.all([
     getPlatformMarketingSettings(env),
     env.DB.prepare(`
       SELECT id, company_id, organization_id, restaurant_name, owner_email, owner_phone, subdomain, plan,
@@ -2403,6 +2679,21 @@ async function getPlatformAdminDashboard(env) {
       FROM payment_events
       ORDER BY created_at DESC
       LIMIT 500
+    `).all(),
+    env.DB.prepare(`
+      SELECT id, company_id, organization_id, requested_domain, registration_mode, request_status,
+             dns_record_type, dns_name, dns_value, request_note, operator_note, renewal_mode,
+             approved_at, approved_by, dns_ready_at, verified_at, activated_at, activated_by,
+             rejected_at, rejected_by, created_at, updated_at
+      FROM custom_domain_requests
+      ORDER BY updated_at DESC, created_at DESC
+      LIMIT 200
+    `).all(),
+    env.DB.prepare(`
+      SELECT id, request_id, company_id, event_type, request_status, actor_type, actor_id, note, metadata_json, created_at
+      FROM custom_domain_request_events
+      ORDER BY created_at DESC
+      LIMIT 500
     `).all()
   ]);
 
@@ -2411,7 +2702,9 @@ async function getPlatformAdminDashboard(env) {
     signups: signupsResult?.results || [],
     contacts: contactsResult?.results || [],
     reviews: reviewsResult?.results || [],
-    paymentEvents: paymentEventsResult?.results || []
+    paymentEvents: paymentEventsResult?.results || [],
+    customDomainRequests: customDomainRequestsResult?.results || [],
+    customDomainRequestEvents: customDomainRequestEventsResult?.results || []
   };
 }
 
@@ -3779,6 +4072,127 @@ export default {
         `).bind(followUpStatus, followUpNote, new Date().toISOString(), signupId).run();
 
         return Response.json({ ok: true, signupId, followUpStatus });
+      } catch (e) {
+        return Response.json({ ok: false, error: e.message }, { status: 500 });
+      }
+    }
+
+    if (url.pathname.match(/^\/api\/platform\/admin\/domain-requests\/([^/]+)\/(approve|reject|verify|activate)$/) && request.method === "POST") {
+      try {
+        const routeMatch = url.pathname.match(/^\/api\/platform\/admin\/domain-requests\/([^/]+)\/(approve|reject|verify|activate)$/);
+        const requestId = decodeURIComponent(String(routeMatch?.[1] || '')).trim();
+        const action = String(routeMatch?.[2] || '').trim().toLowerCase();
+        const body = await request.json().catch(() => ({}));
+        const pin = String(body?.pin || '').trim();
+        const operatorNote = String(body?.operatorNote || body?.note || '').trim();
+        const auth = await authorizePlatformOperator(env, pin);
+        if (!auth.ok) {
+          return Response.json({ ok: false, error: auth.error }, { status: auth.status });
+        }
+
+        const domainRequest = await getCustomDomainRequestById(env, requestId);
+        if (!domainRequest?.id) {
+          return Response.json({ ok: false, error: 'Domain request not found.' }, { status: 404 });
+        }
+
+        const actorName = String(auth.staff.name || auth.staff.id || 'platform-operator');
+        let updatedRequest = null;
+
+        if (action === 'approve') {
+          if (String(domainRequest.request_status || '') !== 'requested') {
+            return Response.json({ ok: false, error: 'Only newly requested domains can be approved.' }, { status: 409 });
+          }
+          updatedRequest = await updateCustomDomainRequestState(env, requestId, {
+            requestStatus: 'approved_waiting_dns',
+            operatorNote,
+            approvedAt: new Date().toISOString(),
+            approvedBy: actorName,
+            eventType: 'request_approved',
+            actorType: 'platform_operator',
+            actorId: actorName,
+            eventNote: operatorNote || 'Custom-domain upgrade approved.'
+          });
+        }
+
+        if (action === 'reject') {
+          if (['active', 'rejected'].includes(String(domainRequest.request_status || ''))) {
+            return Response.json({ ok: false, error: 'This domain request can no longer be rejected.' }, { status: 409 });
+          }
+          updatedRequest = await updateCustomDomainRequestState(env, requestId, {
+            requestStatus: 'rejected',
+            operatorNote,
+            rejectedAt: new Date().toISOString(),
+            rejectedBy: actorName,
+            eventType: 'request_rejected',
+            actorType: 'platform_operator',
+            actorId: actorName,
+            eventNote: operatorNote || 'Custom-domain request rejected.'
+          });
+        }
+
+        if (action === 'verify') {
+          if (String(domainRequest.request_status || '') !== 'verification_pending') {
+            return Response.json({ ok: false, error: 'DNS can only be verified after the tenant marks it ready.' }, { status: 409 });
+          }
+
+          const dnsVerification = await verifyCustomDomainDns(env, domainRequest);
+          if (!dnsVerification.ok) {
+            await logCustomDomainRequestEvent(env, {
+              requestId,
+              companyId: Number(domainRequest.company_id || 0),
+              eventType: 'dns_verification_failed',
+              requestStatus: String(domainRequest.request_status || ''),
+              actorType: 'platform_operator',
+              actorId: actorName,
+              note: String(dnsVerification.error || 'DNS verification failed.').trim(),
+              metadataJson: {
+                expectedTarget: dnsVerification.expectedTarget || null,
+                dnsAnswers: dnsVerification.dnsAnswers || []
+              }
+            });
+            return Response.json({ ok: false, code: dnsVerification.code, error: dnsVerification.error, expected_target: dnsVerification.expectedTarget || null, dns_answers: dnsVerification.dnsAnswers || [] }, { status: 409 });
+          }
+
+          updatedRequest = await updateCustomDomainRequestState(env, requestId, {
+            requestStatus: 'verified_waiting_activation',
+            operatorNote,
+            verifiedAt: new Date().toISOString(),
+            eventType: 'dns_verified',
+            actorType: 'platform_operator',
+            actorId: actorName,
+            eventNote: operatorNote || 'DNS verified automatically.',
+            metadataJson: {
+              expectedTarget: dnsVerification.expectedTarget,
+              dnsAnswers: dnsVerification.dnsAnswers || []
+            }
+          });
+        }
+
+        if (action === 'activate') {
+          if (String(domainRequest.request_status || '') !== 'verified_waiting_activation') {
+            return Response.json({ ok: false, error: 'Only verified domains can be activated.' }, { status: 409 });
+          }
+          updatedRequest = await updateCustomDomainRequestState(env, requestId, {
+            requestStatus: 'active',
+            operatorNote,
+            activatedAt: new Date().toISOString(),
+            activatedBy: actorName,
+            eventType: 'domain_activated',
+            actorType: 'platform_operator',
+            actorId: actorName,
+            eventNote: operatorNote || 'Custom domain activated.'
+          });
+          await upsertSettingValue(
+            env,
+            Number(domainRequest.company_id || 0),
+            'custom_domain',
+            String(domainRequest.requested_domain || '').trim(),
+            OPERATIONAL_KEY_DESCRIPTIONS.custom_domain || 'Custom domain mapped for the tenant website',
+            actorName
+          );
+        }
+
+        return Response.json({ ok: true, request: updatedRequest || domainRequest });
       } catch (e) {
         return Response.json({ ok: false, error: e.message }, { status: 500 });
       }
@@ -5203,6 +5617,68 @@ export default {
         } catch (e) {
           console.error('Admin platform-config GET error:', e);
           return Response.json({ success: false, error: e.message }, { status: 500 });
+        }
+      });
+    }
+
+    if (url.pathname === "/api/admin/domain-upgrade/request" && request.method === "POST") {
+      return runTenantRoute(async ({ companyId }) => {
+        try {
+          const body = await request.json().catch(() => ({}));
+          const pin = String(body?.pin || '').trim();
+          const auth = await authorizeAdminByPin(env, companyId, pin);
+          if (!auth.ok) {
+            return Response.json({ ok: false, error: auth.error }, { status: auth.status });
+          }
+
+          const result = await createCustomDomainUpgradeRequest(env, {
+            companyId,
+            requestedDomain: body?.requestedDomain,
+            registrationMode: body?.registrationMode,
+            requestNote: body?.requestNote,
+            actorId: String(auth.staff.name || auth.staff.id || 'tenant-admin')
+          });
+          if (!result.ok) {
+            return Response.json({ ok: false, code: result.code, error: result.error }, { status: result.status || 500 });
+          }
+
+          return Response.json({ ok: true, request: result.request });
+        } catch (e) {
+          return Response.json({ ok: false, error: e.message }, { status: 500 });
+        }
+      });
+    }
+
+    if (url.pathname === "/api/admin/domain-upgrade/mark-dns-ready" && request.method === "POST") {
+      return runTenantRoute(async ({ companyId }) => {
+        try {
+          const body = await request.json().catch(() => ({}));
+          const pin = String(body?.pin || '').trim();
+          const auth = await authorizeAdminByPin(env, companyId, pin);
+          if (!auth.ok) {
+            return Response.json({ ok: false, error: auth.error }, { status: auth.status });
+          }
+
+          const latestRequest = await getLatestCustomDomainRequest(env, companyId);
+          if (!latestRequest?.id) {
+            return Response.json({ ok: false, error: 'No custom-domain request found.' }, { status: 404 });
+          }
+          if (String(latestRequest.request_status || '') !== 'approved_waiting_dns') {
+            return Response.json({ ok: false, error: 'DNS can only be marked ready after operator approval.' }, { status: 409 });
+          }
+
+          const updatedRequest = await updateCustomDomainRequestState(env, latestRequest.id, {
+            requestStatus: 'verification_pending',
+            dnsReadyAt: new Date().toISOString(),
+            eventType: 'dns_marked_ready',
+            actorType: 'tenant_admin',
+            actorId: String(auth.staff.name || auth.staff.id || 'tenant-admin'),
+            eventNote: 'Tenant reported DNS is configured and ready for verification.'
+          });
+
+          return Response.json({ ok: true, request: updatedRequest });
+        } catch (e) {
+          return Response.json({ ok: false, error: e.message }, { status: 500 });
         }
       });
     }

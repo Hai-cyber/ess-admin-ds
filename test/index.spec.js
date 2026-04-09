@@ -199,6 +199,116 @@ describe('ESSKULTUR worker', () => {
 		expect(typeof body.paymentMethodPolicy?.toggles).toBe('object');
 	});
 
+	it('creates a tenant custom-domain upgrade request and returns it in platform config', async () => {
+		await initializeDatabase(env.DB);
+
+		const request = new Request('http://localhost/api/admin/domain-upgrade/request?company_id=1', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				pin: '1234',
+				requestedDomain: 'www.restaurant-one.de',
+				registrationMode: 'byod',
+				requestNote: 'Need branded host for launch.'
+			})
+		});
+		let ctx = createExecutionContext();
+		let response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		const body = await response.json();
+		expect(body.ok).toBe(true);
+		expect(String(body.request?.request_status || '')).toBe('requested');
+
+		const configRequest = new Request('http://localhost/api/admin/platform-config?company_id=1&pin=1234');
+		ctx = createExecutionContext();
+		response = await worker.fetch(configRequest, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		const configBody = await response.json();
+		expect(configBody.success).toBe(true);
+		expect(String(configBody.customDomainRequest?.requested_domain || '')).toBe('www.restaurant-one.de');
+		expect(Array.isArray(configBody.customDomainRequestHistory)).toBe(true);
+		expect(configBody.customDomainRequestHistory.length).toBeGreaterThan(0);
+	});
+
+	it('allows operator approval, verification, and activation for a custom-domain request', async () => {
+		await initializeDatabase(env.DB);
+		env.CUSTOM_DOMAIN_DNS_VERIFY_MODE = 'mock';
+
+		let request = new Request('http://localhost/api/admin/domain-upgrade/request?company_id=1', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				pin: '1234',
+				requestedDomain: 'www.restaurant-activation.de',
+				registrationMode: 'byod',
+				requestNote: 'Commerce upgrade requested.'
+			})
+		});
+		let ctx = createExecutionContext();
+		let response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		const createBody = await response.json();
+		const domainRequestId = String(createBody.request?.id || '');
+		expect(domainRequestId).not.toBe('');
+
+		for (const action of ['approve', 'verify', 'activate']) {
+			if (action === 'verify') {
+				request = new Request('http://localhost/api/admin/domain-upgrade/mark-dns-ready?company_id=1', {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({ pin: '1234' })
+				});
+				ctx = createExecutionContext();
+				response = await worker.fetch(request, env, ctx);
+				await waitOnExecutionContext(ctx);
+				expect(response.status).toBe(200);
+			}
+
+			request = new Request(`http://localhost/api/platform/admin/domain-requests/${encodeURIComponent(domainRequestId)}/${action}`, {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ pin: '1234', operatorNote: `Operator ${action}` })
+			});
+			ctx = createExecutionContext();
+			response = await worker.fetch(request, env, ctx);
+			await waitOnExecutionContext(ctx);
+			expect(response.status).toBe(200);
+		}
+
+		const activeRequest = await env.DB.prepare(
+			`SELECT request_status, activated_at FROM custom_domain_requests WHERE id = ? LIMIT 1`
+		).bind(domainRequestId).first();
+		const domainEvents = await env.DB.prepare(
+			`SELECT event_type FROM custom_domain_request_events WHERE request_id = ? ORDER BY created_at DESC`
+		).bind(domainRequestId).all();
+		const customDomainSetting = await env.DB.prepare(
+			`SELECT value FROM settings WHERE company_id = 1 AND key = 'custom_domain' LIMIT 1`
+		).first();
+		expect(String(activeRequest?.request_status || '')).toBe('active');
+		expect(String(activeRequest?.activated_at || '')).not.toBe('');
+		expect(String(customDomainSetting?.value || '')).toBe('www.restaurant-activation.de');
+		expect((domainEvents.results || []).map((row) => String(row.event_type || ''))).toEqual(expect.arrayContaining([
+			'request_created',
+			'request_approved',
+			'dns_marked_ready',
+			'dns_verified',
+			'domain_activated'
+		]));
+
+		request = new Request('http://localhost/api/platform/admin/dashboard?pin=1234');
+		ctx = createExecutionContext();
+		response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		const dashboardBody = await response.json();
+		expect(dashboardBody.ok).toBe(true);
+		expect(Array.isArray(dashboardBody.customDomainRequests)).toBe(true);
+		expect(Array.isArray(dashboardBody.customDomainRequestEvents)).toBe(true);
+		expect(dashboardBody.customDomainRequests.some((row) => String(row.id || '') === domainRequestId)).toBe(true);
+	});
+
 	it('rejects tenant admin subdomain updates that hit blocked policy terms', async () => {
 		await initializeDatabase(env.DB);
 

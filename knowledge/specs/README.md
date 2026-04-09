@@ -6,3 +6,4 @@
 - media-automation-spec.md
 - module-catalog-and-billing-toggles.md
 - subdomain-abuse-protection-spec.md
+- managed-domain-registration-billing-spec.md

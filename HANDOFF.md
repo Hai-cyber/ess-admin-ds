@@ -67,6 +67,10 @@
 - [x] Stripe webhook testing now includes a signed payload path using `stripe-signature`
 - [x] Product direction is now subdomain-first: custom domain is no longer a signup prerequisite and should ship as a later upgrade flow
 - [x] Managed domain registration is now treated as an optional convenience product after BYOD custom-domain upgrade is stable
+- [x] Tenant admin now has a custom-domain upgrade request MVP with a guided request + DNS-ready handoff
+- [x] SaaS Admin now has a custom-domain request queue for approve -> verify -> activate -> reject
+- [x] Detailed managed domain registration spec and custom-domain operator runbook now live in `knowledge/specs/` and `knowledge/runbooks/`
+- [x] Custom-domain request flow now includes automatic DNS verification and a dedicated event timeline for request/audit history
 - [x] Structured `opening_hours_schedule` now reaches the public website payload alongside legacy open/close fallback values
 - [x] Wildcard tenant subdomains on `gooddining.app` and demo-payment signup walkthrough have been verified live end to end
 - [x] Active Odoo runtime/helper paths removed from both worker entrypoints; active public/admin surfaces updated to first-party CRM wording
@@ -114,7 +118,7 @@
 - [ ] Payment integration setup
 - [ ] "Go Live" verification
 
-**What's blocked**: production route attachment, final publish/release workflow completion, custom-domain upgrade workflow, plus founder/KC OTP runtime depending on Twilio credentials
+**What's blocked**: production route attachment, final publish/release workflow completion, custom-domain upgrade hardening beyond MVP, plus founder/KC OTP runtime depending on Twilio credentials
 
 **Entry points**: `src/index.js`, `public/admin.html`, `public/platform/admin.html`, `public/website-master/index.html`
 

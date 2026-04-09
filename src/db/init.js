@@ -32,6 +32,50 @@ async function ensureSchemaEvolution(db) {
       FOREIGN KEY (company_id) REFERENCES companies(id)
     )
   `).run();
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS custom_domain_requests (
+      id TEXT PRIMARY KEY,
+      company_id INTEGER NOT NULL,
+      organization_id INTEGER,
+      requested_domain TEXT NOT NULL,
+      registration_mode TEXT DEFAULT 'byod',
+      request_status TEXT DEFAULT 'requested',
+      dns_record_type TEXT DEFAULT 'CNAME',
+      dns_name TEXT,
+      dns_value TEXT,
+      request_note TEXT,
+      operator_note TEXT,
+      renewal_mode TEXT DEFAULT 'external',
+      approved_at TEXT,
+      approved_by TEXT,
+      dns_ready_at TEXT,
+      verified_at TEXT,
+      activated_at TEXT,
+      activated_by TEXT,
+      rejected_at TEXT,
+      rejected_by TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (company_id) REFERENCES companies(id),
+      FOREIGN KEY (organization_id) REFERENCES organizations(id)
+    )
+  `).run();
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS custom_domain_request_events (
+      id TEXT PRIMARY KEY,
+      request_id TEXT NOT NULL,
+      company_id INTEGER NOT NULL,
+      event_type TEXT NOT NULL,
+      request_status TEXT,
+      actor_type TEXT,
+      actor_id TEXT,
+      note TEXT,
+      metadata_json TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (request_id) REFERENCES custom_domain_requests(id),
+      FOREIGN KEY (company_id) REFERENCES companies(id)
+    )
+  `).run();
   await ensureColumn(db, 'companies', 'organization_id', 'INTEGER');
   await ensureColumn(db, 'companies', 'subdomain_status', "TEXT DEFAULT 'active'");
   await ensureColumn(db, 'companies', 'website_status', "TEXT DEFAULT 'draft'");
@@ -49,6 +93,10 @@ async function ensureSchemaEvolution(db) {
   await ensureColumn(db, 'platform_signups', 'payment_confirmed_at', 'TEXT');
   await db.prepare(`CREATE INDEX IF NOT EXISTS idx_payment_events_signup ON payment_events(signup_id, created_at)`).run();
   await db.prepare(`CREATE INDEX IF NOT EXISTS idx_payment_events_company ON payment_events(company_id, created_at)`).run();
+  await db.prepare(`CREATE INDEX IF NOT EXISTS idx_custom_domain_requests_company ON custom_domain_requests(company_id, created_at)`).run();
+  await db.prepare(`CREATE INDEX IF NOT EXISTS idx_custom_domain_requests_status ON custom_domain_requests(request_status, created_at)`).run();
+  await db.prepare(`CREATE INDEX IF NOT EXISTS idx_custom_domain_request_events_request ON custom_domain_request_events(request_id, created_at)`).run();
+  await db.prepare(`CREATE INDEX IF NOT EXISTS idx_custom_domain_request_events_company ON custom_domain_request_events(company_id, created_at)`).run();
 }
 
 /**

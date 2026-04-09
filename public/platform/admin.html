@@ -179,6 +179,12 @@
 
     <div class="saas-grid-bottom">
       <div class="saas-card">
+        <h2>Custom Domain Upgrade Queue</h2>
+        <p class="meta">Approve, verify, activate, or reject tenant custom-domain requests without blocking subdomain-first onboarding.</p>
+        <div id="saas-domain-requests-list"></div>
+      </div>
+
+      <div class="saas-card">
         <h2>Moderation Review Queue</h2>
         <p class="meta">Pending and recent website moderation decisions. Use the operator PIN loaded above to approve, reject, suspend, or quarantine directly.</p>
         <div id="saas-reviews-list"></div>
@@ -225,7 +231,7 @@
     ];
 
     let saasPin = '';
-    let saasDashboard = { pricingSettings: {}, signups: [], contacts: [], reviews: [], paymentEvents: [] };
+    let saasDashboard = { pricingSettings: {}, signups: [], contacts: [], reviews: [], paymentEvents: [], customDomainRequests: [], customDomainRequestEvents: [] };
   let reviewFilter = 'all';
 
     function getReviewFocusId() {
@@ -257,6 +263,17 @@
       }[String(method || '').trim()] || String(method || 'n/a');
     }
 
+    function humanizeDomainRequestStatus(status) {
+      return {
+        requested: 'Requested',
+        approved_waiting_dns: 'Approved, waiting for DNS',
+        verification_pending: 'DNS ready, waiting for operator verification',
+        verified_waiting_activation: 'Verified, waiting for activation',
+        active: 'Active',
+        rejected: 'Rejected'
+      }[String(status || '').trim()] || String(status || 'n/a');
+    }
+
     async function loadSaasDashboard() {
       saasPin = String(document.getElementById('saas-pin')?.value || '').trim();
       const msg = document.getElementById('saas-login-message');
@@ -277,6 +294,7 @@
       msg.textContent = `Loaded ${data.signups.length} signups, ${data.reviews.length} review items, and ${data.contacts.length} contact leads.`;
       renderSaasPricing();
       renderSaasSignups();
+      renderSaasDomainRequests();
       renderSaasReviews();
       renderSaasContacts();
 
@@ -343,6 +361,52 @@
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <button class="btn btn-sm btn-outline" onclick="saveFollowup('${row.id}')">Save</button>
               ${String(row.payment_method || '') === 'bankcard' && ['stripe_failed', 'stripe_expired'].includes(String(row.payment_status || '').toLowerCase()) ? `<button class="btn btn-sm btn-outline" onclick="retrySignupPayment('${row.id}')">Retry checkout</button>` : ''}
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function renderSaasDomainRequests() {
+      const el = document.getElementById('saas-domain-requests-list');
+      if (!el) return;
+      const requests = Array.isArray(saasDashboard.customDomainRequests) ? saasDashboard.customDomainRequests : [];
+      const events = Array.isArray(saasDashboard.customDomainRequestEvents) ? saasDashboard.customDomainRequestEvents : [];
+      if (!requests.length) {
+        el.innerHTML = '<p class="text-muted">No custom-domain requests yet.</p>';
+        return;
+      }
+
+      el.innerHTML = requests.map((row) => `
+        <div class="lead-row">
+          <div class="lead-top">
+            <div>
+              <div class="lead-name">${escapeHtml(row.requested_domain || 'Unknown domain')}</div>
+              <div class="lead-meta">company: ${escapeHtml(String(row.company_id || ''))} • mode: ${escapeHtml(row.registration_mode || 'byod')} • renewal: ${escapeHtml(row.renewal_mode || 'external')}</div>
+              <div class="lead-payment-meta">
+                <div>Status: ${escapeHtml(humanizeDomainRequestStatus(row.request_status || 'requested'))}</div>
+                <div>DNS: ${escapeHtml(row.dns_record_type || 'CNAME')} ${escapeHtml(row.dns_name || '')} → ${escapeHtml(row.dns_value || '')}</div>
+                <div>Requested: ${escapeHtml(row.created_at || '')}</div>
+                <div>Operator note: ${escapeHtml(row.operator_note || 'n/a')}</div>
+              </div>
+              <div class="lead-payment-timeline">
+                ${(events.filter((event) => String(event.request_id || '') === String(row.id || '')).slice(0, 5).map((event) => `
+                  <div class="lead-payment-event">
+                    <strong>${escapeHtml(event.event_type || 'domain_event')}</strong> • ${escapeHtml(event.request_status || 'n/a')} • ${escapeHtml(event.created_at || '')}<br>
+                    ${escapeHtml(event.note || '')}
+                  </div>
+                `).join('')) || '<div class="text-muted">No domain timeline yet.</div>'}
+              </div>
+            </div>
+          </div>
+          <div class="lead-controls">
+            <input id="domain_note_${row.id}" type="text" placeholder="Operator note" value="${escapeHtml(row.operator_note || '')}">
+            <div></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              ${String(row.request_status || '') === 'requested' ? `<button class="btn btn-sm btn-outline" onclick="runDomainRequestAction('${row.id}', 'approve')">Approve</button>` : ''}
+              ${String(row.request_status || '') === 'verification_pending' ? `<button class="btn btn-sm btn-outline" onclick="runDomainRequestAction('${row.id}', 'verify')">Verify DNS</button>` : ''}
+              ${String(row.request_status || '') === 'verified_waiting_activation' ? `<button class="btn btn-sm btn-outline" onclick="runDomainRequestAction('${row.id}', 'activate')">Activate</button>` : ''}
+              ${!['active', 'rejected'].includes(String(row.request_status || '')) ? `<button class="btn btn-sm btn-warn-lite" onclick="runDomainRequestAction('${row.id}', 'reject')">Reject</button>` : ''}
             </div>
           </div>
         </div>
@@ -500,6 +564,19 @@
       if (data.checkout_url) {
         window.open(data.checkout_url, '_blank', 'noopener');
       }
+      await loadSaasDashboard();
+    }
+
+    async function runDomainRequestAction(requestId, action) {
+      if (!saasPin) return alert('Load SaaS admin first.');
+      const operatorNote = document.getElementById(`domain_note_${requestId}`)?.value || '';
+      const res = await fetch(`/api/platform/admin/domain-requests/${encodeURIComponent(requestId)}/${encodeURIComponent(action)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: saasPin, operatorNote })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) return alert(data.error || `Failed to ${action} domain request.`);
       await loadSaasDashboard();
     }
 

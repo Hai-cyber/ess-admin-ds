@@ -74,6 +74,9 @@ Not Started: 0%
 - [x] Payment audit timeline is now persisted in `payment_events` and shown in SaaS Admin signup rows
 - [x] SaaS Admin and tenant admin now support retrying failed or expired Stripe checkout sessions
 - [x] Stripe webhook tests now include a valid signed payload path
+- [x] Tenant admin now supports a custom-domain upgrade request MVP with `request -> dns ready` actions
+- [x] SaaS Admin now supports custom-domain request approval, verification, activation, and rejection
+- [x] Separate managed domain registration spec and operator workflow runbook now exist in `knowledge/`
 - [x] Public website payload now includes structured `opening_hours_schedule` alongside legacy open/close values
 - [x] Wildcard tenant subdomain routing and host-based website payload resolution verified live on `gooddining.app`
 - [x] Demo-payment self-service signup walkthrough verified live end to end with tenant provisioning, admin access, and website host resolution
@@ -137,7 +140,7 @@ Not Started: 0%
 - [ ] Connect the new tenant website-content editor to a fully explicit publish/release workflow for tenant websites (beyond the current moderation/release foundation)
 - [ ] Enforce the new website validator inside the actual publish path, not only as a repo script or snapshot rollback workflow
 - [ ] Publish tenant website output + assets to deployment storage and validate subdomain-first public serving path
-- [ ] Tenant custom-domain upgrade workflow (request, approval, DNS guidance, validation, activation)
+- [ ] Harden tenant custom-domain upgrade workflow beyond MVP (automated DNS checks, richer audit trail, renewal state)
 - [ ] Optional managed domain registration flow after BYOD custom-domain upgrade is stable
 - [ ] Tenant payment method onboarding UX (Stripe + manual modes)
 - [ ] End-to-end QA for tenant website editor save/reload/review flow from Restaurant Admin to live tenant subdomain

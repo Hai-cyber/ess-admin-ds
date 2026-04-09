@@ -16,7 +16,7 @@
 |-----------|-----------|--------|----------|-------|-----|
 | CP-1 | Tenant Isolation | ✅ DONE | E2E_TEST_SUMMARY.md | Team | ✅ Done |
 | CP-2 | Booking MVP | ✅ DONE | Local runtime verified: booking form render, board, staff-create, booking list, stage updates | Team | ✅ Done |
-| CP-3 | Admin UI Setup | ⏳ 90% | Tenant admin now includes website content, opening-hours editor, website release/go-live panel, backend-driven readiness checklist, payment lifecycle remediation, and the basis for a future custom-domain upgrade flow | @dev-lead | Apr 10 |
+| CP-3 | Admin UI Setup | ⏳ 92% | Tenant admin now includes website content, opening-hours editor, website release/go-live panel, backend-driven readiness checklist, payment lifecycle remediation, and a working custom-domain upgrade request MVP | @dev-lead | Apr 10 |
 | CP-10 | Platform Site + Self-Service Signup | ⏳ 98% | Live runtime verified, wildcard tenant subdomains resolve, moderation/review queue is live, public tenant payload now serves latest published release snapshot, and signup is officially subdomain-first instead of custom-domain-first | @dev-lead | Apr 10 |
 | **Phase 1 Total** | — | **91%** | — | — | **Apr 15** |
 
@@ -71,6 +71,9 @@
 ✅ Payment audit timeline now persists in `payment_events` and is rendered inside SaaS Admin signup rows
 ✅ Failed or expired Stripe checkout sessions can now be remediated with retry checkout actions from SaaS Admin and tenant admin
 ✅ Stripe webhook coverage now includes a signed-payload test path, not only `mock` mode behavior
+✅ Tenant admin can now submit a custom-domain upgrade request and mark DNS ready for operator review
+✅ SaaS Admin now has a custom-domain request queue with approve, verify, activate, and reject actions
+✅ Managed domain registration billing spec and operator workflow runbook now exist as separate project documents
 ✅ SaaS Admin moderation queue now has summary/filter/refresh controls on top of approve/reject/suspend/quarantine actions
 ✅ Local smoke verification now covers `/api/contact/create`, platform contact, publish review, suspend, quarantine, and host-based public blocking
 ✅ Explicit `production` env now deploys against a real D1 database id
@@ -82,7 +85,7 @@
 
 **Next checkpoint steps**:
 1. Keep subdomain-first signup as the default and add entitlement-based custom-domain upgrade requests.
-2. Build the custom-domain upgrade state machine: request, operator approval, DNS instructions, verification, activation.
+2. Harden the custom-domain upgrade state machine: request, operator approval, DNS instructions, verification, activation.
 3. Add optional managed domain registration after the bring-your-own-domain upgrade flow is stable.
 4. Enforce the website validator inside the actual publish path beyond the current moderation gate and published snapshot workflow.
 5. Decide Twilio strategy for founder/KC locally, then close the OTP runtime gap.
