@@ -792,14 +792,14 @@ async function sendTelegramReviewAlert(env, payload) {
     Number.isFinite(payload.riskScore) ? `Risk score: ${payload.riskScore}` : '',
     payload.reasonCodes?.length ? `Reasons: ${payload.reasonCodes.join(', ')}` : '',
     previewUrl ? `Preview: ${previewUrl}` : '',
-    reviewUrl ? `Review Console: ${reviewUrl}` : '',
+    reviewUrl ? `Workflow Console: ${reviewUrl}` : '',
     tenantAdminUrl ? `Tenant Admin: ${tenantAdminUrl}` : '',
     payload.reviewId ? `Review ID: ${payload.reviewId}` : ''
   ].filter(Boolean).join('\n');
 
   const inlineKeyboard = [];
   if (reviewUrl) {
-    inlineKeyboard.push([{ text: 'Open Review Console', url: reviewUrl }]);
+    inlineKeyboard.push([{ text: 'Open Workflow Console', url: reviewUrl }]);
   }
   if (previewUrl) {
     inlineKeyboard.push([{ text: 'Open Preview', url: previewUrl }]);
@@ -3184,6 +3184,27 @@ async function getPlatformAdminDashboard(env) {
                ORDER BY wr.updated_at DESC, wr.created_at DESC
                LIMIT 1
              ) AS release_status,
+             (
+               SELECT wr.created_at
+               FROM website_releases wr
+               WHERE wr.review_id = pr.id
+               ORDER BY wr.updated_at DESC, wr.created_at DESC
+               LIMIT 1
+             ) AS release_created_at,
+             (
+               SELECT wr.updated_at
+               FROM website_releases wr
+               WHERE wr.review_id = pr.id
+               ORDER BY wr.updated_at DESC, wr.created_at DESC
+               LIMIT 1
+             ) AS release_updated_at,
+             (
+               SELECT wr.published_at
+               FROM website_releases wr
+               WHERE wr.review_id = pr.id
+               ORDER BY wr.updated_at DESC, wr.created_at DESC
+               LIMIT 1
+             ) AS release_published_at,
              c.name AS company_name, c.website_status, c.subdomain_status, c.trust_state
       FROM publish_reviews pr
       LEFT JOIN companies c ON c.id = pr.company_id
@@ -4880,7 +4901,6 @@ export default {
           getCompanyProfile(env, Number(existingReview.company_id)),
           getOperationalSettingsMap(env, Number(existingReview.company_id))
         ]);
-        const publishedUrl = buildPublishedWebsiteUrlForCompany(company, operationalSettings);
         const releaseReasonCodes = (() => {
           try {
             const parsed = JSON.parse(String(existingReview.reason_codes_json || '[]'));
@@ -4903,8 +4923,11 @@ export default {
         const previewUrl = String(existingRelease?.preview_url || `${url.origin}/website-master/index.html?company_id=${encodeURIComponent(existingReview.company_id)}`).trim();
         const publishTarget = String(existingRelease?.publish_target || (String(operationalSettings.custom_domain || '').trim() ? 'custom_domain' : 'managed_subdomain')).trim();
 
+        const currentWebsiteStatus = String(company?.website_status || 'draft').trim();
         await updateCompanyWebsiteState(env, Number(existingReview.company_id), {
-          websiteStatus: action === 'approve' ? 'published' : 'draft',
+          websiteStatus: action === 'approve'
+            ? (currentWebsiteStatus === 'published' ? 'published' : 'draft')
+            : 'draft',
           trustState: action === 'approve' ? 'trusted' : undefined,
           lastReviewedAt: now
         });
@@ -4936,21 +4959,6 @@ export default {
               publishedAt: null
             });
           }
-
-          await createWebsiteRelease(env, {
-            companyId: Number(existingReview.company_id),
-            reviewId,
-            releaseStatus: 'published',
-            publishTarget,
-            previewUrl,
-            publishedUrl,
-            payloadSnapshotJson: reviewSnapshotJson,
-            reasonCodes: releaseReasonCodes,
-            releaseNote: reviewNote || 'Published after operator approval.',
-            reviewerType: 'operator',
-            reviewerId,
-            publishedAt: now
-          });
         } else if (existingRelease) {
           await updateWebsiteReleaseByReviewId(env, reviewId, {
             releaseStatus: 'rejected',
@@ -4990,7 +4998,7 @@ export default {
         }
 
         await sendTelegramReviewAlert(env, {
-          eventType: action === 'approve' ? 'website_publish_approved' : 'website_publish_rejected',
+          eventType: action === 'approve' ? 'website_release_submission_approved' : 'website_release_submission_rejected',
           companyId: Number(existingReview.company_id),
           companyName: company?.name || '',
           host: existingReview.host || (company?.subdomain ? `${company.subdomain}.${PLATFORM_PUBLIC_DOMAIN}` : ''),
@@ -6659,7 +6667,7 @@ export default {
 
         if (decision !== 'allow') {
           await sendTelegramReviewAlert(env, {
-            eventType: 'website_publish_review',
+            eventType: 'website_release_submitted_for_review',
             companyId,
             companyName: company?.name || '',
             host: company?.subdomain ? `${company.subdomain}.${PLATFORM_PUBLIC_DOMAIN}` : '',

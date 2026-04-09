@@ -837,6 +837,10 @@ describe('ESSKULTUR worker', () => {
 			body: JSON.stringify({ pin: '1234', reviewNote: 'Looks like a valid restaurant website.' })
 		});
 
+		const beforeCompany = await env.DB.prepare(
+			`SELECT website_status, trust_state FROM companies WHERE id = ? LIMIT 1`
+		).bind(2).first();
+
 		const ctx = createExecutionContext();
 		const response = await worker.fetch(request, env, ctx);
 		await waitOnExecutionContext(ctx);
@@ -857,7 +861,7 @@ describe('ESSKULTUR worker', () => {
 		const company = await env.DB.prepare(
 			`SELECT website_status, trust_state FROM companies WHERE id = ? LIMIT 1`
 		).bind(2).first();
-		expect(String(company?.website_status || '')).toBe('published');
+		expect(String(company?.website_status || '')).toBe(String(beforeCompany?.website_status || 'draft'));
 		expect(String(company?.trust_state || '')).toBe('trusted');
 
 		const releaseStates = await env.DB.prepare(
@@ -865,7 +869,7 @@ describe('ESSKULTUR worker', () => {
 		).bind(reviewId).all();
 		expect(Array.isArray(releaseStates?.results)).toBe(true);
 		expect(releaseStates.results.map((row) => String(row.release_status || ''))).toContain('approved');
-		expect(releaseStates.results.map((row) => String(row.release_status || ''))).toContain('published');
+		expect(releaseStates.results.map((row) => String(row.release_status || ''))).not.toContain('published');
 		expect(fetchSpy).toHaveBeenCalled();
 	});
 

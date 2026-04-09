@@ -58,6 +58,8 @@
     .review-meta { font-size: 0.82rem; color: var(--text-muted); }
     .review-reasons { font-size: 0.82rem; color: var(--text); }
     .review-workflow { display: flex; gap: 8px; flex-wrap: wrap; }
+    .review-timeline { display: grid; gap: 6px; }
+    .review-timeline-item { font-size: 0.8rem; color: var(--text-muted); }
     .review-links { display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.82rem; }
     .review-actions { display: flex; gap: 10px; flex-wrap: wrap; }
     .review-toolbar { display: flex; justify-content: space-between; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
@@ -326,6 +328,48 @@
         label: humanizeReviewWorkflowState(step),
         active: step === workflowState
       }));
+    }
+
+    function buildReviewWorkflowTimeline(row) {
+      const items = [
+        {
+          key: 'submitted',
+          label: 'Submitted',
+          timestamp: row?.created_at || ''
+        }
+      ];
+
+      const workflowState = getReviewWorkflowState(row);
+      if (['approved', 'published', 'rolled_back'].includes(workflowState)) {
+        items.push({
+          key: 'approved',
+          label: 'Approved',
+          timestamp: row?.release_updated_at || row?.updated_at || ''
+        });
+      }
+      if (workflowState === 'rejected') {
+        items.push({
+          key: 'rejected',
+          label: 'Rejected',
+          timestamp: row?.updated_at || ''
+        });
+      }
+      if (workflowState === 'published') {
+        items.push({
+          key: 'published',
+          label: 'Published live',
+          timestamp: row?.release_published_at || row?.release_updated_at || ''
+        });
+      }
+      if (workflowState === 'rolled_back') {
+        items.push({
+          key: 'rolled_back',
+          label: 'Rolled back',
+          timestamp: row?.release_updated_at || ''
+        });
+      }
+
+      return items;
     }
 
     function getReviewWorkflowHint(row) {
@@ -628,6 +672,7 @@
         })();
         const workflowState = getReviewWorkflowState(row);
         const workflowSteps = buildReviewWorkflowSummary(row);
+        const workflowTimeline = buildReviewWorkflowTimeline(row);
         const workflowHint = getReviewWorkflowHint(row);
         const isPending = workflowState === 'pending_review';
         const reviewUrl = `/platform/admin.html?review=${encodeURIComponent(row.id)}`;
@@ -646,6 +691,7 @@
             </div>
             <div class="review-reasons">Reasons: ${reasonCodes.length ? escapeHtml(reasonCodes.join(', ')) : 'none'}</div>
             <div class="review-workflow">${workflowSteps.map((step) => statusBadge(step.active ? step.key : 'new').replace(`>${step.active ? step.key : 'new'}<`, `>${escapeHtml(step.label.toLowerCase())}<`)).join('')}</div>
+            <div class="review-timeline">${workflowTimeline.map((item) => `<div class="review-timeline-item">${escapeHtml(item.label)}${item.timestamp ? ` • ${escapeHtml(item.timestamp)}` : ''}</div>`).join('')}</div>
             <div class="review-meta">${escapeHtml(workflowHint)}</div>
             <div class="review-links">
               <a href="${reviewUrl}">Focus workflow item</a>
