@@ -18,6 +18,13 @@ Document how the explicit `production` Wrangler environment is exposed publicly 
 	- `GET https://prod.gooddining.app/api/platform/plans` returns `200`
 - Additional hostnames `api.prod.gooddining.app` and `platform.prod.gooddining.app` are configured in Cloudflare, but currently still return `1050` and should be treated as pending Cloudflare-side activation/certificate readiness.
 
+Investigation findings on 2026-04-09:
+
+- DNS resolves publicly for both additional hostnames
+- TLS certificates are already presented for both additional hostnames
+- HTTP still returns Cloudflare `1050` at host level
+- This points to Cloudflare custom-domain host activation/routing state, not an application crash or missing DNS record
+
 This means the production Worker version exists and public ingress is now available through the explicit custom domain, not workers.dev.
 
 ## What Is Already Done

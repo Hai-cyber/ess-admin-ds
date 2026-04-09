@@ -235,6 +235,7 @@
   let reviewFilter = 'all';
   let domainRequestFilter = 'all';
   let domainRequestSearch = '';
+  let lastDomainRenewalRunSummary = null;
 
     function getReviewFocusId() {
       const params = new URLSearchParams(window.location.search);
@@ -409,6 +410,14 @@
             <button class="btn btn-sm btn-outline" onclick="runDomainRenewalReminders()">Run renewal reminders</button>
           </div>
         </div>
+        ${lastDomainRenewalRunSummary ? `
+          <div class="integration-note" style="margin-bottom:12px;">
+            Last reminder run: reminded ${escapeHtml(String(lastDomainRenewalRunSummary.reminded || 0))}, updated ${escapeHtml(String(lastDomainRenewalRunSummary.updated || 0))}, skipped ${escapeHtml(String(lastDomainRenewalRunSummary.skipped || 0))}.<br>
+            Digest: ${escapeHtml(Array.isArray(lastDomainRenewalRunSummary.digest?.channels)
+              ? lastDomainRenewalRunSummary.digest.channels.map((item) => `${item.channel}:${item.ok ? 'sent' : item.skipped ? 'skipped' : 'failed'}`).join(', ')
+              : 'none')}
+          </div>
+        ` : ''}
       ` + filteredRequests.map((row) => `
         <div class="lead-row">
           <div class="lead-top">
@@ -469,9 +478,9 @@
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) return alert(data.error || 'Failed to run renewal reminders.');
       const summary = data.summary || {};
+      lastDomainRenewalRunSummary = summary;
       await loadSaasDashboard();
-      const digestChannels = Array.isArray(summary.digest?.channels) ? summary.digest.channels.map((item) => `${item.channel}:${item.ok ? 'sent' : item.skipped ? 'skipped' : 'failed'}`).join(', ') : 'none';
-      alert(`Renewal reminder run complete. Reminded: ${Number(summary.reminded || 0)}, updated: ${Number(summary.updated || 0)}, skipped: ${Number(summary.skipped || 0)}. Digest: ${digestChannels}.`);
+      renderSaasDomainRequests();
     }
 
     async function previewDomainRenewalReminder(requestId) {
