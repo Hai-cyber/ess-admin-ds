@@ -23,8 +23,11 @@
     .badge-won { background: #f0fdf4; color: #166534; }
     .badge-lost { background: #fef2f2; color: #b91c1c; }
     .badge-pending { background: #fff7ed; color: #9a3412; }
+    .badge-pending_review { background: #fff7ed; color: #9a3412; }
     .badge-approved { background: #ecfdf5; color: #166534; }
+    .badge-published { background: #ecfdf5; color: #166534; }
     .badge-rejected { background: #fef2f2; color: #b91c1c; }
+    .badge-rolled_back { background: #f5f3ff; color: #6d28d9; }
     .badge-suspended { background: #111827; color: white; }
     .badge-stripe_checkout_pending { background: #eff6ff; color: #1d4ed8; }
     .badge-stripe_paid { background: #ecfdf5; color: #166534; }
@@ -253,7 +256,7 @@
 
     function statusBadge(status) {
       const normalized = String(status || 'new').toLowerCase();
-      const css = ['new', 'contacted', 'won', 'lost', 'pending', 'approved', 'rejected', 'suspended', 'stripe_checkout_pending', 'stripe_paid', 'stripe_failed', 'stripe_expired', 'demo_paid'].includes(normalized) ? normalized : 'new';
+      const css = ['new', 'contacted', 'won', 'lost', 'pending', 'pending_review', 'approved', 'published', 'rejected', 'rolled_back', 'suspended', 'stripe_checkout_pending', 'stripe_paid', 'stripe_failed', 'stripe_expired', 'demo_paid'].includes(normalized) ? normalized : 'new';
       return `<span class="badge-lite badge-${css}">${normalized}</span>`;
     }
 
@@ -286,6 +289,30 @@
         rejected: 'Rejected',
         rolled_back: 'Rolled back'
       }[String(status || '').trim().toLowerCase()] || String(status || 'n/a');
+    }
+
+    function getReviewWorkflowState(row) {
+      const releaseStatus = String(row?.release_status || '').trim().toLowerCase();
+      const reviewStatus = String(row?.review_status || '').trim().toLowerCase();
+
+      if (releaseStatus === 'published') return 'published';
+      if (releaseStatus === 'rolled_back') return 'rolled_back';
+      if (releaseStatus === 'rejected') return 'rejected';
+      if (releaseStatus === 'approved') return 'approved';
+      if (releaseStatus === 'pending_review') return 'pending_review';
+      if (reviewStatus === 'approved') return 'approved';
+      if (reviewStatus === 'rejected') return 'rejected';
+      return 'pending_review';
+    }
+
+    function humanizeReviewWorkflowState(state) {
+      return {
+        pending_review: 'Pending review',
+        approved: 'Approved',
+        published: 'Published',
+        rejected: 'Rejected',
+        rolled_back: 'Rolled back'
+      }[String(state || '').trim().toLowerCase()] || String(state || 'pending_review');
     }
 
     async function loadSaasDashboard() {
@@ -529,21 +556,30 @@
       }
 
       const filteredReviews = reviews.filter((row) => {
-        const status = String(row.review_status || '').toLowerCase();
-        if (reviewFilter === 'pending') return status === 'pending';
-        if (reviewFilter === 'resolved') return ['approved', 'rejected', 'suspended'].includes(status);
+        const workflowState = getReviewWorkflowState(row);
+        if (reviewFilter === 'needs_action') return workflowState === 'pending_review';
+        if (reviewFilter === 'pending_review') return workflowState === 'pending_review';
+        if (reviewFilter === 'approved') return workflowState === 'approved';
+        if (reviewFilter === 'published') return workflowState === 'published';
+        if (reviewFilter === 'rejected') return workflowState === 'rejected';
+        if (reviewFilter === 'rolled_back') return workflowState === 'rolled_back';
         return true;
       });
       const focusReviewId = getReviewFocusId();
-      const pendingCount = reviews.filter((row) => String(row.review_status || '').toLowerCase() === 'pending').length;
+      const pendingCount = reviews.filter((row) => getReviewWorkflowState(row) === 'pending_review').length;
+      const publishedCount = reviews.filter((row) => getReviewWorkflowState(row) === 'published').length;
       el.innerHTML = `
         <div class="review-toolbar">
-          <div class="review-summary">${pendingCount} pending review(s), ${reviews.length} total item(s).</div>
+          <div class="review-summary">${pendingCount} pending review item(s), ${publishedCount} published item(s), ${reviews.length} total workflow item(s).</div>
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
             <select id="review-filter" onchange="updateReviewFilter(this.value)">
-              <option value="all" ${reviewFilter === 'all' ? 'selected' : ''}>All reviews</option>
-              <option value="pending" ${reviewFilter === 'pending' ? 'selected' : ''}>Pending only</option>
-              <option value="resolved" ${reviewFilter === 'resolved' ? 'selected' : ''}>Resolved only</option>
+              <option value="all" ${reviewFilter === 'all' ? 'selected' : ''}>All workflow items</option>
+              <option value="needs_action" ${reviewFilter === 'needs_action' ? 'selected' : ''}>Needs action</option>
+              <option value="pending_review" ${reviewFilter === 'pending_review' ? 'selected' : ''}>Pending review</option>
+              <option value="approved" ${reviewFilter === 'approved' ? 'selected' : ''}>Approved</option>
+              <option value="published" ${reviewFilter === 'published' ? 'selected' : ''}>Published</option>
+              <option value="rejected" ${reviewFilter === 'rejected' ? 'selected' : ''}>Rejected</option>
+              <option value="rolled_back" ${reviewFilter === 'rolled_back' ? 'selected' : ''}>Rolled back</option>
             </select>
             <button class="btn btn-sm btn-outline" onclick="loadSaasDashboard()">Refresh</button>
           </div>
@@ -557,7 +593,8 @@
             return [];
           }
         })();
-        const isPending = String(row.review_status || '').toLowerCase() === 'pending';
+        const workflowState = getReviewWorkflowState(row);
+        const isPending = workflowState === 'pending_review';
         const reviewUrl = `/platform/admin.html?review=${encodeURIComponent(row.id)}`;
         const tenantAdminUrl = row.company_id ? `/admin?company_id=${encodeURIComponent(row.company_id)}` : '';
         const previewUrl = row.company_id ? `/website-master/index.html?company_id=${encodeURIComponent(row.company_id)}` : '';
@@ -568,9 +605,9 @@
             <div class="review-head">
               <div>
                 <div class="review-title">${escapeHtml(row.company_name || row.subdomain || 'Unknown tenant')}</div>
-                <div class="review-meta">review: ${escapeHtml(row.id)} • host: ${escapeHtml(row.host || '')} • status: ${escapeHtml(row.review_status || 'pending')} • release: ${escapeHtml(humanizeWebsiteReleaseStatus(row.release_status || 'draft'))} • decision: ${escapeHtml(row.decision || '')} • website: ${escapeHtml(row.website_status || '')} • subdomain: ${escapeHtml(row.subdomain_status || '')} • trust: ${escapeHtml(row.trust_state || '')}</div>
+                <div class="review-meta">review: ${escapeHtml(row.id)} • host: ${escapeHtml(row.host || '')} • workflow: ${escapeHtml(humanizeReviewWorkflowState(workflowState))} • review: ${escapeHtml(row.review_status || 'pending')} • release: ${escapeHtml(humanizeWebsiteReleaseStatus(row.release_status || 'draft'))} • decision: ${escapeHtml(row.decision || '')} • website: ${escapeHtml(row.website_status || '')} • subdomain: ${escapeHtml(row.subdomain_status || '')} • trust: ${escapeHtml(row.trust_state || '')}</div>
               </div>
-              <div>${statusBadge(row.review_status || 'new')}</div>
+              <div>${statusBadge(workflowState)}</div>
             </div>
             <div class="review-reasons">Reasons: ${reasonCodes.length ? escapeHtml(reasonCodes.join(', ')) : 'none'}</div>
             <div class="review-links">
