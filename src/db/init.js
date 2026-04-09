@@ -46,12 +46,19 @@ async function ensureSchemaEvolution(db) {
       request_note TEXT,
       operator_note TEXT,
       renewal_mode TEXT DEFAULT 'external',
+      renewal_status TEXT DEFAULT 'external',
+      renewal_due_at TEXT,
+      renewal_last_reminded_at TEXT,
+      auto_renew_enabled BOOLEAN DEFAULT 0,
       approved_at TEXT,
       approved_by TEXT,
       dns_ready_at TEXT,
       verified_at TEXT,
       activated_at TEXT,
       activated_by TEXT,
+      last_health_check_at TEXT,
+      last_health_check_status TEXT,
+      last_health_check_note TEXT,
       rejected_at TEXT,
       rejected_by TEXT,
       created_at TEXT NOT NULL,
@@ -91,6 +98,13 @@ async function ensureSchemaEvolution(db) {
   await ensureColumn(db, 'platform_signups', 'payment_method', 'TEXT');
   await ensureColumn(db, 'platform_signups', 'payment_reference', 'TEXT');
   await ensureColumn(db, 'platform_signups', 'payment_confirmed_at', 'TEXT');
+  await ensureColumn(db, 'custom_domain_requests', 'renewal_status', "TEXT DEFAULT 'external'");
+  await ensureColumn(db, 'custom_domain_requests', 'renewal_due_at', 'TEXT');
+  await ensureColumn(db, 'custom_domain_requests', 'renewal_last_reminded_at', 'TEXT');
+  await ensureColumn(db, 'custom_domain_requests', 'auto_renew_enabled', 'BOOLEAN DEFAULT 0');
+  await ensureColumn(db, 'custom_domain_requests', 'last_health_check_at', 'TEXT');
+  await ensureColumn(db, 'custom_domain_requests', 'last_health_check_status', 'TEXT');
+  await ensureColumn(db, 'custom_domain_requests', 'last_health_check_note', 'TEXT');
   await db.prepare(`CREATE INDEX IF NOT EXISTS idx_payment_events_signup ON payment_events(signup_id, created_at)`).run();
   await db.prepare(`CREATE INDEX IF NOT EXISTS idx_payment_events_company ON payment_events(company_id, created_at)`).run();
   await db.prepare(`CREATE INDEX IF NOT EXISTS idx_custom_domain_requests_company ON custom_domain_requests(company_id, created_at)`).run();

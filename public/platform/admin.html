@@ -233,6 +233,8 @@
     let saasPin = '';
     let saasDashboard = { pricingSettings: {}, signups: [], contacts: [], reviews: [], paymentEvents: [], customDomainRequests: [], customDomainRequestEvents: [] };
   let reviewFilter = 'all';
+  let domainRequestFilter = 'all';
+  let domainRequestSearch = '';
 
     function getReviewFocusId() {
       const params = new URLSearchParams(window.location.search);
@@ -377,7 +379,36 @@
         return;
       }
 
-      el.innerHTML = requests.map((row) => `
+      const search = String(domainRequestSearch || '').trim().toLowerCase();
+      const filteredRequests = requests.filter((row) => {
+        const status = String(row.request_status || '').toLowerCase();
+        const renewalStatus = String(row.renewalStatus || row.renewal_status || '').toLowerCase();
+        const text = [row.requested_domain, row.registration_mode, row.operator_note, row.request_note, row.company_id]
+          .map((value) => String(value || '').toLowerCase())
+          .join(' ');
+        if (search && !text.includes(search)) return false;
+        if (domainRequestFilter === 'open') return !['active', 'rejected'].includes(status);
+        if (domainRequestFilter === 'active') return status === 'active';
+        if (domainRequestFilter === 'renewal') return ['renewal_due_soon', 'renewal_overdue'].includes(renewalStatus);
+        if (domainRequestFilter === 'health') return ['unhealthy', 'unreachable', 'failed'].includes(String(row.last_health_check_status || '').toLowerCase());
+        return true;
+      });
+
+      el.innerHTML = `
+        <div class="review-toolbar">
+          <div class="review-summary">${filteredRequests.length} request(s), ${requests.length} total.</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+            <input id="domain-request-search" type="search" placeholder="Search domain, note, or company" value="${escapeHtml(domainRequestSearch)}" oninput="updateDomainRequestSearch(this.value)">
+            <select id="domain-request-filter" onchange="updateDomainRequestFilter(this.value)">
+              <option value="all" ${domainRequestFilter === 'all' ? 'selected' : ''}>All</option>
+              <option value="open" ${domainRequestFilter === 'open' ? 'selected' : ''}>Open</option>
+              <option value="active" ${domainRequestFilter === 'active' ? 'selected' : ''}>Active</option>
+              <option value="renewal" ${domainRequestFilter === 'renewal' ? 'selected' : ''}>Renewal attention</option>
+              <option value="health" ${domainRequestFilter === 'health' ? 'selected' : ''}>Health issues</option>
+            </select>
+          </div>
+        </div>
+      ` + filteredRequests.map((row) => `
         <div class="lead-row">
           <div class="lead-top">
             <div>
@@ -388,6 +419,8 @@
                 <div>DNS: ${escapeHtml(row.dns_record_type || 'CNAME')} ${escapeHtml(row.dns_name || '')} → ${escapeHtml(row.dns_value || '')}</div>
                 <div>Requested: ${escapeHtml(row.created_at || '')}</div>
                 <div>Operator note: ${escapeHtml(row.operator_note || 'n/a')}</div>
+                <div>Renewal: ${escapeHtml(row.renewalStatus || row.renewal_status || 'external')} ${row.renewal_due_at ? `• due ${escapeHtml(row.renewal_due_at)}` : ''}</div>
+                <div>Health: ${escapeHtml(String(row.last_health_check_status || 'n/a'))} • ${escapeHtml(String(row.last_health_check_note || 'no activation health check yet'))}</div>
               </div>
               <div class="lead-payment-timeline">
                 ${(events.filter((event) => String(event.request_id || '') === String(row.id || '')).slice(0, 5).map((event) => `
@@ -410,7 +443,17 @@
             </div>
           </div>
         </div>
-      `).join('');
+      `).join('') || '<p class="text-muted">No domain requests match the current filter.</p>';
+    }
+
+    function updateDomainRequestFilter(value) {
+      domainRequestFilter = String(value || 'all');
+      renderSaasDomainRequests();
+    }
+
+    function updateDomainRequestSearch(value) {
+      domainRequestSearch = String(value || '');
+      renderSaasDomainRequests();
     }
 
     function renderSaasReviews() {
