@@ -12,6 +12,15 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FAILED=0
+CHECK_MODE="all"
+
+for arg in "$@"; do
+  case "$arg" in
+    --check=*)
+      CHECK_MODE="${arg#--check=}"
+      ;;
+  esac
+done
 
 # Color output
 RED='\033[0;31m'
@@ -32,63 +41,122 @@ log_info() {
   echo -e "${YELLOW}ℹ️  $1${NC}"
 }
 
+has_rg() {
+  command -v rg >/dev/null 2>&1
+}
+
+search_exists() {
+  local pattern="$1"
+  local target="$2"
+  if has_rg; then
+    rg -q "$pattern" "$target"
+  else
+    grep -RIEq "$pattern" "$target"
+  fi
+}
+
+search_print() {
+  local pattern="$1"
+  local target="$2"
+  if has_rg; then
+    rg "$pattern" "$target"
+  else
+    grep -RIEn "$pattern" "$target"
+  fi
+}
+
+search_context() {
+  local pattern="$1"
+  local target="$2"
+  if has_rg; then
+    rg -A 2 "$pattern" "$target"
+  else
+    grep -A 2 -En "$pattern" "$target"
+  fi
+}
+
+run_failopen_check() {
+  log_info "Checking for hardcoded fallback to company_id = 1..."
+
+  local pattern='fallbackCompanyId[[:space:]]*=[[:space:]]*1|activeCompanyId[[:space:]]*=[[:space:]]*1|return[[:space:]]+fallbackCompanyId'
+  if search_exists "$pattern" src/; then
+    log_error "Found hardcoded fallback to company_id = 1. Use resolver instead."
+    search_print "$pattern" src/
+  else
+    log_success "No hardcoded fallback to company_id = 1"
+  fi
+}
+
+run_sql_scope_check() {
+  log_info "Checking query scope (company_id filters)..."
+
+  local scan_output
+  scan_output=$(node <<'NODE'
+const fs = require('fs');
+const path = require('path');
+
+const root = process.cwd();
+const sensitiveTables = [
+  'customers',
+  'bookings',
+  'contacts',
+  'staff',
+  'settings',
+  'otp_cache',
+  'booking_actions',
+  'media_assets'
+];
+
+const files = [path.join(root, 'src', 'index.js')];
+const findings = [];
+
+for (const file of files) {
+  const content = fs.readFileSync(file, 'utf8');
+  const normalized = content.replace(/\r\n/g, '\n');
+  for (const table of sensitiveTables) {
+    const regex = new RegExp(`FROM\\s+${table}\\b`, 'ig');
+    let match;
+    while ((match = regex.exec(normalized)) !== null) {
+      const start = Math.max(0, match.index - 240);
+      const end = Math.min(normalized.length, match.index + 420);
+      const window = normalized.slice(start, end);
+      if (/company_id/i.test(window)) continue;
+      findings.push(`${path.relative(root, file)} :: ${table}`);
+      break;
+    }
+  }
+}
+
+if (findings.length) {
+  console.log(findings.join('\n'));
+  process.exit(2);
+}
+NODE
+  ) || true
+
+  if [ -n "$scan_output" ]; then
+    log_error "Found queries on sensitive tables without company_id filter"
+    echo "$scan_output"
+  else
+    log_success "All queries on sensitive tables include company_id filter"
+  fi
+}
+
 cd "$ROOT_DIR"
 
-# =====================================================================
-# Check 1: No fallback-to-company-1 patterns
-# =====================================================================
-log_info "Checking for hardcoded fallback to company_id = 1..."
-
-if rg -q "fallbackCompanyId\s*=\s*1|activeCompanyId\s*=\s*1(?!\w)|return\s+fallbackCompanyId" src/; then
-  log_error "Found hardcoded fallback to company_id = 1. Use resolver instead."
-  rg "fallbackCompanyId\s*=\s*1|activeCompanyId\s*=\s*1(?!\w)|return\s+fallbackCompanyId" src/
-else
-  log_success "No hardcoded fallback to company_id = 1"
+if [ "$CHECK_MODE" = "failopen" ] || [ "$CHECK_MODE" = "all" ]; then
+  run_failopen_check
 fi
 
-# =====================================================================
-# Check 2: All queries on sensitive tables include company_id filter
-# =====================================================================
-log_info "Checking query scope (company_id filters)..."
+if [ "$CHECK_MODE" = "sql" ] || [ "$CHECK_MODE" = "all" ]; then
+  run_sql_scope_check
+fi
 
-SENSITIVE_TABLES=(
-  "customers"
-  "bookings"
-  "contacts"
-  "staff"
-  "settings"
-  "otp_cache"
-  "booking_actions"
-  "media_assets"
-)
-
-for table in "${SENSITIVE_TABLES[@]}"; do
-  # Look for SELECT queries without company_id in FROM clause
-  if rg -q "SELECT\s+.*\s+FROM\s+${table}\b" src/ | grep -qv "company_id"; then
-    # Filter out comments and verify it's a real query issue
-    if rg "SELECT\s+.*\s+FROM\s+${table}\b(?!.*company_id)" src/ | grep -v "^\s*//\|^\s*/\*"; then
-      log_error "Found queries on '$table' table without company_id filter"
-    fi
+if [ "$CHECK_MODE" = "failopen" ] || [ "$CHECK_MODE" = "sql" ]; then
+  if [ $FAILED -eq 0 ]; then
+    exit 0
   fi
-done
-
-# More precise check: look for table usage in .js files
-FOUND_UNSCOPED=0
-for table in "${SENSITIVE_TABLES[@]}"; do
-  if rg -l "FROM\s+${table}\b" src/*.js src/**/*.js 2>/dev/null | while read -r file; do
-    # Extract SELECT statements from the file
-    if ! grep -q "WHERE.*company_id" "$file" 2>/dev/null && \
-       grep -q "FROM\s+${table}\b" "$file"; then
-      log_error "Found unscoped query on '$table' in $file"
-      FOUND_UNSCOPED=1
-    fi
-  done | grep -q .; then
-    true
-  fi
-done
-
-if [ $FOUND_UNSCOPED -eq 0 ]; then
-  log_success "All queries on sensitive tables include company_id filter"
+  exit 1
 fi
 
 # =====================================================================
@@ -130,8 +198,8 @@ TENANT_ROUTES=(
 MISSING_GUARD=0
 for route in "${TENANT_ROUTES[@]}"; do
   # Check if route exists and is wrapped with runTenantRoute
-  if rg -q "url.pathname.*${route}" src/index.js; then
-    if ! rg -A 2 "url.pathname.*${route}" src/index.js | grep -q "runTenantRoute"; then
+  if search_exists "url.pathname.*${route}" src/index.js; then
+    if ! search_context "url.pathname.*${route}" src/index.js | grep -q "runTenantRoute"; then
       log_error "Route '${route}' not wrapped with runTenantRoute()"
       MISSING_GUARD=$((MISSING_GUARD + 1))
     fi
@@ -148,7 +216,7 @@ fi
 log_info "Checking DB context isolation..."
 
 # Flag any prepare() calls outside of runTenantRoute blocks
-if rg -q "env\.DB\.prepare.*FROM\s+(customers|bookings|staff|settings|contacts|otp_cache)" src/index.js | head -5; then
+if search_exists "env\.DB\.prepare.*FROM[[:space:]]+(customers|bookings|staff|settings|contacts|otp_cache)" src/index.js; then
   # This is complex to validate statically, so we just log info
   log_info "Manual review recommended: verify all DB operations use company_id scoping"
 fi
