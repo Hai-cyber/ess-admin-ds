@@ -2062,6 +2062,110 @@
       }[String(method || '').trim()] || String(method || '');
     }
 
+    function getReadinessBlockers(readiness, scope) {
+      const items = Array.isArray(readiness?.items) ? readiness.items : [];
+      return items.filter((item) => {
+        if (item?.ok) return false;
+        if (scope === 'publish') return item?.requiredForPublish;
+        if (scope === 'go-live') return item?.requiredForGoLive;
+        return false;
+      });
+    }
+
+    function summarizeReadinessBlockers(readiness, scope) {
+      const blockers = getReadinessBlockers(readiness, scope);
+      if (!blockers.length) {
+        return scope === 'publish'
+          ? 'No publish blockers remain.'
+          : 'No go-live blockers remain.';
+      }
+
+      const labels = blockers.slice(0, 3).map((item) => item.label || item.key || 'missing item');
+      const suffix = blockers.length > 3 ? ` +${blockers.length - 3} more` : '';
+      return `Blocked by: ${labels.join(', ')}${suffix}.`;
+    }
+
+    function derivePublishCtaState(readiness, releaseStatus) {
+      if (releaseStatus === 'published') {
+        return {
+          label: 'Already live',
+          disabled: true,
+          tone: 'var(--success)',
+          reason: 'The current website release is already published. Update content and submit a new review when you want to publish changes.'
+        };
+      }
+
+      if (releaseStatus === 'pending_review') {
+        return {
+          label: 'Submitted for review',
+          disabled: true,
+          tone: 'var(--warning)',
+          reason: 'The latest release is already waiting for operator approval.'
+        };
+      }
+
+      if (readiness.publishReady) {
+        return {
+          label: 'Ready to publish',
+          disabled: false,
+          tone: 'var(--success)',
+          reason: readiness.publishSummary || 'All publish requirements are satisfied.'
+        };
+      }
+
+      return {
+        label: 'Complete publish setup first',
+        disabled: true,
+        tone: 'var(--warning)',
+        reason: summarizeReadinessBlockers(readiness, 'publish')
+      };
+    }
+
+    function deriveGoLiveCtaState(readiness, releaseStatus, publishedUrl) {
+      if (releaseStatus === 'pending_review') {
+        return {
+          label: 'Waiting for approval',
+          disabled: true,
+          tone: 'var(--warning)',
+          reason: 'Operator approval is still required before this tenant can go live.'
+        };
+      }
+
+      if (readiness.goLiveReady && publishedUrl) {
+        return {
+          label: 'Ready to go live',
+          disabled: false,
+          tone: 'var(--success)',
+          reason: readiness.goLiveSummary || 'All go-live requirements are satisfied.'
+        };
+      }
+
+      if (readiness.goLiveReady && !publishedUrl) {
+        return {
+          label: 'Missing live URL',
+          disabled: true,
+          tone: 'var(--warning)',
+          reason: 'A published URL is still missing even though the go-live checks passed.'
+        };
+      }
+
+      if (releaseStatus === 'published' && publishedUrl) {
+        return {
+          label: 'Open live site',
+          disabled: false,
+          tone: 'var(--success)',
+          reason: 'A published release already exists and the live URL is available.'
+        };
+      }
+
+      return {
+        label: 'Complete go-live setup first',
+        disabled: true,
+        tone: 'var(--warning)',
+        reason: summarizeReadinessBlockers(readiness, 'go-live')
+      };
+    }
+
     function formatDateTime(value) {
       const date = value ? new Date(value) : null;
       if (!date || Number.isNaN(date.getTime())) return 'n/a';
@@ -2117,19 +2221,17 @@
       const previewUrl = String(release?.preview_url || `${window.location.origin}/website-master/index.html?company_id=${encodeURIComponent(currentUser?.companyId || 1)}`).trim();
       const publishedUrl = String(release?.published_url || getOperationalValue('custom_domain') || document.getElementById('op_website_url')?.value.trim() || '').trim();
       const queueUrl = reviewId ? `/platform/admin.html?review=${encodeURIComponent(reviewId)}` : '/platform/admin.html';
-      const publishCtaLabel = readiness.publishReady
-        ? (releaseStatus === 'pending_review' ? 'Publish review submitted' : releaseStatus === 'published' ? 'Publish checks passed' : 'Ready to publish')
-        : 'Complete publish setup first';
-      const publishCtaDisabled = !readiness.publishReady || releaseStatus === 'pending_review';
-      const goLiveCtaLabel = readiness.goLiveReady
-        ? 'Ready to go live'
-        : 'Complete go-live setup first';
-      const goLiveCtaDisabled = !readiness.goLiveReady || !publishedUrl;
+      const publishCta = derivePublishCtaState(readiness, releaseStatus);
+      const goLiveCta = deriveGoLiveCtaState(readiness, releaseStatus, publishedUrl);
+      const publishBlockerSummary = summarizeReadinessBlockers(readiness, 'publish');
+      const goLiveBlockerSummary = summarizeReadinessBlockers(readiness, 'go-live');
 
       container.innerHTML = `
         <div class="integration-note">Current website state and latest publish/review outcome. Use this panel to run publish validation and then continue moderation or go-live checks.</div>
         <div class="integration-note" style="color:${readiness.publishReady ? 'var(--success)' : 'var(--warning)'};">${escapeHtml(readiness.publishSummary || 'Publish readiness not loaded.')}</div>
+        <div class="integration-note" style="color:${readiness.publishReady ? 'var(--text-muted)' : 'var(--warning)'};">${escapeHtml(publishBlockerSummary)}</div>
         <div class="integration-note" style="color:${readiness.goLiveReady ? 'var(--success)' : 'var(--warning)'};">${escapeHtml(readiness.goLiveSummary || 'Go-live readiness not loaded.')}</div>
+        <div class="integration-note" style="color:${readiness.goLiveReady ? 'var(--text-muted)' : 'var(--warning)'};">${escapeHtml(goLiveBlockerSummary)}</div>
         <div class="setting-row">
           <div class="setting-label">Website Status</div>
           <div class="setting-value" style="padding-top: 10px;">${escapeHtml(company.website_status || 'draft')}</div>
@@ -2168,16 +2270,22 @@
         </div>
         <div class="setting-row">
           <div class="setting-label">Publish CTA</div>
-          <div class="setting-value" style="padding-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-            <button class="btn-small btn-primary" ${publishCtaDisabled ? 'disabled' : ''} onclick="runWebsitePublishReview()">${escapeHtml(publishCtaLabel)}</button>
-            <span style="color:${readiness.publishReady ? 'var(--success)' : 'var(--warning)'};">${escapeHtml(readiness.publishSummary || '')}</span>
+          <div class="setting-value" style="padding-top:10px;display:grid;gap:8px;">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+              <button class="btn-small btn-primary" ${publishCta.disabled ? 'disabled' : ''} onclick="runWebsitePublishReview()">${escapeHtml(publishCta.label)}</button>
+              <span style="color:${publishCta.tone};">${escapeHtml(readiness.publishSummary || '')}</span>
+            </div>
+            <div style="font-size:0.85rem;color:var(--text-muted);">${escapeHtml(publishCta.reason || '')}</div>
           </div>
         </div>
         <div class="setting-row">
           <div class="setting-label">Go-Live CTA</div>
-          <div class="setting-value" style="padding-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-            <button class="btn-small btn-primary" ${goLiveCtaDisabled ? 'disabled' : ''} onclick="window.open('${escapeHtml(publishedUrl || previewUrl)}', '_blank', 'noopener')">${escapeHtml(goLiveCtaLabel)}</button>
-            <span style="color:${readiness.goLiveReady ? 'var(--success)' : 'var(--warning)'};">${escapeHtml(readiness.goLiveSummary || '')}</span>
+          <div class="setting-value" style="padding-top:10px;display:grid;gap:8px;">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+              <button class="btn-small btn-primary" ${goLiveCta.disabled ? 'disabled' : ''} onclick="window.open('${escapeHtml(publishedUrl || previewUrl)}', '_blank', 'noopener')">${escapeHtml(goLiveCta.label)}</button>
+              <span style="color:${goLiveCta.tone};">${escapeHtml(readiness.goLiveSummary || '')}</span>
+            </div>
+            <div style="font-size:0.85rem;color:var(--text-muted);">${escapeHtml(goLiveCta.reason || '')}</div>
           </div>
         </div>
         <div class="settings-subsection-title">Go-Live Checklist</div>
