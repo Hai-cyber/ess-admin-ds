@@ -16,7 +16,7 @@
 |-----------|-----------|--------|----------|-------|-----|
 | CP-1 | Tenant Isolation | ✅ DONE | E2E_TEST_SUMMARY.md | Team | ✅ Done |
 | CP-2 | Booking MVP | ✅ DONE | Local runtime verified: booking form render, board, staff-create, booking list, stage updates | Team | ✅ Done |
-| CP-3 | Admin UI Setup | ⏳ 92% | Tenant admin now includes website content, opening-hours editor, website release/go-live panel, backend-driven readiness checklist, payment lifecycle remediation, and a working custom-domain upgrade request MVP | @dev-lead | Apr 10 |
+| CP-3 | Admin UI Setup | ⏳ 92% | Tenant admin now includes website content, opening-hours editor, website release/go-live panel, backend-driven readiness checklist, payment lifecycle remediation, and a working custom-domain upgrade request MVP; remaining work is now split into CP-3A/3B/3C/3D | @dev-lead | Apr 10 |
 | CP-10 | Platform Site + Self-Service Signup | ⏳ 98% | Live runtime verified, wildcard tenant subdomains resolve, moderation/review queue is live, public tenant payload now serves latest published release snapshot, and signup is officially subdomain-first instead of custom-domain-first | @dev-lead | Apr 10 |
 | **Phase 1 Total** | — | **91%** | — | — | **Apr 15** |
 
@@ -95,13 +95,14 @@
 **Blockers**: production route attachment, Stripe test credentials, custom-domain upgrade workflow completion, and Twilio credentials or a local OTP stub
 
 **Next checkpoint steps**:
-1. Keep subdomain-first signup as the default and add entitlement-based custom-domain upgrade requests.
-2. Harden the custom-domain upgrade state machine: request, operator approval, DNS instructions, verification, activation.
-3. Add optional managed domain registration after the bring-your-own-domain upgrade flow is stable.
-4. Enforce the website validator inside the actual publish path beyond the current moderation gate and published snapshot workflow.
-5. Decide Twilio strategy for founder/KC locally, then close the OTP runtime gap.
-6. Trust CLI trigger state over the empty dashboard `Event Triggers` panel unless Wrangler stops reporting `schedule: 0 9 * * *`.
-7. Keep production on `prod.gooddining.app` unless there is a later, explicit need to split API or platform traffic to separate hostnames.
+1. CP-3A — unify the go-live checklist into one authoritative gating console for restaurant profile, website, staff, payment, and hours.
+2. CP-3B — enforce validator and release states inside the real publish path so tenant website publishing becomes a complete workflow.
+3. CP-3C — finish operator tooling so signup, payment remediation, publish review, and domain ops form one coherent operating surface.
+4. CP-3D — clean up admin navigation and permissions after the critical go-live and publish flow is stable.
+5. Keep subdomain-first signup as the default and add entitlement-based custom-domain upgrade requests.
+6. Decide Twilio strategy for founder/KC locally, then close the OTP runtime gap.
+7. Trust CLI trigger state over the empty dashboard `Event Triggers` panel unless Wrangler stops reporting `schedule: 0 9 * * *`.
+8. Keep production on `prod.gooddining.app` unless there is a later, explicit need to split API or platform traffic to separate hostnames.
 
 ---
 

@@ -421,6 +421,83 @@ test('Admin setup wizard: signup → config → go live', async () => {
 - ✅ "Go Live" button appears when ready
 - ✅ Can receive bookings after go-live
 
+### CP-3 Concrete Sub-Checkpoints
+
+The remaining CP-3 work should be executed in this order.
+
+#### CP-3A — Go-Live Console Gating
+
+**Goal**: Turn the current admin setup surfaces into one reliable go-live control panel.
+
+**Must be true**:
+- readiness checklist is grouped by business sections, not by loose settings
+- each missing requirement links to the exact admin surface that can fix it
+- go-live / publish actions are blocked when required setup is incomplete
+- tenant sees one authoritative setup state, not multiple partial states
+
+**Done when**:
+- restaurant profile, website content, staff, payment, and opening hours are all represented in the checklist
+- missing items are actionable from the UI
+- publish eligibility and go-live eligibility come from the same backend truth
+
+#### CP-3B — Publish And Release Workflow Completion
+
+**Goal**: Make tenant website publishing an explicit state machine, not a loose collection of preview and moderation features.
+
+**Must be true**:
+- validator runs inside the real publish path
+- release states are explicit: draft, pending review, approved, published, rolled back
+- tenant admin shows current draft, current live release, and review outcome clearly
+- rollback restores a previous public release without ambiguity
+
+**Done when**:
+- tenant can submit a release for review from admin
+- operator can approve or reject it
+- published site updates from the approved release only
+- rollback restores the previous published version and updates release history
+
+#### CP-3C — Operator Tooling Completion
+
+**Goal**: Align SaaS Admin with the business model so onboarding, billing, publish review, and domain ops can be operated without hidden manual steps.
+
+**Must be true**:
+- operator can follow a tenant from signup to paid to provisioned to live
+- billing/payment issues are visible and remediable from SaaS Admin
+- moderation, publish review, and domain queues are operationally usable
+- domain renewal and escalation actions are visible in the same operator workflow
+
+**Done when**:
+- signup follow-up, payment remediation, publish review, and domain actions form one coherent operator surface
+- operator context includes plan/commercial status where needed
+- operator can explain why a tenant is blocked from go-live from within the tool
+
+#### CP-3D — Admin Information Architecture And Permissions Cleanup
+
+**Goal**: Make the admin surfaces durable enough for future phases without a large navigation or permissions refactor.
+
+**Must be true**:
+- Restaurant Admin is grouped around overview, website, billing/domain, staff/access, and go-live
+- SaaS Admin remains separate and operator-only
+- tenant roles map cleanly to allowed screens and actions
+- manager vs admin capability boundaries are explicit
+
+**Done when**:
+- navigation matches responsibilities
+- role restrictions are consistent across UI and API
+- no critical CP-3 flow depends on operator-only knowledge to navigate
+
+### CP-3 Recommended Execution Order
+
+1. CP-3A — Go-Live Console Gating
+2. CP-3B — Publish And Release Workflow Completion
+3. CP-3C — Operator Tooling Completion
+4. CP-3D — Admin Information Architecture And Permissions Cleanup
+
+Reasoning:
+- CP-3A and CP-3B define whether a tenant can go live safely.
+- CP-3C makes the same flow operable for the business.
+- CP-3D stabilizes structure and permissions after the critical workflow is complete.
+
 **Status**: 🔄 IN PROGRESS (Admin UI under development)
 
 ---

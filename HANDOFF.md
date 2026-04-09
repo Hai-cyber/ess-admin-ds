@@ -133,6 +133,14 @@
 
 **What's blocked**: final publish/release workflow completion, custom-domain upgrade hardening beyond MVP, plus founder/KC OTP runtime depending on Twilio credentials
 
+**CP-3 execution plan now fixed into four sub-checkpoints**:
+- `CP-3A` Go-Live Console Gating
+- `CP-3B` Publish And Release Workflow Completion
+- `CP-3C` Operator Tooling Completion
+- `CP-3D` Admin Information Architecture And Permissions Cleanup
+
+Recommended order: `3A -> 3B -> 3C -> 3D`
+
 **Entry points**: `src/index.js`, `public/admin.html`, `public/platform/admin.html`, `public/website-master/index.html`
 
 ### Domain Strategy Proposal (Approved Direction)
