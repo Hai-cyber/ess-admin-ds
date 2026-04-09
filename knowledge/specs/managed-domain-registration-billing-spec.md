@@ -115,6 +115,7 @@ Recommended invoice lines:
 3. Managed registration must remain optional even for higher tiers.
 4. Managed subdomain remains active after custom domain activation for fallback and support.
 5. Renewal reminders must be visible in operator tooling before expiration windows.
+6. Activation should verify both runtime health and tenant website payload resolution on the custom host.
 
 ## MVP Implementation Order
 

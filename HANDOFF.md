@@ -71,6 +71,12 @@
 - [x] SaaS Admin now has a custom-domain request queue for approve -> verify -> activate -> reject
 - [x] Detailed managed domain registration spec and custom-domain operator runbook now live in `knowledge/specs/` and `knowledge/runbooks/`
 - [x] Custom-domain request flow now includes automatic DNS verification and a dedicated event timeline for request/audit history
+- [x] Custom-domain activation now writes a post-activation health check result back into the request record and audit timeline
+- [x] Managed-registration requests now persist renewal tracking fields and default annual renewal timing
+- [x] SaaS Admin domain queue now supports search/filter for open, active, renewal-attention, and health-issue requests
+- [x] Public tenant resolution now supports custom-domain hosts directly instead of only tenant subdomains
+- [x] Activation health checks now validate both `/api/health` and `/api/website/payload` on the custom host
+- [x] Managed domain renewal reminder job design now exists as a separate runbook for future cron/queue implementation
 - [x] Structured `opening_hours_schedule` now reaches the public website payload alongside legacy open/close fallback values
 - [x] Wildcard tenant subdomains on `gooddining.app` and demo-payment signup walkthrough have been verified live end to end
 - [x] Active Odoo runtime/helper paths removed from both worker entrypoints; active public/admin surfaces updated to first-party CRM wording

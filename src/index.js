@@ -1478,7 +1478,9 @@ async function getCustomDomainRequestHistory(env, companyId, limit = 12) {
   const result = await env.DB.prepare(`
     SELECT id, company_id, organization_id, requested_domain, registration_mode, request_status,
            dns_record_type, dns_name, dns_value, request_note, operator_note, renewal_mode,
+           renewal_status, renewal_due_at, renewal_last_reminded_at, auto_renew_enabled,
            approved_at, approved_by, dns_ready_at, verified_at, activated_at, activated_by,
+           last_health_check_at, last_health_check_status, last_health_check_note,
            rejected_at, rejected_by, created_at, updated_at
     FROM custom_domain_requests
     WHERE company_id = ?
@@ -1498,7 +1500,9 @@ async function getCustomDomainRequestById(env, requestId) {
   const request = await env.DB.prepare(`
     SELECT id, company_id, organization_id, requested_domain, registration_mode, request_status,
            dns_record_type, dns_name, dns_value, request_note, operator_note, renewal_mode,
+           renewal_status, renewal_due_at, renewal_last_reminded_at, auto_renew_enabled,
            approved_at, approved_by, dns_ready_at, verified_at, activated_at, activated_by,
+           last_health_check_at, last_health_check_status, last_health_check_note,
            rejected_at, rejected_by, created_at, updated_at
     FROM custom_domain_requests
     WHERE id = ?
@@ -1541,6 +1545,101 @@ async function logCustomDomainRequestEvent(env, payload = {}) {
 
 function normalizeDnsHostnameValue(value) {
   return String(value || '').trim().toLowerCase().replace(/\.+$/, '');
+}
+
+function addDaysIso(value, days) {
+  const date = new Date(String(value || ''));
+  if (Number.isNaN(date.getTime())) return null;
+  date.setUTCDate(date.getUTCDate() + Number(days || 0));
+  return date.toISOString();
+}
+
+function computeRenewalTrackingForRequest(domainRequest) {
+  const renewalMode = String(domainRequest?.renewal_mode || 'external').trim() || 'external';
+  const renewalDueAt = String(domainRequest?.renewal_due_at || '').trim();
+  const now = Date.now();
+  if (!renewalDueAt) {
+    return {
+      renewalMode,
+      renewalStatus: renewalMode === 'platform_managed' ? 'managed_active' : 'external',
+      reminderDue: false
+    };
+  }
+
+  const dueTime = new Date(renewalDueAt).getTime();
+  if (Number.isNaN(dueTime)) {
+    return { renewalMode, renewalStatus: renewalMode === 'platform_managed' ? 'managed_active' : 'external', reminderDue: false };
+  }
+
+  const daysUntilDue = Math.ceil((dueTime - now) / 86400000);
+  if (daysUntilDue < 0) {
+    return { renewalMode, renewalStatus: 'renewal_overdue', reminderDue: true, daysUntilDue };
+  }
+  if (daysUntilDue <= 30) {
+    return { renewalMode, renewalStatus: 'renewal_due_soon', reminderDue: true, daysUntilDue };
+  }
+  return { renewalMode, renewalStatus: renewalMode === 'platform_managed' ? 'managed_active' : 'external', reminderDue: false, daysUntilDue };
+}
+
+function annotateCustomDomainRequest(domainRequest) {
+  if (!domainRequest || typeof domainRequest !== 'object') return domainRequest;
+  return {
+    ...domainRequest,
+    ...computeRenewalTrackingForRequest(domainRequest)
+  };
+}
+
+async function runCustomDomainActivationHealthCheck(env, domainRequest) {
+  const requestedDomain = normalizeCustomDomainHostname(domainRequest?.requested_domain || '');
+  const healthCheckMode = String(env?.CUSTOM_DOMAIN_ACTIVATION_HEALTHCHECK_MODE || '').trim().toLowerCase();
+  if (!requestedDomain) {
+    return { ok: false, status: 'failed', note: 'Missing domain for activation health check.' };
+  }
+  if (healthCheckMode === 'mock') {
+    return {
+      ok: true,
+      status: 'healthy',
+      note: 'Mock activation health check passed for health and website payload endpoints.',
+      checks: {
+        health: { ok: true, status: 200 },
+        payload: { ok: true, status: 200, companyId: Number(domainRequest?.company_id || 0) }
+      }
+    };
+  }
+
+  try {
+    const [healthResponse, payloadResponse] = await Promise.all([
+      fetch(`https://${requestedDomain}/api/health`),
+      fetch(`https://${requestedDomain}/api/website/payload`)
+    ]);
+    if (!healthResponse.ok) {
+      return { ok: false, status: 'unhealthy', note: `Health check returned HTTP ${healthResponse.status}.` };
+    }
+    const healthBody = await healthResponse.json().catch(() => null);
+    if (!healthBody?.ok) {
+      return { ok: false, status: 'unhealthy', note: 'Health payload did not report ok=true.' };
+    }
+
+    if (!payloadResponse.ok) {
+      return { ok: false, status: 'unhealthy', note: `Website payload check returned HTTP ${payloadResponse.status}.` };
+    }
+    const payloadBody = await payloadResponse.json().catch(() => null);
+    if (!payloadBody?.ok || Number(payloadBody?.companyId || 0) !== Number(domainRequest?.company_id || 0)) {
+      return { ok: false, status: 'unhealthy', note: 'Website payload did not resolve the expected tenant company.' };
+    }
+
+    return {
+      ok: true,
+      status: 'healthy',
+      note: 'Activation health check passed for health and website payload endpoints.',
+      checks: {
+        health: { ok: true, status: healthResponse.status },
+        payload: { ok: true, status: payloadResponse.status, companyId: Number(payloadBody.companyId || 0) }
+      }
+    };
+  } catch (error) {
+    return { ok: false, status: 'unreachable', note: error.message || 'Activation health check failed.' };
+  }
 }
 
 async function verifyCustomDomainDns(env, domainRequest) {
@@ -1634,11 +1733,12 @@ async function createCustomDomainUpgradeRequest(env, payload = {}) {
   const dnsTarget = buildCustomDomainDnsTarget(company);
   const now = new Date().toISOString();
   const requestId = crypto.randomUUID();
+  const renewalDueAt = registrationMode === 'managed_registration' ? addDaysIso(now, 365) : null;
   await env.DB.prepare(`
     INSERT INTO custom_domain_requests (
       id, company_id, organization_id, requested_domain, registration_mode, request_status,
-      dns_record_type, dns_name, dns_value, request_note, renewal_mode, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, 'requested', 'CNAME', ?, ?, ?, ?, ?, ?)
+      dns_record_type, dns_name, dns_value, request_note, renewal_mode, renewal_status, renewal_due_at, auto_renew_enabled, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, 'requested', 'CNAME', ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     requestId,
     companyId,
@@ -1649,6 +1749,9 @@ async function createCustomDomainUpgradeRequest(env, payload = {}) {
     dnsTarget,
     requestNote,
     registrationMode === 'managed_registration' ? 'platform_managed' : 'external',
+    registrationMode === 'managed_registration' ? 'managed_active' : 'external',
+    renewalDueAt,
+    registrationMode === 'managed_registration' ? 1 : 0,
     now,
     now
   ).run();
@@ -1680,12 +1783,19 @@ async function updateCustomDomainRequestState(env, requestId, updates = {}) {
     UPDATE custom_domain_requests
     SET request_status = ?,
         operator_note = ?,
+        renewal_status = ?,
+        renewal_due_at = ?,
+        renewal_last_reminded_at = ?,
+        auto_renew_enabled = ?,
         approved_at = ?,
         approved_by = ?,
         dns_ready_at = ?,
         verified_at = ?,
         activated_at = ?,
         activated_by = ?,
+        last_health_check_at = ?,
+        last_health_check_status = ?,
+        last_health_check_note = ?,
         rejected_at = ?,
         rejected_by = ?,
         updated_at = ?
@@ -1693,12 +1803,19 @@ async function updateCustomDomainRequestState(env, requestId, updates = {}) {
   `).bind(
     updates.requestStatus ?? existing.request_status,
     updates.operatorNote ?? existing.operator_note ?? null,
+    updates.renewalStatus ?? existing.renewal_status ?? null,
+    updates.renewalDueAt ?? existing.renewal_due_at ?? null,
+    updates.renewalLastRemindedAt ?? existing.renewal_last_reminded_at ?? null,
+    typeof updates.autoRenewEnabled === 'number' || typeof updates.autoRenewEnabled === 'boolean' ? Number(updates.autoRenewEnabled) : (existing.auto_renew_enabled ?? null),
     updates.approvedAt ?? existing.approved_at ?? null,
     updates.approvedBy ?? existing.approved_by ?? null,
     updates.dnsReadyAt ?? existing.dns_ready_at ?? null,
     updates.verifiedAt ?? existing.verified_at ?? null,
     updates.activatedAt ?? existing.activated_at ?? null,
     updates.activatedBy ?? existing.activated_by ?? null,
+    updates.lastHealthCheckAt ?? existing.last_health_check_at ?? null,
+    updates.lastHealthCheckStatus ?? existing.last_health_check_status ?? null,
+    updates.lastHealthCheckNote ?? existing.last_health_check_note ?? null,
     updates.rejectedAt ?? existing.rejected_at ?? null,
     updates.rejectedBy ?? existing.rejected_by ?? null,
     now,
@@ -2098,8 +2215,9 @@ async function getAdminPlatformConfig(env, companyId) {
     operationalSettings,
     websiteRelease
   });
-  const customDomainRequestEvents = customDomainRequestHistory[0]?.id
-    ? await getCustomDomainRequestEvents(env, customDomainRequestHistory[0].id)
+  const normalizedCustomDomainRequestHistory = customDomainRequestHistory.map((item) => annotateCustomDomainRequest(item));
+  const customDomainRequestEvents = normalizedCustomDomainRequestHistory[0]?.id
+    ? await getCustomDomainRequestEvents(env, normalizedCustomDomainRequestHistory[0].id)
     : [];
 
   return {
@@ -2109,8 +2227,8 @@ async function getAdminPlatformConfig(env, companyId) {
     modules,
     websiteRelease,
     websiteReleaseHistory,
-    customDomainRequest: customDomainRequestHistory[0] || null,
-    customDomainRequestHistory,
+    customDomainRequest: normalizedCustomDomainRequestHistory[0] || null,
+    customDomainRequestHistory: normalizedCustomDomainRequestHistory,
     customDomainRequestEvents,
     paymentMethodPolicy: buildPaymentMethodPolicy(platformPricingSettings),
     goLiveReadiness
@@ -2682,8 +2800,10 @@ async function getPlatformAdminDashboard(env) {
     `).all(),
     env.DB.prepare(`
       SELECT id, company_id, organization_id, requested_domain, registration_mode, request_status,
-             dns_record_type, dns_name, dns_value, request_note, operator_note, renewal_mode,
+            dns_record_type, dns_name, dns_value, request_note, operator_note, renewal_mode,
+            renewal_status, renewal_due_at, renewal_last_reminded_at, auto_renew_enabled,
              approved_at, approved_by, dns_ready_at, verified_at, activated_at, activated_by,
+            last_health_check_at, last_health_check_status, last_health_check_note,
              rejected_at, rejected_by, created_at, updated_at
       FROM custom_domain_requests
       ORDER BY updated_at DESC, created_at DESC
@@ -2703,7 +2823,7 @@ async function getPlatformAdminDashboard(env) {
     contacts: contactsResult?.results || [],
     reviews: reviewsResult?.results || [],
     paymentEvents: paymentEventsResult?.results || [],
-    customDomainRequests: customDomainRequestsResult?.results || [],
+    customDomainRequests: (customDomainRequestsResult?.results || []).map((item) => annotateCustomDomainRequest(item)),
     customDomainRequestEvents: customDomainRequestEventsResult?.results || []
   };
 }
@@ -2820,6 +2940,27 @@ async function resolveActiveCompanyId(env, tenant, url) {
     }
   };
 
+  const queryCompanyByCustomDomain = async (hostname) => {
+    try {
+      const normalizedHostname = normalizeCustomDomainHostname(hostname);
+      if (!normalizedHostname) return null;
+      return await env.DB.prepare(
+        `SELECT c.id, c.subdomain, c.subdomain_status, c.website_status, c.trust_state
+         FROM companies c
+         JOIN settings s ON s.company_id = c.id AND s.key = 'custom_domain'
+         WHERE c.is_active = 1
+           AND lower(replace(replace(trim(s.value), 'https://', ''), 'http://', '')) = ?
+         LIMIT 1`
+      ).bind(normalizedHostname).first();
+    } catch (error) {
+      const message = String(error?.message || error || '').toLowerCase();
+      if (message.includes('no such table: companies') || message.includes('no such table: settings')) {
+        return { __error: 'companies_table_missing' };
+      }
+      throw error;
+    }
+  };
+
   const allowQueryOverride = canOverrideCompanyIdForHost(tenant, url);
   const queryCompanyId = Number(url.searchParams.get('company_id') || 0);
 
@@ -2881,6 +3022,14 @@ async function resolveActiveCompanyId(env, tenant, url) {
   if (Number.isInteger(tenantCompanyId) && tenantCompanyId > 0) {
     const tenantCompany = await queryCompanyById(tenantCompanyId);
     return finalizeResolvedCompany(tenantCompany, 'tenant_company_not_found');
+  }
+
+  const hostname = normalizeCustomDomainHostname(url?.hostname || '');
+  if (hostname && hostname !== PLATFORM_PUBLIC_DOMAIN && !hostname.endsWith(`.${PLATFORM_PUBLIC_DOMAIN}`) && !hostname.includes('workers.dev') && !isLocalDevelopmentHost(url)) {
+    const customDomainCompany = await queryCompanyByCustomDomain(hostname);
+    if (customDomainCompany?.id || customDomainCompany?.__error) {
+      return finalizeResolvedCompany(customDomainCompany, 'tenant_custom_domain_not_found');
+    }
   }
 
   const subdomain = String(tenant?.subdomain || '').trim().toLowerCase();
@@ -4172,15 +4321,25 @@ export default {
           if (String(domainRequest.request_status || '') !== 'verified_waiting_activation') {
             return Response.json({ ok: false, error: 'Only verified domains can be activated.' }, { status: 409 });
           }
+          const activationHealth = await runCustomDomainActivationHealthCheck(env, domainRequest);
+          const renewalTracking = computeRenewalTrackingForRequest(domainRequest);
           updatedRequest = await updateCustomDomainRequestState(env, requestId, {
             requestStatus: 'active',
             operatorNote,
             activatedAt: new Date().toISOString(),
             activatedBy: actorName,
+            renewalStatus: renewalTracking.renewalStatus,
+            lastHealthCheckAt: new Date().toISOString(),
+            lastHealthCheckStatus: activationHealth.status,
+            lastHealthCheckNote: activationHealth.note,
             eventType: 'domain_activated',
             actorType: 'platform_operator',
             actorId: actorName,
-            eventNote: operatorNote || 'Custom domain activated.'
+            eventNote: operatorNote || 'Custom domain activated.',
+            metadataJson: {
+              activationHealthStatus: activationHealth.status,
+              activationHealthNote: activationHealth.note
+            }
           });
           await upsertSettingValue(
             env,
@@ -4190,6 +4349,18 @@ export default {
             OPERATIONAL_KEY_DESCRIPTIONS.custom_domain || 'Custom domain mapped for the tenant website',
             actorName
           );
+          await logCustomDomainRequestEvent(env, {
+            requestId,
+            companyId: Number(domainRequest.company_id || 0),
+            eventType: 'activation_health_checked',
+            requestStatus: 'active',
+            actorType: 'system',
+            actorId: 'activation-health-check',
+            note: activationHealth.note,
+            metadataJson: {
+              activationHealthStatus: activationHealth.status
+            }
+          });
         }
 
         return Response.json({ ok: true, request: updatedRequest || domainRequest });

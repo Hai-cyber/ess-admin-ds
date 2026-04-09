@@ -97,6 +97,7 @@ System effects:
 
 - tenant `custom_domain` setting is updated
 - managed subdomain remains available as fallback
+- activation health check now validates both `/api/health` and `/api/website/payload` on the custom host
 
 ## 6. Rejection
 
@@ -157,6 +158,5 @@ Operator should leave a note explaining the reason.
 
 After MVP, add:
 
-- activation health checks
 - renewal reminders
 - managed registrar integration

@@ -235,6 +235,7 @@ describe('ESSKULTUR worker', () => {
 	it('allows operator approval, verification, and activation for a custom-domain request', async () => {
 		await initializeDatabase(env.DB);
 		env.CUSTOM_DOMAIN_DNS_VERIFY_MODE = 'mock';
+		env.CUSTOM_DOMAIN_ACTIVATION_HEALTHCHECK_MODE = 'mock';
 
 		let request = new Request('http://localhost/api/admin/domain-upgrade/request?company_id=1', {
 			method: 'POST',
@@ -278,7 +279,7 @@ describe('ESSKULTUR worker', () => {
 		}
 
 		const activeRequest = await env.DB.prepare(
-			`SELECT request_status, activated_at FROM custom_domain_requests WHERE id = ? LIMIT 1`
+			`SELECT request_status, activated_at, last_health_check_status, last_health_check_note FROM custom_domain_requests WHERE id = ? LIMIT 1`
 		).bind(domainRequestId).first();
 		const domainEvents = await env.DB.prepare(
 			`SELECT event_type FROM custom_domain_request_events WHERE request_id = ? ORDER BY created_at DESC`
@@ -288,13 +289,16 @@ describe('ESSKULTUR worker', () => {
 		).first();
 		expect(String(activeRequest?.request_status || '')).toBe('active');
 		expect(String(activeRequest?.activated_at || '')).not.toBe('');
+		expect(String(activeRequest?.last_health_check_status || '')).toBe('healthy');
+		expect(String(activeRequest?.last_health_check_note || '')).toContain('website payload');
 		expect(String(customDomainSetting?.value || '')).toBe('www.restaurant-activation.de');
 		expect((domainEvents.results || []).map((row) => String(row.event_type || ''))).toEqual(expect.arrayContaining([
 			'request_created',
 			'request_approved',
 			'dns_marked_ready',
 			'dns_verified',
-			'domain_activated'
+			'domain_activated',
+			'activation_health_checked'
 		]));
 
 		request = new Request('http://localhost/api/platform/admin/dashboard?pin=1234');
@@ -307,6 +311,51 @@ describe('ESSKULTUR worker', () => {
 		expect(Array.isArray(dashboardBody.customDomainRequests)).toBe(true);
 		expect(Array.isArray(dashboardBody.customDomainRequestEvents)).toBe(true);
 		expect(dashboardBody.customDomainRequests.some((row) => String(row.id || '') === domainRequestId)).toBe(true);
+	});
+
+	it('resolves tenant website payload by custom domain host after activation', async () => {
+		await initializeDatabase(env.DB);
+
+		await env.DB.prepare(
+			`INSERT INTO settings (company_id, key, value, description, updated_at, updated_by)
+			 VALUES (?, 'custom_domain', ?, 'Custom domain mapped for the tenant website', ?, ?)
+			 ON CONFLICT(company_id, key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at, updated_by = excluded.updated_by`
+		).bind(1, 'www.tenant-custom-host.de', new Date().toISOString(), 'test').run();
+
+		const request = new Request('https://www.tenant-custom-host.de/api/website/payload');
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(200);
+		const body = await response.json();
+		expect(body.ok).toBe(true);
+		expect(Number(body.companyId || 0)).toBe(1);
+	});
+
+	it('stores renewal tracking fields for managed registration requests', async () => {
+		await initializeDatabase(env.DB);
+
+		const request = new Request('http://localhost/api/admin/domain-upgrade/request?company_id=1', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				pin: '1234',
+				requestedDomain: 'www.restaurant-renewal.de',
+				registrationMode: 'managed_registration',
+				requestNote: 'Bundle this into platform billing.'
+			})
+		});
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		const body = await response.json();
+		expect(body.ok).toBe(true);
+		expect(String(body.request?.renewal_mode || '')).toBe('platform_managed');
+		expect(String(body.request?.renewal_status || '')).toBe('managed_active');
+		expect(String(body.request?.renewal_due_at || '')).not.toBe('');
+		expect(Number(body.request?.auto_renew_enabled || 0)).toBe(1);
 	});
 
 	it('rejects tenant admin subdomain updates that hit blocked policy terms', async () => {

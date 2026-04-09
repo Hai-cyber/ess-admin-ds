@@ -74,6 +74,11 @@
 ✅ Tenant admin can now submit a custom-domain upgrade request and mark DNS ready for operator review
 ✅ SaaS Admin now has a custom-domain request queue with approve, verify, activate, and reject actions
 ✅ Managed domain registration billing spec and operator workflow runbook now exist as separate project documents
+✅ Custom-domain activation now persists a health check result and event log entry after operator activation
+✅ Managed-registration requests now persist renewal tracking defaults for later reminder/billing workflows
+✅ SaaS Admin domain queue now supports search/filter for open, active, renewal, and health-issue requests
+✅ Public tenant resolution now supports custom-domain hosts directly and activation checks validate tenant website payload resolution on those hosts
+✅ Managed domain renewal reminder job design is documented for future cron/queue automation
 ✅ SaaS Admin moderation queue now has summary/filter/refresh controls on top of approve/reject/suspend/quarantine actions
 ✅ Local smoke verification now covers `/api/contact/create`, platform contact, publish review, suspend, quarantine, and host-based public blocking
 ✅ Explicit `production` env now deploys against a real D1 database id
