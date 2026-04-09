@@ -550,6 +550,53 @@
       margin-top: 8px;
     }
 
+    .release-timeline {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .release-timeline-track {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .release-timeline-step {
+      min-width: 180px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      display: grid;
+      gap: 6px;
+    }
+
+    .release-timeline-step.current {
+      border-color: var(--brand);
+      box-shadow: 0 4px 12px rgba(165, 74, 123, 0.18);
+    }
+
+    .release-timeline-status {
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .release-timeline-meta {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .release-timeline-note {
+      font-size: 0.85rem;
+      color: var(--text-primary);
+      line-height: 1.45;
+    }
+
     .staff-list {
       display: grid;
       gap: 12px;
@@ -2183,6 +2230,50 @@
       }[String(status || '').trim().toLowerCase()] || String(status || 'draft');
     }
 
+    function getWebsiteReleaseStatusTone(status) {
+      return {
+        draft: 'var(--text-muted)',
+        pending_review: 'var(--warning)',
+        approved: 'var(--confirmed)',
+        published: 'var(--success)',
+        rejected: 'var(--danger)',
+        rolled_back: 'var(--arrived)'
+      }[String(status || '').trim().toLowerCase()] || 'var(--text-muted)';
+    }
+
+    function buildWebsiteReleaseTimeline(release, history) {
+      const rawItems = [];
+      const seenIds = new Set();
+
+      for (const item of Array.isArray(history) ? history : []) {
+        const id = String(item?.id || '').trim();
+        if (!id || seenIds.has(id)) continue;
+        seenIds.add(id);
+        rawItems.push(item);
+      }
+
+      if (release?.id && !seenIds.has(String(release.id))) {
+        rawItems.push(release);
+      }
+
+      return rawItems
+        .slice()
+        .sort((left, right) => {
+          const leftTime = new Date(left?.updated_at || left?.created_at || 0).getTime();
+          const rightTime = new Date(right?.updated_at || right?.created_at || 0).getTime();
+          return leftTime - rightTime;
+        })
+        .map((item) => ({
+          id: String(item?.id || '').trim(),
+          status: String(item?.release_status || 'draft').trim().toLowerCase(),
+          label: humanizeWebsiteReleaseStatus(item?.release_status || 'draft'),
+          note: String(item?.release_note || '').trim(),
+          updatedAt: item?.updated_at || item?.created_at || '',
+          reasonCodes: parseReleaseReasonCodes(item?.reason_codes_json),
+          current: String(item?.id || '').trim() === String(release?.id || '').trim()
+        }));
+    }
+
     function humanizeDomainRequestStatus(status) {
       return {
         requested: 'Requested',
@@ -2229,6 +2320,7 @@
       const reasonCodes = parseReleaseReasonCodes(release?.reason_codes_json);
       const reviewId = String(release?.review_id || '').trim();
       const releaseStatus = String(release?.release_status || '').trim().toLowerCase();
+      const releaseTimeline = buildWebsiteReleaseTimeline(release, history);
       const previewUrl = String(release?.preview_url || `${window.location.origin}/website-master/index.html?company_id=${encodeURIComponent(currentUser?.companyId || 1)}`).trim();
       const publishedUrl = String(release?.published_url || getOperationalValue('custom_domain') || document.getElementById('op_website_url')?.value.trim() || '').trim();
       const queueUrl = reviewId ? `/platform/admin.html?review=${encodeURIComponent(reviewId)}` : '/platform/admin.html';
@@ -2243,6 +2335,21 @@
         <div class="integration-note" style="color:${readiness.publishReady ? 'var(--text-muted)' : 'var(--warning)'};">${escapeHtml(publishBlockerSummary)}</div>
         <div class="integration-note" style="color:${readiness.goLiveReady ? 'var(--success)' : 'var(--warning)'};">${escapeHtml(readiness.goLiveSummary || 'Go-live readiness not loaded.')}</div>
         <div class="integration-note" style="color:${readiness.goLiveReady ? 'var(--text-muted)' : 'var(--warning)'};">${escapeHtml(goLiveBlockerSummary)}</div>
+        <div class="settings-subsection-title">Release Lifecycle</div>
+        ${releaseTimeline.length ? `
+          <div class="release-timeline">
+            <div class="release-timeline-track">
+              ${releaseTimeline.map((item) => `
+                <div class="release-timeline-step ${item.current ? 'current' : ''}">
+                  <div class="release-timeline-status" style="color:${getWebsiteReleaseStatusTone(item.status)};">${escapeHtml(item.label)}</div>
+                  <div class="release-timeline-meta">${escapeHtml(formatDateTime(item.updatedAt))}${item.current ? ' • current' : ''}</div>
+                  <div class="release-timeline-note">${escapeHtml(item.note || 'No operator note for this release state.')}</div>
+                  <div class="release-timeline-meta">Reasons: ${escapeHtml(item.reasonCodes.join(', ') || 'none')}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : '<div class="integration-note">No release lifecycle yet.</div>'}
         <div class="setting-row">
           <div class="setting-label">Website Status</div>
           <div class="setting-value" style="padding-top: 10px;">${escapeHtml(company.website_status || 'draft')}</div>
