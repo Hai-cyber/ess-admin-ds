@@ -2113,9 +2113,18 @@
       }, new Map()).entries());
       const reasonCodes = parseReleaseReasonCodes(release?.reason_codes_json);
       const reviewId = String(release?.review_id || '').trim();
+      const releaseStatus = String(release?.release_status || '').trim().toLowerCase();
       const previewUrl = String(release?.preview_url || `${window.location.origin}/website-master/index.html?company_id=${encodeURIComponent(currentUser?.companyId || 1)}`).trim();
       const publishedUrl = String(release?.published_url || getOperationalValue('custom_domain') || document.getElementById('op_website_url')?.value.trim() || '').trim();
       const queueUrl = reviewId ? `/platform/admin.html?review=${encodeURIComponent(reviewId)}` : '/platform/admin.html';
+      const publishCtaLabel = readiness.publishReady
+        ? (releaseStatus === 'pending_review' ? 'Publish review submitted' : releaseStatus === 'published' ? 'Publish checks passed' : 'Ready to publish')
+        : 'Complete publish setup first';
+      const publishCtaDisabled = !readiness.publishReady || releaseStatus === 'pending_review';
+      const goLiveCtaLabel = readiness.goLiveReady
+        ? 'Ready to go live'
+        : 'Complete go-live setup first';
+      const goLiveCtaDisabled = !readiness.goLiveReady || !publishedUrl;
 
       container.innerHTML = `
         <div class="integration-note">Current website state and latest publish/review outcome. Use this panel to run publish validation and then continue moderation or go-live checks.</div>
@@ -2156,6 +2165,20 @@
         <div class="setting-row">
           <div class="setting-label">Operator Note</div>
           <textarea class="setting-value" id="website_release_note" rows="3" placeholder="Optional note for publish review">${escapeHtml(release?.release_note || '')}</textarea>
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Publish CTA</div>
+          <div class="setting-value" style="padding-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <button class="btn-small btn-primary" ${publishCtaDisabled ? 'disabled' : ''} onclick="runWebsitePublishReview()">${escapeHtml(publishCtaLabel)}</button>
+            <span style="color:${readiness.publishReady ? 'var(--success)' : 'var(--warning)'};">${escapeHtml(readiness.publishSummary || '')}</span>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Go-Live CTA</div>
+          <div class="setting-value" style="padding-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <button class="btn-small btn-primary" ${goLiveCtaDisabled ? 'disabled' : ''} onclick="window.open('${escapeHtml(publishedUrl || previewUrl)}', '_blank', 'noopener')">${escapeHtml(goLiveCtaLabel)}</button>
+            <span style="color:${readiness.goLiveReady ? 'var(--success)' : 'var(--warning)'};">${escapeHtml(readiness.goLiveSummary || '')}</span>
+          </div>
         </div>
         <div class="settings-subsection-title">Go-Live Checklist</div>
         ${readinessSections.map(([sectionLabel, items]) => `

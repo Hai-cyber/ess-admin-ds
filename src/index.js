@@ -2231,21 +2231,21 @@ async function getGoLiveReadiness(env, companyId, context = {}) {
       actionLabel: 'Open payments & billing'
     },
     {
-      key: 'publish_status',
+      key: 'live_release_status',
       section: 'Go live',
-      label: 'Publish status',
+      label: 'Live release status',
       ok: releaseStatus === 'published',
       detail: releaseStatus === 'published'
         ? 'Latest release is already published.'
         : releaseStatus === 'pending_review'
-          ? 'Latest release is waiting for operator approval.'
-          : 'Run publish review and complete operator approval.',
+          ? 'Latest release is waiting for operator approval before go-live.'
+          : 'A published release does not exist yet.',
       required: true,
       requiredForPublish: false,
       requiredForGoLive: true,
       targetPage: 'settings',
       targetSection: 'settings-website-release',
-      actionLabel: 'Open website release'
+      actionLabel: 'Open website release panel'
     }
   ];
 
