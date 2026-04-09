@@ -190,7 +190,7 @@
 
       <div class="saas-card">
         <h2>Moderation Review Queue</h2>
-        <p class="meta">Pending and recent website moderation decisions. Use the operator PIN loaded above to approve, reject, suspend, or quarantine directly.</p>
+        <p class="meta">Website release workflow items. Use the operator PIN loaded above to review submissions, approve or reject them, and monitor what is already live.</p>
         <div id="saas-reviews-list"></div>
       </div>
 
@@ -326,6 +326,26 @@
         label: humanizeReviewWorkflowState(step),
         active: step === workflowState
       }));
+    }
+
+    function getReviewWorkflowHint(row) {
+      const workflowState = getReviewWorkflowState(row);
+      if (workflowState === 'pending_review') {
+        return 'Operator action required: review the submission, then approve or reject it.';
+      }
+      if (workflowState === 'approved') {
+        return 'Approved and waiting for the tenant admin to publish this release live.';
+      }
+      if (workflowState === 'published') {
+        return 'This release is already live on the tenant website.';
+      }
+      if (workflowState === 'rolled_back') {
+        return 'This release was superseded by a later rollback restore.';
+      }
+      if (workflowState === 'rejected') {
+        return 'Rejected submission. The tenant must prepare and submit a new release.';
+      }
+      return 'Workflow status available.';
     }
 
     async function loadSaasDashboard() {
@@ -608,6 +628,7 @@
         })();
         const workflowState = getReviewWorkflowState(row);
         const workflowSteps = buildReviewWorkflowSummary(row);
+        const workflowHint = getReviewWorkflowHint(row);
         const isPending = workflowState === 'pending_review';
         const reviewUrl = `/platform/admin.html?review=${encodeURIComponent(row.id)}`;
         const tenantAdminUrl = row.company_id ? `/admin?company_id=${encodeURIComponent(row.company_id)}` : '';
@@ -625,16 +646,17 @@
             </div>
             <div class="review-reasons">Reasons: ${reasonCodes.length ? escapeHtml(reasonCodes.join(', ')) : 'none'}</div>
             <div class="review-workflow">${workflowSteps.map((step) => statusBadge(step.active ? step.key : 'new').replace(`>${step.active ? step.key : 'new'}<`, `>${escapeHtml(step.label.toLowerCase())}<`)).join('')}</div>
+            <div class="review-meta">${escapeHtml(workflowHint)}</div>
             <div class="review-links">
-              <a href="${reviewUrl}">Focus review</a>
+              <a href="${reviewUrl}">Focus workflow item</a>
               ${previewUrl ? `<a href="${previewUrl}" target="_blank" rel="noopener">Open preview</a>` : ''}
               ${tenantAdminUrl ? `<a href="${tenantAdminUrl}" target="_blank" rel="noopener">Open tenant admin</a>` : ''}
             </div>
             <div class="lead-controls">
               <textarea id="review_note_${escapeHtml(row.id)}" placeholder="Operator note">${escapeHtml(row.review_note || '')}</textarea>
               <div class="review-actions">
-                <button class="btn btn-sm btn-outline" ${isPending ? '' : 'disabled'} onclick="approveReview('${escapeHtml(row.id)}')">Approve</button>
-                <button class="btn btn-sm btn-warn-lite" ${isPending ? '' : 'disabled'} onclick="rejectReview('${escapeHtml(row.id)}')">Reject</button>
+                <button class="btn btn-sm btn-outline" ${isPending ? '' : 'disabled'} onclick="approveReview('${escapeHtml(row.id)}')">Approve submission</button>
+                <button class="btn btn-sm btn-warn-lite" ${isPending ? '' : 'disabled'} onclick="rejectReview('${escapeHtml(row.id)}')">Reject submission</button>
                 <button class="btn btn-sm btn-danger-lite" ${row.company_id ? '' : 'disabled'} onclick="suspendTenantWebsite('${escapeHtml(row.company_id || '')}')">Suspend website</button>
                 <button class="btn btn-sm btn-outline" ${row.subdomain ? '' : 'disabled'} onclick="quarantineTenantSubdomain('${escapeHtml(row.subdomain || '')}')">Quarantine subdomain</button>
               </div>
@@ -748,7 +770,7 @@
         body: JSON.stringify({ pin: saasPin, reviewNote })
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) return alert(data.error || 'Failed to approve review');
+      if (!res.ok || !data.ok) return alert(data.error || 'Failed to approve submission');
       await loadSaasDashboard();
     }
 
@@ -761,7 +783,7 @@
         body: JSON.stringify({ pin: saasPin, reviewNote })
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) return alert(data.error || 'Failed to reject review');
+      if (!res.ok || !data.ok) return alert(data.error || 'Failed to reject submission');
       await loadSaasDashboard();
     }
 

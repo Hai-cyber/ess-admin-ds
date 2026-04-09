@@ -2145,7 +2145,7 @@
 
       if (releaseStatus === 'pending_review') {
         return {
-          label: 'Submitted for review',
+          label: 'Submitted for operator review',
           disabled: true,
           tone: 'var(--warning)',
           action: 'none',
@@ -2344,7 +2344,7 @@
       const goLiveBlockerSummary = summarizeReadinessBlockers(readiness, 'go-live');
 
       container.innerHTML = `
-        <div class="integration-note">Current website state and latest publish/review outcome. Use this panel to run publish validation and then continue moderation or go-live checks.</div>
+        <div class="integration-note">Current website state and latest release workflow outcome. Use this panel to submit releases, track operator approval, and then publish approved work live.</div>
         <div class="integration-note" style="color:${readiness.publishReady ? 'var(--success)' : 'var(--warning)'};">${escapeHtml(readiness.publishSummary || 'Publish readiness not loaded.')}</div>
         <div class="integration-note" style="color:${readiness.publishReady ? 'var(--text-muted)' : 'var(--warning)'};">${escapeHtml(publishBlockerSummary)}</div>
         <div class="integration-note" style="color:${readiness.goLiveReady ? 'var(--success)' : 'var(--warning)'};">${escapeHtml(readiness.goLiveSummary || 'Go-live readiness not loaded.')}</div>
@@ -2381,7 +2381,7 @@
           <div class="setting-value" style="padding-top: 10px;">${escapeHtml(humanizeWebsiteReleaseStatus(release?.release_status || 'draft'))}</div>
         </div>
         <div class="setting-row">
-          <div class="setting-label">Latest Review ID</div>
+          <div class="setting-label">Latest Workflow Review ID</div>
           <div class="setting-value" style="padding-top: 10px;">${escapeHtml(reviewId || 'none')}</div>
         </div>
         <div class="setting-row">
@@ -2398,7 +2398,7 @@
         </div>
         <div class="setting-row">
           <div class="setting-label">Operator Note</div>
-          <textarea class="setting-value" id="website_release_note" rows="3" placeholder="Optional note for publish review">${escapeHtml(release?.release_note || '')}</textarea>
+          <textarea class="setting-value" id="website_release_note" rows="3" placeholder="Optional note for release workflow">${escapeHtml(release?.release_note || '')}</textarea>
         </div>
         <div class="setting-row">
           <div class="setting-label">Publish CTA</div>
@@ -2463,7 +2463,7 @@
             <button class="btn-small btn-secondary" onclick="reloadPlatformConfig()">Reload</button>
             <button class="btn-small btn-secondary" onclick="window.open('${escapeHtml(previewUrl)}', '_blank', 'noopener')">Open Preview</button>
             ${publishedUrl ? `<button class="btn-small btn-secondary" onclick="window.open('${escapeHtml(publishedUrl)}', '_blank', 'noopener')">Open Live URL</button>` : ''}
-            <button class="btn-small btn-secondary" onclick="window.open('${escapeHtml(queueUrl)}', '_blank', 'noopener')">Open Operator Queue</button>
+            <button class="btn-small btn-secondary" onclick="window.open('${escapeHtml(queueUrl)}', '_blank', 'noopener')">Open Operator Workflow Queue</button>
             <button class="btn-small btn-primary" onclick="${publishCta.action === 'publish-approved' ? 'runWebsitePublishApprovedRelease()' : 'runWebsitePublishReview()'}">${escapeHtml(publishCta.action === 'publish-approved' ? 'Publish Approved Release' : 'Submit Release')}</button>
           </div>
         </div>
@@ -2923,14 +2923,14 @@
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.ok) {
-          alert(data.error || 'Failed to run publish review.');
+          alert(data.error || 'Failed to submit release.');
           return;
         }
 
         await reloadPlatformConfig();
         alert(`Release submission completed: ${data.action || data.decision || 'unknown'} (${data.release_status || data.website_status || 'no-status'})`);
       } catch (error) {
-        alert(error.message || 'Network error while running publish review.');
+        alert(error.message || 'Network error while submitting the release.');
       }
     }
 
