@@ -668,6 +668,13 @@ describe('ESSKULTUR worker', () => {
 		).bind(2).first();
 		expect(String(company?.website_status || '')).toBe('published');
 		expect(String(company?.trust_state || '')).toBe('trusted');
+
+		const releaseStates = await env.DB.prepare(
+			`SELECT release_status FROM website_releases WHERE review_id = ? ORDER BY created_at ASC`
+		).bind(reviewId).all();
+		expect(Array.isArray(releaseStates?.results)).toBe(true);
+		expect(releaseStates.results.map((row) => String(row.release_status || ''))).toContain('approved');
+		expect(releaseStates.results.map((row) => String(row.release_status || ''))).toContain('published');
 		expect(fetchSpy).toHaveBeenCalled();
 	});
 
@@ -933,6 +940,11 @@ describe('ESSKULTUR worker', () => {
 		await waitOnExecutionContext(ctx);
 		body = await response.json();
 		expect(String(body.source?.company?.name || '')).toBe('Old Stable Live');
+
+		const rolledBackRelease = await env.DB.prepare(
+			`SELECT release_status FROM website_releases WHERE id = ? LIMIT 1`
+		).bind('release_current_live').first();
+		expect(String(rolledBackRelease?.release_status || '')).toBe('rolled_back');
 	});
 
 	it('includes moderation reviews in platform admin dashboard data', async () => {
@@ -970,6 +982,7 @@ describe('ESSKULTUR worker', () => {
 		expect(Array.isArray(body.reviews)).toBe(true);
 		expect(body.reviews.length).toBeGreaterThan(0);
 		expect(String(body.reviews[0]?.company_name || '')).toContain('ESSKULTUR');
+		expect(body.reviews.some((item) => Object.prototype.hasOwnProperty.call(item, 'release_status'))).toBe(true);
 	});
 
 	it('accepts public website contact submissions and stores them in contacts', async () => {

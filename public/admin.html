@@ -2172,6 +2172,17 @@
       return date.toLocaleString();
     }
 
+    function humanizeWebsiteReleaseStatus(status) {
+      return {
+        draft: 'Draft',
+        pending_review: 'Pending review',
+        approved: 'Approved',
+        published: 'Published',
+        rejected: 'Rejected',
+        rolled_back: 'Rolled back'
+      }[String(status || '').trim().toLowerCase()] || String(status || 'draft');
+    }
+
     function humanizeDomainRequestStatus(status) {
       return {
         requested: 'Requested',
@@ -2246,7 +2257,7 @@
         </div>
         <div class="setting-row">
           <div class="setting-label">Latest Release Status</div>
-          <div class="setting-value" style="padding-top: 10px;">${escapeHtml(release?.release_status || 'draft')}</div>
+          <div class="setting-value" style="padding-top: 10px;">${escapeHtml(humanizeWebsiteReleaseStatus(release?.release_status || 'draft'))}</div>
         </div>
         <div class="setting-row">
           <div class="setting-label">Latest Review ID</div>
@@ -2311,7 +2322,7 @@
           const rollbackDisabled = !item.payload_snapshot_json || item.release_status === 'published';
           return `
             <div class="setting-row">
-              <div class="setting-label">${escapeHtml(item.release_status || 'draft')} · ${escapeHtml(formatDateTime(item.updated_at || item.created_at))}</div>
+              <div class="setting-label">${escapeHtml(humanizeWebsiteReleaseStatus(item.release_status || 'draft'))} · ${escapeHtml(formatDateTime(item.updated_at || item.created_at))}</div>
               <div class="setting-value" style="padding-top: 10px; display:grid; gap:8px;">
                 <div>ID: ${escapeHtml(item.id || '')}</div>
                 <div>Published URL: ${escapeHtml(item.published_url || 'n/a')}</div>

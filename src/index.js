@@ -2065,6 +2065,13 @@ function parseWebsiteReleaseSnapshot(release) {
   }
 }
 
+function normalizeWebsiteReleaseStatus(value, fallback = 'draft') {
+  const normalized = String(value || '').trim().toLowerCase();
+  return ['draft', 'pending_review', 'approved', 'published', 'rejected', 'rolled_back'].includes(normalized)
+    ? normalized
+    : fallback;
+}
+
 async function getGoLiveReadiness(env, companyId, context = {}) {
   const company = context.company || await getCompanyProfile(env, companyId);
   const operationalSettings = context.operationalSettings || await getOperationalSettingsMap(env, companyId);
@@ -2286,7 +2293,7 @@ async function createWebsiteRelease(env, payload = {}) {
     releaseId,
     companyId,
     payload.reviewId || null,
-    String(payload.releaseStatus || 'draft').trim(),
+    normalizeWebsiteReleaseStatus(payload.releaseStatus, 'draft'),
     String(payload.publishTarget || 'managed_subdomain').trim(),
     String(payload.previewUrl || '').trim(),
     String(payload.publishedUrl || '').trim(),
@@ -2304,17 +2311,22 @@ async function createWebsiteRelease(env, payload = {}) {
   return getLatestWebsiteRelease(env, companyId);
 }
 
-async function updateWebsiteReleaseByReviewId(env, reviewId, updates = {}) {
+async function getLatestWebsiteReleaseByReviewId(env, reviewId) {
   if (!reviewId) return null;
-  const existing = await env.DB.prepare(`
-    SELECT id, company_id, release_status, publish_target, preview_url, published_url,
+  return env.DB.prepare(`
+    SELECT id, company_id, review_id, release_status, publish_target, preview_url, published_url,
            payload_snapshot_json, reason_codes_json, release_note, reviewer_type, reviewer_id,
-           published_at, suspended_at
+           published_at, suspended_at, created_at, updated_at
     FROM website_releases
     WHERE review_id = ?
     ORDER BY updated_at DESC, created_at DESC
     LIMIT 1
   `).bind(reviewId).first();
+}
+
+async function updateWebsiteReleaseByReviewId(env, reviewId, updates = {}) {
+  if (!reviewId) return null;
+  const existing = await getLatestWebsiteReleaseByReviewId(env, reviewId);
 
   if (!existing) return null;
 
@@ -2344,7 +2356,7 @@ async function updateWebsiteReleaseByReviewId(env, reviewId, updates = {}) {
         updated_at = ?
     WHERE id = ?
   `).bind(
-    updates.releaseStatus ?? existing.release_status,
+    normalizeWebsiteReleaseStatus(updates.releaseStatus ?? existing.release_status, 'draft'),
     updates.publishTarget ?? existing.publish_target,
     updates.previewUrl ?? existing.preview_url,
     updates.publishedUrl ?? existing.published_url,
@@ -2392,7 +2404,7 @@ async function updateLatestWebsiteReleaseForCompany(env, companyId, updates = {}
         updated_at = ?
     WHERE id = ?
   `).bind(
-    updates.releaseStatus ?? existing.release_status,
+    normalizeWebsiteReleaseStatus(updates.releaseStatus ?? existing.release_status, 'draft'),
     updates.publishTarget ?? existing.publish_target,
     updates.previewUrl ?? existing.preview_url,
     updates.publishedUrl ?? existing.published_url,
@@ -3067,6 +3079,13 @@ async function getPlatformAdminDashboard(env) {
     env.DB.prepare(`
       SELECT pr.id, pr.company_id, pr.host, pr.subdomain, pr.decision, pr.review_status, pr.risk_score,
              pr.reason_codes_json, pr.review_note, pr.created_at, pr.updated_at,
+             (
+               SELECT wr.release_status
+               FROM website_releases wr
+               WHERE wr.review_id = pr.id
+               ORDER BY wr.updated_at DESC, wr.created_at DESC
+               LIMIT 1
+             ) AS release_status,
              c.name AS company_name, c.website_status, c.subdomain_status, c.trust_state
       FROM publish_reviews pr
       LEFT JOIN companies c ON c.id = pr.company_id
@@ -4780,21 +4799,86 @@ export default {
           reviewNote
         });
 
+        const now = new Date().toISOString();
+        const existingRelease = await getLatestWebsiteReleaseByReviewId(env, reviewId);
+        const reviewSnapshotJson = existingRelease?.payload_snapshot_json || existingReview.payload_snapshot_json || '{}';
+        const previewUrl = String(existingRelease?.preview_url || `${url.origin}/website-master/index.html?company_id=${encodeURIComponent(existingReview.company_id)}`).trim();
+        const publishTarget = String(existingRelease?.publish_target || (String(operationalSettings.custom_domain || '').trim() ? 'custom_domain' : 'managed_subdomain')).trim();
+
         await updateCompanyWebsiteState(env, Number(existingReview.company_id), {
           websiteStatus: action === 'approve' ? 'published' : 'draft',
           trustState: action === 'approve' ? 'trusted' : undefined,
-          lastReviewedAt: new Date().toISOString()
+          lastReviewedAt: now
         });
 
-        await updateWebsiteReleaseByReviewId(env, reviewId, {
-          releaseStatus: action === 'approve' ? 'published' : 'rejected',
-          publishedUrl: action === 'approve' ? publishedUrl : '',
-          releaseNote: reviewNote,
-          reviewerType: 'operator',
-          reviewerId,
-          publishedAt: action === 'approve' ? new Date().toISOString() : null,
-          reasonCodes: releaseReasonCodes
-        });
+        if (action === 'approve') {
+          if (existingRelease) {
+            await updateWebsiteReleaseByReviewId(env, reviewId, {
+              releaseStatus: 'approved',
+              publishedUrl: '',
+              releaseNote: reviewNote || 'Approved by operator.',
+              reviewerType: 'operator',
+              reviewerId,
+              publishedAt: null,
+              reasonCodes: releaseReasonCodes
+            });
+          } else {
+            await createWebsiteRelease(env, {
+              companyId: Number(existingReview.company_id),
+              reviewId,
+              releaseStatus: 'approved',
+              publishTarget,
+              previewUrl,
+              publishedUrl: '',
+              payloadSnapshotJson: reviewSnapshotJson,
+              reasonCodes: releaseReasonCodes,
+              releaseNote: reviewNote || 'Approved by operator.',
+              reviewerType: 'operator',
+              reviewerId,
+              publishedAt: null
+            });
+          }
+
+          await createWebsiteRelease(env, {
+            companyId: Number(existingReview.company_id),
+            reviewId,
+            releaseStatus: 'published',
+            publishTarget,
+            previewUrl,
+            publishedUrl,
+            payloadSnapshotJson: reviewSnapshotJson,
+            reasonCodes: releaseReasonCodes,
+            releaseNote: reviewNote || 'Published after operator approval.',
+            reviewerType: 'operator',
+            reviewerId,
+            publishedAt: now
+          });
+        } else if (existingRelease) {
+          await updateWebsiteReleaseByReviewId(env, reviewId, {
+            releaseStatus: 'rejected',
+            publishedUrl: '',
+            releaseNote: reviewNote,
+            reviewerType: 'operator',
+            reviewerId,
+            publishedAt: null,
+            reasonCodes: releaseReasonCodes
+          });
+        } else {
+          await createWebsiteRelease(env, {
+            companyId: Number(existingReview.company_id),
+            reviewId,
+            releaseStatus: 'rejected',
+            publishTarget,
+            previewUrl,
+            publishedUrl: '',
+            payloadSnapshotJson: reviewSnapshotJson,
+            reasonCodes: releaseReasonCodes,
+            releaseNote: reviewNote || 'Rejected by operator.',
+            reviewerType: 'operator',
+            reviewerId,
+            publishedAt: null
+          });
+        }
 
         if (action === 'approve') {
           await upsertSubdomainReservation(
@@ -6523,6 +6607,15 @@ export default {
         }
 
         const now = new Date().toISOString();
+        const currentPublishedRelease = await getLatestPublishedWebsiteRelease(env, companyId);
+        if (currentPublishedRelease?.id) {
+          await updateLatestWebsiteReleaseForCompany(env, companyId, {
+            releaseStatus: currentPublishedRelease.id === targetRelease.id ? currentPublishedRelease.release_status : 'rolled_back',
+            releaseNote: currentPublishedRelease.id === targetRelease.id
+              ? currentPublishedRelease.release_note
+              : `Superseded by rollback at ${now}`
+          });
+        }
         const rollbackRelease = await createWebsiteRelease(env, {
           companyId,
           reviewId: targetRelease.review_id || null,

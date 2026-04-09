@@ -277,6 +277,17 @@
       }[String(status || '').trim()] || String(status || 'n/a');
     }
 
+    function humanizeWebsiteReleaseStatus(status) {
+      return {
+        draft: 'Draft',
+        pending_review: 'Pending review',
+        approved: 'Approved',
+        published: 'Published',
+        rejected: 'Rejected',
+        rolled_back: 'Rolled back'
+      }[String(status || '').trim().toLowerCase()] || String(status || 'n/a');
+    }
+
     async function loadSaasDashboard() {
       saasPin = String(document.getElementById('saas-pin')?.value || '').trim();
       const msg = document.getElementById('saas-login-message');
@@ -557,7 +568,7 @@
             <div class="review-head">
               <div>
                 <div class="review-title">${escapeHtml(row.company_name || row.subdomain || 'Unknown tenant')}</div>
-                <div class="review-meta">review: ${escapeHtml(row.id)} • host: ${escapeHtml(row.host || '')} • status: ${escapeHtml(row.review_status || 'pending')} • decision: ${escapeHtml(row.decision || '')} • website: ${escapeHtml(row.website_status || '')} • subdomain: ${escapeHtml(row.subdomain_status || '')} • trust: ${escapeHtml(row.trust_state || '')}</div>
+                <div class="review-meta">review: ${escapeHtml(row.id)} • host: ${escapeHtml(row.host || '')} • status: ${escapeHtml(row.review_status || 'pending')} • release: ${escapeHtml(humanizeWebsiteReleaseStatus(row.release_status || 'draft'))} • decision: ${escapeHtml(row.decision || '')} • website: ${escapeHtml(row.website_status || '')} • subdomain: ${escapeHtml(row.subdomain_status || '')} • trust: ${escapeHtml(row.trust_state || '')}</div>
               </div>
               <div>${statusBadge(row.review_status || 'new')}</div>
             </div>
