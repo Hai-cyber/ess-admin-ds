@@ -85,6 +85,7 @@
 ✅ Renewal operator flow now supports preview, forced overdue escalation, and digest delivery channels
 ✅ Production ingress config now includes `api.prod.gooddining.app` and `platform.prod.gooddining.app`
 ⚠️ Additional production hostnames `api.prod.gooddining.app` and `platform.prod.gooddining.app` are configured but still return `1050` as of 2026-04-09 and need a later re-check
+⚠️ Cloudflare dashboard still shows `Event Triggers` empty for `ess-admin-ds-prod`, but Wrangler CLI confirms the cron trigger is attached
 ✅ SaaS Admin moderation queue now has summary/filter/refresh controls on top of approve/reject/suspend/quarantine actions
 ✅ Local smoke verification now covers `/api/contact/create`, platform contact, publish review, suspend, quarantine, and host-based public blocking
 ✅ Explicit `production` env now deploys against a real D1 database id
@@ -100,6 +101,9 @@
 3. Add optional managed domain registration after the bring-your-own-domain upgrade flow is stable.
 4. Enforce the website validator inside the actual publish path beyond the current moderation gate and published snapshot workflow.
 5. Decide Twilio strategy for founder/KC locally, then close the OTP runtime gap.
+6. Re-check `api.prod.gooddining.app` and `platform.prod.gooddining.app` after Cloudflare-side activation delay, then remove/re-add custom domains if `1050` persists.
+7. Trust CLI trigger state over the empty dashboard `Event Triggers` panel unless Wrangler stops reporting `schedule: 0 9 * * *`.
+8. Capture the exact status labels shown under Worker `Domains / Custom Domains` for the two failing hostnames and store them in handoff notes.
 
 ---
 

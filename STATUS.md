@@ -86,6 +86,7 @@ Not Started: 0%
 - [x] Production ingress config now includes `api.prod.gooddining.app` and `platform.prod.gooddining.app`
 - [ ] Additional production hostnames `api.prod.gooddining.app` and `platform.prod.gooddining.app` still need re-check because they currently return Cloudflare `1050`
 - [x] Investigation confirmed those hostnames already resolve in DNS and present TLS certificates; the remaining problem is Cloudflare-side host activation/routing
+- [x] Cloudflare dashboard `Event Triggers` view can remain empty even though Wrangler confirms `schedule: 0 9 * * *` is attached to `ess-admin-ds-prod`
 - [x] Public website payload now includes structured `opening_hours_schedule` alongside legacy open/close values
 - [x] Wildcard tenant subdomain routing and host-based website payload resolution verified live on `gooddining.app`
 - [x] Demo-payment self-service signup walkthrough verified live end to end with tenant provisioning, admin access, and website host resolution

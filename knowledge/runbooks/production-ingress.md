@@ -24,6 +24,9 @@ Investigation findings on 2026-04-09:
 - TLS certificates are already presented for both additional hostnames
 - HTTP still returns Cloudflare `1050` at host level
 - This points to Cloudflare custom-domain host activation/routing state, not an application crash or missing DNS record
+- Cloudflare dashboard still shows `Event Triggers` as empty for `ess-admin-ds-prod`, even after hard refresh/reset
+- CLI still reports the cron trigger successfully attached via `wrangler deploy --env production` and `wrangler triggers deploy --env production`
+- Treat the empty dashboard trigger panel as a Cloudflare UI/state mismatch unless CLI stops returning `schedule: 0 9 * * *`
 
 This means the production Worker version exists and public ingress is now available through the explicit custom domain, not workers.dev.
 
@@ -84,3 +87,4 @@ After deploy and custom-domain attachment:
 - Do not treat a successful `wrangler deploy --env production` as proof of usable public ingress.
 - The current `1050` response on workers.dev is a Cloudflare-side ingress issue, not an application crash.
 - Keep production ingress work separate from tenant website publish/release logic; they are related but not the same layer.
+- For detailed Cloudflare dashboard triage of `1050`, use `cloudflare-1050-debug-runbook.md`.
