@@ -667,6 +667,132 @@ describe('ESSKULTUR worker', () => {
 		expect(String(body.code || '')).toBe('release_pending_review');
 	});
 
+	it('submits a clean website release for publish approval without making it live immediately', async () => {
+		await initializeDatabase(env.DB);
+
+		const now = new Date().toISOString();
+		await env.DB.prepare(`
+			INSERT INTO settings (company_id, key, value, description, updated_at, updated_by)
+			VALUES (?, ?, ?, ?, ?, ?)
+			ON CONFLICT(company_id, key) DO UPDATE SET
+				value = excluded.value,
+				description = excluded.description,
+				updated_at = excluded.updated_at,
+				updated_by = excluded.updated_by
+		`).bind(
+			1,
+			'site_content_json',
+			JSON.stringify({ hero_note: 'Seasonal tasting menu and neighborhood dining.' }),
+			'test clean content',
+			now,
+			'test'
+		).run();
+
+		const beforeCompany = await env.DB.prepare(
+			`SELECT website_status FROM companies WHERE id = ? LIMIT 1`
+		).bind(1).first();
+
+		const request = new Request('http://localhost/api/admin/website/publish?company_id=1', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ pin: '1234', reviewNote: 'Ready for release.' })
+		});
+
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(200);
+		const body = await response.json();
+		expect(body.ok).toBe(true);
+		expect(String(body.action || '')).toBe('approved_for_publish');
+		expect(String(body.release_status || '')).toBe('approved');
+		expect(String(body.review_status || '')).toBe('approved');
+		expect(String(body.published_url || '')).toBe('');
+
+		const afterCompany = await env.DB.prepare(
+			`SELECT website_status FROM companies WHERE id = ? LIMIT 1`
+		).bind(1).first();
+		expect(String(afterCompany?.website_status || '')).toBe(String(beforeCompany?.website_status || 'draft'));
+
+		const latestRelease = await env.DB.prepare(
+			`SELECT release_status FROM website_releases WHERE company_id = ? ORDER BY created_at DESC LIMIT 1`
+		).bind(1).first();
+		expect(String(latestRelease?.release_status || '')).toBe('approved');
+	});
+
+	it('publishes the latest approved release through the dedicated tenant publish endpoint', async () => {
+		await initializeDatabase(env.DB);
+
+		const now = new Date().toISOString();
+		await env.DB.prepare(`
+			INSERT INTO publish_reviews (
+				id, company_id, host, subdomain, decision, review_status, risk_score,
+				reason_codes_json, evidence_json, payload_snapshot_json, reviewer_type, created_at, updated_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'system', ?, ?)
+		`).bind(
+			'review_approved_1',
+			1,
+			'restaurant1.gooddining.app',
+			'restaurant1',
+			'allow',
+			'approved',
+			0,
+			JSON.stringify([]),
+			'{}',
+			JSON.stringify({ company: { name: 'Approved Release Bistro' } }),
+			now,
+			now
+		).run();
+
+		await env.DB.prepare(`
+			INSERT INTO website_releases (
+				id, company_id, review_id, release_status, publish_target, preview_url, published_url,
+				payload_snapshot_json, reason_codes_json, release_note, reviewer_type, reviewer_id,
+				published_at, suspended_at, created_at, updated_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`).bind(
+			'approved_release_1',
+			1,
+			'review_approved_1',
+			'approved',
+			'managed_subdomain',
+			'http://localhost/website-master/index.html?company_id=1',
+			'',
+			JSON.stringify({ company: { name: 'Approved Release Bistro' } }),
+			JSON.stringify([]),
+			'Approved and waiting to go live',
+			'system',
+			'publish-gate',
+			null,
+			null,
+			now,
+			now
+		).run();
+
+		const request = new Request('http://localhost/api/admin/website/publish-approved?company_id=1', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ pin: '1234', releaseNote: 'Go live now.' })
+		});
+
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(200);
+		const body = await response.json();
+		expect(body.ok).toBe(true);
+		expect(String(body.action || '')).toBe('publish_approved_release');
+		expect(String(body.release_status || '')).toBe('published');
+		expect(String(body.published_url || '')).toContain('restaurant1');
+
+		const company = await env.DB.prepare(
+			`SELECT website_status FROM companies WHERE id = ? LIMIT 1`
+		).bind(1).first();
+		expect(String(company?.website_status || '')).toBe('published');
+	});
+
 	it('allows operator to approve a pending publish review', async () => {
 		await initializeDatabase(env.DB);
 		env.TELEGRAM_BOT_TOKEN = 'telegram-test-token';

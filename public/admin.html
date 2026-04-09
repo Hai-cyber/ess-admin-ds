@@ -2138,6 +2138,7 @@
           label: 'Already live',
           disabled: true,
           tone: 'var(--success)',
+          action: 'none',
           reason: 'The current website release is already published. Update content and submit a new review when you want to publish changes.'
         };
       }
@@ -2147,15 +2148,27 @@
           label: 'Submitted for review',
           disabled: true,
           tone: 'var(--warning)',
+          action: 'none',
           reason: 'The latest release is already waiting for operator approval.'
+        };
+      }
+
+      if (releaseStatus === 'approved') {
+        return {
+          label: 'Publish approved release',
+          disabled: false,
+          tone: 'var(--confirmed)',
+          action: 'publish-approved',
+          reason: 'The latest release already passed review and can now be published live.'
         };
       }
 
       if (readiness.publishReady) {
         return {
-          label: 'Ready to publish',
+          label: 'Submit for review',
           disabled: false,
           tone: 'var(--success)',
+          action: 'submit-review',
           reason: readiness.publishSummary || 'All publish requirements are satisfied.'
         };
       }
@@ -2164,6 +2177,7 @@
         label: 'Complete publish setup first',
         disabled: true,
         tone: 'var(--warning)',
+        action: 'none',
         reason: summarizeReadinessBlockers(readiness, 'publish')
       };
     }
@@ -2390,7 +2404,7 @@
           <div class="setting-label">Publish CTA</div>
           <div class="setting-value" style="padding-top:10px;display:grid;gap:8px;">
             <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-              <button class="btn-small btn-primary" ${publishCta.disabled ? 'disabled' : ''} onclick="runWebsitePublishReview()">${escapeHtml(publishCta.label)}</button>
+              <button class="btn-small btn-primary" ${publishCta.disabled ? 'disabled' : ''} onclick="${publishCta.action === 'publish-approved' ? 'runWebsitePublishApprovedRelease()' : 'runWebsitePublishReview()'}">${escapeHtml(publishCta.label)}</button>
               <span style="color:${publishCta.tone};">${escapeHtml(readiness.publishSummary || '')}</span>
             </div>
             <div style="font-size:0.85rem;color:var(--text-muted);">${escapeHtml(publishCta.reason || '')}</div>
@@ -2450,7 +2464,7 @@
             <button class="btn-small btn-secondary" onclick="window.open('${escapeHtml(previewUrl)}', '_blank', 'noopener')">Open Preview</button>
             ${publishedUrl ? `<button class="btn-small btn-secondary" onclick="window.open('${escapeHtml(publishedUrl)}', '_blank', 'noopener')">Open Live URL</button>` : ''}
             <button class="btn-small btn-secondary" onclick="window.open('${escapeHtml(queueUrl)}', '_blank', 'noopener')">Open Operator Queue</button>
-            <button class="btn-small btn-primary" onclick="runWebsitePublishReview()">Run Publish Review</button>
+            <button class="btn-small btn-primary" onclick="${publishCta.action === 'publish-approved' ? 'runWebsitePublishApprovedRelease()' : 'runWebsitePublishReview()'}">${escapeHtml(publishCta.action === 'publish-approved' ? 'Publish Approved Release' : 'Submit Release')}</button>
           </div>
         </div>
       `;
@@ -2914,9 +2928,41 @@
         }
 
         await reloadPlatformConfig();
-        alert(`Publish review completed: ${data.decision || 'unknown'} (${data.release_status || data.website_status || 'no-status'})`);
+        alert(`Release submission completed: ${data.action || data.decision || 'unknown'} (${data.release_status || data.website_status || 'no-status'})`);
       } catch (error) {
         alert(error.message || 'Network error while running publish review.');
+      }
+    }
+
+    async function runWebsitePublishApprovedRelease() {
+      if (!currentUser?.pin) {
+        alert('Please login again.');
+        return;
+      }
+
+      if (!isAdminUser()) {
+        alert('Admin only.');
+        return;
+      }
+
+      const releaseNote = document.getElementById('website_release_note')?.value.trim() || '';
+
+      try {
+        const res = await fetch('/api/admin/website/publish-approved', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin: currentUser.pin, releaseNote })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) {
+          alert(data.error || 'Failed to publish approved release.');
+          return;
+        }
+
+        await reloadPlatformConfig();
+        alert(`Approved release published: ${data.release_status || 'published'}`);
+      } catch (error) {
+        alert(error.message || 'Network error while publishing the approved release.');
       }
     }
 

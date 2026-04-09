@@ -2093,6 +2093,77 @@ function assertAllowedWebsiteReleaseTransition(currentStatus, nextStatus) {
   }
 }
 
+async function publishApprovedWebsiteRelease(env, companyId, payload = {}) {
+  const latestRelease = await getLatestWebsiteRelease(env, companyId);
+  if (!latestRelease?.id) {
+    return { ok: false, status: 404, code: 'approved_release_not_found', error: 'No website release exists yet.' };
+  }
+
+  const latestReleaseStatus = normalizeWebsiteReleaseStatus(latestRelease.release_status, 'draft');
+  if (latestReleaseStatus === 'published') {
+    return { ok: false, status: 409, code: 'release_already_published', error: 'The latest website release is already live.' };
+  }
+  if (latestReleaseStatus === 'pending_review') {
+    return { ok: false, status: 409, code: 'release_pending_review', error: 'The latest website release is still waiting for operator review.' };
+  }
+  if (latestReleaseStatus !== 'approved') {
+    return {
+      ok: false,
+      status: 409,
+      code: 'release_not_approved',
+      error: 'Only an approved website release can be published live.',
+      release_status: latestReleaseStatus
+    };
+  }
+
+  const snapshot = parseWebsiteReleaseSnapshot(latestRelease);
+  if (!snapshot) {
+    return { ok: false, status: 409, code: 'release_snapshot_missing', error: 'Approved release snapshot is missing.' };
+  }
+
+  const company = payload.company || await getCompanyProfile(env, companyId);
+  const operationalSettings = payload.operationalSettings || await getOperationalSettingsMap(env, companyId);
+  const publishedUrl = buildPublishedWebsiteUrlForCompany(company, operationalSettings);
+  const now = new Date().toISOString();
+  const reasonCodes = (() => {
+    try {
+      const parsed = JSON.parse(String(latestRelease.reason_codes_json || '[]'));
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  })();
+
+  const publishedRelease = await createWebsiteRelease(env, {
+    companyId,
+    reviewId: latestRelease.review_id || null,
+    releaseStatus: 'published',
+    publishTarget: String(latestRelease.publish_target || 'managed_subdomain').trim(),
+    previewUrl: String(latestRelease.preview_url || '').trim(),
+    publishedUrl,
+    payloadSnapshotJson: JSON.stringify(snapshot),
+    reasonCodes,
+    releaseNote: String(payload.releaseNote || latestRelease.release_note || 'Published from approved release.').trim(),
+    reviewerType: payload.reviewerType || 'tenant_admin',
+    reviewerId: payload.reviewerId || null,
+    publishedAt: now
+  });
+
+  await updateCompanyWebsiteState(env, companyId, {
+    websiteStatus: 'published',
+    lastReviewedAt: now
+  });
+
+  return {
+    ok: true,
+    action: 'publish_approved_release',
+    release: publishedRelease,
+    release_status: 'published',
+    published_url: publishedUrl,
+    published_at: now
+  };
+}
+
 async function getGoLiveReadiness(env, companyId, context = {}) {
   const company = context.company || await getCompanyProfile(env, companyId);
   const operationalSettings = context.operationalSettings || await getOperationalSettingsMap(env, companyId);
@@ -6497,6 +6568,15 @@ export default {
             release_id: latestRelease.id
           }, { status: 409 });
         }
+        if (latestRelease && latestReleaseStatus === 'approved') {
+          return Response.json({
+            ok: false,
+            error: 'The latest website release is already approved. Publish that approved release or replace it before submitting a new one.',
+            code: 'release_awaiting_publish',
+            release_status: latestReleaseStatus,
+            release_id: latestRelease.id
+          }, { status: 409 });
+        }
 
         const [source, company, operationalSettings] = await Promise.all([
           buildPublicWebsitePayload(env, companyId, url),
@@ -6520,10 +6600,14 @@ export default {
         const riskScore = Math.max(0, Number(company?.risk_score || 0)) + Number(contentDecision.riskScore || 0);
         const reviewId = crypto.randomUUID();
         const now = new Date().toISOString();
-        const reviewStatus = decision === 'allow' ? 'approved' : 'pending';
-        const websiteStatus = decision === 'allow' ? 'published' : decision === 'review' ? 'review' : 'draft';
+        const reviewStatus = decision === 'allow' ? 'approved' : decision === 'review' ? 'pending' : 'rejected';
+        const currentWebsiteStatus = String(company?.website_status || 'draft').trim();
+        const websiteStatus = currentWebsiteStatus === 'published'
+          ? 'published'
+          : decision === 'review'
+            ? 'review'
+            : 'draft';
         const previewUrl = `${url.origin}/website-master/index.html?company_id=${companyId}`;
-        const publishedUrl = decision === 'allow' ? buildPublishedWebsiteUrlForCompany(company, operationalSettings) : '';
         const reviewLinks = buildPlatformReviewLinks(url.origin, reviewId, companyId);
 
         await env.DB.prepare(`
@@ -6557,20 +6641,20 @@ export default {
           WHERE id = ?
         `).bind(websiteStatus, riskScore, now, now, companyId).run();
 
-        const releaseStatus = decision === 'allow' ? 'published' : decision === 'review' ? 'pending_review' : 'rejected';
+        const releaseStatus = decision === 'allow' ? 'approved' : decision === 'review' ? 'pending_review' : 'rejected';
         await createWebsiteRelease(env, {
           companyId,
           reviewId,
           releaseStatus,
           publishTarget: String(operationalSettings.custom_domain || '').trim() ? 'custom_domain' : 'managed_subdomain',
           previewUrl,
-          publishedUrl,
+          publishedUrl: '',
           payloadSnapshotJson: JSON.stringify(source),
           reasonCodes: combinedReasonCodes,
-          releaseNote: reviewNote || (decision === 'allow' ? 'Auto-approved publish' : 'Awaiting moderation review'),
+          releaseNote: reviewNote || (decision === 'allow' ? 'Approved and ready to publish.' : decision === 'review' ? 'Awaiting moderation review' : 'Rejected by automated publish checks'),
           reviewerType: 'system',
           reviewerId: 'publish-gate',
-          publishedAt: decision === 'allow' ? now : null
+          publishedAt: null
         });
 
         if (decision !== 'allow') {
@@ -6593,17 +6677,49 @@ export default {
 
         return Response.json({
           ok: true,
+          action: decision === 'allow' ? 'approved_for_publish' : decision === 'review' ? 'submitted_for_review' : 'rejected_for_publish',
           review_id: reviewId,
           decision,
+          review_status: reviewStatus,
           website_status: websiteStatus,
           risk_score: riskScore,
           reason_codes: combinedReasonCodes,
           preview_url: previewUrl,
-          published_url: publishedUrl,
+          published_url: '',
           release_status: releaseStatus
         });
         } catch (e) {
           console.error('Admin website publish POST error:', e);
+          return Response.json({ ok: false, error: e.message }, { status: 500 });
+        }
+      });
+    }
+
+    if (url.pathname === "/api/admin/website/publish-approved" && request.method === "POST") {
+      return runTenantRoute(async ({ companyId }) => {
+        try {
+          const body = await request.json().catch(() => ({}));
+          const pin = String(body?.pin || '').trim();
+          const releaseNote = String(body?.releaseNote || body?.note || '').trim();
+          const auth = await authorizeAdminByPin(env, companyId, pin);
+
+          if (!auth.ok) {
+            return Response.json({ ok: false, error: auth.error }, { status: auth.status });
+          }
+
+          const result = await publishApprovedWebsiteRelease(env, companyId, {
+            releaseNote,
+            reviewerType: 'tenant_admin',
+            reviewerId: String(auth.staff.name || auth.staff.id || 'tenant-admin')
+          });
+
+          if (!result.ok) {
+            return Response.json(result, { status: result.status || 500 });
+          }
+
+          return Response.json(result);
+        } catch (e) {
+          console.error('Admin website publish-approved POST error:', e);
           return Response.json({ ok: false, error: e.message }, { status: 500 });
         }
       });

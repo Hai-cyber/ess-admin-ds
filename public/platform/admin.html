@@ -57,6 +57,7 @@
     .review-title { font-weight: 700; }
     .review-meta { font-size: 0.82rem; color: var(--text-muted); }
     .review-reasons { font-size: 0.82rem; color: var(--text); }
+    .review-workflow { display: flex; gap: 8px; flex-wrap: wrap; }
     .review-links { display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.82rem; }
     .review-actions { display: flex; gap: 10px; flex-wrap: wrap; }
     .review-toolbar { display: flex; justify-content: space-between; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
@@ -313,6 +314,18 @@
         rejected: 'Rejected',
         rolled_back: 'Rolled back'
       }[String(state || '').trim().toLowerCase()] || String(state || 'pending_review');
+    }
+
+    function buildReviewWorkflowSummary(row) {
+      const workflowState = getReviewWorkflowState(row);
+      const steps = ['pending_review', 'approved', 'published'];
+      if (workflowState === 'rejected') steps.push('rejected');
+      if (workflowState === 'rolled_back') steps.push('rolled_back');
+      return steps.map((step) => ({
+        key: step,
+        label: humanizeReviewWorkflowState(step),
+        active: step === workflowState
+      }));
     }
 
     async function loadSaasDashboard() {
@@ -594,6 +607,7 @@
           }
         })();
         const workflowState = getReviewWorkflowState(row);
+        const workflowSteps = buildReviewWorkflowSummary(row);
         const isPending = workflowState === 'pending_review';
         const reviewUrl = `/platform/admin.html?review=${encodeURIComponent(row.id)}`;
         const tenantAdminUrl = row.company_id ? `/admin?company_id=${encodeURIComponent(row.company_id)}` : '';
@@ -610,6 +624,7 @@
               <div>${statusBadge(workflowState)}</div>
             </div>
             <div class="review-reasons">Reasons: ${reasonCodes.length ? escapeHtml(reasonCodes.join(', ')) : 'none'}</div>
+            <div class="review-workflow">${workflowSteps.map((step) => statusBadge(step.active ? step.key : 'new').replace(`>${step.active ? step.key : 'new'}<`, `>${escapeHtml(step.label.toLowerCase())}<`)).join('')}</div>
             <div class="review-links">
               <a href="${reviewUrl}">Focus review</a>
               ${previewUrl ? `<a href="${previewUrl}" target="_blank" rel="noopener">Open preview</a>` : ''}
