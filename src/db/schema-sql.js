@@ -66,6 +66,111 @@ CREATE TABLE IF NOT EXISTS organization_secrets (
   UNIQUE(organization_id, key)
 );
 
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  primary_email TEXT NOT NULL,
+  primary_email_normalized TEXT NOT NULL UNIQUE,
+  display_name TEXT,
+  status TEXT NOT NULL DEFAULT 'active',
+  last_login_at TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS user_identities (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  provider TEXT NOT NULL,
+  provider_subject TEXT,
+  email TEXT,
+  email_normalized TEXT,
+  is_primary BOOLEAN DEFAULT 0,
+  verified_at TEXT,
+  metadata_json TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id),
+  UNIQUE(provider, provider_subject)
+);
+
+CREATE TABLE IF NOT EXISTS auth_challenges (
+  id TEXT PRIMARY KEY,
+  challenge_type TEXT NOT NULL,
+  email_normalized TEXT,
+  user_id TEXT,
+  organization_id INTEGER,
+  company_id INTEGER,
+  token_hash TEXT NOT NULL UNIQUE,
+  redirect_path TEXT,
+  expires_at TEXT NOT NULL,
+  consumed_at TEXT,
+  metadata_json TEXT,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id),
+  FOREIGN KEY (organization_id) REFERENCES organizations(id),
+  FOREIGN KEY (company_id) REFERENCES companies(id)
+);
+
+CREATE TABLE IF NOT EXISTS auth_sessions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  session_scope TEXT NOT NULL,
+  organization_id INTEGER,
+  company_id INTEGER,
+  impersonated_by_user_id TEXT,
+  ip_hash TEXT,
+  user_agent_hash TEXT,
+  last_seen_at TEXT,
+  expires_at TEXT NOT NULL,
+  revoked_at TEXT,
+  metadata_json TEXT,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id),
+  FOREIGN KEY (organization_id) REFERENCES organizations(id),
+  FOREIGN KEY (company_id) REFERENCES companies(id)
+);
+
+CREATE TABLE IF NOT EXISTS platform_operator_memberships (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  role TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'active',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  created_by TEXT,
+  FOREIGN KEY (user_id) REFERENCES users(id),
+  UNIQUE(user_id, role)
+);
+
+CREATE TABLE IF NOT EXISTS organization_memberships (
+  id TEXT PRIMARY KEY,
+  organization_id INTEGER NOT NULL,
+  user_id TEXT NOT NULL,
+  role TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'active',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  created_by TEXT,
+  FOREIGN KEY (organization_id) REFERENCES organizations(id),
+  FOREIGN KEY (user_id) REFERENCES users(id),
+  UNIQUE(organization_id, user_id, role)
+);
+
+CREATE TABLE IF NOT EXISTS company_memberships (
+  id TEXT PRIMARY KEY,
+  company_id INTEGER NOT NULL,
+  user_id TEXT NOT NULL,
+  role TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'active',
+  source TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  created_by TEXT,
+  FOREIGN KEY (company_id) REFERENCES companies(id),
+  FOREIGN KEY (user_id) REFERENCES users(id),
+  UNIQUE(company_id, user_id, role)
+);
+
 CREATE TABLE IF NOT EXISTS customers (
   id TEXT PRIMARY KEY,
   company_id INTEGER NOT NULL,
@@ -418,6 +523,18 @@ CREATE INDEX IF NOT EXISTS idx_companies_org ON companies(organization_id);
 CREATE INDEX IF NOT EXISTS idx_companies_subdomain_status ON companies(subdomain_status, website_status, trust_state);
 CREATE INDEX IF NOT EXISTS idx_org_settings_org ON organization_settings(organization_id);
 CREATE INDEX IF NOT EXISTS idx_org_secrets_org ON organization_secrets(organization_id);
+CREATE INDEX IF NOT EXISTS idx_users_primary_email_normalized ON users(primary_email_normalized);
+CREATE INDEX IF NOT EXISTS idx_user_identities_user ON user_identities(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_identities_provider_email ON user_identities(provider, email_normalized);
+CREATE INDEX IF NOT EXISTS idx_auth_challenges_email ON auth_challenges(email_normalized);
+CREATE INDEX IF NOT EXISTS idx_auth_challenges_expires_at ON auth_challenges(expires_at);
+CREATE INDEX IF NOT EXISTS idx_auth_sessions_user ON auth_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_auth_sessions_company ON auth_sessions(company_id);
+CREATE INDEX IF NOT EXISTS idx_auth_sessions_expires_at ON auth_sessions(expires_at);
+CREATE INDEX IF NOT EXISTS idx_org_memberships_org ON organization_memberships(organization_id);
+CREATE INDEX IF NOT EXISTS idx_org_memberships_user ON organization_memberships(user_id);
+CREATE INDEX IF NOT EXISTS idx_company_memberships_company ON company_memberships(company_id);
+CREATE INDEX IF NOT EXISTS idx_company_memberships_user ON company_memberships(user_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_company ON bookings(company_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_date ON bookings(company_id, booking_date);
 CREATE INDEX IF NOT EXISTS idx_bookings_stage ON bookings(company_id, stage);

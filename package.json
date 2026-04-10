@@ -20,6 +20,7 @@
 		"ci": "npm run ci:structure && npm run ci:tenant && npm run ci:hygiene && npm run validate:website-template && npm run test",
 		"secrets:set": "./scripts/set-wrangler-secrets.sh",
 		"secrets:set:prod": "./scripts/set-wrangler-secrets.sh production",
+		"backfill:identity-auth": "node ./scripts/backfill-identity-auth.js",
 		"lint": "eslint src test scripts . --ext .js,.mjs,.cjs",
 		"format": "prettier --write ."
 	},
