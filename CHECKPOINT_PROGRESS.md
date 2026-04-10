@@ -2,23 +2,23 @@
 
 **Purpose**: Track checkpoint completion as you move through phases. Update this weekly.
 
-**Last Updated**: 2026-04-09  
-**Current Phase**: Phase 1 (Booking + Platform Entry) — 93% complete
+**Last Updated**: 2026-04-10  
+**Current Phase**: Phase 1 (Booking + Platform Entry) — 89% complete
 
 ---
 
 ## Phase 1: Booking System + Platform Entry
 
 **ETA**: Q2 2026  
-**Status**: ⏳ IN PROGRESS (93% complete)
+**Status**: ⏳ IN PROGRESS (89% complete)
 
 | Checkpoint | Component | Status | Evidence | Owner | ETA |
 |-----------|-----------|--------|----------|-------|-----|
 | CP-1 | Tenant Isolation | ✅ DONE | E2E_TEST_SUMMARY.md | Team | ✅ Done |
 | CP-2 | Booking MVP | ✅ DONE | Local runtime verified: booking form render, board, staff-create, booking list, stage updates | Team | ✅ Done |
-| CP-3 | Admin UI Setup | ⏳ 97% | Tenant admin now uses a role-aware Restaurant Admin shell with grouped setup navigation, explicit release/go-live workflow, and cleaner section visibility, while SaaS admin includes operator workflow overview and blocker inspection; remaining work is now mostly storage/custom-domain hardening | @dev-lead | Apr 12 |
-| CP-10 | Platform Site + Self-Service Signup | ⏳ 99% | Live runtime verified, wildcard tenant subdomains resolve, moderation/release workflow is now explicit end to end, public tenant payload serves latest published release snapshots, and signup remains subdomain-first | @dev-lead | Apr 12 |
-| **Phase 1 Total** | — | **93%** | — | — | **Apr 15** |
+| CP-3 | Admin UI Setup | ⏳ 88% | Admin UI is operational, but the approved auth direction now requires identity-based admin access rather than PIN-first admin entry | @dev-lead | Apr 18 |
+| CP-10 | Platform Site + Self-Service Signup | ⏳ 90% | Live runtime verified, but signup and admin entry now need to move from admin PIN bootstrap to email or Google identity verification | @dev-lead | Apr 18 |
+| **Phase 1 Total** | — | **89%** | — | — | **Apr 20** |
 
 ### CP-1 Evidence ✅
 
@@ -45,7 +45,7 @@
 ```bash
 ✅ Platform marketing site deployed on Cloudflare
 ✅ SaaS admin and restaurant admin split (separate routes and APIs)
-✅ Signup endpoint provisions organization/company/admin staff user
+✅ Signup endpoint provisions organization/company plus the current tenant-admin bootstrap path; next step is replacing that bootstrap with identity auth
 ✅ Platform contact form and admin dashboard verified live locally
 ✅ Demo payment flow and billable staff auto-recalc hook implemented
 ✅ Website master preview delivered with theme presets, schema examples, runtime adapter, and tenant injection
@@ -85,6 +85,8 @@
 ✅ Renewal operator flow now supports preview, forced overdue escalation, and digest delivery channels
 ✅ Production ingress strategy has been simplified to a single hostname `prod.gooddining.app`
 ⚠️ Cloudflare dashboard still shows `Event Triggers` empty for `ess-admin-ds-prod`, but Wrangler CLI confirms the cron trigger is attached
+✅ Product auth direction is now explicit: Signup, Restaurant Admin, and SaaS Admin move to email or Google; Booking Board stays PIN-only
+⏳ New CP-3E and CP-3F tracks now cover identity auth migration and board-launch separation
 ✅ SaaS Admin moderation queue now has summary/filter/refresh controls on top of approve/reject/suspend/quarantine actions
 ✅ CP-3A go-live console gating is now wired into the tenant admin release panel with actionable blocker summaries
 ✅ CP-3B publish/release workflow is now an explicit state machine: `draft -> pending_review -> approved -> published -> rolled_back`
@@ -100,15 +102,15 @@
 ⏳ Tenant website publish-to-storage still needs real bucket provisioning/binding plus deployment validation in the target environment
 ⏳ Tenant custom-domain upgrade workflow still needs richer reminder/cutover ops beyond the newly hardened activation guards
 ⏳ Founder/KC OTP runtime blocked locally by missing Twilio credentials or a local OTP stub decision
-**Blockers**: storage bucket provisioning/deployment validation, richer custom-domain ops beyond activation hardening, Stripe test credentials, and Twilio credentials or a local OTP stub
+**Blockers**: storage bucket provisioning/deployment validation, richer custom-domain ops beyond activation hardening, identity-auth migration for signup and admin surfaces, Stripe test credentials, and Twilio credentials or a local OTP stub
 
 **Next checkpoint steps**:
-1. Publish tenant website output + assets to deployment storage and validate the subdomain-first public serving path.
-2. Harden the tenant custom-domain upgrade workflow beyond the current MVP.
-5. Keep subdomain-first signup as the default and add entitlement-based custom-domain upgrade requests.
+1. Add identity auth foundation: `users`, `memberships`, `sessions`, and email or Google bootstrap for signup.
+2. Move Restaurant Admin and SaaS Admin from PIN entry to identity sessions.
+3. Keep Booking Board PIN-only, but launch it from Restaurant Admin with explicit tenant context.
+4. Publish tenant website output + assets to deployment storage and validate the subdomain-first public serving path.
+5. Harden the tenant custom-domain upgrade workflow beyond the current MVP.
 6. Decide Twilio strategy for founder/KC locally, then close the OTP runtime gap.
-7. Trust CLI trigger state over the empty dashboard `Event Triggers` panel unless Wrangler stops reporting `schedule: 0 9 * * *`.
-8. Keep production on `prod.gooddining.app` unless there is a later, explicit need to split API or platform traffic to separate hostnames.
 
 ---
 

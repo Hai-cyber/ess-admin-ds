@@ -26,8 +26,13 @@ This is a vertical SaaS for restaurants, not a general ERP.
 │            CLOUDFLARE WORKERS (Business Logic)              │
 ├──────────┬──────────┬──────────┬──────────┬────────────────┤
 │  Auth    │ Booking  │   POS    │ Payment  │ Marketing      │
-│ (PIN,    │ (tables, │ (orders, │ (Stripe, │ (campaigns,    │
-│  OAuth)  │  stages) │  kitchen)│ PayPal)  │  SMS/email)    │
+│ (magic   │ (tables, │ (orders, │ (Stripe, │ (campaigns,    │
+│  link,   │  stages) │  kitchen)│ PayPal)  │  SMS/email)    │
+│  Google, │          │          │          │                │
+│  session │          │          │          │                │
+│  auth +  │          │          │          │                │
+│  board   │          │          │          │                │
+│  PIN)    │          │          │          │                │
 └──────────┴──────────┴──────────┴──────────┴────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────────┐
@@ -54,7 +59,7 @@ When a restaurant signs up:
 ```
 1. SIGNUP ENDPOINT
    POST /api/tenants/signup
-   body: { name, email, phone, plan }
+  body: { name, email, phone, plan, identity_provider }
    
    ↓
 
@@ -65,7 +70,7 @@ When a restaurant signs up:
 
 3. PROVISION D1 SCHEMA (Logical isolation)
    - Create tenant-scoped settings
-   - Initialize default staff role (admin PIN)
+  - Initialize owner membership and tenant-scoped defaults
    - Create booking schedule template
    
    ↓
@@ -83,13 +88,19 @@ When a restaurant signs up:
    
    ↓
 
-6. CREATE ADMIN USER
-   INSERT INTO staff (id, tenant_id, name, pin, role)
+6. CREATE OWNER IDENTITY + MEMBERSHIP
+  INSERT INTO users (...)
+  INSERT INTO memberships (... role = tenant_admin)
    
    ↓
 
-7. RETURN CREDENTIALS
-   { tenant_subdomain, admin_pin, setup_url }
+7. OPTIONAL BOARD BOOTSTRAP
+  INSERT INTO staff (... role, board_pin)
+
+  ↓
+
+8. RETURN ACCESS PATHS
+  { tenant_subdomain, setup_url, login_hint, board_launch_url }
 ```
 
 ---
@@ -110,13 +121,39 @@ CREATE TABLE tenants (
   updated_at TIMESTAMP
 );
 
+CREATE TABLE users (
+  id STRING PRIMARY KEY,
+  email STRING NOT NULL,
+  display_name STRING,
+  auth_status STRING,
+  created_at TIMESTAMP
+);
+
+CREATE TABLE memberships (
+  id STRING PRIMARY KEY,
+  tenant_id STRING NOT NULL,
+  user_id STRING NOT NULL,
+  role STRING, -- 'platform_admin', 'tenant_admin', 'manager', 'viewer'
+  created_at TIMESTAMP,
+  FOREIGN KEY (tenant_id) REFERENCES tenants(id),
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE sessions (
+  id STRING PRIMARY KEY,
+  user_id STRING NOT NULL,
+  expires_at TIMESTAMP,
+  created_at TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
 CREATE TABLE staff (
   id STRING PRIMARY KEY,
   tenant_id STRING NOT NULL,
   name STRING NOT NULL,
   phone STRING,
-  pin STRING, -- hashed
-  role STRING, -- 'admin', 'hostess', 'bartender', 'manager'
+  pin STRING, -- hashed, board-only
+  role STRING, -- 'hostess', 'bartender', 'manager', 'admin'
   permissions JSONB,
   created_at TIMESTAMP,
   FOREIGN KEY (tenant_id) REFERENCES tenants(id)
@@ -234,4 +271,5 @@ export default {
 - **Audit trail**: Log all state changes with timestamp, user_id, action
 - **Rollback**: Version settings, staff can restore previous config
 - **Secrets**: Never expose in frontend (API keys, tokens stored in env only)
+- **Auth split**: Admin surfaces use identity-based sessions; Booking Board uses scoped PIN unlock only
 

@@ -49,24 +49,34 @@
 1. **`gooddining.app`** — Platform marketing site: features, pricing tiers, signup (no tenant context)
 2. **`{subdomain}.gooddining.app`** — Tenant website template: the restaurant's public-facing site (website, contact, service-tier modules)
 3. **`gooddining.app/platform/admin`** — SaaS Admin: pricing, web builder studio defaults, signup CRM-lite, follow-up workflow
-4. **`{subdomain}.gooddining.app/admin`** — Restaurant Admin (tenant admin): domain upgrade flow, payment method, website builder studio, staff, reports, restaurant operations config
+4. **`{subdomain}.gooddining.app/admin`** — Restaurant Admin (tenant admin): email or Google login, domain upgrade flow, payment method, website builder studio, staff, reports, restaurant operations config
 5. **`{subdomain}.gooddining.app/app`** — Staff app: booking board, stage management, POS
 
 ---
 
 ## User Society
 
-- **Prospect** (restaurant owner browsing): visits `gooddining.app`, compares tiers, signs up
+- **Prospect** (restaurant owner browsing): visits `gooddining.app`, compares tiers, signs up with email or Google
 - **Platform Operator**: manages SaaS pricing, signup CRM-lite, follow-up, global web-builder defaults
-- **Restaurant Owner/Admin**: completes setup wizard, starts on a managed subdomain, requests custom-domain upgrade when needed, configures payment method, manages staff
-- **Staff (hostess, bartender, manager)**: Mobile app, daily operations
+- **Restaurant Owner/Admin**: signs in with email or Google, completes setup wizard, starts on a managed subdomain, requests custom-domain upgrade when needed, configures payment method, manages staff
+- **Staff (hostess, bartender, manager)**: booking board launches from Restaurant Admin, then staff use fast PIN entry only for board operations
 - **Table Guest**: visits tenant website, fills in booking form, no account needed
 
 ## Admin Separation
 
 - **SaaS Admin**: simple operator console for the platform business itself. Scope: pricing, signup leads, CRM-lite follow-up, global platform copy, builder defaults.
 - **Restaurant Admin**: tenant-scoped operational console for each restaurant. Scope: managed subdomain, custom-domain upgrade request, payment setup, website builder content, staff, bookings, reports, module toggles.
+- **Identity model**: SaaS Admin and Restaurant Admin are identity-based surfaces using email or Google login. Booking Board remains a fast operational surface using PIN only.
 - Rule: platform business concerns must not be mixed into tenant restaurant admin.
+
+## Authentication Strategy
+
+- **Signup**: restaurant owner signs up with email as the baseline, with Google as an optional accelerator.
+- **Restaurant Admin**: uses session-based identity auth, not PIN.
+- **SaaS Admin**: uses the same identity-based auth model, with stricter operator gating and session controls.
+- **Booking Board**: remains PIN-based because speed matters at service time, but the PIN scope is limited to board actions only.
+- **Board launch path**: the booking board link is obtained from Restaurant Admin so tenant context is established before staff enter a PIN.
+- **Security principle**: identity auth protects admin surfaces; PIN is reserved for fast operational unlock, not ownership or platform administration.
 
 ---
 
@@ -128,3 +138,4 @@
 4. **Event-driven**: State changes trigger notifications and workflows
 5. **No Odoo logic**: Cloudflare Workers are the business logic, not external systems
 6. **One-screen-one-job**: UX principle — each screen has one clear purpose
+7. **Data integrity**: D1 is the source of truth, no sync paths

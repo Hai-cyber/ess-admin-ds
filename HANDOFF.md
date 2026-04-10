@@ -8,7 +8,7 @@
 
 ---
 
-## 📊 CURRENT PROJECT STATUS (As of 2026-04-08)
+## 📊 CURRENT PROJECT STATUS (As of 2026-04-10)
 
 ### Runtime Odoo Status (2026-04-08)
 
@@ -18,6 +18,7 @@
 - Moderation review queue, operator actions, Telegram review links, and host-based tenant website gating now run in the active runtime.
 - The explicit `production` Wrangler environment now has a verified custom-domain ingress at `prod.gooddining.app`; workers.dev still returns `1050`, but it is no longer the public production path.
 - Schema/init and legacy utility artifacts still contain Odoo-era references and are intentionally left as follow-up cleanup, not active dependencies.
+- Product direction is now updated: signup, Restaurant Admin, and SaaS Admin move to email or Google auth; Booking Board remains the only PIN-first surface.
 
 ### ✅ What's Complete
 
@@ -28,7 +29,7 @@
 - [x] Roadmap (ROADMAP.md)
 - [x] Module catalog (MODULE_CATALOG.md)
 - [x] AI Copilot spec (COPILOT_SPECIFICATION.md)
-- [x] 9 Checkpoints defined (CHECKPOINTS.md, including CP-9 future readiness)
+- [x] 10 phase checkpoints defined, now expanded with CP-3E and CP-3F sub-checkpoints for auth migration
 - [x] 6 Contract systems redesigned (API, Data, Module, Integration, Security, Error)
 - [x] Transition plan (TRANSITION.md)
 - [x] Decision records (DECISIONS.md)
@@ -40,7 +41,7 @@
 - [x] Booking form live
 - [x] Booking board with real-time SSE
 - [x] Stage engine (pending → confirmed → arrived → done)
-- [x] Staff PIN authentication
+- [x] Staff PIN authentication for Booking Board
 - [x] Tenant guard middleware
 - [x] Local runtime verified for platform home/plans/contact, signup provisioning, board, admin config, staff auth, booking create, and stage updates
 - [x] Vitest baseline is now clean on the root repo: 29/29 passing
@@ -112,7 +113,7 @@
 **What's done**:
 - [x] Restaurant admin page + platform-config API + staff API are live
 - [x] SaaS admin dashboard/config routes are live
-- [x] Tenant signup endpoint provisions organization/company/admin staff user
+- [x] Tenant signup endpoint provisions organization/company plus current admin bootstrap path; identity-auth migration is now approved as the next restructuring step
 - [x] Platform landing and signup pricing copy now reflects Service POS/German checkout and Repeat Guests SMS/loyal-guest positioning in EN/DE/VI
 - [x] Included/add-on pricing notes and signup commercial summary are now language-aware instead of hardcoded English
 - [x] Website master preview can consume runtime-shaped website settings and preview tenant/company context without hardcoded tenant pages
@@ -127,19 +128,31 @@
 - [x] Stripe payment lifecycle no longer depends solely on frontend redirect; webhook and post-checkout confirmation both update the same persisted state
 - [x] Payment remediation now includes retry checkout plus a persisted audit trail across checkout creation, retry, confirmation, and webhook updates
 - [ ] Restaurant config form (email/phone/hours/areas)
-- [ ] Staff PIN setup
+- [ ] Identity auth foundation for signup, Restaurant Admin, and SaaS Admin
+- [ ] Board-launch separation so Booking Board stays PIN-only
 - [ ] Payment integration setup
 - [ ] Final deployment publish path verification
 
 **What's blocked**: storage bucket provisioning + deployment publish validation, richer custom-domain ops beyond activation hardening, plus founder/KC OTP runtime depending on Twilio credentials
 
-**CP-3 execution plan now fixed into four sub-checkpoints**:
+**CP-3 execution plan now fixed into six sub-checkpoints**:
 - `CP-3A` Go-Live Console Gating
 - `CP-3B` Publish And Release Workflow Completion
 - `CP-3C` Operator Tooling Completion
 - `CP-3D` Admin Information Architecture And Permissions Cleanup
+- `CP-3E` Identity Auth Split
+- `CP-3F` Board Launch + PIN Scope
 
-Recommended order: `3A -> 3B -> 3C -> 3D`
+Recommended order: `3A -> 3B -> 3C -> 3D -> 3E -> 3F`
+
+### Auth Strategy (Approved Direction)
+
+- Signup uses email as the baseline identity path, with Google as an optional accelerator.
+- Restaurant Admin uses identity-based session auth, not PIN.
+- SaaS Admin uses identity-based session auth, not PIN.
+- Booking Board remains PIN-based because speed matters operationally.
+- Board PIN must be board-scoped only and must not unlock Restaurant Admin or SaaS Admin.
+- Board links should originate from Restaurant Admin so tenant context is established before PIN entry.
 
 **Entry points**: `src/index.js`, `public/admin.html`, `public/platform/admin.html`, `public/website-master/index.html`
 

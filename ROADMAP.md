@@ -10,6 +10,8 @@
 - ✅ Onsite booking (staff-created, same D1 path)
 - ✅ Booking board (real-time table layout, stage management)
 - ✅ Staff app (PIN login, stage actions, basic order flow)
+- Identity auth foundation for owner and operator surfaces (email magic link + Google)
+- Board launch flow from Restaurant Admin, with board-only PIN as the fast operational unlock
 - Admin UI (setup wizard, config, reporting)
 - Multi-tenant infrastructure (tenant isolation verified)
 - **Platform marketing site** (`restaurantos.app`): features overview, pricing tiers, signup CTA
@@ -22,6 +24,8 @@
 - Booking form working for 5+ test restaurants (online + onsite)
 - Platform site live at `restaurantos.app` with pricing + working signup
 - Restaurant can self-serve: sign up → subdomain chosen → template live → booking form active, without waiting for a custom domain
+- Restaurant owner can sign up and later access Restaurant Admin with email or Google, not a shared admin PIN
+- SaaS Admin uses the same identity model; only Booking Board remains PIN-first
 - E2E tests passing (booking → confirmation → staff notification)
 - D1 schema optimized, indexes in place
 - < 500ms API latency for all endpoints
@@ -44,6 +48,7 @@
 - Staff app redesign (mobile-first, touch UI)
 - Quick actions (confirm booking, send SMS, print label)
 - Kitchen display system (KDS) integration
+- Board authentication remains PIN-based, but only after tenant context is established from Restaurant Admin
 - Shift management (start/end shift, break tracking)
 - Order aggregation (online + phone + walk-in)
 

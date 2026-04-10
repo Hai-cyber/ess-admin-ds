@@ -2,7 +2,7 @@
 
 **Purpose**: Real-time snapshot of project state. Update before/after every session.
 
-**Last Updated**: 2026-04-09  
+**Last Updated**: 2026-04-10  
 **By**: AI Agent  
 **Next Update**: 2026-04-08 (or sooner if major change)
 
@@ -19,17 +19,17 @@
 ## 🎯 Current State (Right Now)
 
 ### Phase
-**Phase 1: Booking + Platform Entry (95% complete)**
-- ETA: April 15, 2026
-- Status: 🟡 ON TRACK (remaining: tenant custom-domain upgrade workflow + founder/KC OTP runtime fix)
+**Phase 1: Booking + Platform Entry (89% complete)**
+- ETA: April 20, 2026
+- Status: 🟡 ON TRACK (remaining: identity-auth migration for signup/admin, tenant custom-domain upgrade workflow, and founder/KC OTP runtime fix)
 
 ### Overall Progress
 ```
-██████████ 95%
+█████████░ 89%
 
-Completed: 95%
-In Progress: 2% (deployment publish path + custom-domain hardening)
-Blocked: 3% (founder/KC OTP delivery in local runtime)
+Completed: 89%
+In Progress: 7% (identity auth migration + deployment publish path + custom-domain hardening)
+Blocked: 4% (founder/KC OTP delivery in local runtime + production route drift)
 Not Started: 0%
 ```
 
@@ -42,11 +42,11 @@ Not Started: 0%
 - [x] All documentation redesigned (Restaurant OS vision)
 - [x] 10 checkpoints defined; current verification uses Vitest + tenant guard checks + manual smoke tests
 - [x] 6 Contract systems created (API, Data, Module, Integration, Security, Error)
-- [x] Authentication (PIN login)
+- [x] Booking Board authentication (PIN login)
 - [x] Tenant guard middleware
 - [x] Stage engine (pending → confirmed → arrived → done → etc)
 - [x] Platform marketing website deployed on Cloudflare
-- [x] Self-service signup API creates organization + company + admin PIN user
+- [x] Self-service signup API creates organization + company + provisional tenant admin bootstrap
 - [x] SaaS Admin split from Restaurant Admin (separate route + APIs)
 - [x] Tier redesign live: Core basic, Commerce operational add-ons
 - [x] Tenant billing automation hook: billable staff count updates recurring amount
@@ -98,10 +98,16 @@ Not Started: 0%
 - [x] SaaS Admin now shows workflow-oriented release states, hints, and mini timelines for moderation items
 - [x] SaaS Admin now includes a tenant workflow overview and operator-only go-live blocker inspection per tenant
 - [x] Restaurant Admin now uses a role-aware setup shell with product-correct naming, grouped settings quick navigation, and section visibility aligned to manager/admin scope
+- [x] Product direction now formally separates identity auth from operational PIN usage: signup + Restaurant Admin + SaaS Admin move to email/Google, Booking Board remains PIN-only
 - [x] Runtime now supports storage-backed publish artifacts for live tenant releases when a `WEBSITE_PUBLISH_R2` bucket binding is configured
 - [x] Custom-domain activation now requires a published release and rejects conflicting reserved/active domains before cutover
 - [x] Local smoke tests verified health, plans, signup policy, platform contact, platform admin dashboard, website payload, publish review, suspend, and quarantine actions on localhost
 - [x] Explicit `production` Wrangler environment deploy executed successfully against a real D1 database id
+
+**Approved architecture change**:
+- Signup will move to email as the baseline identity path, with Google as an optional accelerator.
+- Restaurant Admin and SaaS Admin will move to identity-based session auth.
+- Booking Board will remain PIN-based, but only as a board-scoped operational unlock launched from Restaurant Admin.
 
 **Evidence**:
 - Local live verification on 2026-03-30 ✅
@@ -133,7 +139,7 @@ Not Started: 0%
 
 ## 🔄 In Progress (12%)
 
-### Finalization Track (Platform + Billing) (84% → ship-ready)
+### Finalization Track (Platform + Billing + Identity) (76% → ship-ready)
 
 **What works**:
 - [x] SaaS Admin: pricing editor + signup CRM-lite + lead follow-up
@@ -150,6 +156,7 @@ Not Started: 0%
 - [x] Tenant website content editor is now exposed in Restaurant Admin for text, photos, button labels, address, and opening hours
 - [x] Structured opening hours now flow through website payloads for future reuse by shop and online-order availability logic
 - [x] Wildcard tenant subdomain routing and demo-payment signup walkthrough are verified live
+- [x] Auth restructure direction is approved: admin surfaces stop using PIN; board remains PIN-only
 
 **What needs work** (next 3-4 days):
 - [x] Attach a real production custom-domain ingress to `ess-admin-ds-prod` and verify public ingress beyond workers.dev
@@ -158,6 +165,11 @@ Not Started: 0%
 - [x] Enforce the website validator inside the actual tenant publish submission path
 - [ ] Provision the real `WEBSITE_PUBLISH_R2` bucket binding in deploy config and validate storage-backed publish output on the target environment
 - [ ] Extend custom-domain ops beyond the hardened activation path with richer reminder, cutover, and renewal workflows
+- [ ] Add identity auth foundation: `users`, `memberships`, `sessions`, and email or Google bootstrap flows
+- [ ] Move Restaurant Admin to identity session auth
+- [ ] Move SaaS Admin to identity session auth
+- [ ] Change signup from admin PIN bootstrap to owner identity bootstrap
+- [ ] Limit Booking Board PIN to board-scoped launch and operations only
 - [ ] Optional managed domain registration flow after BYOD custom-domain upgrade is stable
 - [ ] Tenant payment method onboarding UX (Stripe + manual modes)
 - [ ] End-to-end QA for tenant website editor save/reload/review flow from Restaurant Admin to live tenant subdomain
@@ -218,6 +230,13 @@ All other phases (2-5) planned, not started:
 - **Impact**: CP-10 remains partial, not ship-ready
 - **ETA Fix**: Apr 12 onward
 - **Owner**: @dev-lead
+
+### Blocker 3: Identity/Auth Refactor
+- **Issue**: Current runtime still reflects a PIN-first admin bootstrap in several paths, but the approved product direction now requires identity auth for signup, Restaurant Admin, and SaaS Admin.
+- **Impact**: CP-3 and CP-10 cannot be considered truly ship-ready until admin auth is restructured.
+- **ETA Fix**: Apr 20 onward
+- **Owner**: @dev-lead
+- **Action Item**: Implement CP-3E and CP-3F in sequence: identity auth foundation first, then board-launch and PIN-scope cleanup.
 - **Action Item**: Finish deployment output path, then harden BYOD custom-domain upgrade/activation beyond the current MVP.
 
 ---

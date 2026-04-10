@@ -15,6 +15,8 @@
 CP-1:  Tenant Isolation ✅ (DONE)
 CP-2:  Booking MVP ✅ (DONE)
 CP-3:  Admin UI Setup ⏳ (IN PROGRESS)
+  CP-3E: Identity Auth Split 📋 (NEW)
+  CP-3F: Board Launch + PIN Scope 📋 (NEW)
 CP-4:  Staff Mobile Ready 📋 (Phase 2)
 CP-5:  POS Ready 📋 (Phase 3)
 CP-6:  Payment Ready 📋 (Phase 3)
@@ -278,12 +280,13 @@ async function checkAdminSetup() {
   console.log('✅ Tenant created:', signup.tenant_id);
   currentStep++;
   
-  // Step 2: Admin PIN login
+  // Step 2: Owner identity login
   console.log('Step 2: Admin login');
   const login = await fetch('/auth/login', {
     method: 'POST',
     body: JSON.stringify({
-      pin: signup.admin_pin,
+      email: 'owner@test.de',
+      provider: 'magic_link',
       tenant_id: signup.tenant_id
     })
   });
@@ -321,7 +324,7 @@ async function checkAdminSetup() {
   console.log('✅ Restaurant configured');
   currentStep++;
   
-  // Step 4: Add staff
+  // Step 4: Add staff and board PIN
   console.log('Step 4: Add staff users');
   const staff = await fetch('/api/admin/staff', {
     method: 'POST',
@@ -390,9 +393,9 @@ checkAdminSetup();
 **Test**: Setup wizard flow
 
 ```javascript
-test('Admin setup wizard: signup → config → go live', async () => {
+test('Admin setup wizard: signup → identity auth → go live', async () => {
   const tenant = await signup();
-  expect(tenant.admin_pin).toBeDefined();
+  expect(tenant.owner_email).toBeDefined();
   
   const config = await configureRestaurant(tenant.id, { ... });
   expect(config.status).toBe('configured');
@@ -412,10 +415,10 @@ test('Admin setup wizard: signup → config → go live', async () => {
 ```
 
 **Acceptance**: 
-- ✅ Signup endpoint returns `tenant_id` + `admin_pin`
-- ✅ Admin can login with PIN
+- ✅ Signup endpoint returns tenant identity bootstrap data
+- ✅ Restaurant Admin login works with email magic link or Google
 - ✅ Restaurant info (name, address, hours, areas) configurable
-- ✅ Staff can be added with PIN
+- ✅ Staff can be added with board PIN
 - ✅ Payment can be enabled
 - ✅ Setup status shows all required fields filled
 - ✅ "Go Live" button appears when ready
@@ -492,17 +495,52 @@ The remaining CP-3 work should be executed in this order.
 - role restrictions are consistent across UI and API
 - no critical CP-3 flow depends on operator-only knowledge to navigate
 
+#### CP-3E — Identity Auth Split
+
+**Goal**: Move signup, Restaurant Admin, and SaaS Admin to identity-based auth while keeping Booking Board fast.
+
+**Must be true**:
+- signup starts from email as the baseline and optionally supports Google
+- Restaurant Admin uses session auth, not PIN
+- SaaS Admin uses the same identity model with stricter operator gating
+- tenant resolution for admin paths comes from authenticated membership, not host hacks or manual query overrides
+
+**Done when**:
+- D1 has `users`, `memberships`, `sessions`, and OAuth or identity-linking records
+- Restaurant Admin can be opened after email or Google login without an admin PIN
+- SaaS Admin uses identity auth and no longer accepts operator PIN as the primary auth path
+- current admin PIN assumptions are removed from onboarding and setup docs
+
+#### CP-3F — Board Launch + PIN Scope
+
+**Goal**: Keep PIN only where it is operationally justified: the Booking Board.
+
+**Must be true**:
+- board link is launched from Restaurant Admin so tenant context is explicit first
+- board PIN cannot be reused for Restaurant Admin or SaaS Admin
+- board PIN rate limiting, auditability, and staff scoping are explicit
+
+**Done when**:
+- Restaurant Admin shows the board launch entry point
+- staff PIN remains valid only for board or kiosk actions
+- staff operational roles stay separate from identity memberships
+- auth docs clearly describe identity auth vs board PIN scope
+
 ### CP-3 Recommended Execution Order
 
 1. CP-3A — Go-Live Console Gating
 2. CP-3B — Publish And Release Workflow Completion
 3. CP-3C — Operator Tooling Completion
 4. CP-3D — Admin Information Architecture And Permissions Cleanup
+5. CP-3E — Identity Auth Split
+6. CP-3F — Board Launch + PIN Scope
 
 Reasoning:
 - CP-3A and CP-3B define whether a tenant can go live safely.
 - CP-3C makes the same flow operable for the business.
 - CP-3D stabilizes structure and permissions after the critical workflow is complete.
+- CP-3E replaces the current PIN-first admin assumption with the approved identity model.
+- CP-3F preserves board speed while reducing PIN scope and admin attack surface.
 
 **Status**: 🔄 IN PROGRESS (Admin UI under development)
 
@@ -1308,7 +1346,7 @@ Track progress visually:
 
 ## 📋 CP-10: Platform Site + Self-Service Signup (PHASE 1 EXTENSION)
 
-**Definition**: `restaurantos.app` is live with marketing content and pricing tiers. A restaurant owner can sign up, verify their email, and land in the Admin setup wizard — without any manual provisioning.
+**Definition**: `restaurantos.app` is live with marketing content and pricing tiers. A restaurant owner can sign up with email or Google, complete identity verification, and land in the Admin setup wizard — without any manual provisioning.
 
 **2026-03-31 update**: The tenant website track is now explicitly locked to a fixed-skin model. The repository includes a canonical website template contract plus a pre-publish validation gate so future tenant versions are created from bounded presets instead of bespoke page structures.
 
@@ -1352,10 +1390,10 @@ async function checkPlatformSignup() {
       country: 'DE'
     })
   }).then(r => r.json());
-  if (!signup.ok || signup.status !== 'pending_email') {
+  if (!signup.ok || signup.status !== 'pending_identity_verification') {
     console.log('❌ Signup failed:', signup); process.exit(1);
   }
-  console.log('✅ Signup creates tenant with status pending_email');
+  console.log('✅ Signup creates tenant with status pending_identity_verification');
 
   // 5. Tenant website template is accessible
   // (use a pre-seeded trial tenant for this check)
@@ -1377,9 +1415,9 @@ checkPlatformSignup().catch(e => { console.error(e); process.exit(1); });
 - [ ] Pricing page shows all 4 tiers (Core €29 / Commerce €69 / Growth €99 / Enterprise)
 - [ ] `/templates` page previews all 3 tenant templates (Minimal, Modern, Premium)
 - [ ] Subdomain availability check returns correct `available` true/false
-- [ ] `POST /api/platform/signup` creates tenant row with `status: pending_email`
-- [ ] Verification email is sent (SendGrid mock in test, real in staging)
-- [ ] `POST /api/platform/signup/verify-email` flips status to `trial_active`
+- [ ] `POST /api/platform/signup` creates tenant row with `status: pending_identity_verification`
+- [ ] Verification email or Google identity bootstrap is completed before admin access
+- [ ] `POST /api/platform/signup/verify-email` or Google callback flips status to `trial_active`
 - [ ] After verify, redirect lands restaurant owner at `{subdomain}.restaurantos.app/admin/setup`
 - [ ] Setup wizard completes → tenant website live at `{subdomain}.restaurantos.app`
 - [x] Website template contract exists for fixed page keys, payload shape, media slots, and fallback rules
@@ -1391,13 +1429,13 @@ checkPlatformSignup().catch(e => { console.error(e); process.exit(1); });
 **Test cases**:
 
 ```javascript
-test('signup: creates pending_email tenant', async () => {
+test('signup: creates pending identity-verification tenant', async () => {
   const res = await api.post('/api/platform/signup', {
     restaurant_name: 'Test', owner_email: 'a@b.de',
     subdomain: 'test-123', plan: 'core', country: 'DE'
   });
   expect(res.ok).toBe(true);
-  expect(res.status).toBe('pending_email');
+  expect(res.status).toBe('pending_identity_verification');
 });
 
 test('signup: rejects duplicate subdomain', async () => {
@@ -1412,6 +1450,12 @@ test('signup: rejects duplicate email', async () => {
 
 test('verify-email: activates trial', async () => {
   const res = await api.post('/api/platform/signup/verify-email', { token: 'tok_xxx' });
+  expect(res.status).toBe('trial_active');
+  expect(res.redirect_url).toContain('/admin/setup');
+});
+
+test('google signup callback: activates trial', async () => {
+  const res = await api.post('/api/platform/signup/google/callback', { code: 'google_code_xxx' });
   expect(res.status).toBe('trial_active');
   expect(res.redirect_url).toContain('/admin/setup');
 });
