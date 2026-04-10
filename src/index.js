@@ -3453,6 +3453,17 @@ function canOverrideCompanyIdForHost(tenant, url = null) {
   );
 }
 
+function isPrivilegedCompanyIdOverridePath(pathnameRaw) {
+  const pathname = String(pathnameRaw || '').trim().toLowerCase();
+  return pathname === '/api/staff/auth'
+    || pathname === '/api/contacts'
+    || pathname === '/api/bookings'
+    || pathname === '/api/customers'
+    || pathname === '/api/notifications/stream'
+    || /^\/api\/bookings\/[^/]+\/stage$/.test(pathname)
+    || pathname.startsWith('/api/admin/');
+}
+
 async function resolveActiveCompanyId(env, tenant, url) {
   if (!env?.DB) {
     return { ok: false, reason: 'db_unavailable' };
@@ -3511,7 +3522,7 @@ async function resolveActiveCompanyId(env, tenant, url) {
     }
   };
 
-  const allowQueryOverride = canOverrideCompanyIdForHost(tenant, url);
+  const allowQueryOverride = canOverrideCompanyIdForHost(tenant, url) || isPrivilegedCompanyIdOverridePath(url?.pathname || '');
   const queryCompanyId = Number(url.searchParams.get('company_id') || 0);
 
   const finalizeResolvedCompany = (companyRow, missingReason) => {
@@ -7514,6 +7525,7 @@ export default {
         const bookingId = url.pathname.match(/^\/api\/bookings\/([^/]+)\/stage$/)[1];
         const body = await request.json();
         const { stage: newStage, staffId } = body;
+        const pin = String(body?.pin || request.headers.get('x-staff-pin') || request.headers.get('x-admin-pin') || '').trim();
 
         let effectiveCompanyId = companyId;
         const reqCompanyId = Number(body?.companyId || 0);
@@ -7526,6 +7538,23 @@ export default {
             return Response.json(
               { ok: false, error: "company_id override is not allowed for this host" },
               { status: 403 }
+            );
+          }
+        }
+
+        if (!canOverrideCompanyIdForHost(tenant, url) && reqCompanyId > 0) {
+          if (!pin) {
+            return Response.json(
+              { ok: false, error: 'Staff PIN required for company override' },
+              { status: 401 }
+            );
+          }
+
+          const auth = await authorizeStaffByPin(env, effectiveCompanyId, pin);
+          if (!auth.ok) {
+            return Response.json(
+              { ok: false, error: auth.error },
+              { status: auth.status }
             );
           }
         }
@@ -7602,6 +7631,19 @@ export default {
     if (url.pathname === "/api/bookings" && request.method === "GET") {
       return runTenantRoute(async ({ companyId }) => {
         try {
+        const requestedCompanyId = Number(url.searchParams.get('company_id') || 0);
+        if (!canOverrideCompanyIdForHost(tenant, url) && requestedCompanyId > 0) {
+          const pin = String(url.searchParams.get('pin') || request.headers.get('x-staff-pin') || request.headers.get('x-admin-pin') || '').trim();
+          if (!pin) {
+            return Response.json({ ok: false, error: 'Staff PIN required for company override' }, { status: 401 });
+          }
+
+          const auth = await authorizeStaffByPin(env, companyId, pin);
+          if (!auth.ok) {
+            return Response.json({ ok: false, error: auth.error }, { status: auth.status });
+          }
+        }
+
         const date = url.searchParams.get("date");
 
         let query = "SELECT * FROM bookings WHERE company_id = ?";
@@ -7802,6 +7844,19 @@ export default {
     if (url.pathname === "/api/customers" && request.method === "GET") {
       return runTenantRoute(async ({ companyId }) => {
         try {
+        const requestedCompanyId = Number(url.searchParams.get('company_id') || 0);
+        if (!canOverrideCompanyIdForHost(tenant, url) && requestedCompanyId > 0) {
+          const pin = String(url.searchParams.get('pin') || request.headers.get('x-staff-pin') || request.headers.get('x-admin-pin') || '').trim();
+          if (!pin) {
+            return Response.json({ ok: false, error: 'Staff PIN required for company override' }, { status: 401 });
+          }
+
+          const auth = await authorizeStaffByPin(env, companyId, pin);
+          if (!auth.ok) {
+            return Response.json({ ok: false, error: auth.error }, { status: auth.status });
+          }
+        }
+
         const result = await env.DB.prepare(
           `SELECT * FROM customers WHERE company_id = ? ORDER BY created_at DESC LIMIT 100`
         ).bind(companyId).all();

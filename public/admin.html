@@ -1393,7 +1393,7 @@
 
     async function loadBookingsData() {
       try {
-        const res = await fetch('/api/bookings');
+        const res = await fetch(`/api/bookings?pin=${encodeURIComponent(currentUser?.pin || '')}`);
         const data = await res.json().catch(() => ({}));
 
         if (!res.ok || !data.ok) {
@@ -1412,7 +1412,7 @@
 
     async function loadCustomersData() {
       try {
-        const res = await fetch('/api/customers');
+        const res = await fetch(`/api/customers?pin=${encodeURIComponent(currentUser?.pin || '')}`);
         const data = await res.json().catch(() => ({}));
 
         if (!res.ok || !data.ok) {
@@ -1800,7 +1800,8 @@
           body: JSON.stringify({
             stage: newStage,
             staffId: currentUser.id,
-            companyId: currentUser.companyId || 1
+            companyId: currentUser.companyId || 1,
+            pin: currentUser.pin || ''
           })
         });
 
