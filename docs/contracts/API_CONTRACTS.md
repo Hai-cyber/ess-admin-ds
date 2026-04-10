@@ -13,7 +13,7 @@
 ```
 Method: GET|POST|PUT|DELETE
 Path: /api/{module}/{resource}
-Auth: none|pin|admin|oauth
+Auth: none|pin|session|session_or_pin|token
 Tenant: required|optional
 Rate limit: n req/min
 Latency target: nnn ms
@@ -137,10 +137,10 @@ GET /api/platform/signup/check-subdomain?slug=trattoria-roma
 // Response (201 Created)
 {
   "ok": true,
-  "message": "Account created. Check your email to verify.",
+  "message": "Account created. Complete identity verification to continue.",
   "tenant_id": "trattoria-roma",
   "subdomain": "trattoria-roma",
-  "status": "pending_email"
+  "status": "pending_identity_verification"
 }
 
 // Errors
@@ -151,7 +151,7 @@ GET /api/platform/signup/check-subdomain?slug=trattoria-roma
 **Auth**: None (public signup)  
 **Rate limit**: 5 signups/hour per IP (prevent abuse)  
 **Latency**: < 1s  
-**Side effect**: Sends verification email via SendGrid
+**Side effect**: Creates tenant bootstrap and starts owner identity verification
 
 ---
 
@@ -186,24 +186,152 @@ GET /api/platform/signup/check-subdomain?slug=trattoria-roma
 
 ### ✅ AUTH Module
 
-#### POST /auth/login
+#### POST /api/auth/email/request-link
 
-**Purpose**: Staff PIN authentication
+**Purpose**: Start email magic-link login for Restaurant Admin or SaaS Admin
 
 ```javascript
 // Request
 {
-  "pin": "1234",
-  "tenant_id": "tenant_abc"  // from URL or override
+  "email": "owner@roma.de",
+  "scope": "restaurant_admin",   // restaurant_admin | platform_admin
+  "company_id": 21,               // required for restaurant_admin when caller wants a specific tenant
+  "redirect_path": "/admin?company_id=21"
 }
 
 // Response (200 OK)
 {
   "ok": true,
-  "user_id": "staff_123",
-  "name": "Hostess Anna",
+  "scope": "restaurant_admin",
+  "challenge_id": "challenge_abc123",
+  "delivery": "email",
+  "expires_in_seconds": 900,
+  "preview_url": "https://.../auth/email/callback?token=..." // only on dev/workers.dev preview-capable hosts
+}
+
+// Errors
+// 400 validation_failed | 404 auth_membership_not_found | 503 auth_email_not_configured
+```
+
+**Tenant**: Optional  
+**Auth**: None  
+**Rate limit**: 5 req/15 min per email + IP  
+**Latency**: < 500ms
+
+#### GET /auth/email/callback
+
+**Purpose**: Consume a magic-link token, establish an admin session, and redirect to the requested admin surface
+
+```javascript
+// Request
+GET /auth/email/callback?token=token_opaque
+
+// Response (302 Found)
+// Sets HttpOnly session cookie and redirects to /admin or /platform/admin.html
+```
+
+**Tenant**: Optional  
+**Auth**: Token in query  
+**Rate limit**: 10 req/min per IP  
+**Latency**: < 500ms
+
+#### GET /auth/google/start
+
+**Purpose**: Start Google OAuth login for Restaurant Admin or SaaS Admin
+
+```javascript
+// Request
+GET /auth/google/start?scope=restaurant_admin&company_id=21&redirect_path=/admin?company_id=21
+
+// Response (302 Found)
+// Redirect to Google OAuth consent screen
+```
+
+**Tenant**: Optional  
+**Auth**: None  
+**Rate limit**: 10 req/min per IP  
+**Latency**: < 300ms
+
+#### GET /auth/google/callback
+
+**Purpose**: Complete Google OAuth, bind or resolve the user identity, establish a session, and redirect to admin
+
+```javascript
+// Request
+GET /auth/google/callback?code=google_auth_code&state=opaque_state
+
+// Response (302 Found)
+// Sets HttpOnly session cookie and redirects to /admin or /platform/admin.html
+```
+
+**Tenant**: Optional  
+**Auth**: Google OAuth callback params  
+**Rate limit**: 10 req/min per IP  
+**Latency**: < 2s
+
+#### GET /api/auth/session
+
+**Purpose**: Return the current admin session, if present
+
+```javascript
+// Response (200 OK, authenticated)
+{
+  "ok": true,
+  "authenticated": true,
+  "scope": "restaurant_admin",
+  "company_id": 21,
+  "user": {
+    "id": "user_abc",
+    "email": "owner@roma.de",
+    "display_name": "Trattoria Roma Owner",
+    "role": "admin"
+  }
+}
+
+// Response (200 OK, anonymous)
+{
+  "ok": true,
+  "authenticated": false
+}
+```
+
+**Tenant**: Optional  
+**Auth**: Session cookie  
+**Rate limit**: 30 req/min  
+**Latency**: < 200ms
+
+#### POST /api/auth/logout
+
+**Purpose**: Revoke the current admin session and clear the auth cookie
+
+```javascript
+// Response (200 OK)
+{
+  "ok": true,
+  "logged_out": true
+}
+```
+
+**Tenant**: Optional  
+**Auth**: Session cookie  
+**Rate limit**: 20 req/min  
+**Latency**: < 200ms
+
+#### GET /api/staff/auth
+
+**Purpose**: Booking Board PIN authentication only
+
+```javascript
+// Request
+GET /api/staff/auth?pin=1234&company_id=21
+
+// Response (200 OK)
+{
+  "success": true,
+  "staffId": "staff_123",
+  "staffName": "Hostess Anna",
   "role": "hostess",
-  "permissions": ["view_bookings", "confirm_booking", ...]
+  "companyId": 21
 }
 
 // Errors
@@ -216,9 +344,13 @@ GET /api/platform/signup/check-subdomain?slug=trattoria-roma
 ```
 
 **Tenant**: Required  
-**Auth**: None (PIN is auth)  
+**Auth**: PIN  
 **Rate limit**: 5 req/min per IP  
 **Latency**: < 200ms
+
+**Important**:
+- This endpoint is for Booking Board and other fast operational board flows only.
+- It must not be treated as the primary login path for Restaurant Admin or SaaS Admin.
 
 ---
 
@@ -313,7 +445,7 @@ GET /api/bookings?date=2026-03-22&area=indoor
 ```
 
 **Tenant**: Required  
-**Auth**: PIN or none (depends on host)  
+**Auth**: session_or_pin or none (depends on host and surface)  
 **Rate limit**: 30 req/min  
 **Latency**: < 1s  
 
@@ -355,7 +487,7 @@ GET /api/bookings?date=2026-03-22&area=indoor
 ```
 
 **Tenant**: Required  
-**Auth**: PIN required  
+**Auth**: session_or_pin  
 **Rate limit**: 60 req/min  
 **Latency**: < 200ms  
 

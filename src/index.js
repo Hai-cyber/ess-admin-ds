@@ -32,6 +32,11 @@ const FOUNDER_OTP_EXPIRES_SECONDS = 600;
 const FOUNDER_DEFAULT_MEMBERSHIP_TYPE = 'Founder';
 const PLATFORM_OPERATOR_COMPANY_ID = 1;
 const PLATFORM_PUBLIC_DOMAIN = 'gooddining.app';
+const AUTH_SESSION_COOKIE_NAME = 'gd_admin_session';
+const AUTH_CHALLENGE_TTL_SECONDS = 900;
+const AUTH_RESTAURANT_SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
+const AUTH_PLATFORM_SESSION_TTL_SECONDS = 60 * 60 * 12;
+const AUTH_EMAIL_FROM_FALLBACK = 'noreply@gooddining.app';
 const PLATFORM_PRICING_DEFAULTS = {
   platform_core_price_per_user: '9.98',
   platform_core_name: 'Online',
@@ -3919,6 +3924,337 @@ function normalizeOptionalEmail(rawEmail) {
   return normalized;
 }
 
+function parseCookieHeader(cookieHeaderRaw) {
+  const cookieHeader = String(cookieHeaderRaw || '').trim();
+  if (!cookieHeader) return {};
+
+  return cookieHeader.split(';').reduce((acc, item) => {
+    const [rawKey, ...rawValueParts] = item.split('=');
+    const key = String(rawKey || '').trim();
+    if (!key) return acc;
+    acc[key] = decodeURIComponent(rawValueParts.join('=').trim() || '');
+    return acc;
+  }, {});
+}
+
+function buildSessionCookieValue(token, ttlSeconds, url) {
+  const secure = String(url?.protocol || '').toLowerCase() === 'https:';
+  const parts = [
+    `${AUTH_SESSION_COOKIE_NAME}=${encodeURIComponent(String(token || ''))}`,
+    'Path=/',
+    'HttpOnly',
+    'SameSite=Lax',
+    `Max-Age=${Math.max(0, Number(ttlSeconds || 0))}`
+  ];
+  if (secure) parts.push('Secure');
+  return parts.join('; ');
+}
+
+function buildExpiredSessionCookie(url) {
+  const secure = String(url?.protocol || '').toLowerCase() === 'https:';
+  const parts = [
+    `${AUTH_SESSION_COOKIE_NAME}=`,
+    'Path=/',
+    'HttpOnly',
+    'SameSite=Lax',
+    'Max-Age=0',
+    'Expires=Thu, 01 Jan 1970 00:00:00 GMT'
+  ];
+  if (secure) parts.push('Secure');
+  return parts.join('; ');
+}
+
+function generateOpaqueAuthToken() {
+  return `${crypto.randomUUID()}${crypto.randomUUID().replaceAll('-', '')}`;
+}
+
+async function sha256Hex(value) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(value || '')));
+  return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function isPreviewCapableAuthHost(url) {
+  return isLocalDevelopmentHost(url) || String(url?.hostname || '').includes('workers.dev');
+}
+
+function normalizeAuthScope(value, fallback = 'restaurant_admin') {
+  const scope = String(value || '').trim().toLowerCase();
+  return scope === 'platform_admin' ? 'platform_admin' : fallback;
+}
+
+function sanitizeRelativeRedirectPath(rawPath, fallback = '/') {
+  const value = String(rawPath || '').trim();
+  if (!value.startsWith('/')) return fallback;
+  if (value.startsWith('//')) return fallback;
+  return value;
+}
+
+function mapCompanyMembershipRoleToAdminRole(rawRole) {
+  const role = String(rawRole || '').trim().toLowerCase();
+  if (role === 'tenant_admin') return 'admin';
+  if (role === 'manager') return 'manager';
+  if (role === 'viewer') return 'viewer';
+  return role || 'viewer';
+}
+
+function getAuthEmailSender(env) {
+  return String(env.AUTH_EMAIL_FROM || env.OPERATOR_DIGEST_EMAIL_FROM || AUTH_EMAIL_FROM_FALLBACK).trim();
+}
+
+async function getUserByNormalizedEmail(env, emailNormalized) {
+  const normalized = normalizeOptionalEmail(emailNormalized);
+  if (!normalized) return null;
+
+  return env.DB.prepare(`
+    SELECT id, primary_email, primary_email_normalized, display_name, status, last_login_at, created_at, updated_at
+    FROM users
+    WHERE primary_email_normalized = ?
+    LIMIT 1
+  `).bind(normalized).first();
+}
+
+async function getRestaurantAdminMembershipForUser(env, userId, companyId = 0) {
+  if (!userId) return null;
+
+  if (Number(companyId) > 0) {
+    return env.DB.prepare(`
+      SELECT company_id, role, status
+      FROM company_memberships
+      WHERE user_id = ? AND company_id = ? AND status = 'active'
+      LIMIT 1
+    `).bind(userId, Number(companyId)).first();
+  }
+
+  return env.DB.prepare(`
+    SELECT company_id, role, status
+    FROM company_memberships
+    WHERE user_id = ? AND status = 'active'
+    ORDER BY CASE role WHEN 'tenant_admin' THEN 0 WHEN 'manager' THEN 1 ELSE 2 END, company_id ASC
+    LIMIT 1
+  `).bind(userId).first();
+}
+
+async function getPlatformOperatorMembershipForUser(env, userId) {
+  if (!userId) return null;
+
+  return env.DB.prepare(`
+    SELECT role, status
+    FROM platform_operator_memberships
+    WHERE user_id = ? AND status = 'active'
+    ORDER BY CASE role WHEN 'platform_admin' THEN 0 ELSE 1 END
+    LIMIT 1
+  `).bind(userId).first();
+}
+
+async function createAuthChallenge(env, payload = {}) {
+  const scope = normalizeAuthScope(payload.scope, 'restaurant_admin');
+  const now = new Date().toISOString();
+  const rawToken = generateOpaqueAuthToken();
+  const tokenHash = await sha256Hex(rawToken);
+  const challengeId = crypto.randomUUID();
+  const expiresAt = new Date(Date.now() + AUTH_CHALLENGE_TTL_SECONDS * 1000).toISOString();
+
+  await env.DB.prepare(`
+    INSERT INTO auth_challenges (
+      id, challenge_type, email_normalized, user_id, organization_id, company_id,
+      token_hash, redirect_path, expires_at, metadata_json, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    challengeId,
+    payload.challengeType || (scope === 'platform_admin' ? 'platform_admin_login_magic_link' : 'admin_login_magic_link'),
+    normalizeOptionalEmail(payload.emailNormalized),
+    String(payload.userId || '').trim() || null,
+    Number(payload.organizationId || 0) || null,
+    Number(payload.companyId || 0) || null,
+    tokenHash,
+    sanitizeRelativeRedirectPath(payload.redirectPath || (scope === 'platform_admin' ? '/platform/admin.html' : `/admin?company_id=${Number(payload.companyId || 0) || ''}`.replace(/\?company_id=$/, ''))),
+    expiresAt,
+    JSON.stringify({ scope, companyId: Number(payload.companyId || 0) || null, organizationId: Number(payload.organizationId || 0) || null }),
+    now
+  ).run();
+
+  return { challengeId, rawToken, expiresAt, scope };
+}
+
+async function getAuthChallengeByToken(env, rawToken) {
+  const tokenHash = await sha256Hex(rawToken);
+  const challenge = await env.DB.prepare(`
+    SELECT id, challenge_type, email_normalized, user_id, organization_id, company_id,
+           token_hash, redirect_path, expires_at, consumed_at, metadata_json, created_at
+    FROM auth_challenges
+    WHERE token_hash = ?
+    LIMIT 1
+  `).bind(tokenHash).first();
+
+  if (!challenge) return null;
+  if (String(challenge.consumed_at || '').trim()) return { ...challenge, invalidReason: 'token_already_used' };
+  if (Date.parse(String(challenge.expires_at || '')) <= Date.now()) return { ...challenge, invalidReason: 'token_expired' };
+  return challenge;
+}
+
+async function consumeAuthChallenge(env, challengeId) {
+  await env.DB.prepare(`UPDATE auth_challenges SET consumed_at = ? WHERE id = ?`).bind(new Date().toISOString(), challengeId).run();
+}
+
+async function createAuthSession(env, payload = {}) {
+  const scope = normalizeAuthScope(payload.scope, 'restaurant_admin');
+  const rawToken = generateOpaqueAuthToken();
+  const sessionId = await sha256Hex(rawToken);
+  const ttlSeconds = scope === 'platform_admin' ? AUTH_PLATFORM_SESSION_TTL_SECONDS : AUTH_RESTAURANT_SESSION_TTL_SECONDS;
+  const now = new Date().toISOString();
+  const expiresAt = new Date(Date.now() + ttlSeconds * 1000).toISOString();
+
+  await env.DB.prepare(`
+    INSERT INTO auth_sessions (
+      id, user_id, session_scope, organization_id, company_id, ip_hash, user_agent_hash,
+      last_seen_at, expires_at, metadata_json, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    sessionId,
+    String(payload.userId || '').trim(),
+    scope,
+    Number(payload.organizationId || 0) || null,
+    Number(payload.companyId || 0) || null,
+    payload.ipHash || null,
+    payload.userAgentHash || null,
+    now,
+    expiresAt,
+    JSON.stringify(payload.metadata || {}),
+    now
+  ).run();
+
+  return { rawToken, expiresAt, ttlSeconds, sessionId };
+}
+
+async function getActiveAuthSession(env, request) {
+  const cookies = parseCookieHeader(request.headers.get('cookie') || '');
+  const rawToken = String(cookies[AUTH_SESSION_COOKIE_NAME] || '').trim();
+  if (!rawToken) return null;
+
+  const sessionId = await sha256Hex(rawToken);
+  const session = await env.DB.prepare(`
+    SELECT s.id, s.user_id, s.session_scope, s.organization_id, s.company_id,
+           s.expires_at, s.revoked_at, s.metadata_json, u.primary_email, u.display_name
+    FROM auth_sessions s
+    JOIN users u ON u.id = s.user_id
+    WHERE s.id = ?
+    LIMIT 1
+  `).bind(sessionId).first();
+
+  if (!session) return null;
+  if (String(session.revoked_at || '').trim()) return null;
+  if (Date.parse(String(session.expires_at || '')) <= Date.now()) return null;
+  return session;
+}
+
+async function revokeActiveAuthSession(env, request) {
+  const cookies = parseCookieHeader(request.headers.get('cookie') || '');
+  const rawToken = String(cookies[AUTH_SESSION_COOKIE_NAME] || '').trim();
+  if (!rawToken) return false;
+
+  const sessionId = await sha256Hex(rawToken);
+  await env.DB.prepare(`UPDATE auth_sessions SET revoked_at = ? WHERE id = ?`).bind(new Date().toISOString(), sessionId).run();
+  return true;
+}
+
+function buildAdminActorFromSession(session, role, companyId = 0) {
+  return {
+    id: String(session.user_id || '').trim(),
+    name: String(session.display_name || session.primary_email || 'Admin').trim(),
+    role,
+    company_id: Number(companyId || session.company_id || 0),
+    is_active: 1,
+    auth_type: 'session',
+    email: String(session.primary_email || '').trim()
+  };
+}
+
+async function authorizePlatformOperatorRequest(env, request, body = null, url = null) {
+  const session = await getActiveAuthSession(env, request);
+  if (session && String(session.session_scope || '').trim() === 'platform_admin') {
+    const membership = await getPlatformOperatorMembershipForUser(env, session.user_id);
+    if (membership?.role && String(membership.status || '').trim() === 'active') {
+      return { ok: true, staff: buildAdminActorFromSession(session, String(membership.role || 'platform_operator').trim()) };
+    }
+  }
+
+  const pin = String(body?.pin || url?.searchParams?.get('pin') || request.headers.get('x-admin-pin') || '').trim();
+  return authorizePlatformOperator(env, pin);
+}
+
+async function authorizeCompanyAdminRequest(env, request, companyId, body = null, url = null, options = {}) {
+  const allowManager = options.allowManager === true;
+  const session = await getActiveAuthSession(env, request);
+  if (session && String(session.session_scope || '').trim() === 'restaurant_admin') {
+    const membership = await getRestaurantAdminMembershipForUser(env, session.user_id, companyId);
+    if (membership?.role && String(membership.status || '').trim() === 'active') {
+      const normalizedRole = mapCompanyMembershipRoleToAdminRole(membership.role);
+      if (normalizedRole === 'admin' || (allowManager && normalizedRole === 'manager')) {
+        return { ok: true, staff: buildAdminActorFromSession(session, normalizedRole, companyId) };
+      }
+      return { ok: false, status: 403, error: allowManager ? 'Manager or admin role required' : 'Admin role required' };
+    }
+  }
+
+  const pin = String(body?.pin || url?.searchParams?.get('pin') || request.headers.get('x-admin-pin') || request.headers.get('x-staff-pin') || '').trim();
+  return allowManager
+    ? authorizeManagerOrAdminByPin(env, companyId, pin)
+    : authorizeAdminByPin(env, companyId, pin);
+}
+
+async function authorizeSessionOrStaffPinRequest(env, request, companyId, body = null, url = null, options = {}) {
+  const allowManager = options.allowManager !== false;
+  const session = await getActiveAuthSession(env, request);
+  if (session && String(session.session_scope || '').trim() === 'restaurant_admin') {
+    const membership = await getRestaurantAdminMembershipForUser(env, session.user_id, companyId);
+    if (membership?.role && String(membership.status || '').trim() === 'active') {
+      const normalizedRole = mapCompanyMembershipRoleToAdminRole(membership.role);
+      if (normalizedRole === 'admin' || (allowManager && normalizedRole === 'manager')) {
+        return { ok: true, staff: buildAdminActorFromSession(session, normalizedRole, companyId) };
+      }
+    }
+  }
+
+  const pin = String(body?.pin || url?.searchParams?.get('pin') || request.headers.get('x-staff-pin') || request.headers.get('x-admin-pin') || '').trim();
+  return authorizeStaffByPin(env, companyId, pin);
+}
+
+async function exchangeGoogleAuthCode(env, code, redirectUri) {
+  const clientId = String(env.GOOGLE_CLIENT_ID || '').trim();
+  const clientSecret = String(env.GOOGLE_CLIENT_SECRET || '').trim();
+  if (!clientId || !clientSecret) {
+    return { ok: false, status: 503, code: 'google_auth_not_configured', error: 'Google auth is not configured.' };
+  }
+
+  const tokenPayload = new URLSearchParams({
+    code: String(code || '').trim(),
+    client_id: clientId,
+    client_secret: clientSecret,
+    redirect_uri: redirectUri,
+    grant_type: 'authorization_code'
+  });
+
+  const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: tokenPayload
+  });
+  const tokenData = await tokenResponse.json().catch(() => ({}));
+  if (!tokenResponse.ok || !tokenData?.access_token) {
+    return { ok: false, status: 502, code: 'google_token_exchange_failed', error: String(tokenData?.error_description || tokenData?.error || 'Unable to exchange Google auth code.') };
+  }
+
+  const profileResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+    headers: { Authorization: `Bearer ${String(tokenData.access_token)}` }
+  });
+  const profile = await profileResponse.json().catch(() => ({}));
+  if (!profileResponse.ok || !profile?.sub) {
+    return { ok: false, status: 502, code: 'google_profile_fetch_failed', error: String(profile?.error_description || profile?.error || 'Unable to load Google user profile.') };
+  }
+
+  return { ok: true, profile };
+}
+
 function detectInboundChannel(fromRaw) {
   const value = String(fromRaw || '').trim().toLowerCase();
   if (!value) return null;
@@ -4722,10 +5058,335 @@ export default {
       }
     }
 
+    if (url.pathname === '/api/auth/email/request-link' && request.method === 'POST') {
+      try {
+        const body = await request.json().catch(() => ({}));
+        const email = normalizeOptionalEmail(body?.email || '');
+        const scope = normalizeAuthScope(body?.scope, 'restaurant_admin');
+        const requestedCompanyId = Number(body?.company_id || body?.companyId || 0);
+        const redirectPath = sanitizeRelativeRedirectPath(
+          body?.redirect_path || body?.redirectPath || (scope === 'platform_admin' ? '/platform/admin.html' : `/admin?company_id=${requestedCompanyId || ''}`.replace(/\?company_id=$/, '')),
+          scope === 'platform_admin' ? '/platform/admin.html' : '/admin'
+        );
+
+        if (!email) {
+          return Response.json({ ok: false, code: 'validation_failed', error: 'Valid email is required.' }, { status: 400 });
+        }
+
+        const user = await getUserByNormalizedEmail(env, email);
+        if (!user?.id) {
+          return Response.json({ ok: false, code: 'auth_membership_not_found', error: 'No admin access was found for this email.' }, { status: 404 });
+        }
+
+        let companyMembership = null;
+        let platformMembership = null;
+        if (scope === 'platform_admin') {
+          platformMembership = await getPlatformOperatorMembershipForUser(env, user.id);
+          if (!platformMembership?.role) {
+            return Response.json({ ok: false, code: 'auth_membership_not_found', error: 'No platform admin access was found for this email.' }, { status: 404 });
+          }
+        } else {
+          companyMembership = await getRestaurantAdminMembershipForUser(env, user.id, requestedCompanyId);
+          if (!companyMembership?.company_id) {
+            return Response.json({ ok: false, code: 'auth_membership_not_found', error: 'No restaurant admin access was found for this email.' }, { status: 404 });
+          }
+        }
+
+        const challenge = await createAuthChallenge(env, {
+          scope,
+          emailNormalized: email,
+          userId: user.id,
+          organizationId: scope === 'platform_admin' ? null : null,
+          companyId: scope === 'restaurant_admin' ? Number(companyMembership.company_id || 0) : null,
+          redirectPath,
+          challengeType: scope === 'platform_admin' ? 'platform_admin_login_magic_link' : 'admin_login_magic_link'
+        });
+
+        const callbackUrl = `${url.origin}/auth/email/callback?token=${encodeURIComponent(challenge.rawToken)}`;
+        const subject = scope === 'platform_admin' ? 'Your Good Dining SaaS Admin login link' : 'Your Good Dining Restaurant Admin login link';
+        const text = [
+          'Use the secure sign-in link below to access your admin session.',
+          '',
+          callbackUrl,
+          '',
+          `This link expires in ${AUTH_CHALLENGE_TTL_SECONDS / 60} minutes.`
+        ].join('\n');
+
+        const emailResult = await sendMailChannelsEmail({
+          from: getAuthEmailSender(env),
+          to: email,
+          subject,
+          text
+        });
+
+        if (!emailResult.ok && !isPreviewCapableAuthHost(url)) {
+          return Response.json({ ok: false, code: 'auth_email_not_configured', error: 'Magic-link email delivery is not configured.' }, { status: 503 });
+        }
+
+        return Response.json({
+          ok: true,
+          scope,
+          challenge_id: challenge.challengeId,
+          delivery: emailResult.ok ? 'email' : 'preview_only',
+          expires_in_seconds: AUTH_CHALLENGE_TTL_SECONDS,
+          preview_url: isPreviewCapableAuthHost(url) ? callbackUrl : ''
+        });
+      } catch (e) {
+        return Response.json({ ok: false, error: e.message }, { status: 500 });
+      }
+    }
+
+    if (url.pathname === '/auth/email/callback' && request.method === 'GET') {
+      try {
+        const token = String(url.searchParams.get('token') || '').trim();
+        if (!token) {
+          return Response.json({ ok: false, code: 'token_invalid', error: 'Token is required.' }, { status: 400 });
+        }
+
+        const challenge = await getAuthChallengeByToken(env, token);
+        if (!challenge?.id) {
+          return Response.json({ ok: false, code: 'token_invalid', error: 'Invalid or unknown token.' }, { status: 400 });
+        }
+        if (challenge.invalidReason) {
+          return Response.json({ ok: false, code: challenge.invalidReason, error: challenge.invalidReason === 'token_expired' ? 'Token has expired.' : 'Token has already been used.' }, { status: 400 });
+        }
+
+        const scope = normalizeAuthScope(JSON.parse(String(challenge.metadata_json || '{}')).scope, 'restaurant_admin');
+        const user = await env.DB.prepare(`SELECT id, primary_email, display_name FROM users WHERE id = ? LIMIT 1`).bind(String(challenge.user_id || '')).first();
+        if (!user?.id) {
+          return Response.json({ ok: false, code: 'auth_user_not_found', error: 'Auth user not found.' }, { status: 404 });
+        }
+
+        if (scope === 'platform_admin') {
+          const membership = await getPlatformOperatorMembershipForUser(env, user.id);
+          if (!membership?.role) {
+            return Response.json({ ok: false, code: 'auth_membership_not_found', error: 'Platform admin membership not found.' }, { status: 403 });
+          }
+        } else {
+          const membership = await getRestaurantAdminMembershipForUser(env, user.id, Number(challenge.company_id || 0));
+          if (!membership?.company_id) {
+            return Response.json({ ok: false, code: 'auth_membership_not_found', error: 'Restaurant admin membership not found.' }, { status: 403 });
+          }
+        }
+
+        const session = await createAuthSession(env, {
+          userId: user.id,
+          scope,
+          organizationId: Number(challenge.organization_id || 0) || null,
+          companyId: Number(challenge.company_id || 0) || null,
+          metadata: { challengeId: challenge.id, method: 'email_magic_link' }
+        });
+        await consumeAuthChallenge(env, challenge.id);
+
+        const redirectPath = sanitizeRelativeRedirectPath(
+          challenge.redirect_path || (scope === 'platform_admin' ? '/platform/admin.html' : `/admin?company_id=${Number(challenge.company_id || 0) || ''}`.replace(/\?company_id=$/, '')),
+          scope === 'platform_admin' ? '/platform/admin.html' : '/admin'
+        );
+
+        return new Response(null, {
+          status: 302,
+          headers: {
+            Location: redirectPath,
+            'Set-Cookie': buildSessionCookieValue(session.rawToken, session.ttlSeconds, url)
+          }
+        });
+      } catch (e) {
+        return Response.json({ ok: false, error: e.message }, { status: 500 });
+      }
+    }
+
+    if (url.pathname === '/auth/google/start' && request.method === 'GET') {
+      try {
+        const clientId = String(env.GOOGLE_CLIENT_ID || '').trim();
+        if (!clientId) {
+          return Response.json({ ok: false, code: 'google_auth_not_configured', error: 'Google auth is not configured.' }, { status: 503 });
+        }
+
+        const scope = normalizeAuthScope(url.searchParams.get('scope'), 'restaurant_admin');
+        const companyId = Number(url.searchParams.get('company_id') || 0);
+        const redirectPath = sanitizeRelativeRedirectPath(
+          url.searchParams.get('redirect_path') || (scope === 'platform_admin' ? '/platform/admin.html' : `/admin?company_id=${companyId || ''}`.replace(/\?company_id=$/, '')),
+          scope === 'platform_admin' ? '/platform/admin.html' : '/admin'
+        );
+        const challenge = await createAuthChallenge(env, {
+          scope,
+          companyId,
+          redirectPath,
+          challengeType: 'google_oauth_state'
+        });
+
+        const googleRedirectUri = `${url.origin}/auth/google/callback`;
+        const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+        authUrl.searchParams.set('client_id', clientId);
+        authUrl.searchParams.set('redirect_uri', googleRedirectUri);
+        authUrl.searchParams.set('response_type', 'code');
+        authUrl.searchParams.set('scope', 'openid email profile');
+        authUrl.searchParams.set('prompt', 'select_account');
+        authUrl.searchParams.set('state', challenge.rawToken);
+
+        return Response.redirect(authUrl.toString(), 302);
+      } catch (e) {
+        return Response.json({ ok: false, error: e.message }, { status: 500 });
+      }
+    }
+
+    if (url.pathname === '/auth/google/callback' && request.method === 'GET') {
+      try {
+        const code = String(url.searchParams.get('code') || '').trim();
+        const state = String(url.searchParams.get('state') || '').trim();
+        if (!code || !state) {
+          return Response.json({ ok: false, code: 'validation_failed', error: 'Google callback requires code and state.' }, { status: 400 });
+        }
+
+        const challenge = await getAuthChallengeByToken(env, state);
+        if (!challenge?.id) {
+          return Response.json({ ok: false, code: 'token_invalid', error: 'Invalid Google auth state.' }, { status: 400 });
+        }
+        if (challenge.invalidReason) {
+          return Response.json({ ok: false, code: challenge.invalidReason, error: challenge.invalidReason === 'token_expired' ? 'Google auth state expired.' : 'Google auth state already used.' }, { status: 400 });
+        }
+
+        const googleProfile = await exchangeGoogleAuthCode(env, code, `${url.origin}/auth/google/callback`);
+        if (!googleProfile.ok) {
+          return Response.json({ ok: false, code: googleProfile.code, error: googleProfile.error }, { status: googleProfile.status || 500 });
+        }
+
+        const normalizedEmail = normalizeOptionalEmail(googleProfile.profile?.email || '');
+        if (!normalizedEmail) {
+          return Response.json({ ok: false, code: 'google_email_missing', error: 'Google account did not return a valid email.' }, { status: 400 });
+        }
+
+        const scope = normalizeAuthScope(JSON.parse(String(challenge.metadata_json || '{}')).scope, 'restaurant_admin');
+        const existingIdentity = await env.DB.prepare(`
+          SELECT user_id FROM user_identities WHERE provider = 'google' AND provider_subject = ? LIMIT 1
+        `).bind(String(googleProfile.profile.sub || '').trim()).first();
+        const user = existingIdentity?.user_id
+          ? await env.DB.prepare(`SELECT id, primary_email, display_name FROM users WHERE id = ? LIMIT 1`).bind(String(existingIdentity.user_id || '')).first()
+          : await getUserByNormalizedEmail(env, normalizedEmail);
+
+        if (!user?.id) {
+          return Response.json({ ok: false, code: 'auth_membership_not_found', error: 'No admin access was found for this Google account.' }, { status: 403 });
+        }
+
+        if (scope === 'platform_admin') {
+          const membership = await getPlatformOperatorMembershipForUser(env, user.id);
+          if (!membership?.role) {
+            return Response.json({ ok: false, code: 'auth_membership_not_found', error: 'No platform admin access was found for this Google account.' }, { status: 403 });
+          }
+        } else {
+          const membership = await getRestaurantAdminMembershipForUser(env, user.id, Number(challenge.company_id || 0));
+          if (!membership?.company_id) {
+            return Response.json({ ok: false, code: 'auth_membership_not_found', error: 'No restaurant admin access was found for this Google account.' }, { status: 403 });
+          }
+        }
+
+        await env.DB.prepare(`
+          INSERT OR IGNORE INTO user_identities (
+            id, user_id, provider, provider_subject, email, email_normalized, is_primary, verified_at, metadata_json, created_at, updated_at
+          ) VALUES (?, ?, 'google', ?, ?, ?, 0, ?, ?, ?, ?)
+        `).bind(
+          crypto.randomUUID(),
+          user.id,
+          String(googleProfile.profile.sub || '').trim(),
+          normalizedEmail,
+          normalizedEmail,
+          new Date().toISOString(),
+          JSON.stringify({ google_email_verified: !!googleProfile.profile.email_verified }),
+          new Date().toISOString(),
+          new Date().toISOString()
+        ).run();
+
+        const session = await createAuthSession(env, {
+          userId: user.id,
+          scope,
+          organizationId: Number(challenge.organization_id || 0) || null,
+          companyId: Number(challenge.company_id || 0) || null,
+          metadata: { challengeId: challenge.id, method: 'google' }
+        });
+        await consumeAuthChallenge(env, challenge.id);
+
+        const redirectPath = sanitizeRelativeRedirectPath(
+          challenge.redirect_path || (scope === 'platform_admin' ? '/platform/admin.html' : `/admin?company_id=${Number(challenge.company_id || 0) || ''}`.replace(/\?company_id=$/, '')),
+          scope === 'platform_admin' ? '/platform/admin.html' : '/admin'
+        );
+
+        return new Response(null, {
+          status: 302,
+          headers: {
+            Location: redirectPath,
+            'Set-Cookie': buildSessionCookieValue(session.rawToken, session.ttlSeconds, url)
+          }
+        });
+      } catch (e) {
+        return Response.json({ ok: false, error: e.message }, { status: 500 });
+      }
+    }
+
+    if (url.pathname === '/api/auth/session' && request.method === 'GET') {
+      try {
+        const session = await getActiveAuthSession(env, request);
+        if (!session) {
+          return Response.json({ ok: true, authenticated: false });
+        }
+
+        if (String(session.session_scope || '').trim() === 'platform_admin') {
+          const membership = await getPlatformOperatorMembershipForUser(env, session.user_id);
+          if (!membership?.role) {
+            return Response.json({ ok: true, authenticated: false });
+          }
+
+          return Response.json({
+            ok: true,
+            authenticated: true,
+            scope: 'platform_admin',
+            user: {
+              id: String(session.user_id || '').trim(),
+              email: String(session.primary_email || '').trim(),
+              display_name: String(session.display_name || session.primary_email || '').trim(),
+              role: String(membership.role || 'platform_operator').trim()
+            }
+          });
+        }
+
+        const requestedCompanyId = Number(url.searchParams.get('company_id') || session.company_id || 0);
+        const membership = await getRestaurantAdminMembershipForUser(env, session.user_id, requestedCompanyId);
+        if (!membership?.company_id) {
+          return Response.json({ ok: true, authenticated: false });
+        }
+
+        return Response.json({
+          ok: true,
+          authenticated: true,
+          scope: 'restaurant_admin',
+          company_id: Number(membership.company_id || 0),
+          user: {
+            id: String(session.user_id || '').trim(),
+            email: String(session.primary_email || '').trim(),
+            display_name: String(session.display_name || session.primary_email || '').trim(),
+            role: mapCompanyMembershipRoleToAdminRole(membership.role)
+          }
+        });
+      } catch (e) {
+        return Response.json({ ok: false, error: e.message }, { status: 500 });
+      }
+    }
+
+    if (url.pathname === '/api/auth/logout' && request.method === 'POST') {
+      try {
+        await revokeActiveAuthSession(env, request);
+        return Response.json({ ok: true, logged_out: true }, {
+          headers: {
+            'Set-Cookie': buildExpiredSessionCookie(url)
+          }
+        });
+      } catch (e) {
+        return Response.json({ ok: false, error: e.message }, { status: 500 });
+      }
+    }
+
     if (url.pathname === "/api/platform/admin/dashboard" && request.method === "GET") {
       try {
-        const pin = String(url.searchParams.get('pin') || request.headers.get('x-admin-pin') || '').trim();
-        const auth = await authorizePlatformOperator(env, pin);
+        const auth = await authorizePlatformOperatorRequest(env, request, null, url);
         if (!auth.ok) {
           return Response.json({ ok: false, error: auth.error }, { status: auth.status });
         }
@@ -4740,8 +5401,7 @@ export default {
     if (url.pathname === "/api/platform/admin/config" && request.method === "POST") {
       try {
         const body = await request.json().catch(() => ({}));
-        const pin = String(body?.pin || '').trim();
-        const auth = await authorizePlatformOperator(env, pin);
+        const auth = await authorizePlatformOperatorRequest(env, request, body, url);
         if (!auth.ok) {
           return Response.json({ ok: false, error: auth.error }, { status: auth.status });
         }
@@ -4763,8 +5423,7 @@ export default {
     if (url.pathname === "/api/platform/admin/signup-followup" && request.method === "POST") {
       try {
         const body = await request.json().catch(() => ({}));
-        const pin = String(body?.pin || '').trim();
-        const auth = await authorizePlatformOperator(env, pin);
+        const auth = await authorizePlatformOperatorRequest(env, request, body, url);
         if (!auth.ok) {
           return Response.json({ ok: false, error: auth.error }, { status: auth.status });
         }
@@ -4791,8 +5450,7 @@ export default {
     if (url.pathname === "/api/platform/admin/domain-renewals/run-reminders" && request.method === "POST") {
       try {
         const body = await request.json().catch(() => ({}));
-        const pin = String(body?.pin || '').trim();
-        const auth = await authorizePlatformOperator(env, pin);
+        const auth = await authorizePlatformOperatorRequest(env, request, body, url);
         if (!auth.ok) {
           return Response.json({ ok: false, error: auth.error }, { status: auth.status });
         }
@@ -4813,8 +5471,7 @@ export default {
         const routeMatch = url.pathname.match(/^\/api\/platform\/admin\/domain-renewals\/([^/]+)\/preview$/);
         const requestId = decodeURIComponent(String(routeMatch?.[1] || '')).trim();
         const body = await request.json().catch(() => ({}));
-        const pin = String(body?.pin || '').trim();
-        const auth = await authorizePlatformOperator(env, pin);
+        const auth = await authorizePlatformOperatorRequest(env, request, body, url);
         if (!auth.ok) {
           return Response.json({ ok: false, error: auth.error }, { status: auth.status });
         }
@@ -4836,9 +5493,8 @@ export default {
         const routeMatch = url.pathname.match(/^\/api\/platform\/admin\/domain-renewals\/([^/]+)\/force-overdue$/);
         const requestId = decodeURIComponent(String(routeMatch?.[1] || '')).trim();
         const body = await request.json().catch(() => ({}));
-        const pin = String(body?.pin || '').trim();
         const note = String(body?.note || body?.operatorNote || '').trim();
-        const auth = await authorizePlatformOperator(env, pin);
+        const auth = await authorizePlatformOperatorRequest(env, request, body, url);
         if (!auth.ok) {
           return Response.json({ ok: false, error: auth.error }, { status: auth.status });
         }
@@ -4871,9 +5527,8 @@ export default {
         const requestId = decodeURIComponent(String(routeMatch?.[1] || '')).trim();
         const action = String(routeMatch?.[2] || '').trim().toLowerCase();
         const body = await request.json().catch(() => ({}));
-        const pin = String(body?.pin || '').trim();
         const operatorNote = String(body?.operatorNote || body?.note || '').trim();
-        const auth = await authorizePlatformOperator(env, pin);
+        const auth = await authorizePlatformOperatorRequest(env, request, body, url);
         if (!auth.ok) {
           return Response.json({ ok: false, error: auth.error }, { status: auth.status });
         }
@@ -5030,9 +5685,8 @@ export default {
         const reviewId = decodeURIComponent(String(routeMatch?.[1] || '')).trim();
         const action = String(routeMatch?.[2] || '').trim().toLowerCase();
         const body = await request.json().catch(() => ({}));
-        const pin = String(body?.pin || request.headers.get('x-admin-pin') || '').trim();
         const reviewNote = String(body?.reviewNote || body?.note || '').trim();
-        const auth = await authorizePlatformOperator(env, pin);
+        const auth = await authorizePlatformOperatorRequest(env, request, body, url);
         if (!auth.ok) {
           return Response.json({ ok: false, error: auth.error }, { status: auth.status });
         }
@@ -5180,9 +5834,8 @@ export default {
         const routeMatch = url.pathname.match(/^\/api\/platform\/tenants\/(\d+)\/suspend-website$/);
         const companyId = Number(routeMatch?.[1] || 0);
         const body = await request.json().catch(() => ({}));
-        const pin = String(body?.pin || request.headers.get('x-admin-pin') || '').trim();
         const reason = String(body?.reason || body?.suspendedReason || 'operator_suspension').trim();
-        const auth = await authorizePlatformOperator(env, pin);
+        const auth = await authorizePlatformOperatorRequest(env, request, body, url);
         if (!auth.ok) {
           return Response.json({ ok: false, error: auth.error }, { status: auth.status });
         }
@@ -5244,9 +5897,8 @@ export default {
         const routeMatch = url.pathname.match(/^\/api\/platform\/subdomains\/([^/]+)\/quarantine$/);
         const slug = normalizeTenantSubdomain(decodeURIComponent(String(routeMatch?.[1] || '')).trim());
         const body = await request.json().catch(() => ({}));
-        const pin = String(body?.pin || request.headers.get('x-admin-pin') || '').trim();
         const reason = String(body?.reason || 'operator_quarantine').trim();
-        const auth = await authorizePlatformOperator(env, pin);
+        const auth = await authorizePlatformOperatorRequest(env, request, body, url);
         if (!auth.ok) {
           return Response.json({ ok: false, error: auth.error }, { status: auth.status });
         }
@@ -5638,8 +6290,7 @@ export default {
         const routeMatch = url.pathname.match(/^\/api\/platform\/admin\/signups\/([^/]+)\/retry-payment$/);
         const signupId = decodeURIComponent(String(routeMatch?.[1] || '')).trim();
         const body = await request.json().catch(() => ({}));
-        const pin = String(body?.pin || '').trim();
-        const auth = await authorizePlatformOperator(env, pin);
+        const auth = await authorizePlatformOperatorRequest(env, request, body, url);
         if (!auth.ok) {
           return Response.json({ ok: false, error: auth.error }, { status: auth.status });
         }
@@ -5663,8 +6314,7 @@ export default {
       try {
         const routeMatch = url.pathname.match(/^\/api\/platform\/admin\/tenants\/([^/]+)\/go-live-readiness$/);
         const companyId = Number(decodeURIComponent(String(routeMatch?.[1] || '')).trim() || 0);
-        const pin = String(url.searchParams.get('pin') || request.headers.get('x-admin-pin') || '').trim();
-        const auth = await authorizePlatformOperator(env, pin);
+        const auth = await authorizePlatformOperatorRequest(env, request, null, url);
         if (!auth.ok) {
           return Response.json({ ok: false, error: auth.error }, { status: auth.status });
         }
@@ -5707,8 +6357,7 @@ export default {
       return runTenantRoute(async ({ companyId }) => {
         try {
         const body = await request.json().catch(() => ({}));
-        const pin = String(body?.pin || '').trim();
-        const auth = await authorizeAdminByPin(env, companyId, pin);
+        const auth = await authorizeCompanyAdminRequest(env, request, companyId, body, url, { allowManager: false });
         if (!auth.ok) {
           return Response.json({ ok: false, error: auth.error }, { status: auth.status });
         }
@@ -6336,9 +6985,8 @@ export default {
     if (url.pathname === "/api/contacts" && request.method === "GET") {
       return runTenantRoute(async ({ companyId }) => {
         try {
-        const pin = String(url.searchParams.get('pin') || request.headers.get('x-staff-pin') || request.headers.get('x-admin-pin') || '').trim();
         const statusFilter = String(url.searchParams.get('status') || '').trim();
-        const auth = await authorizeStaffByPin(env, companyId, pin);
+        const auth = await authorizeSessionOrStaffPinRequest(env, request, companyId, null, url, { allowManager: true });
 
         if (!auth.ok) {
           return Response.json({ ok: false, error: auth.error }, { status: auth.status });
@@ -6381,8 +7029,7 @@ export default {
         const routeMatch = url.pathname.match(/^\/api\/contacts\/([^/]+)\/push$/);
         const contactId = decodeURIComponent(String(routeMatch?.[1] || '')).trim();
         const body = await request.json().catch(() => ({}));
-        const pin = String(body?.pin || request.headers.get('x-staff-pin') || request.headers.get('x-admin-pin') || '').trim();
-        const auth = await authorizeStaffByPin(env, companyId, pin);
+        const auth = await authorizeSessionOrStaffPinRequest(env, request, companyId, body, url, { allowManager: true });
 
         if (!auth.ok) {
           return Response.json({ ok: false, error: auth.error }, { status: auth.status });
@@ -6424,9 +7071,7 @@ export default {
     if (url.pathname === "/api/admin/integration-config" && request.method === "GET") {
       return runTenantRoute(async ({ companyId }) => {
         try {
-        const pin = String(url.searchParams.get("pin") || request.headers.get("x-admin-pin") || '').trim();
-
-        const auth = await authorizeAdminByPin(env, companyId, pin);
+        const auth = await authorizeCompanyAdminRequest(env, request, companyId, null, url, { allowManager: false });
         if (!auth.ok) {
           return Response.json({ success: false, error: auth.error }, { status: auth.status });
         }
@@ -6478,9 +7123,7 @@ export default {
       return runTenantRoute(async ({ companyId }) => {
         try {
         const body = await request.json();
-        const pin = String(body?.pin || '').trim();
-
-        const auth = await authorizeAdminByPin(env, companyId, pin);
+        const auth = await authorizeCompanyAdminRequest(env, request, companyId, body, url, { allowManager: false });
         if (!auth.ok) {
           return Response.json({ success: false, error: auth.error }, { status: auth.status });
         }
@@ -6562,8 +7205,7 @@ export default {
     if (url.pathname === "/api/admin/platform-config" && request.method === "GET") {
       return runTenantRoute(async ({ companyId }) => {
         try {
-        const pin = String(url.searchParams.get("pin") || request.headers.get("x-admin-pin") || request.headers.get("x-staff-pin") || '').trim();
-        const auth = await authorizeManagerOrAdminByPin(env, companyId, pin);
+        const auth = await authorizeCompanyAdminRequest(env, request, companyId, null, url, { allowManager: true });
 
         if (!auth.ok) {
           return Response.json({ success: false, error: auth.error }, { status: auth.status });
@@ -6582,8 +7224,7 @@ export default {
       return runTenantRoute(async ({ companyId }) => {
         try {
           const body = await request.json().catch(() => ({}));
-          const pin = String(body?.pin || '').trim();
-          const auth = await authorizeAdminByPin(env, companyId, pin);
+          const auth = await authorizeCompanyAdminRequest(env, request, companyId, body, url, { allowManager: false });
           if (!auth.ok) {
             return Response.json({ ok: false, error: auth.error }, { status: auth.status });
           }
@@ -6610,8 +7251,7 @@ export default {
       return runTenantRoute(async ({ companyId }) => {
         try {
           const body = await request.json().catch(() => ({}));
-          const pin = String(body?.pin || '').trim();
-          const auth = await authorizeAdminByPin(env, companyId, pin);
+          const auth = await authorizeCompanyAdminRequest(env, request, companyId, body, url, { allowManager: false });
           if (!auth.ok) {
             return Response.json({ ok: false, error: auth.error }, { status: auth.status });
           }
@@ -6644,8 +7284,7 @@ export default {
       return runTenantRoute(async ({ companyId }) => {
         try {
         const body = await request.json();
-        const pin = String(body?.pin || '').trim();
-        const auth = await authorizeManagerOrAdminByPin(env, companyId, pin);
+        const auth = await authorizeCompanyAdminRequest(env, request, companyId, body, url, { allowManager: true });
 
         if (!auth.ok) {
           return Response.json({ success: false, error: auth.error }, { status: auth.status });
@@ -6787,9 +7426,8 @@ export default {
       return runTenantRoute(async ({ companyId }) => {
         try {
         const body = await request.json().catch(() => ({}));
-        const pin = String(body?.pin || '').trim();
         const reviewNote = String(body?.reviewNote || body?.note || '').trim();
-        const auth = await authorizeAdminByPin(env, companyId, pin);
+        const auth = await authorizeCompanyAdminRequest(env, request, companyId, body, url, { allowManager: false });
 
         if (!auth.ok) {
           return Response.json({ ok: false, error: auth.error }, { status: auth.status });
@@ -6937,9 +7575,8 @@ export default {
       return runTenantRoute(async ({ companyId }) => {
         try {
           const body = await request.json().catch(() => ({}));
-          const pin = String(body?.pin || '').trim();
           const releaseNote = String(body?.releaseNote || body?.note || '').trim();
-          const auth = await authorizeAdminByPin(env, companyId, pin);
+          const auth = await authorizeCompanyAdminRequest(env, request, companyId, body, url, { allowManager: false });
 
           if (!auth.ok) {
             return Response.json({ ok: false, error: auth.error }, { status: auth.status });
@@ -6969,9 +7606,8 @@ export default {
         const routeMatch = url.pathname.match(/^\/api\/admin\/website\/releases\/([^/]+)\/rollback$/);
         const releaseId = decodeURIComponent(String(routeMatch?.[1] || '')).trim();
         const body = await request.json().catch(() => ({}));
-        const pin = String(body?.pin || '').trim();
         const rollbackNote = String(body?.rollbackNote || body?.note || '').trim();
-        const auth = await authorizeAdminByPin(env, companyId, pin);
+        const auth = await authorizeCompanyAdminRequest(env, request, companyId, body, url, { allowManager: false });
 
         if (!auth.ok) {
           return Response.json({ ok: false, error: auth.error }, { status: auth.status });
@@ -7068,8 +7704,7 @@ export default {
     if (url.pathname === "/api/admin/staff" && request.method === "GET") {
       return runTenantRoute(async ({ companyId }) => {
         try {
-        const pin = String(url.searchParams.get("pin") || request.headers.get("x-admin-pin") || '').trim();
-        const auth = await authorizeAdminByPin(env, companyId, pin);
+        const auth = await authorizeCompanyAdminRequest(env, request, companyId, null, url, { allowManager: false });
 
         if (!auth.ok) {
           return Response.json({ success: false, error: auth.error }, { status: auth.status });
@@ -7094,8 +7729,7 @@ export default {
       return runTenantRoute(async ({ companyId }) => {
         try {
         const body = await request.json();
-        const pin = String(body?.pin || '').trim();
-        const auth = await authorizeAdminByPin(env, companyId, pin);
+        const auth = await authorizeCompanyAdminRequest(env, request, companyId, body, url, { allowManager: false });
 
         if (!auth.ok) {
           return Response.json({ success: false, error: auth.error }, { status: auth.status });
@@ -7172,8 +7806,7 @@ export default {
     if (url.pathname === "/api/admin/media-assets" && request.method === "GET") {
       return runTenantRoute(async ({ companyId }) => {
         try {
-        const pin = String(url.searchParams.get("pin") || request.headers.get("x-admin-pin") || request.headers.get("x-staff-pin") || '').trim();
-        const auth = await authorizeManagerOrAdminByPin(env, companyId, pin);
+        const auth = await authorizeCompanyAdminRequest(env, request, companyId, null, url, { allowManager: true });
 
         if (!auth.ok) {
           return Response.json({ success: false, error: auth.error }, { status: auth.status });
@@ -7203,8 +7836,7 @@ export default {
       return runTenantRoute(async ({ companyId }) => {
         try {
         const body = await request.json();
-        const pin = String(body?.pin || '').trim();
-        const auth = await authorizeManagerOrAdminByPin(env, companyId, pin);
+        const auth = await authorizeCompanyAdminRequest(env, request, companyId, body, url, { allowManager: true });
 
         if (!auth.ok) {
           return Response.json({ success: false, error: auth.error }, { status: auth.status });
@@ -7525,7 +8157,6 @@ export default {
         const bookingId = url.pathname.match(/^\/api\/bookings\/([^/]+)\/stage$/)[1];
         const body = await request.json();
         const { stage: newStage, staffId } = body;
-        const pin = String(body?.pin || request.headers.get('x-staff-pin') || request.headers.get('x-admin-pin') || '').trim();
 
         let effectiveCompanyId = companyId;
         const reqCompanyId = Number(body?.companyId || 0);
@@ -7543,14 +8174,7 @@ export default {
         }
 
         if (!canOverrideCompanyIdForHost(tenant, url) && reqCompanyId > 0) {
-          if (!pin) {
-            return Response.json(
-              { ok: false, error: 'Staff PIN required for company override' },
-              { status: 401 }
-            );
-          }
-
-          const auth = await authorizeStaffByPin(env, effectiveCompanyId, pin);
+          const auth = await authorizeSessionOrStaffPinRequest(env, request, effectiveCompanyId, body, url, { allowManager: true });
           if (!auth.ok) {
             return Response.json(
               { ok: false, error: auth.error },
@@ -7633,12 +8257,7 @@ export default {
         try {
         const requestedCompanyId = Number(url.searchParams.get('company_id') || 0);
         if (!canOverrideCompanyIdForHost(tenant, url) && requestedCompanyId > 0) {
-          const pin = String(url.searchParams.get('pin') || request.headers.get('x-staff-pin') || request.headers.get('x-admin-pin') || '').trim();
-          if (!pin) {
-            return Response.json({ ok: false, error: 'Staff PIN required for company override' }, { status: 401 });
-          }
-
-          const auth = await authorizeStaffByPin(env, companyId, pin);
+          const auth = await authorizeSessionOrStaffPinRequest(env, request, companyId, null, url, { allowManager: true });
           if (!auth.ok) {
             return Response.json({ ok: false, error: auth.error }, { status: auth.status });
           }
@@ -7846,12 +8465,7 @@ export default {
         try {
         const requestedCompanyId = Number(url.searchParams.get('company_id') || 0);
         if (!canOverrideCompanyIdForHost(tenant, url) && requestedCompanyId > 0) {
-          const pin = String(url.searchParams.get('pin') || request.headers.get('x-staff-pin') || request.headers.get('x-admin-pin') || '').trim();
-          if (!pin) {
-            return Response.json({ ok: false, error: 'Staff PIN required for company override' }, { status: 401 });
-          }
-
-          const auth = await authorizeStaffByPin(env, companyId, pin);
+          const auth = await authorizeSessionOrStaffPinRequest(env, request, companyId, null, url, { allowManager: true });
           if (!auth.ok) {
             return Response.json({ ok: false, error: auth.error }, { status: auth.status });
           }

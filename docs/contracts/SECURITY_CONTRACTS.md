@@ -14,7 +14,8 @@
 
 1. **Subdomain** (primary): `tenant_abc.gooddining.app` → `tenant_id = tenant_abc`
 2. **Query override** (dev only): `?company_id=1` (localhost/workers.dev only)
-3. **None**: Returns `400 tenant_required`
+3. **Authenticated admin session** (admin-only resolution path): session already carries the company or operator scope
+4. **None**: Returns `400 tenant_required`
 
 **Resolution function**:
 
@@ -62,18 +63,62 @@ function resolveTenant(url, options = {}) {
 
 ---
 
-### PIN Authentication
+### Identity Session Authentication
+
+**Applies to**:
+- Restaurant Admin
+- SaaS Admin
+
+**Requirements**:
+- Browser session stored in `HttpOnly` cookie
+- Server-side session record in D1 (`auth_sessions`)
+- Session tied to `user_id` and explicit scope (`restaurant_admin` or `platform_admin`)
+- Restaurant Admin session tied to a concrete `company_id`
+- Platform Admin session tied to an authorized operator membership
+
+**Session verification**:
+
+```javascript
+async function verifyAdminSession(request) {
+  const cookies = parseCookies(request.headers.get('cookie') || '');
+  const token = cookies.gd_admin_session;
+  if (!token) throwError('auth_session_required', 401);
+
+  const tokenHash = await sha256Hex(token);
+  const session = await db.prepare(`
+    SELECT s.user_id, s.session_scope, s.company_id, s.organization_id, s.expires_at, s.revoked_at,
+           u.primary_email, u.display_name
+    FROM auth_sessions s
+    JOIN users u ON u.id = s.user_id
+    WHERE s.id = ?
+    LIMIT 1
+  `).bind(tokenHash).first();
+
+  if (!session || session.revoked_at || Date.parse(session.expires_at) <= Date.now()) {
+    throwError('auth_session_invalid', 401);
+  }
+
+  return session;
+}
+```
+
+**Session scope rules**:
+
+- `restaurant_admin`: may access tenant admin routes only for the bound company or an active company membership
+- `platform_admin`: may access operator routes only with an active platform operator membership
+
+### Board PIN Authentication
 
 **Requirements**:
 - 4 digits (1000-9999)
-- Hashed with bcrypt (not plaintext)
 - Per-tenant unique (same PIN can exist across tenants)
-- Validated on every request
+- Valid only for Booking Board or other explicitly board-scoped operational flows
+- Not accepted as the primary login path for Restaurant Admin or SaaS Admin
 
 **PIN verification**:
 
 ```javascript
-async function verifyPIN(phone_number_format) {
+async function verifyBoardPIN(request) {
   const body = await request.json();
   const { pin, tenant_id } = body;
   
@@ -94,7 +139,7 @@ async function verifyPIN(phone_number_format) {
     throwError('invalid_pin', 401);
   }
   
-  // 4. Return staff record
+  // 4. Return staff record for board-scoped use
   return staff;
 }
 ```
@@ -115,14 +160,15 @@ if (failedAttempts >= 5) {
 
 ---
 
-### OAuth (Future - Phase 5+)
+### Identity Providers
 
-**When**: Admin login, SSO for multi-location
+**Current target providers**:
+- Email magic link
+- Google OAuth
 
-**Supported providers**:
-- Google (gmail.com)
-- Microsoft (outlook.com)
-- NextAuth.js (self-hosted)
+**Not in scope yet**:
+- Microsoft
+- generic SAML or OIDC SSO
 
 ---
 
@@ -134,7 +180,8 @@ if (failedAttempts >= 5) {
 
 | Role | Permissions | Use case |
 |------|-------------|----------|
-| `admin` | All operations | Owner/manager |
+| `platform_admin` | All SaaS Admin operations | Internal platform operator |
+| `tenant_admin` | All Restaurant Admin operations | Restaurant owner/admin |
 | `manager` | Bookings (update), staff limited, reporting | Senior staff |
 | `hostess` | Bookings (confirm/arrive), POS view (read-only) | Front desk |
 | `bartender` | POS (items, payment), orders only | Bar staff |
@@ -143,9 +190,10 @@ if (failedAttempts >= 5) {
 **Permission checks**:
 
 ```javascript
-function requirePermission(staff, permission) {
+function requirePermission(actor, permission) {
   const ROLES_PERMISSIONS = {
-    'admin': ['*'],  // All permissions
+    'platform_admin': ['*'],
+    'tenant_admin': ['*'],
     'manager': [
       'view_bookings',
       'confirm_booking',
@@ -165,7 +213,7 @@ function requirePermission(staff, permission) {
     ]
   };
   
-  const staffPermissions = ROLES_PERMISSIONS[staff.role] || [];
+  const staffPermissions = ROLES_PERMISSIONS[actor.role] || [];
   
   if (staffPermissions.includes('*')) {
     return true;  // Admin
@@ -180,11 +228,24 @@ function requirePermission(staff, permission) {
 
 // Usage in route
 export async function handleRequest(request) {
-  const staff = await verifyPIN(request);
-  requirePermission(staff, 'confirm_booking');
+  const actor = await verifyAdminSession(request);
+  requirePermission(actor, 'confirm_booking');
   // Proceed with operation
 }
 ```
+
+### Dual-Stack Transition Rule
+
+During the migration window:
+
+- admin routes may accept either a valid admin session or the legacy PIN fallback
+- board routes continue to accept PIN
+- new features must default to session auth for admin surfaces
+
+End state:
+
+- Restaurant Admin and SaaS Admin use session auth only
+- Booking Board keeps PIN
 
 ---
 
