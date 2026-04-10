@@ -19,6 +19,7 @@
 - The explicit `production` Wrangler environment now has a verified custom-domain ingress at `prod.gooddining.app`; workers.dev still returns `1050`, but it is no longer the public production path.
 - Schema/init and legacy utility artifacts still contain Odoo-era references and are intentionally left as follow-up cleanup, not active dependencies.
 - Product direction is now updated: signup, Restaurant Admin, and SaaS Admin move to email or Google auth; Booking Board remains the only PIN-first surface.
+- CP-3E step 1 is documented in `knowledge/specs/identity-auth-migration-spec.md` and is the current source of truth for auth schema migration.
 
 ### ✅ What's Complete
 

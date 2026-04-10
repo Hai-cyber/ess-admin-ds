@@ -99,6 +99,7 @@ Not Started: 0%
 - [x] SaaS Admin now includes a tenant workflow overview and operator-only go-live blocker inspection per tenant
 - [x] Restaurant Admin now uses a role-aware setup shell with product-correct naming, grouped settings quick navigation, and section visibility aligned to manager/admin scope
 - [x] Product direction now formally separates identity auth from operational PIN usage: signup + Restaurant Admin + SaaS Admin move to email/Google, Booking Board remains PIN-only
+- [x] CP-3E step 1 is now specified in `knowledge/specs/identity-auth-migration-spec.md` with target schema, backfill rules, and rollout phases
 - [x] Runtime now supports storage-backed publish artifacts for live tenant releases when a `WEBSITE_PUBLISH_R2` bucket binding is configured
 - [x] Custom-domain activation now requires a published release and rejects conflicting reserved/active domains before cutover
 - [x] Local smoke tests verified health, plans, signup policy, platform contact, platform admin dashboard, website payload, publish review, suspend, and quarantine actions on localhost
