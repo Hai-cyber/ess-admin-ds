@@ -108,6 +108,112 @@
       font-size: 0.85rem;
     }
 
+    .board-btn {
+      padding: 6px 12px;
+      background: var(--brand);
+      border: none;
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+
+    .board-btn[disabled],
+    .logout-btn[disabled] {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .auth-gate {
+      display: none;
+      flex: 1;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: linear-gradient(180deg, rgba(30, 41, 59, 0.92), rgba(15, 23, 42, 0.98));
+    }
+
+    .auth-gate.active {
+      display: flex;
+    }
+
+    .auth-card {
+      width: min(560px, 100%);
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+      display: grid;
+      gap: 18px;
+    }
+
+    .auth-card h2 {
+      font-size: 1.45rem;
+      color: var(--brand);
+    }
+
+    .auth-card p {
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .auth-form {
+      display: grid;
+      gap: 12px;
+    }
+
+    .auth-input {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-size: 0.95rem;
+    }
+
+    .auth-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .auth-btn {
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .auth-btn.primary {
+      background: var(--brand);
+      border-color: var(--brand);
+      color: white;
+    }
+
+    .auth-btn.ghost {
+      background: transparent;
+    }
+
+    .auth-status {
+      min-height: 20px;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      white-space: pre-wrap;
+    }
+
+    .auth-status.error {
+      color: var(--danger);
+    }
+
+    .auth-status.success {
+      color: var(--success);
+    }
+
     /* ==================== MAIN CONTENT ==================== */
     .main {
       flex: 1;
@@ -829,12 +935,31 @@
       </div>
       <div class="user-info">
         <span>👤 <span id="userName">Admin</span></span>
-        <button class="logout-btn" onclick="logout()">Logout</button>
+        <button class="board-btn" id="boardLaunchBtn" onclick="openBookingBoard()" disabled>Booking Board</button>
+        <button class="logout-btn" id="logoutBtn" onclick="logout()" disabled>Logout</button>
+      </div>
+    </div>
+
+    <div class="auth-gate" id="authGate">
+      <div class="auth-card">
+        <div>
+          <h2>Restaurant Admin Sign In</h2>
+          <p>Restaurant Admin now uses an identity session. Enter your email to receive a magic link, or continue with Google. Booking Board stays PIN-first and can still be opened separately.</p>
+        </div>
+        <div class="auth-form">
+          <input id="adminAuthEmail" class="auth-input" type="email" placeholder="owner@restaurant.com" autocomplete="email" />
+          <div class="auth-actions">
+            <button class="auth-btn primary" type="button" onclick="requestAdminMagicLink()">Email Magic Link</button>
+            <button class="auth-btn" type="button" onclick="startAdminGoogleLogin()">Continue With Google</button>
+            <button class="auth-btn ghost" type="button" onclick="openBookingBoard()">Open Booking Board (PIN)</button>
+          </div>
+        </div>
+        <div class="auth-status" id="authStatus">Waiting for an admin session.</div>
       </div>
     </div>
 
     <!-- MAIN CONTENT -->
-    <div class="main">
+    <div class="main" id="adminMain" style="display:none;">
       <!-- PAGE 1: CONTACTS -->
       <div class="page active" data-page="contacts">
         <h2 class="page-title">💬 Inbox</h2>
@@ -988,13 +1113,7 @@
       const fromUser = Number(currentUser?.companyId || 0);
       if (fromUser > 0) return fromUser;
 
-      try {
-        const storedUser = JSON.parse(localStorage.getItem('esskultur_user') || 'null');
-        const storedCompanyId = Number(storedUser?.companyId || 0);
-        return storedCompanyId > 0 ? storedCompanyId : 0;
-      } catch {
-        return 0;
-      }
+      return 0;
     }
 
     function withTenantCompanyId(input) {
@@ -1251,75 +1370,144 @@
       TWILIO_AUTH_TOKEN: 'Twilio Auth Token'
     };
 
-    // ==================== INITIALIZATION ====================
+    let navigationInitialized = false;
+
+    function setAuthStatus(message, kind = '') {
+      const el = document.getElementById('authStatus');
+      if (!el) return;
+      el.className = `auth-status${kind ? ` ${kind}` : ''}`;
+      el.textContent = String(message || '');
+    }
+
+    function setAdminShellVisibility(isAuthenticated) {
+      const authGate = document.getElementById('authGate');
+      const main = document.getElementById('adminMain');
+      const logoutBtn = document.getElementById('logoutBtn');
+      const boardBtn = document.getElementById('boardLaunchBtn');
+      if (authGate) authGate.classList.toggle('active', !isAuthenticated);
+      if (main) main.style.display = isAuthenticated ? 'flex' : 'none';
+      if (logoutBtn) logoutBtn.disabled = !isAuthenticated;
+      if (boardBtn) boardBtn.disabled = !getTenantCompanyId();
+    }
+
+    async function restoreAdminSession() {
+      const companyId = getTenantCompanyId();
+      const path = companyId ? `/api/auth/session?company_id=${encodeURIComponent(companyId)}` : '/api/auth/session';
+      const res = await nativeFetch(path, { credentials: 'same-origin' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok || !data.authenticated) {
+        currentUser = null;
+        document.getElementById('userName').textContent = 'Guest';
+        setAdminShellVisibility(false);
+        setAuthStatus(companyId
+          ? 'No admin session found for this restaurant. Sign in with email or Google.'
+          : 'Missing company context. Add ?company_id=... on localhost or open the tenant admin host.', '');
+        return false;
+      }
+
+      currentUser = {
+        id: data.user?.id || '',
+        name: data.user?.display_name || data.user?.email || 'Admin',
+        role: data.user?.role || 'viewer',
+        companyId: Number(data.company_id || companyId || 0),
+        email: data.user?.email || ''
+      };
+      document.getElementById('userName').textContent = currentUser.name;
+      setAdminShellVisibility(true);
+      setAuthStatus(`Signed in as ${currentUser.email || currentUser.name}.`, 'success');
+      return true;
+    }
+
     async function init() {
       try {
-        // Check if authenticated
-        const user = localStorage.getItem('esskultur_user');
-        if (!user) {
-          // Show PIN login
-          await showPINGate();
-          return;
+        const authenticated = await restoreAdminSession();
+        if (!authenticated) return;
+
+        if (!navigationInitialized) {
+          setupPageNavigation();
+          navigationInitialized = true;
         }
 
-        currentUser = JSON.parse(user);
-        if (!currentUser?.pin) {
-          localStorage.removeItem('esskultur_user');
-          await showPINGate();
-          return;
-        }
-        document.getElementById('userName').textContent = currentUser.name;
-
-        // Load all data
         await loadAllData();
-
-        // Setup page navigation
-        setupPageNavigation();
-
-        // Initial render
-        renderContactsPage();
+        switchPage(currentPage);
       } catch (error) {
         console.error('Init error:', error);
+        setAuthStatus(error.message || 'Unable to initialize Restaurant Admin.', 'error');
+        setAdminShellVisibility(false);
       }
     }
 
-    async function showPINGate() {
-      const pin = prompt('🔐 Enter Staff PIN:');
-      if (!pin) {
-        alert('PIN required to access');
-        await showPINGate();
+    async function requestAdminMagicLink() {
+      const email = String(document.getElementById('adminAuthEmail')?.value || '').trim();
+      const companyId = getTenantCompanyId();
+      if (!email) {
+        setAuthStatus('Enter your admin email first.', 'error');
+        return;
+      }
+      if (!companyId) {
+        setAuthStatus('A tenant company_id is required before requesting a restaurant admin login link.', 'error');
         return;
       }
 
-      try {
-        const res = await fetch(`/api/staff/auth?pin=${encodeURIComponent(pin.trim())}`);
-        const data = await res.json().catch(() => ({}));
-
-        if (!res.ok || !data.success) {
-          alert(data.error || 'Invalid PIN');
-          await showPINGate();
-          return;
-        }
-
-        currentUser = {
-          id: data.staffId,
-          name: data.staffName || 'Staff',
-          role: data.role || 'staff',
-          companyId: data.companyId || 1,
-          pin: pin.trim()
-        };
-
-        localStorage.setItem('esskultur_user', JSON.stringify(currentUser));
-        document.getElementById('userName').textContent = currentUser.name;
-        await init();
-      } catch (error) {
-        alert(error.message || 'Unable to authenticate right now.');
+      setAuthStatus('Requesting secure sign-in link...');
+      const res = await nativeFetch('/api/auth/email/request-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          scope: 'restaurant_admin',
+          company_id: companyId,
+          redirect_path: `${window.location.pathname}${window.location.search}`
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
+        setAuthStatus(data.error || 'Unable to request a magic link right now.', 'error');
+        return;
       }
+
+      const previewLine = data.preview_url ? `\nPreview link: ${data.preview_url}` : '';
+      setAuthStatus(`Magic link requested. Check your inbox.${previewLine}`, 'success');
     }
 
-    function logout() {
-      localStorage.removeItem('esskultur_user');
-      location.reload();
+    function startAdminGoogleLogin() {
+      const companyId = getTenantCompanyId();
+      if (!companyId) {
+        setAuthStatus('A tenant company_id is required before starting Google sign-in.', 'error');
+        return;
+      }
+
+      const params = new URLSearchParams({
+        scope: 'restaurant_admin',
+        company_id: String(companyId),
+        redirect_path: `${window.location.pathname}${window.location.search}`
+      });
+      window.location.href = `/auth/google/start?${params.toString()}`;
+    }
+
+    function openBookingBoard() {
+      const companyId = getTenantCompanyId();
+      if (!companyId) {
+        alert('Missing company_id for Booking Board launch.');
+        return;
+      }
+      window.open(`/board?company_id=${encodeURIComponent(companyId)}`, '_blank', 'noopener');
+    }
+
+    async function logout() {
+      try {
+        await nativeFetch('/api/auth/logout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        console.error('Logout failed:', error);
+      }
+
+      currentUser = null;
+      document.getElementById('userName').textContent = 'Guest';
+      setAdminShellVisibility(false);
+      setAuthStatus('Signed out. Sign in again to continue.', '');
     }
 
     function getCurrentRole() {
@@ -1371,10 +1559,10 @@
     }
 
     async function loadContactsData() {
-      if (!currentUser?.pin) return;
+      if (!currentUser?.id) return;
 
       try {
-        const res = await fetch(`/api/contacts?pin=${encodeURIComponent(currentUser.pin)}`);
+        const res = await fetch('/api/contacts');
         const data = await res.json().catch(() => ({}));
 
         if (!res.ok || !data.ok) {
@@ -1393,7 +1581,7 @@
 
     async function loadBookingsData() {
       try {
-        const res = await fetch(`/api/bookings?pin=${encodeURIComponent(currentUser?.pin || '')}`);
+        const res = await fetch('/api/bookings');
         const data = await res.json().catch(() => ({}));
 
         if (!res.ok || !data.ok) {
@@ -1412,7 +1600,7 @@
 
     async function loadCustomersData() {
       try {
-        const res = await fetch(`/api/customers?pin=${encodeURIComponent(currentUser?.pin || '')}`);
+        const res = await fetch('/api/customers');
         const data = await res.json().catch(() => ({}));
 
         if (!res.ok || !data.ok) {
@@ -1638,7 +1826,7 @@
     }
 
     async function pushToGmail(id) {
-      if (!currentUser?.pin) {
+      if (!currentUser?.id) {
         alert('Please login again.');
         return;
       }
@@ -1647,7 +1835,7 @@
         const res = await fetch(`/api/contacts/${encodeURIComponent(id)}/push`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pin: currentUser.pin })
+          body: JSON.stringify({})
         });
         const data = await res.json().catch(() => ({}));
 
@@ -1800,8 +1988,7 @@
           body: JSON.stringify({
             stage: newStage,
             staffId: currentUser.id,
-            companyId: currentUser.companyId || 1,
-            pin: currentUser.pin || ''
+            companyId: currentUser.companyId || 1
           })
         });
 
@@ -1988,13 +2175,13 @@
     }
 
     async function loadIntegrationConfig() {
-      if (!currentUser?.pin) {
+      if (!currentUser?.id) {
         integrationConfig = { __error: 'Please login again to manage integration settings.' };
         return;
       }
 
       try {
-        const res = await fetch(`/api/admin/integration-config?pin=${encodeURIComponent(currentUser.pin)}`);
+        const res = await fetch('/api/admin/integration-config');
         const data = await res.json().catch(() => ({}));
 
         if (!res.ok || !data.success) {
@@ -2009,13 +2196,13 @@
     }
 
     async function loadPlatformConfig() {
-      if (!currentUser?.pin) {
+      if (!currentUser?.id) {
         platformConfigError = 'Please login again to manage platform settings.';
         return;
       }
 
       try {
-        const res = await fetch(`/api/admin/platform-config?pin=${encodeURIComponent(currentUser.pin)}`);
+        const res = await fetch('/api/admin/platform-config');
         const data = await res.json().catch(() => ({}));
 
         if (!res.ok || !data.success) {
@@ -2040,13 +2227,13 @@
     }
 
     async function loadStaffData() {
-      if (!currentUser?.pin) {
+      if (!currentUser?.id) {
         staffError = 'Please login again to manage staff.';
         return;
       }
 
       try {
-        const res = await fetch(`/api/admin/staff?pin=${encodeURIComponent(currentUser.pin)}`);
+        const res = await fetch('/api/admin/staff');
         const data = await res.json().catch(() => ({}));
 
         if (!res.ok || !data.success) {
@@ -2062,13 +2249,13 @@
     }
 
     async function loadMediaAssets() {
-      if (!currentUser?.pin) {
+      if (!currentUser?.id) {
         mediaAssetsError = 'Please login again to manage media assets.';
         return;
       }
 
       try {
-        const res = await fetch(`/api/admin/media-assets?pin=${encodeURIComponent(currentUser.pin)}`);
+        const res = await fetch('/api/admin/media-assets');
         const data = await res.json().catch(() => ({}));
 
         if (!res.ok || !data.success) {
@@ -2785,7 +2972,7 @@
     }
 
     async function submitDomainUpgradeRequest() {
-      if (!currentUser?.pin) {
+      if (!currentUser?.id) {
         alert('Please login again.');
         return;
       }
@@ -2795,7 +2982,6 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            pin: currentUser.pin,
             requestedDomain: document.getElementById('domain_request_domain')?.value.trim() || '',
             registrationMode: document.getElementById('domain_request_registration_mode')?.value || 'byod',
             requestNote: document.getElementById('domain_request_note')?.value.trim() || ''
@@ -2814,7 +3000,7 @@
     }
 
     async function markDomainDnsReady() {
-      if (!currentUser?.pin) {
+      if (!currentUser?.id) {
         alert('Please login again.');
         return;
       }
@@ -2823,7 +3009,7 @@
         const res = await fetch('/api/admin/domain-upgrade/mark-dns-ready', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pin: currentUser.pin })
+          body: JSON.stringify({})
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.ok) {
@@ -3054,7 +3240,7 @@
     }
 
     async function runWebsitePublishReview() {
-      if (!currentUser?.pin) {
+      if (!currentUser?.id) {
         alert('Please login again.');
         return;
       }
@@ -3070,7 +3256,7 @@
         const res = await fetch('/api/admin/website/publish', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pin: currentUser.pin, reviewNote })
+          body: JSON.stringify({ reviewNote })
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.ok) {
@@ -3086,7 +3272,7 @@
     }
 
     async function runWebsitePublishApprovedRelease() {
-      if (!currentUser?.pin) {
+      if (!currentUser?.id) {
         alert('Please login again.');
         return;
       }
@@ -3102,7 +3288,7 @@
         const res = await fetch('/api/admin/website/publish-approved', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pin: currentUser.pin, releaseNote })
+          body: JSON.stringify({ releaseNote })
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.ok) {
@@ -3118,7 +3304,7 @@
     }
 
     async function runWebsiteReleaseRollback(releaseId) {
-      if (!currentUser?.pin) {
+      if (!currentUser?.id) {
         alert('Please login again.');
         return;
       }
@@ -3134,7 +3320,7 @@
         const res = await fetch(`/api/admin/website/releases/${encodeURIComponent(releaseId)}/rollback`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pin: currentUser.pin, rollbackNote })
+          body: JSON.stringify({ rollbackNote })
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.ok) {
@@ -3173,7 +3359,7 @@
     }
 
     async function retryTenantStripeCheckout() {
-      if (!currentUser?.pin) {
+      if (!currentUser?.id) {
         alert('Please login again.');
         return;
       }
@@ -3182,7 +3368,7 @@
         const res = await fetch('/api/admin/payment/retry-checkout', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pin: currentUser.pin })
+          body: JSON.stringify({})
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.ok) {
@@ -3265,7 +3451,7 @@
     }
 
     async function savePlatformConfig() {
-      if (!currentUser?.pin) {
+      if (!currentUser?.id) {
         alert('Please login again.');
         return;
       }
@@ -3312,7 +3498,6 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            pin: currentUser.pin,
             company,
             operationalSettings: nextOperationalSettings,
             modules: nextModules
@@ -3401,7 +3586,7 @@
     }
 
     async function saveStaffRow(index) {
-      if (!currentUser?.pin) {
+      if (!currentUser?.id) {
         alert('Please login again.');
         return;
       }
@@ -3425,7 +3610,7 @@
         const res = await fetch('/api/admin/staff', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pin: currentUser.pin, staff: payload })
+          body: JSON.stringify({ staff: payload })
         });
 
         const data = await res.json().catch(() => ({}));
@@ -3436,9 +3621,7 @@
 
         const savedStaffId = String(current.id || data.staffId || '');
         if (savedStaffId && String(currentUser?.id || '') === savedStaffId) {
-          currentUser.pin = payload.pin;
           currentUser.role = payload.role;
-          localStorage.setItem('esskultur_user', JSON.stringify(currentUser));
         }
 
         await Promise.all([loadStaffData(), loadPlatformConfig()]);
@@ -3512,7 +3695,7 @@
     }
 
     async function saveIntegrationConfig() {
-      if (!currentUser?.pin) {
+      if (!currentUser?.id) {
         alert('Please login again.');
         return;
       }
@@ -3533,7 +3716,6 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            pin: currentUser.pin,
             values
           })
         });
@@ -3648,7 +3830,7 @@
     }
 
     async function uploadMediaAsset() {
-      if (!currentUser?.pin) {
+      if (!currentUser?.id) {
         alert('Please login again.');
         return;
       }
@@ -3680,7 +3862,6 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            pin: currentUser.pin,
             action: 'upsert',
             asset: {
               title,
@@ -3713,7 +3894,7 @@
     }
 
     async function saveMediaAssetRow(index) {
-      if (!currentUser?.pin) {
+      if (!currentUser?.id) {
         alert('Please login again.');
         return;
       }
@@ -3734,7 +3915,6 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            pin: currentUser.pin,
             action: 'upsert',
             asset: {
               id: current.id,
@@ -3763,7 +3943,7 @@
     }
 
     async function deleteMediaAssetRow(index) {
-      if (!currentUser?.pin) {
+      if (!currentUser?.id) {
         alert('Please login again.');
         return;
       }
@@ -3782,7 +3962,6 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            pin: currentUser.pin,
             action: 'delete',
             id: current.id
           })

@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import worker from '../src';
 import { initializeDatabase } from '../src/db/init';
 
+const originalFetch = globalThis.fetch.bind(globalThis);
+
 beforeEach(() => {
 	env.TWILIO_ACCOUNT_SID = 'AC_TEST_ACCOUNT_SID';
 	env.TWILIO_AUTH_TOKEN = 'test-auth-token';
@@ -24,6 +26,90 @@ async function createStripeSignatureHeader(secret, payload) {
 	const signatureBytes = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${timestamp}.${payload}`));
 	const signature = Array.from(new Uint8Array(signatureBytes)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
 	return `t=${timestamp},v1=${signature}`;
+}
+
+function extractCookieValue(setCookieHeader) {
+	return String(setCookieHeader || '').split(';')[0] || '';
+}
+
+async function seedIdentityAccess(env, {
+	userId,
+	email,
+	displayName,
+	companyId = 0,
+	companyRole = '',
+	platformRole = ''
+}) {
+	const now = new Date().toISOString();
+	await env.DB.prepare(`
+		INSERT INTO users (id, primary_email, primary_email_normalized, display_name, status, created_at, updated_at)
+		VALUES (?, ?, ?, ?, 'active', ?, ?)
+	`).bind(
+		userId,
+		email,
+		String(email || '').trim().toLowerCase(),
+		displayName,
+		now,
+		now
+	).run();
+
+	if (Number(companyId) > 0 && companyRole) {
+		await env.DB.prepare(`
+			INSERT INTO company_memberships (id, company_id, user_id, role, status, source, created_at, updated_at, created_by)
+			VALUES (?, ?, ?, ?, 'active', 'test_seed', ?, ?, 'test')
+		`).bind(
+			`cmpmem_${companyId}_${userId}`,
+			Number(companyId),
+			userId,
+			companyRole,
+			now,
+			now
+		).run();
+	}
+
+	if (platformRole) {
+		await env.DB.prepare(`
+			INSERT INTO platform_operator_memberships (id, user_id, role, status, created_at, updated_at, created_by)
+			VALUES (?, ?, ?, 'active', ?, ?, 'test')
+		`).bind(
+			`platmem_${userId}`,
+			userId,
+			platformRole,
+			now,
+			now
+		).run();
+	}
+}
+
+async function createMagicLinkSessionCookie(env, baseOrigin, payload) {
+	vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+		const requestUrl = typeof input === 'string' ? input : String(input?.url || '');
+		if (requestUrl.startsWith('https://api.mailchannels.net/tx/v1/send')) {
+			return new Response('{}', {
+				status: 202,
+				headers: { 'content-type': 'application/json' }
+			});
+		}
+		return originalFetch(input, init);
+	});
+
+	let ctx = createExecutionContext();
+	let response = await worker.fetch(new Request(`${baseOrigin}/api/auth/email/request-link`, {
+		method: 'POST',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify(payload)
+	}), env, ctx);
+	await waitOnExecutionContext(ctx);
+	const requestBody = await response.json();
+	expect(response.status).toBe(200);
+	expect(requestBody.ok).toBe(true);
+	expect(String(requestBody.preview_url || '')).toContain('/auth/email/callback?token=');
+
+	ctx = createExecutionContext();
+	response = await worker.fetch(new Request(String(requestBody.preview_url)), env, ctx);
+	await waitOnExecutionContext(ctx);
+	expect(response.status).toBe(302);
+	return extractCookieValue(response.headers.get('set-cookie'));
 }
 
 describe('ESSKULTUR worker', () => {
@@ -48,6 +134,134 @@ describe('ESSKULTUR worker', () => {
 		expect(body.ok).toBe(true);
 		expect(body.service).toBe('ess-admin-ds');
 		expect(typeof body.time).toBe('string');
+	});
+
+	it('creates a restaurant admin email session and allows tenant admin APIs without PIN', async () => {
+		await initializeDatabase(env.DB);
+		await seedIdentityAccess(env, {
+			userId: 'user_restaurant_admin',
+			email: 'owner@restaurant1.quan-esskultur.de',
+			displayName: 'Restaurant One Owner',
+			companyId: 1,
+			companyRole: 'tenant_admin'
+		});
+
+		const cookie = await createMagicLinkSessionCookie(env, 'http://localhost', {
+			email: 'owner@restaurant1.quan-esskultur.de',
+			scope: 'restaurant_admin',
+			company_id: 1,
+			redirect_path: '/admin?company_id=1'
+		});
+
+		let ctx = createExecutionContext();
+		let response = await worker.fetch(new Request('http://localhost/api/auth/session?company_id=1', {
+			headers: { cookie }
+		}), env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		let body = await response.json();
+		expect(body.ok).toBe(true);
+		expect(body.authenticated).toBe(true);
+		expect(body.scope).toBe('restaurant_admin');
+		expect(Number(body.company_id || 0)).toBe(1);
+		expect(String(body.user?.role || '')).toBe('admin');
+
+		ctx = createExecutionContext();
+		response = await worker.fetch(new Request('http://localhost/api/admin/platform-config?company_id=1', {
+			headers: { cookie }
+		}), env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		body = await response.json();
+		expect(body.success).toBe(true);
+
+		ctx = createExecutionContext();
+		response = await worker.fetch(new Request('http://localhost/api/auth/logout', {
+			method: 'POST',
+			headers: { cookie }
+		}), env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		expect(String(response.headers.get('set-cookie') || '')).toContain('Max-Age=0');
+
+		ctx = createExecutionContext();
+		response = await worker.fetch(new Request('http://localhost/api/auth/session?company_id=1', {
+			headers: { cookie }
+		}), env, ctx);
+		await waitOnExecutionContext(ctx);
+		body = await response.json();
+		expect(body.authenticated).toBe(false);
+	});
+
+	it('creates a platform admin Google session and allows SaaS admin APIs without PIN', async () => {
+		await initializeDatabase(env.DB);
+		env.GOOGLE_CLIENT_ID = 'google-client-id';
+		env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
+		await seedIdentityAccess(env, {
+			userId: 'user_platform_operator',
+			email: 'operator@gooddining.app',
+			displayName: 'Platform Operator',
+			platformRole: 'platform_admin'
+		});
+
+		let ctx = createExecutionContext();
+		let response = await worker.fetch(new Request('http://localhost/auth/google/start?scope=platform_admin&redirect_path=/platform/admin.html'), env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(302);
+		const googleStartLocation = response.headers.get('location') || '';
+		expect(googleStartLocation).toContain('accounts.google.com');
+		const googleStartUrl = new URL(googleStartLocation);
+		const state = String(googleStartUrl.searchParams.get('state') || '');
+		expect(state).not.toBe('');
+
+		vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+			const requestUrl = typeof input === 'string' ? input : String(input?.url || '');
+			if (requestUrl === 'https://oauth2.googleapis.com/token') {
+				return new Response(JSON.stringify({ access_token: 'google-access-token' }), {
+					status: 200,
+					headers: { 'content-type': 'application/json' }
+				});
+			}
+			if (requestUrl === 'https://www.googleapis.com/oauth2/v3/userinfo') {
+				return new Response(JSON.stringify({
+					sub: 'google-sub-123',
+					email: 'operator@gooddining.app',
+					email_verified: true,
+					name: 'Platform Operator'
+				}), {
+					status: 200,
+					headers: { 'content-type': 'application/json' }
+				});
+			}
+			return originalFetch(input, init);
+		});
+
+		ctx = createExecutionContext();
+		response = await worker.fetch(new Request(`http://localhost/auth/google/callback?code=test-google-code&state=${encodeURIComponent(state)}`), env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(302);
+		const cookie = extractCookieValue(response.headers.get('set-cookie'));
+		expect(cookie).toContain('gd_admin_session=');
+
+		ctx = createExecutionContext();
+		response = await worker.fetch(new Request('http://localhost/api/auth/session', {
+			headers: { cookie }
+		}), env, ctx);
+		await waitOnExecutionContext(ctx);
+		let body = await response.json();
+		expect(body.ok).toBe(true);
+		expect(body.authenticated).toBe(true);
+		expect(body.scope).toBe('platform_admin');
+		expect(String(body.user?.role || '')).toBe('platform_admin');
+
+		ctx = createExecutionContext();
+		response = await worker.fetch(new Request('http://localhost/api/platform/admin/dashboard', {
+			headers: { cookie }
+		}), env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		body = await response.json();
+		expect(body.ok).toBe(true);
 	});
 
 	it('serves app homepage HTML (integration style)', async () => {
