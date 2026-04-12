@@ -3932,7 +3932,7 @@ function resolveRequestedMembershipProgram({
 
   return {
     membershipType: membershipType || FOUNDER_DEFAULT_MEMBERSHIP_TYPE,
-    founderTermsFlag: founderTermsAccepted ? 1 : 1,
+    founderTermsFlag: founderTermsAccepted ? 1 : 0,
     kcTermsFlag: 0,
     notes: notesRaw || 'Founder Form Registration'
   };
@@ -6883,8 +6883,10 @@ export default {
         const honeypot = getField('hp_confirm_data');
         const consentSms = parseConsentValue(getField('consent_sms'));
         const consentTerms = parseConsentValue(getField('consent_terms'));
-        const founderTermsAccepted = parseConsentValue(getField('x_studio_founder_terms_accepted'));
-        const kcTermsAccepted = parseConsentValue(getField('x_studio_kc_terms_accepted'));
+        const founderTermsRaw = getField('x_studio_founder_terms_accepted');
+        const kcTermsRaw = getField('x_studio_kc_terms_accepted');
+        const founderTermsAccepted = parseConsentValue(founderTermsRaw);
+        const kcTermsAccepted = parseConsentValue(kcTermsRaw);
         const optInTextRaw = getField('x_studio_opt_in_text', FOUNDER_OPT_IN_TEXT);
         const optInText = optInTextRaw || FOUNDER_OPT_IN_TEXT;
         const programModeRaw = getField('program_mode');
@@ -6928,6 +6930,14 @@ export default {
 
         if (!consentSms || !consentTerms) {
           return Response.json({ status: 'error', message: 'Bitte akzeptieren Sie die erforderlichen Einwilligungen.' }, { status: 400 });
+        }
+
+        if (kcTermsFlag === 1 && !kcTermsAccepted && (url.pathname !== '/api/kc/register' || String(kcTermsRaw || '').trim() !== '')) {
+          return Response.json({ status: 'error', message: 'Bitte akzeptieren Sie die KC-Bedingungen.' }, { status: 400 });
+        }
+
+        if (kcTermsFlag === 0 && founderTermsFlag !== 1) {
+          return Response.json({ status: 'error', message: 'Bitte akzeptieren Sie die Founder-Bedingungen.' }, { status: 400 });
         }
 
         const turnstile = await verifyTurnstileToken(cfToken, env, request.headers.get('CF-Connecting-IP'), founderSecretConfig, url);

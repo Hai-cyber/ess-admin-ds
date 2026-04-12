@@ -2309,6 +2309,98 @@ describe('ESSKULTUR worker', () => {
 		expect(String(otpRecord?.otp_code || '')).toMatch(/^\d{6}$/);
 	});
 
+	it('rejects founder registration when founder-specific terms are not accepted', async () => {
+		await initializeDatabase(env.DB);
+
+		vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, _init) => {
+			const url = typeof input === 'string' ? input : input.url;
+
+			if (url.includes('challenges.cloudflare.com/turnstile')) {
+				return new Response(JSON.stringify({ success: true }), {
+					status: 200,
+					headers: { 'content-type': 'application/json' }
+				});
+			}
+
+			return new Response('Unhandled mock URL', { status: 500 });
+		});
+
+		const phone = `+49175${Date.now().toString().slice(-8)}`;
+		const request = new Request('http://localhost/api/founder/register?company_id=1', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				name: 'Founder Terms Missing',
+				phone,
+				cf_token: 'turnstile-test-token',
+				consent_sms: 'yes',
+				consent_terms: 'yes',
+				x_studio_founder_terms_accepted: 'no',
+				x_studio_membership_type: 'Founder',
+				x_studio_notes: 'Founder Form Registration'
+			})
+		});
+
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(400);
+		const body = await response.json();
+		expect(String(body.message || '')).toContain('Founder-Bedingungen');
+
+		const customer = await env.DB.prepare(
+			`SELECT id FROM customers WHERE company_id = ? AND phone = ? LIMIT 1`
+		).bind(1, phone).first();
+		expect(customer).toBeNull();
+	});
+
+	it('rejects KC registration when KC-specific terms are not accepted', async () => {
+		await initializeDatabase(env.DB);
+
+		vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, _init) => {
+			const url = typeof input === 'string' ? input : input.url;
+
+			if (url.includes('challenges.cloudflare.com/turnstile')) {
+				return new Response(JSON.stringify({ success: true }), {
+					status: 200,
+					headers: { 'content-type': 'application/json' }
+				});
+			}
+
+			return new Response('Unhandled mock URL', { status: 500 });
+		});
+
+		const phone = `+49176${Date.now().toString().slice(-8)}`;
+		const request = new Request('http://localhost/api/kc/register?company_id=1', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				name: 'KC Terms Missing',
+				phone,
+				cf_token: 'turnstile-test-token',
+				consent_sms: 'yes',
+				consent_terms: 'yes',
+				x_studio_kc_terms_accepted: 'no',
+				x_studio_membership_type: 'KC',
+				x_studio_notes: 'KC Form Registration'
+			})
+		});
+
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(400);
+		const body = await response.json();
+		expect(String(body.message || '')).toContain('KC-Bedingungen');
+
+		const customer = await env.DB.prepare(
+			`SELECT id FROM customers WHERE company_id = ? AND phone = ? LIMIT 1`
+		).bind(1, phone).first();
+		expect(customer).toBeNull();
+	});
+
 	it('founder verification consumes a valid OTP without external CRM sync', async () => {
 		await initializeDatabase(env.DB);
 		const now = new Date().toISOString();
