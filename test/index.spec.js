@@ -1046,16 +1046,87 @@ describe('ESSKULTUR worker', () => {
 		expect(String(body.request?.renewal_due_at || '')).toBe(nextDueAt);
 
 		const stored = await env.DB.prepare(
-			`SELECT renewal_status, renewal_due_at, renewal_last_reminded_at FROM custom_domain_requests WHERE id = ? LIMIT 1`
+			`SELECT renewal_status, renewal_due_at, renewal_snoozed_until, renewal_last_reminded_at, renewal_last_completed_at FROM custom_domain_requests WHERE id = ? LIMIT 1`
 		).bind(requestId).first();
 		expect(String(stored?.renewal_status || '')).toBe('managed_active');
 		expect(String(stored?.renewal_due_at || '')).toBe(nextDueAt);
+		expect(stored?.renewal_snoozed_until ?? null).toBeNull();
 		expect(stored?.renewal_last_reminded_at ?? null).toBeNull();
+		expect(String(stored?.renewal_last_completed_at || '')).not.toBe('');
 
 		const events = await env.DB.prepare(
 			`SELECT event_type FROM custom_domain_request_events WHERE request_id = ? ORDER BY created_at DESC`
 		).bind(requestId).all();
 		expect((events.results || []).map((row) => String(row.event_type || ''))).toContain('renewal_marked_renewed');
+	});
+
+	it('allows operators to snooze managed domain renewal follow-up and suppress reminder sends until that date', async () => {
+		await initializeDatabase(env.DB);
+		const tenantCookie = await createRestaurantAdminSessionCookie(env, { companyId: 1 });
+		const platformCookie = await createPlatformAdminSessionCookie(env);
+
+		let request = new Request('http://localhost/api/admin/domain-upgrade/request?company_id=1', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json', cookie: tenantCookie },
+			body: JSON.stringify({
+				pin: '1234',
+				requestedDomain: 'www.renewal-snooze.de',
+				registrationMode: 'managed_registration',
+				requestNote: 'Managed renewal snooze test.'
+			})
+		});
+		let ctx = createExecutionContext();
+		let response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		const createBody = await response.json();
+		const requestId = String(createBody.request?.id || '');
+
+		await env.DB.prepare(
+			`UPDATE custom_domain_requests SET request_status = 'active', renewal_mode = 'platform_managed', renewal_status = 'renewal_due_soon', renewal_due_at = ? WHERE id = ?`
+		).bind(new Date(Date.now() + 7 * 86400000).toISOString(), requestId).run();
+
+		const snoozedUntil = new Date(Date.now() + 10 * 86400000).toISOString();
+		request = new Request(`http://localhost/api/platform/admin/domain-renewals/${encodeURIComponent(requestId)}/snooze`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json', cookie: platformCookie },
+			body: JSON.stringify({ pin: '1234', note: 'Waiting for registrar reply.', snoozedUntil })
+		});
+		ctx = createExecutionContext();
+		response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		let body = await response.json();
+		expect(body.ok).toBe(true);
+		expect(String(body.request?.renewal_snoozed_until || '')).toBe(snoozedUntil);
+
+		request = new Request('http://localhost/api/platform/admin/domain-renewals/run-reminders', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json', cookie: platformCookie },
+			body: JSON.stringify({ pin: '1234', sendDigest: false })
+		});
+		ctx = createExecutionContext();
+		response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		body = await response.json();
+		expect(body.ok).toBe(true);
+		expect(Number(body.summary?.reminded || 0)).toBe(0);
+
+		const stored = await env.DB.prepare(
+			`SELECT renewal_snoozed_until, renewal_last_reminded_at FROM custom_domain_requests WHERE id = ? LIMIT 1`
+		).bind(requestId).first();
+		expect(String(stored?.renewal_snoozed_until || '')).toBe(snoozedUntil);
+		expect(stored?.renewal_last_reminded_at ?? null).toBeNull();
+
+		const reminderEvent = await env.DB.prepare(
+			`SELECT event_type FROM custom_domain_request_events WHERE request_id = ? AND event_type LIKE 'renewal_reminder_%' LIMIT 1`
+		).bind(requestId).first();
+		expect(reminderEvent).toBeNull();
+
+		const snoozeEvent = await env.DB.prepare(
+			`SELECT event_type FROM custom_domain_request_events WHERE request_id = ? AND event_type = 'renewal_snoozed' LIMIT 1`
+		).bind(requestId).first();
+		expect(String(snoozeEvent?.event_type || '')).toBe('renewal_snoozed');
 	});
 
 	it('supports renewal reminder preview and forced overdue escalation for operators', async () => {

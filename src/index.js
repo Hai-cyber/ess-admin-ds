@@ -1582,7 +1582,7 @@ async function getCustomDomainRequestHistory(env, companyId, limit = 12) {
   const result = await env.DB.prepare(`
         SELECT id, company_id, organization_id, requested_domain, registration_mode, request_status,
           dns_record_type, dns_name, dns_value, request_note, operator_note, cutover_note, cutover_eta, cutover_status, renewal_mode,
-           renewal_status, renewal_due_at, renewal_last_reminded_at, auto_renew_enabled,
+           renewal_status, renewal_due_at, renewal_snoozed_until, renewal_last_reminded_at, renewal_last_completed_at, auto_renew_enabled,
            approved_at, approved_by, dns_ready_at, verified_at, activated_at, activated_by,
            last_health_check_at, last_health_check_status, last_health_check_note,
            rejected_at, rejected_by, created_at, updated_at
@@ -1604,7 +1604,7 @@ async function getCustomDomainRequestById(env, requestId) {
   const request = await env.DB.prepare(`
         SELECT id, company_id, organization_id, requested_domain, registration_mode, request_status,
           dns_record_type, dns_name, dns_value, request_note, operator_note, cutover_note, cutover_eta, cutover_status, renewal_mode,
-           renewal_status, renewal_due_at, renewal_last_reminded_at, auto_renew_enabled,
+           renewal_status, renewal_due_at, renewal_snoozed_until, renewal_last_reminded_at, renewal_last_completed_at, auto_renew_enabled,
            approved_at, approved_by, dns_ready_at, verified_at, activated_at, activated_by,
            last_health_check_at, last_health_check_status, last_health_check_note,
            rejected_at, rejected_by, created_at, updated_at
@@ -1669,31 +1669,35 @@ function computeRenewalTrackingForRequest(domainRequest) {
   const renewalMode = String(domainRequest?.renewal_mode || 'external').trim() || 'external';
   const persistedStatus = String(domainRequest?.renewal_status || '').trim() || 'external';
   const renewalDueAt = String(domainRequest?.renewal_due_at || '').trim();
+  const renewalSnoozedUntil = String(domainRequest?.renewal_snoozed_until || '').trim();
   const now = Date.now();
+  const snoozedUntilTime = renewalSnoozedUntil ? new Date(renewalSnoozedUntil).getTime() : NaN;
+  const reminderSnoozed = Number.isFinite(snoozedUntilTime) && snoozedUntilTime > now;
   if (!renewalDueAt) {
     return {
       renewalMode,
       renewalStatus: persistedStatus === 'renewal_overdue' ? 'renewal_overdue' : (renewalMode === 'platform_managed' ? 'managed_active' : 'external'),
-      reminderDue: false
+      reminderDue: false,
+      renewalSnoozed: reminderSnoozed
     };
   }
 
   const dueTime = new Date(renewalDueAt).getTime();
   if (Number.isNaN(dueTime)) {
-    return { renewalMode, renewalStatus: persistedStatus === 'renewal_overdue' ? 'renewal_overdue' : (renewalMode === 'platform_managed' ? 'managed_active' : 'external'), reminderDue: false };
+    return { renewalMode, renewalStatus: persistedStatus === 'renewal_overdue' ? 'renewal_overdue' : (renewalMode === 'platform_managed' ? 'managed_active' : 'external'), reminderDue: false, renewalSnoozed: reminderSnoozed };
   }
 
   const daysUntilDue = Math.ceil((dueTime - now) / 86400000);
   if (['renewal_overdue', 'transfer_out_requested', 'transferred_out'].includes(persistedStatus)) {
-    return { renewalMode, renewalStatus: persistedStatus, reminderDue: true, daysUntilDue };
+    return { renewalMode, renewalStatus: persistedStatus, reminderDue: !reminderSnoozed, daysUntilDue, renewalSnoozed: reminderSnoozed };
   }
   if (daysUntilDue < 0) {
-    return { renewalMode, renewalStatus: 'renewal_overdue', reminderDue: true, daysUntilDue };
+    return { renewalMode, renewalStatus: 'renewal_overdue', reminderDue: !reminderSnoozed, daysUntilDue, renewalSnoozed: reminderSnoozed };
   }
   if (daysUntilDue <= 30) {
-    return { renewalMode, renewalStatus: 'renewal_due_soon', reminderDue: true, daysUntilDue };
+    return { renewalMode, renewalStatus: 'renewal_due_soon', reminderDue: !reminderSnoozed, daysUntilDue, renewalSnoozed: reminderSnoozed };
   }
-  return { renewalMode, renewalStatus: renewalMode === 'platform_managed' ? 'managed_active' : 'external', reminderDue: false, daysUntilDue };
+  return { renewalMode, renewalStatus: renewalMode === 'platform_managed' ? 'managed_active' : 'external', reminderDue: false, daysUntilDue, renewalSnoozed: reminderSnoozed };
 }
 
 function annotateCustomDomainRequest(domainRequest) {
@@ -1740,7 +1744,7 @@ async function processManagedDomainRenewalReminders(env, options = {}) {
   const result = await env.DB.prepare(`
         SELECT id, company_id, organization_id, requested_domain, registration_mode, request_status,
           dns_record_type, dns_name, dns_value, request_note, operator_note, cutover_note, cutover_eta, cutover_status, renewal_mode,
-           renewal_status, renewal_due_at, renewal_last_reminded_at, auto_renew_enabled,
+           renewal_status, renewal_due_at, renewal_snoozed_until, renewal_last_reminded_at, renewal_last_completed_at, auto_renew_enabled,
            approved_at, approved_by, dns_ready_at, verified_at, activated_at, activated_by,
            last_health_check_at, last_health_check_status, last_health_check_note,
            rejected_at, rejected_by, created_at, updated_at
@@ -1763,6 +1767,7 @@ async function processManagedDomainRenewalReminders(env, options = {}) {
   for (const request of requests) {
     const daysUntilDue = Number(request.daysUntilDue);
     const renewalStatus = String(request.renewalStatus || request.renewal_status || 'managed_active');
+    const reminderDue = request.reminderDue !== false;
     const shouldUpdateStatus = renewalStatus !== String(request.renewal_status || '').trim();
     const threshold = Number.isFinite(daysUntilDue) ? getApplicableRenewalReminderThreshold(daysUntilDue) : null;
 
@@ -1777,7 +1782,7 @@ async function processManagedDomainRenewalReminders(env, options = {}) {
       summary.updated += 1;
     }
 
-    if (threshold === null) {
+    if (threshold === null || !reminderDue) {
       summary.skipped += 1;
       continue;
     }
@@ -1995,8 +2000,8 @@ async function createCustomDomainUpgradeRequest(env, payload = {}) {
   await env.DB.prepare(`
     INSERT INTO custom_domain_requests (
       id, company_id, organization_id, requested_domain, registration_mode, request_status,
-      dns_record_type, dns_name, dns_value, request_note, cutover_status, renewal_mode, renewal_status, renewal_due_at, auto_renew_enabled, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, 'requested', 'CNAME', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      dns_record_type, dns_name, dns_value, request_note, cutover_status, renewal_mode, renewal_status, renewal_due_at, renewal_snoozed_until, renewal_last_completed_at, auto_renew_enabled, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, 'requested', 'CNAME', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     requestId,
     companyId,
@@ -2010,6 +2015,8 @@ async function createCustomDomainUpgradeRequest(env, payload = {}) {
     registrationMode === 'managed_registration' ? 'platform_managed' : 'external',
     registrationMode === 'managed_registration' ? 'managed_active' : 'external',
     renewalDueAt,
+    null,
+    null,
     registrationMode === 'managed_registration' ? 1 : 0,
     now,
     now
@@ -2047,7 +2054,9 @@ async function updateCustomDomainRequestState(env, requestId, updates = {}) {
         cutover_status = ?,
         renewal_status = ?,
         renewal_due_at = ?,
+        renewal_snoozed_until = ?,
         renewal_last_reminded_at = ?,
+        renewal_last_completed_at = ?,
         auto_renew_enabled = ?,
         approved_at = ?,
         approved_by = ?,
@@ -2070,9 +2079,15 @@ async function updateCustomDomainRequestState(env, requestId, updates = {}) {
     normalizeCutoverStatus(updates.cutoverStatus, existing.cutover_status || 'not_started'),
     updates.renewalStatus ?? existing.renewal_status ?? null,
     updates.renewalDueAt ?? existing.renewal_due_at ?? null,
+    Object.prototype.hasOwnProperty.call(updates, 'renewalSnoozedUntil')
+      ? (updates.renewalSnoozedUntil ?? null)
+      : (existing.renewal_snoozed_until ?? null),
     Object.prototype.hasOwnProperty.call(updates, 'renewalLastRemindedAt')
       ? (updates.renewalLastRemindedAt ?? null)
       : (existing.renewal_last_reminded_at ?? null),
+    Object.prototype.hasOwnProperty.call(updates, 'renewalLastCompletedAt')
+      ? (updates.renewalLastCompletedAt ?? null)
+      : (existing.renewal_last_completed_at ?? null),
     typeof updates.autoRenewEnabled === 'number' || typeof updates.autoRenewEnabled === 'boolean' ? Number(updates.autoRenewEnabled) : (existing.auto_renew_enabled ?? null),
     updates.approvedAt ?? existing.approved_at ?? null,
     updates.approvedBy ?? existing.approved_by ?? null,
@@ -3379,8 +3394,8 @@ async function getPlatformAdminDashboard(env) {
     `).all(),
     env.DB.prepare(`
       SELECT id, company_id, organization_id, requested_domain, registration_mode, request_status,
-        dns_record_type, dns_name, dns_value, request_note, operator_note, cutover_note, cutover_eta, cutover_status, renewal_mode,
-            renewal_status, renewal_due_at, renewal_last_reminded_at, auto_renew_enabled,
+            dns_record_type, dns_name, dns_value, request_note, operator_note, cutover_note, cutover_eta, cutover_status, renewal_mode,
+            renewal_status, renewal_due_at, renewal_snoozed_until, renewal_last_reminded_at, renewal_last_completed_at, auto_renew_enabled,
              approved_at, approved_by, dns_ready_at, verified_at, activated_at, activated_by,
             last_health_check_at, last_health_check_status, last_health_check_note,
              rejected_at, rejected_by, created_at, updated_at
@@ -5679,6 +5694,47 @@ export default {
       }
     }
 
+    if (url.pathname.match(/^\/api\/platform\/admin\/domain-renewals\/([^/]+)\/snooze$/) && request.method === "POST") {
+      try {
+        const routeMatch = url.pathname.match(/^\/api\/platform\/admin\/domain-renewals\/([^/]+)\/snooze$/);
+        const requestId = decodeURIComponent(String(routeMatch?.[1] || '')).trim();
+        const body = await request.json().catch(() => ({}));
+        const note = String(body?.note || body?.operatorNote || '').trim();
+        const snoozedUntil = String(body?.snoozedUntil || body?.renewalSnoozedUntil || '').trim();
+        const auth = await authorizePlatformOperatorRequest(env, request, body, url);
+        if (!auth.ok) {
+          return Response.json({ ok: false, error: auth.error }, { status: auth.status });
+        }
+
+        const domainRequest = await getCustomDomainRequestById(env, requestId);
+        if (!domainRequest?.id) {
+          return Response.json({ ok: false, error: 'Domain request not found.' }, { status: 404 });
+        }
+        if (String(domainRequest.request_status || '').trim().toLowerCase() !== 'active') {
+          return Response.json({ ok: false, error: 'Only active domains can be snoozed.' }, { status: 409 });
+        }
+        if (String(domainRequest.renewal_mode || '').trim().toLowerCase() !== 'platform_managed') {
+          return Response.json({ ok: false, error: 'Only platform-managed renewals can be snoozed here.' }, { status: 409 });
+        }
+        if (!snoozedUntil || Number.isNaN(new Date(snoozedUntil).getTime())) {
+          return Response.json({ ok: false, error: 'A valid snooze-until timestamp is required.' }, { status: 400 });
+        }
+
+        const updatedRequest = await updateCustomDomainRequestState(env, requestId, {
+          renewalSnoozedUntil: snoozedUntil,
+          actorType: 'platform_operator',
+          actorId: String(auth.staff.name || auth.staff.id || 'platform-operator'),
+          eventType: 'renewal_snoozed',
+          eventNote: note || `Renewal follow-up snoozed until ${snoozedUntil}.`,
+          metadataJson: { snoozedUntil }
+        });
+
+        return Response.json({ ok: true, request: annotateCustomDomainRequest(updatedRequest) });
+      } catch (e) {
+        return Response.json({ ok: false, error: e.message }, { status: 500 });
+      }
+    }
+
     if (url.pathname.match(/^\/api\/platform\/admin\/domain-renewals\/([^/]+)\/mark-renewed$/) && request.method === "POST") {
       try {
         const routeMatch = url.pathname.match(/^\/api\/platform\/admin\/domain-renewals\/([^/]+)\/mark-renewed$/);
@@ -5710,7 +5766,9 @@ export default {
         const updatedRequest = await updateCustomDomainRequestState(env, requestId, {
           renewalStatus: 'managed_active',
           renewalDueAt: nextRenewalDueAt,
+          renewalSnoozedUntil: null,
           renewalLastRemindedAt: null,
+          renewalLastCompletedAt: new Date().toISOString(),
           actorType: 'platform_operator',
           actorId: String(auth.staff.name || auth.staff.id || 'platform-operator'),
           eventType: 'renewal_marked_renewed',

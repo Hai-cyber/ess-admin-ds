@@ -51,7 +51,9 @@ async function ensureSchemaEvolution(db) {
       renewal_mode TEXT DEFAULT 'external',
       renewal_status TEXT DEFAULT 'external',
       renewal_due_at TEXT,
+      renewal_snoozed_until TEXT,
       renewal_last_reminded_at TEXT,
+      renewal_last_completed_at TEXT,
       auto_renew_enabled BOOLEAN DEFAULT 0,
       approved_at TEXT,
       approved_by TEXT,
@@ -103,7 +105,9 @@ async function ensureSchemaEvolution(db) {
   await ensureColumn(db, 'platform_signups', 'payment_confirmed_at', 'TEXT');
   await ensureColumn(db, 'custom_domain_requests', 'renewal_status', "TEXT DEFAULT 'external'");
   await ensureColumn(db, 'custom_domain_requests', 'renewal_due_at', 'TEXT');
+  await ensureColumn(db, 'custom_domain_requests', 'renewal_snoozed_until', 'TEXT');
   await ensureColumn(db, 'custom_domain_requests', 'renewal_last_reminded_at', 'TEXT');
+  await ensureColumn(db, 'custom_domain_requests', 'renewal_last_completed_at', 'TEXT');
   await ensureColumn(db, 'custom_domain_requests', 'auto_renew_enabled', 'BOOLEAN DEFAULT 0');
   await ensureColumn(db, 'custom_domain_requests', 'cutover_note', 'TEXT');
   await ensureColumn(db, 'custom_domain_requests', 'cutover_eta', 'TEXT');
