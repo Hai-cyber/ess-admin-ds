@@ -17,7 +17,7 @@
 ### "I need to understand the project RIGHT NOW"
 → Read **[QUICKSTART.md](./QUICKSTART.md)** (5 min)
 
-Summary: You're building Restaurant OS (vertical SaaS). Phase 1 (Booking + Platform Entry) is 98% done. Moderation/review queue, tenant host gating, enriched custom-domain ops, and tenant website publish/release QA are live; production Stripe activation and final beta validation remain.
+Summary: You're building Restaurant OS (vertical SaaS). Phase 1 (Booking + Platform Entry) is 98% done. Moderation/review queue, tenant host gating, enriched custom-domain ops, and tenant website publish/release QA are live; production Stripe is on hold pending account setup, and final beta validation remains.
 
 ### "I need to know what's blocked / what to work on?"
 → Read **[STATUS.md](./STATUS.md)** (3 min)
@@ -176,7 +176,7 @@ Multi-tenant system = restaurants are isolated. One restaurant can't see another
 **Phase**: 1 of 5 (Booking System)  
 **Progress**: 98% complete  
 **ETA**: April 20, 2026  
-**Status**: 🟡 ON TRACK (remaining: production Stripe secrets, final beta validation, founder/KC OTP production delivery follow-up)
+**Status**: 🟡 ON TRACK (remaining: production Stripe account setup, final beta validation, founder/KC OTP production delivery follow-up)
 
 **What's done**:
 - ✅ Tenant isolation (verified)
@@ -193,16 +193,17 @@ Multi-tenant system = restaurants are isolated. One restaurant can't see another
 - ✅ Repository hygiene pass completed: nested gitlink removed, lint clean, formatter checks pass, and CI now includes repo hygiene
 
 **What's in progress** (your focus):
-- 🔄 Production Stripe activation and production smoke validation
+- 🔄 Production Stripe work is on hold pending Stripe account setup
 - 🔄 Founder/KC OTP runtime hardening
 - 🔄 Optional managed-domain resale follow-up
 - 🔄 Final production beta validation on the live custom-domain ingress
 
 **What's next**:
-1. Provision production Stripe secrets and smoke-test bank-card signup on `prod.gooddining.app`
-2. Re-check production admin HTML after cache purge on the custom domain
+1. Re-check production admin HTML after cache purge on the custom domain
+2. Validate Booking Board launch from Restaurant Admin on production-like tenant URLs
 3. Decide whether managed-domain resale belongs in Phase 1 or later
 4. Fix founder/KC OTP production delivery follow-up and rerun targeted checks
+5. Resume production Stripe activation after a Stripe account exists
 
 **For full details** → Read [STATUS.md](./STATUS.md)
 
@@ -210,18 +211,18 @@ Multi-tenant system = restaurants are isolated. One restaurant can't see another
 
 ## 🎯 Your First Task (If You Don't Know What to Do)
 
-**Task**: Finish Production Stripe Activation + Beta Validation
+**Task**: Finish Beta Validation While Stripe Is On Hold
 
 **What to do**:
 1. Read [QUICKSTART.md](./QUICKSTART.md) (5 min)
 2. Read [STATUS.md](./STATUS.md) → "What Happens Next" (3 min)
-3. Read [docs/contracts/API_CONTRACTS.md](./docs/contracts/API_CONTRACTS.md) → search "signup", "payment", and "admin" (5 min)
+3. Read [docs/contracts/API_CONTRACTS.md](./docs/contracts/API_CONTRACTS.md) → search "admin", "board", and "website" (5 min)
 4. Start in `src/index.js`, `public/admin.html`, and `public/platform/admin.html`
 5. Validate with `npm test` and production smoke checks on `prod.gooddining.app`
 
 **Est. time**: 3-4 days
 
-**Blocker**: production Stripe/Twilio credential wiring plus final beta validation
+**Blocker**: Stripe account creation, Twilio credential wiring, plus final beta validation
 
 **Questions?** → Read relevant contract or ask in PR comments
 
