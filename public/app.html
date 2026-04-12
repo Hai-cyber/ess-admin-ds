@@ -185,6 +185,66 @@
       flex-direction: column;
     }
 
+    .mobile-summary {
+      padding: 0.85rem 1rem 0;
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0.6rem;
+    }
+
+    .summary-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.75rem;
+      min-width: 0;
+    }
+
+    .summary-card strong {
+      display: block;
+      font-size: 1.1rem;
+      color: var(--text);
+    }
+
+    .summary-card span {
+      display: block;
+      margin-top: 0.2rem;
+      font-size: 0.72rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .filter-row {
+      display: flex;
+      gap: 0.5rem;
+      overflow-x: auto;
+      padding-bottom: 0.1rem;
+    }
+
+    .filter-chip {
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 0.55rem 0.8rem;
+      font-size: 0.78rem;
+      font-weight: 700;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .filter-chip.active {
+      background: rgba(165, 74, 123, 0.18);
+      border-color: rgba(165, 74, 123, 0.65);
+      color: var(--text);
+    }
+
     .booking-item {
       background: var(--bg-card);
       border: 1px solid var(--border);
@@ -496,6 +556,10 @@
 
     /* RESPONSIVE */
     @media (max-width: 480px) {
+      .summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
       .booking-item {
         padding: 0.8rem;
       }
@@ -543,6 +607,11 @@
       <button class="logout-btn" id="logoutBtn">Logout</button>
     </div>
 
+    <div class="mobile-summary">
+      <div class="summary-grid" id="summaryGrid"></div>
+      <div class="filter-row" id="filterRow"></div>
+    </div>
+
     <div class="app-feed" id="appFeed">
       <div class="empty-state">No bookings yet</div>
     </div>
@@ -569,6 +638,7 @@
         staffName: null,
         requestedCompanyId: null,
         soundEnabled: localStorage.getItem('soundEnabled') !== 'false',
+        activeFilter: 'active',
         bookings: [],
         eventSource: null,
         bookingUpdate: null
@@ -599,6 +669,8 @@
       const pinInput = document.getElementById('pinInput');
       const loginError = document.getElementById('loginError');
       const appFeed = document.getElementById('appFeed');
+      const summaryGrid = document.getElementById('summaryGrid');
+      const filterRow = document.getElementById('filterRow');
       const settingsBtn = document.getElementById('settingsBtn');
       const logoutBtn = document.getElementById('logoutBtn');
       const settingsModal = document.getElementById('settingsModal');
@@ -621,6 +693,87 @@
 
         // Update sound toggle UI
         updateSoundToggleUI();
+        renderMobileSummary();
+      }
+
+      function getBookingStageSummary() {
+        const all = Array.isArray(state.bookings) ? state.bookings : [];
+        return {
+          all: all.length,
+          pending: all.filter((booking) => booking.stage === 'pending').length,
+          confirmed: all.filter((booking) => booking.stage === 'confirmed').length,
+          arrived: all.filter((booking) => booking.stage === 'arrived').length,
+          completed: all.filter((booking) => ['done', 'cancelled', 'noshow'].includes(booking.stage)).length
+        };
+      }
+
+      function getVisibleBookings() {
+        const all = Array.isArray(state.bookings) ? state.bookings.slice() : [];
+        all.sort((left, right) => String(left.booking_time || '').localeCompare(String(right.booking_time || '')));
+
+        if (state.activeFilter === 'active') {
+          return all.filter((booking) => ['pending', 'confirmed', 'arrived'].includes(booking.stage));
+        }
+
+        if (state.activeFilter === 'completed') {
+          return all.filter((booking) => ['done', 'cancelled', 'noshow'].includes(booking.stage));
+        }
+
+        if (state.activeFilter === 'all') {
+          return all;
+        }
+
+        return all.filter((booking) => booking.stage === state.activeFilter);
+      }
+
+      function getEmptyStateMessage() {
+        if (!state.bookings.length) return 'No bookings yet';
+        if (state.activeFilter === 'active') return 'No active bookings right now';
+        if (state.activeFilter === 'completed') return 'No completed bookings yet';
+        if (state.activeFilter === 'all') return 'No bookings yet';
+        return `No ${state.activeFilter} bookings right now`;
+      }
+
+      function renderMobileSummary() {
+        if (!summaryGrid || !filterRow) return;
+
+        const summary = getBookingStageSummary();
+        summaryGrid.innerHTML = [
+          { key: 'all', label: 'Today', value: summary.all },
+          { key: 'pending', label: 'Pending', value: summary.pending },
+          { key: 'confirmed', label: 'Confirmed', value: summary.confirmed },
+          { key: 'arrived', label: 'Arrived', value: summary.arrived }
+        ].map((item) => `
+          <div class="summary-card">
+            <strong>${item.value}</strong>
+            <span>${item.label}</span>
+          </div>
+        `).join('');
+
+        const filters = [
+          { key: 'active', label: `Active ${summary.pending + summary.confirmed + summary.arrived}` },
+          { key: 'pending', label: `Pending ${summary.pending}` },
+          { key: 'confirmed', label: `Confirmed ${summary.confirmed}` },
+          { key: 'arrived', label: `Arrived ${summary.arrived}` },
+          { key: 'completed', label: `Completed ${summary.completed}` },
+          { key: 'all', label: `All ${summary.all}` }
+        ];
+
+        filterRow.innerHTML = filters.map((filter) => `
+          <button
+            type="button"
+            class="filter-chip ${state.activeFilter === filter.key ? 'active' : ''}"
+            data-filter="${filter.key}"
+          >${filter.label}</button>
+        `).join('');
+
+        filterRow.querySelectorAll('.filter-chip').forEach((button) => {
+          button.addEventListener('click', () => {
+            state.activeFilter = button.dataset.filter || 'active';
+            renderMobileSummary();
+            renderFeed();
+          });
+        });
       }
 
       function getRequestedCompanyIdFromLocation() {
@@ -703,11 +856,14 @@
           companyId: null,
           staffId: null,
           staffName: null,
+          requestedCompanyId: getRequestedCompanyIdFromLocation(),
           soundEnabled: state.soundEnabled,
+          activeFilter: 'active',
           bookings: [],
           eventSource: null
         };
         appFeed.innerHTML = '<div class="empty-state">No bookings yet</div>';
+        renderMobileSummary();
         loginScreen.style.display = 'flex';
         appScreen.style.display = 'none';
         pinInput.value = '';
@@ -731,6 +887,7 @@
           }
 
           state.bookings = Array.isArray(data.data) ? data.data : [];
+          renderMobileSummary();
           renderFeed();
         } catch (err) {
           console.warn('Initial bookings load failed:', err);
@@ -793,6 +950,7 @@
         } else {
           state.bookings.unshift(booking);
         }
+        renderMobileSummary();
         renderFeed();
       }
 
@@ -800,6 +958,7 @@
         const booking = state.bookings.find(b => b.id === bookingId);
         if (booking) {
           booking.stage = newStage;
+          renderMobileSummary();
           renderFeed();
         }
       }
@@ -837,12 +996,13 @@
 
       // Render Feed
       function renderFeed() {
-        if (state.bookings.length === 0) {
-          appFeed.innerHTML = '<div class="empty-state">No bookings yet</div>';
+        const visibleBookings = getVisibleBookings();
+        if (visibleBookings.length === 0) {
+          appFeed.innerHTML = `<div class="empty-state">${getEmptyStateMessage()}</div>`;
           return;
         }
 
-        appFeed.innerHTML = state.bookings.map(booking => `
+        appFeed.innerHTML = visibleBookings.map(booking => `
           <div class="booking-item ${booking.stage}">
             <div class="booking-time">${booking.booking_time}</div>
             <div class="booking-info">
