@@ -189,6 +189,11 @@
       padding: 0.85rem 1rem 0;
       display: grid;
       gap: 0.75rem;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(15, 23, 42, 0.94) 100%);
+      border-bottom: 1px solid rgba(148, 163, 184, 0.08);
     }
 
     .summary-grid {
@@ -245,6 +250,63 @@
       color: var(--text);
     }
 
+    .urgent-bar {
+      display: grid;
+      gap: 0.55rem;
+      padding: 0.75rem 0.85rem;
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.14) 0%, rgba(239, 68, 68, 0.12) 100%);
+    }
+
+    .urgent-bar[hidden] {
+      display: none;
+    }
+
+    .urgent-bar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+
+    .urgent-bar-header strong {
+      font-size: 0.8rem;
+      color: #fde68a;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .urgent-bar-header span {
+      font-size: 0.72rem;
+      color: #f8fafc;
+    }
+
+    .urgent-list {
+      display: flex;
+      gap: 0.45rem;
+      overflow-x: auto;
+    }
+
+    .urgent-chip {
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(15, 23, 42, 0.55);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 0.5rem 0.7rem;
+      font-size: 0.76rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .urgent-chip.pending {
+      color: #fde68a;
+    }
+
+    .urgent-chip.overdue {
+      color: #fecaca;
+    }
+
     .booking-item {
       background: var(--bg-card);
       border: 1px solid var(--border);
@@ -255,6 +317,56 @@
       gap: 1rem;
       align-items: flex-start;
       animation: slideIn 0.3s ease-out;
+    }
+
+    .queue-section {
+      display: grid;
+      gap: 0.7rem;
+    }
+
+    .queue-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0 0.2rem;
+    }
+
+    .queue-section-header strong {
+      font-size: 0.82rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text);
+    }
+
+    .queue-section-header span {
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+
+    .queue-subsection {
+      display: grid;
+      gap: 0.65rem;
+    }
+
+    .queue-subsection-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0 0.25rem;
+    }
+
+    .queue-subsection-header strong {
+      font-size: 0.75rem;
+      color: #f9d7e8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .queue-subsection-header span {
+      font-size: 0.7rem;
+      color: var(--muted);
     }
 
     @keyframes slideIn {
@@ -311,6 +423,55 @@
       word-break: break-word;
     }
 
+    .booking-next-action {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      margin-bottom: 0.55rem;
+      padding: 0.35rem 0.55rem;
+      border-radius: 999px;
+      background: rgba(165, 74, 123, 0.15);
+      color: #f9d7e8;
+      font-size: 0.74rem;
+      font-weight: 700;
+    }
+
+    .booking-meta-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.45rem;
+      flex-wrap: wrap;
+    }
+
+    .booking-time-drift {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.28rem 0.55rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      background: rgba(148, 163, 184, 0.12);
+      color: var(--text);
+    }
+
+    .booking-time-drift.due_now {
+      background: rgba(59, 130, 246, 0.18);
+      color: #bfdbfe;
+    }
+
+    .booking-time-drift.overdue {
+      background: rgba(239, 68, 68, 0.18);
+      color: #fecaca;
+    }
+
+    .booking-time-drift.later {
+      background: rgba(16, 185, 129, 0.14);
+      color: #bbf7d0;
+    }
+
     .booking-details {
       font-size: 0.9rem;
       color: var(--muted);
@@ -358,6 +519,10 @@
       transition: all 0.2s;
       white-space: nowrap;
       color: white;
+    }
+
+    .btn-stage.primary-action {
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08);
     }
 
     .btn-confirm {
@@ -610,6 +775,13 @@
     <div class="mobile-summary">
       <div class="summary-grid" id="summaryGrid"></div>
       <div class="filter-row" id="filterRow"></div>
+      <div class="urgent-bar" id="urgentBar" hidden>
+        <div class="urgent-bar-header">
+          <strong>Urgent now</strong>
+          <span id="urgentBarCount">0 items</span>
+        </div>
+        <div class="urgent-list" id="urgentList"></div>
+      </div>
     </div>
 
     <div class="app-feed" id="appFeed">
@@ -671,6 +843,9 @@
       const appFeed = document.getElementById('appFeed');
       const summaryGrid = document.getElementById('summaryGrid');
       const filterRow = document.getElementById('filterRow');
+      const urgentBar = document.getElementById('urgentBar');
+      const urgentBarCount = document.getElementById('urgentBarCount');
+      const urgentList = document.getElementById('urgentList');
       const settingsBtn = document.getElementById('settingsBtn');
       const logoutBtn = document.getElementById('logoutBtn');
       const settingsModal = document.getElementById('settingsModal');
@@ -709,7 +884,20 @@
 
       function getVisibleBookings() {
         const all = Array.isArray(state.bookings) ? state.bookings.slice() : [];
-        all.sort((left, right) => String(left.booking_time || '').localeCompare(String(right.booking_time || '')));
+        const stagePriority = {
+          pending: 0,
+          confirmed: 1,
+          arrived: 2,
+          noshow: 3,
+          cancelled: 4,
+          done: 5
+        };
+
+        all.sort((left, right) => {
+          const stageDelta = (stagePriority[left.stage] ?? 99) - (stagePriority[right.stage] ?? 99);
+          if (stageDelta !== 0) return stageDelta;
+          return String(left.booking_time || '').localeCompare(String(right.booking_time || ''));
+        });
 
         if (state.activeFilter === 'active') {
           return all.filter((booking) => ['pending', 'confirmed', 'arrived'].includes(booking.stage));
@@ -735,7 +923,7 @@
       }
 
       function renderMobileSummary() {
-        if (!summaryGrid || !filterRow) return;
+        if (!summaryGrid || !filterRow || !urgentBar || !urgentBarCount || !urgentList) return;
 
         const summary = getBookingStageSummary();
         summaryGrid.innerHTML = [
@@ -770,6 +958,43 @@
         filterRow.querySelectorAll('.filter-chip').forEach((button) => {
           button.addEventListener('click', () => {
             state.activeFilter = button.dataset.filter || 'active';
+            renderMobileSummary();
+            renderFeed();
+          });
+        });
+
+        const urgentItems = state.bookings.filter((booking) => {
+          if (booking.stage === 'pending') return true;
+          return booking.stage === 'confirmed' && getConfirmedTimingBucket(booking) === 'overdue';
+        });
+
+        if (!urgentItems.length) {
+          urgentBar.hidden = true;
+          urgentBarCount.textContent = '0 items';
+          urgentList.innerHTML = '';
+          return;
+        }
+
+        urgentBar.hidden = false;
+        urgentBarCount.textContent = `${urgentItems.length} urgent item${urgentItems.length === 1 ? '' : 's'}`;
+        urgentList.innerHTML = urgentItems
+          .sort((left, right) => String(left.booking_time || '').localeCompare(String(right.booking_time || '')))
+          .map((booking) => {
+            const urgentClass = booking.stage === 'pending' ? 'pending' : 'overdue';
+            const urgentLabel = booking.stage === 'pending' ? 'Pending' : 'Overdue';
+            return `
+              <button
+                type="button"
+                class="urgent-chip ${urgentClass}"
+                data-urgent-filter="${booking.stage === 'pending' ? 'pending' : 'confirmed'}"
+              >${urgentLabel}: ${booking.booking_time} · ${booking.contact_name}</button>
+            `;
+          })
+          .join('');
+
+        urgentList.querySelectorAll('.urgent-chip').forEach((button) => {
+          button.addEventListener('click', () => {
+            state.activeFilter = button.dataset.urgentFilter || 'active';
             renderMobileSummary();
             renderFeed();
           });
@@ -1002,22 +1227,37 @@
           return;
         }
 
-        appFeed.innerHTML = visibleBookings.map(booking => `
-          <div class="booking-item ${booking.stage}">
-            <div class="booking-time">${booking.booking_time}</div>
-            <div class="booking-info">
-              <div class="booking-name">👤 ${booking.contact_name}</div>
-              <div class="booking-details">
-                <span>👥 ${booking.guests_pax} pax</span>
-                <span>🏘️ ${booking.area}</span>
-                <span class="booking-stage ${booking.stage}">${STAGE_LABELS[booking.stage] || booking.stage}</span>
-              </div>
-              <div class="booking-buttons">
-                ${getActionButtons(booking)}
-              </div>
-            </div>
-          </div>
-        `).join('');
+        const groups = [
+          { key: 'pending', label: 'Needs confirmation' },
+          { key: 'confirmed', label: 'Expected soon' },
+          { key: 'arrived', label: 'On site now' },
+          { key: 'noshow', label: 'No-show' },
+          { key: 'cancelled', label: 'Cancelled' },
+          { key: 'done', label: 'Completed' }
+        ];
+
+        const sections = groups
+          .map((group) => {
+            const items = visibleBookings.filter((booking) => booking.stage === group.key);
+            if (!items.length) return '';
+
+            const content = group.key === 'confirmed'
+              ? renderConfirmedQueue(items)
+              : items.map((booking) => renderBookingCard(booking)).join('');
+
+            return `
+              <section class="queue-section">
+                <div class="queue-section-header">
+                  <strong>${group.label}</strong>
+                  <span>${items.length} booking${items.length === 1 ? '' : 's'}</span>
+                </div>
+                ${content}
+              </section>
+            `;
+          })
+          .filter(Boolean);
+
+        appFeed.innerHTML = sections.join('');
 
         // Attach event listeners
         document.querySelectorAll('.btn-stage').forEach(btn => {
@@ -1029,25 +1269,127 @@
         });
       }
 
+      function getNextActionLabel(booking) {
+        if (booking.stage === 'pending') return 'Next action: confirm or cancel';
+        if (booking.stage === 'confirmed') {
+          const timing = getConfirmedTimingBucket(booking);
+          if (timing === 'overdue') return 'Arrived check overdue';
+          if (timing === 'due_now') return 'Guest should be arriving now';
+          return 'Next action: monitor arrival';
+        }
+        if (booking.stage === 'arrived') return 'Next action: close service';
+        if (booking.stage === 'noshow') return 'Marked as no-show';
+        if (booking.stage === 'cancelled') return 'Booking cancelled';
+        if (booking.stage === 'done') return 'Service completed';
+        return 'Track booking status';
+      }
+
+      function getMinutesFromBookingTime(rawValue) {
+        const match = String(rawValue || '').trim().match(/^(\d{1,2}):(\d{2})$/);
+        if (!match) return null;
+        const hours = Number(match[1]);
+        const minutes = Number(match[2]);
+        if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return null;
+        if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+        return (hours * 60) + minutes;
+      }
+
+      function getConfirmedTimingBucket(booking) {
+        const bookingMinutes = getMinutesFromBookingTime(booking.booking_time);
+        if (bookingMinutes === null) return 'later';
+
+        const now = new Date();
+        const currentMinutes = (now.getHours() * 60) + now.getMinutes();
+        const delta = bookingMinutes - currentMinutes;
+
+        if (delta < -15) return 'overdue';
+        if (delta <= 15) return 'due_now';
+        return 'later';
+      }
+
+      function getTimeDriftLabel(booking) {
+        if (booking.stage !== 'confirmed') return '';
+
+        const bookingMinutes = getMinutesFromBookingTime(booking.booking_time);
+        if (bookingMinutes === null) return '';
+
+        const now = new Date();
+        const currentMinutes = (now.getHours() * 60) + now.getMinutes();
+        const delta = bookingMinutes - currentMinutes;
+        const absMinutes = Math.abs(delta);
+
+        if (delta < -15) return `+${absMinutes}m overdue`;
+        if (delta <= 15) return delta >= 0 ? `starts in ${absMinutes}m` : `${absMinutes}m into arrival window`;
+        return `starts in ${absMinutes}m`;
+      }
+
+      function renderConfirmedQueue(items) {
+        const buckets = [
+          { key: 'overdue', label: 'Arrival overdue' },
+          { key: 'due_now', label: 'Due now' },
+          { key: 'later', label: 'Later today' }
+        ];
+
+        return buckets.map((bucket) => {
+          const bucketItems = items.filter((booking) => getConfirmedTimingBucket(booking) === bucket.key);
+          if (!bucketItems.length) return '';
+
+          return `
+            <div class="queue-subsection">
+              <div class="queue-subsection-header">
+                <strong>${bucket.label}</strong>
+                <span>${bucketItems.length}</span>
+              </div>
+              ${bucketItems.map((booking) => renderBookingCard(booking)).join('')}
+            </div>
+          `;
+        }).join('');
+      }
+
+      function renderBookingCard(booking) {
+        const timingBucket = booking.stage === 'confirmed' ? getConfirmedTimingBucket(booking) : '';
+        const timeDriftLabel = getTimeDriftLabel(booking);
+        return `
+          <div class="booking-item ${booking.stage}">
+            <div class="booking-time">${booking.booking_time}</div>
+            <div class="booking-info">
+              <div class="booking-meta-row">
+                <div class="booking-next-action">${getNextActionLabel(booking)}</div>
+                ${timeDriftLabel ? `<div class="booking-time-drift ${timingBucket}">${timeDriftLabel}</div>` : ''}
+              </div>
+              <div class="booking-name">👤 ${booking.contact_name}</div>
+              <div class="booking-details">
+                <span>👥 ${booking.guests_pax} pax</span>
+                <span>🏘️ ${booking.area}</span>
+                <span class="booking-stage ${booking.stage}">${STAGE_LABELS[booking.stage] || booking.stage}</span>
+              </div>
+              <div class="booking-buttons">
+                ${getActionButtons(booking)}
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
       function getActionButtons(booking) {
         const btns = [];
 
         // Stage: pending → Show: Confirm, Cancel
         if (booking.stage === 'pending') {
-          btns.push(`<button class="btn-stage btn-confirm" data-booking-id="${booking.id}" data-stage="confirmed">✓ Confirm</button>`);
+          btns.push(`<button class="btn-stage btn-confirm primary-action" data-booking-id="${booking.id}" data-stage="confirmed">✓ Confirm</button>`);
           btns.push(`<button class="btn-stage btn-cancel" data-booking-id="${booking.id}" data-stage="cancelled">✕ Cancel</button>`);
         }
 
         // Stage: confirmed → Show: Arrived, No-Show, Cancel
         if (booking.stage === 'confirmed') {
-          btns.push(`<button class="btn-stage btn-arrived" data-booking-id="${booking.id}" data-stage="arrived">🚪 Arrived</button>`);
+          btns.push(`<button class="btn-stage btn-arrived primary-action" data-booking-id="${booking.id}" data-stage="arrived">🚪 Arrived</button>`);
           btns.push(`<button class="btn-stage btn-noshow" data-booking-id="${booking.id}" data-stage="noshow">∅ No-Show</button>`);
           btns.push(`<button class="btn-stage btn-cancel" data-booking-id="${booking.id}" data-stage="cancelled">✕ Cancel</button>`);
         }
 
         // Stage: arrived → Show: Done, Cancel (NOT No-Show - they already arrived)
         if (booking.stage === 'arrived') {
-          btns.push(`<button class="btn-stage btn-done" data-booking-id="${booking.id}" data-stage="done">✓ Done</button>`);
+          btns.push(`<button class="btn-stage btn-done primary-action" data-booking-id="${booking.id}" data-stage="done">✓ Done</button>`);
           btns.push(`<button class="btn-stage btn-cancel" data-booking-id="${booking.id}" data-stage="cancelled">✕ Cancel</button>`);
         }
 
