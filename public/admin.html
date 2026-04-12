@@ -2502,6 +2502,29 @@
       }[String(method || '').trim()] || String(method || '');
     }
 
+    function getTenantPaymentReadinessFromValues(acceptedMethods, enabledMethods, stripeAccountId) {
+      const manualMethods = Array.isArray(acceptedMethods)
+        ? acceptedMethods.filter((method) => ['paypal', 'cash', 'pickup_at_store'].includes(method))
+        : [];
+      const stripeAllowed = Array.isArray(enabledMethods) ? enabledMethods.includes('bankcard') : false;
+      const stripeReady = stripeAllowed && !!String(stripeAccountId || '').trim();
+      const hasManualPath = manualMethods.length > 0;
+
+      return {
+        stripeAllowed,
+        stripeReady,
+        hasManualPath,
+        manualMethods,
+        summary: stripeReady
+          ? 'Stripe is connected for bank-card collection.'
+          : hasManualPath
+            ? 'Manual payment onboarding is ready. Stripe can be connected later.'
+            : stripeAllowed
+              ? 'Choose at least one manual method now or connect Stripe later.'
+              : 'Manual payment methods are the only active go-live path for this tenant.'
+      };
+    }
+
     function getReadinessBlockers(readiness, scope) {
       const items = Array.isArray(readiness?.items) ? readiness.items : [];
       return items.filter((item) => {
@@ -2688,7 +2711,9 @@
         verification_pending: 'DNS ready, waiting for operator verification',
         verified_waiting_activation: 'Verified, waiting for activation',
         active: 'Active',
-        rejected: 'Rejected'
+        rejected: 'Rejected',
+        transfer_out_requested: 'Transfer-out requested',
+        transferred_out: 'Transferred out'
       }[String(status || '').trim()] || String(status || 'n/a');
     }
 
@@ -2961,6 +2986,10 @@
           <div class="setting-value" style="padding-top: 10px;">${escapeHtml(humanizeDomainRequestStatus(request?.request_status || 'none'))}</div>
         </div>
         <div class="setting-row">
+          <div class="setting-label">Renewal / Transfer State</div>
+          <div class="setting-value" style="padding-top: 10px;">${escapeHtml(humanizeDomainRequestStatus(request?.renewalStatus || request?.renewal_status || 'external'))}</div>
+        </div>
+        <div class="setting-row">
           <div class="setting-label">Requested Domain</div>
           <input type="text" class="setting-value" id="domain_request_domain" value="${escapeHtml(request?.request_status && request.request_status !== 'rejected' ? (request.requested_domain || '') : '')}" placeholder="www.restaurant-example.com">
         </div>
@@ -2991,6 +3020,7 @@
           </div>
           <div class="integration-note">MVP rule: use a hostname like <strong>www.example.com</strong> and point it via CNAME to your managed subdomain target.</div>
         ` : ''}
+        ${String(request?.request_status || '') === 'active' ? '<div class="integration-note">Once the custom domain is active, you can request transfer-out support and keep the managed subdomain as a fallback while operator cutover is coordinated.</div>' : ''}
         <div class="settings-subsection-title">Event Timeline</div>
         ${customDomainRequestEvents.length ? customDomainRequestEvents.map((item) => `
           <div class="setting-row">
@@ -3020,6 +3050,7 @@
           <div style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;">
             ${!request || ['rejected', 'active'].includes(String(request.request_status || '')) ? '<button class="btn-small btn-secondary" onclick="submitDomainUpgradeRequest()">Request Custom Domain Upgrade</button>' : ''}
             ${String(request?.request_status || '') === 'approved_waiting_dns' ? '<button class="btn-small btn-secondary" onclick="markDomainDnsReady()">I Configured DNS</button>' : ''}
+            ${String(request?.request_status || '') === 'active' && !['transfer_out_requested', 'transferred_out'].includes(String(request?.renewalStatus || request?.renewal_status || '')) ? '<button class="btn-small btn-secondary" onclick="requestDomainTransferOut()">Request Transfer-Out Support</button>' : ''}
             <button class="btn-small btn-secondary" onclick="reloadPlatformConfig()">Reload</button>
           </div>
         </div>
@@ -3075,6 +3106,32 @@
         alert('Operator has been notified that DNS is ready for verification.');
       } catch (error) {
         alert(error.message || 'Network error while updating DNS readiness.');
+      }
+    }
+
+    async function requestDomainTransferOut() {
+      if (!currentUser?.id) {
+        alert('Please login again.');
+        return;
+      }
+
+      const requestNote = window.prompt('Optional transfer-out note for the operator team:', 'Please prepare transfer-out support and registrar cutover guidance.') || '';
+
+      try {
+        const res = await fetch('/api/admin/domain-upgrade/request-transfer-out', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ requestNote })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) {
+          alert(data.error || 'Unable to request transfer-out support.');
+          return;
+        }
+        await reloadPlatformConfig();
+        alert('Transfer-out support request sent to the operator team.');
+      } catch (error) {
+        alert(error.message || 'Network error while requesting transfer-out support.');
       }
     }
 
@@ -3144,23 +3201,28 @@
       const paymentStatus = String(getOperationalValue('demo_payment_status') || '').trim() || 'demo_paid';
       const paymentReference = String(getOperationalValue('demo_payment_reference') || '').trim();
       const paymentConfirmedAt = String(getOperationalValue('demo_payment_confirmed_at') || '').trim();
+      const stripeAccountId = String(getOperationalValue('stripe_account_id') || '').trim();
       const stripeCollectionMode = enabledMethods.includes('bankcard') ? 'Stripe online collection available for bank card' : 'Stripe online collection disabled by SaaS admin';
-      const manualMethods = acceptedMethods.filter((method) => method !== 'bankcard');
+      const readiness = getTenantPaymentReadinessFromValues(acceptedMethods, enabledMethods, stripeAccountId);
+      const manualMethods = readiness.manualMethods;
 
       container.innerHTML = `
-        <div class="integration-note">Stripe is still the long-term online payment path. Until then, you can declare demo or manual methods explicitly for onboarding and go-live.</div>
+        <div class="integration-note"><strong>Payment readiness:</strong> ${escapeHtml(readiness.summary)}</div>
+        <div class="integration-note">Stripe is optional for now. Use manual or demo methods for onboarding and early go-live, then connect Stripe later when online card collection is needed.</div>
         <div class="integration-note">Enabled by SaaS admin policy: ${escapeHtml(enabledMethods.map(humanizePaymentMethod).join(', ') || 'none')}.</div>
         <div class="setting-row">
           <div class="setting-label">Collection Model</div>
           <div class="setting-value" style="padding-top: 10px; display:grid; gap:6px;">
             <div><strong>Stripe online collection:</strong> ${escapeHtml(stripeCollectionMode)}</div>
             <div><strong>Manual/demo methods:</strong> ${escapeHtml(manualMethods.map(humanizePaymentMethod).join(', ') || 'none')}</div>
+            <div><strong>Current onboarding mode:</strong> ${escapeHtml(stripeAccountId ? 'Stripe connected' : (readiness.hasManualPath ? 'Manual first' : 'Not configured yet'))}</div>
           </div>
         </div>
         <div class="setting-row">
           <div class="setting-label">Stripe Account ID</div>
           <input type="text" class="setting-value" id="op_stripe_account_id" value="${escapeHtml(getOperationalValue('stripe_account_id'))}" placeholder="acct_...">
         </div>
+        <div class="integration-note">Leave Stripe empty if this tenant will collect payment manually for now. Save manual methods first; card collection can be enabled later.</div>
         <div class="setting-row">
           <div class="setting-label">Demo Payment Method</div>
           <select class="setting-value" id="op_demo_payment_method">

@@ -309,8 +309,52 @@
         verification_pending: 'DNS ready, waiting for operator verification',
         verified_waiting_activation: 'Verified, waiting for activation',
         active: 'Active',
-        rejected: 'Rejected'
+        rejected: 'Rejected',
+        transfer_out_requested: 'Transfer-out requested',
+        transferred_out: 'Transferred out'
       }[String(status || '').trim()] || String(status || 'n/a');
+    }
+
+    function buildDomainCutoverChecklist(row) {
+      const status = String(row?.request_status || '').trim();
+      const healthStatus = String(row?.last_health_check_status || '').trim().toLowerCase();
+      const renewalStatus = String(row?.renewalStatus || row?.renewal_status || '').trim();
+
+      return [
+        { label: 'Request logged', done: !!String(row?.id || '').trim() },
+        { label: 'Operator approved', done: !!String(row?.approved_at || '').trim() || ['verification_pending', 'verified_waiting_activation', 'active'].includes(status) },
+        { label: 'Tenant DNS ready', done: !!String(row?.dns_ready_at || '').trim() || ['verified_waiting_activation', 'active'].includes(status) },
+        { label: 'DNS verified', done: !!String(row?.verified_at || '').trim() || ['verified_waiting_activation', 'active'].includes(status) },
+        { label: 'Live activation', done: !!String(row?.activated_at || '').trim() || status === 'active' },
+        { label: 'Health check green', done: status === 'active' && healthStatus === 'healthy' },
+        {
+          label: 'Transfer support',
+          done: renewalStatus === 'transferred_out',
+          state: renewalStatus === 'transfer_out_requested'
+            ? 'requested'
+            : renewalStatus === 'transferred_out'
+              ? 'completed'
+              : status === 'active'
+                ? 'available'
+                : 'inactive'
+        }
+      ];
+    }
+
+    function getDomainNextActionLabel(row) {
+      const status = String(row?.request_status || '').trim();
+      const renewalStatus = String(row?.renewalStatus || row?.renewal_status || '').trim();
+      const healthStatus = String(row?.last_health_check_status || '').trim().toLowerCase();
+
+      if (status === 'requested') return 'Next: operator approval';
+      if (status === 'approved_waiting_dns') return 'Next: tenant configures DNS';
+      if (status === 'verification_pending') return 'Next: operator verifies DNS';
+      if (status === 'verified_waiting_activation') return 'Next: operator activates domain';
+      if (status === 'active' && renewalStatus === 'transfer_out_requested') return 'Next: operator completes transfer-out';
+      if (status === 'active' && healthStatus !== 'healthy') return 'Next: investigate activation health';
+      if (status === 'active') return 'Live: monitor renewals and support';
+      if (status === 'rejected') return 'Closed: tenant must open a new request';
+      return 'Next step available in timeline';
     }
 
     function humanizeWebsiteReleaseStatus(status) {
@@ -776,6 +820,10 @@
         <div class="lead-row">
           <div class="lead-top">
             <div>
+              ${(() => {
+                const checklist = buildDomainCutoverChecklist(row);
+                const nextAction = getDomainNextActionLabel(row);
+                return `
               <div class="lead-name">${escapeHtml(row.requested_domain || 'Unknown domain')}</div>
               <div class="lead-meta">company: ${escapeHtml(String(row.company_id || ''))} • mode: ${escapeHtml(row.registration_mode || 'byod')} • renewal: ${escapeHtml(row.renewal_mode || 'external')}</div>
               <div class="lead-payment-meta">
@@ -783,8 +831,26 @@
                 <div>DNS: ${escapeHtml(row.dns_record_type || 'CNAME')} ${escapeHtml(row.dns_name || '')} → ${escapeHtml(row.dns_value || '')}</div>
                 <div>Requested: ${escapeHtml(row.created_at || '')}</div>
                 <div>Operator note: ${escapeHtml(row.operator_note || 'n/a')}</div>
-                <div>Renewal: ${escapeHtml(row.renewalStatus || row.renewal_status || 'external')} ${row.renewal_due_at ? `• due ${escapeHtml(row.renewal_due_at)}` : ''}</div>
+                <div>Renewal: ${escapeHtml(humanizeDomainRequestStatus(row.renewalStatus || row.renewal_status || 'external'))} ${row.renewal_due_at ? `• due ${escapeHtml(row.renewal_due_at)}` : ''}</div>
                 <div>Health: ${escapeHtml(String(row.last_health_check_status || 'n/a'))} • ${escapeHtml(String(row.last_health_check_note || 'no activation health check yet'))}</div>
+                <div>Cutover: ${escapeHtml(nextAction)}</div>
+              </div>
+              <div class="review-workflow" style="margin-top:10px;">
+                ${checklist.map((item) => {
+                  const label = item.state === 'requested'
+                    ? `${item.label} requested`
+                    : item.state === 'completed'
+                      ? `${item.label} completed`
+                      : item.state === 'available'
+                        ? `${item.label} available`
+                        : item.label;
+                  const statusKey = item.done
+                    ? 'approved'
+                    : item.state === 'requested'
+                      ? 'pending_review'
+                      : 'new';
+                  return statusBadge(statusKey).replace(`>${statusKey}<`, `>${escapeHtml(label.toLowerCase())}<`);
+                }).join('')}
               </div>
               <div class="lead-payment-timeline">
                 ${(events.filter((event) => String(event.request_id || '') === String(row.id || '')).slice(0, 5).map((event) => `
@@ -794,6 +860,8 @@
                   </div>
                 `).join('')) || '<div class="text-muted">No domain timeline yet.</div>'}
               </div>
+                `;
+              })()}
             </div>
           </div>
           <div class="lead-controls">
@@ -802,6 +870,7 @@
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
               ${String(row.renewal_mode || '') === 'platform_managed' ? `<button class="btn btn-sm btn-outline" onclick="previewDomainRenewalReminder('${row.id}')">Preview reminder</button>` : ''}
               ${String(row.request_status || '') === 'active' && String(row.renewal_mode || '') === 'platform_managed' ? `<button class="btn btn-sm btn-warn-lite" onclick="forceDomainRenewalOverdue('${row.id}')">Force overdue</button>` : ''}
+              ${String(row.request_status || '') === 'active' && String(row.renewalStatus || row.renewal_status || '') === 'transfer_out_requested' ? `<button class="btn btn-sm btn-outline" onclick="runDomainRequestAction('${row.id}', 'mark-transferred-out')">Mark transferred out</button>` : ''}
               ${String(row.request_status || '') === 'requested' ? `<button class="btn btn-sm btn-outline" onclick="runDomainRequestAction('${row.id}', 'approve')">Approve</button>` : ''}
               ${String(row.request_status || '') === 'verification_pending' ? `<button class="btn btn-sm btn-outline" onclick="runDomainRequestAction('${row.id}', 'verify')">Verify DNS</button>` : ''}
               ${String(row.request_status || '') === 'verified_waiting_activation' ? `<button class="btn btn-sm btn-outline" onclick="runDomainRequestAction('${row.id}', 'activate')">Activate</button>` : ''}

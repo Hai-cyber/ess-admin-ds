@@ -742,6 +742,134 @@ describe('ESSKULTUR worker', () => {
 		expect(dashboardBody.customDomainRequests.some((row) => String(row.id || '') === domainRequestId)).toBe(true);
 	});
 
+	it('supports tenant transfer-out requests and operator completion for active custom domains', async () => {
+		await initializeDatabase(env.DB);
+		env.CUSTOM_DOMAIN_DNS_VERIFY_MODE = 'mock';
+		env.CUSTOM_DOMAIN_ACTIVATION_HEALTHCHECK_MODE = 'mock';
+		const tenantCookie = await createRestaurantAdminSessionCookie(env, { companyId: 1 });
+		const platformCookie = await createPlatformAdminSessionCookie(env);
+		const now = new Date().toISOString();
+
+		await env.DB.prepare(`
+			INSERT INTO website_releases (
+				id, company_id, review_id, release_status, publish_target, preview_url, published_url,
+				payload_snapshot_json, reason_codes_json, release_note, reviewer_type, reviewer_id,
+				published_at, suspended_at, created_at, updated_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`).bind(
+			'domain_transfer_live_release',
+			1,
+			null,
+			'published',
+			'managed_subdomain',
+			'http://localhost/website-master/index.html?company_id=1',
+			'https://restaurant1.gooddining.app',
+			JSON.stringify({ company: { name: 'Transfer Ready Restaurant' } }),
+			JSON.stringify([]),
+			'Published before transfer workflow',
+			'system',
+			'publish-gate',
+			now,
+			null,
+			now,
+			now
+		).run();
+
+		let request = new Request('http://localhost/api/admin/domain-upgrade/request?company_id=1', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json', cookie: tenantCookie },
+			body: JSON.stringify({
+				requestedDomain: 'www.transfer-ready.de',
+				registrationMode: 'managed_registration',
+				requestNote: 'Prepare transfer flow.'
+			})
+		});
+		let ctx = createExecutionContext();
+		let response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		let body = await response.json();
+		const domainRequestId = String(body.request?.id || '');
+		expect(domainRequestId).not.toBe('');
+
+		request = new Request(`http://localhost/api/platform/admin/domain-requests/${encodeURIComponent(domainRequestId)}/approve`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json', cookie: platformCookie },
+			body: JSON.stringify({ operatorNote: 'Approved for DNS setup.' })
+		});
+		ctx = createExecutionContext();
+		response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+
+		request = new Request('http://localhost/api/admin/domain-upgrade/mark-dns-ready?company_id=1', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json', cookie: tenantCookie },
+			body: JSON.stringify({})
+		});
+		ctx = createExecutionContext();
+		response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+
+		request = new Request(`http://localhost/api/platform/admin/domain-requests/${encodeURIComponent(domainRequestId)}/verify`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json', cookie: platformCookie },
+			body: JSON.stringify({ operatorNote: 'DNS verified.' })
+		});
+		ctx = createExecutionContext();
+		response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+
+		request = new Request(`http://localhost/api/platform/admin/domain-requests/${encodeURIComponent(domainRequestId)}/activate`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json', cookie: platformCookie },
+			body: JSON.stringify({ operatorNote: 'Activated for tenant.' })
+		});
+		ctx = createExecutionContext();
+		response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+
+		request = new Request('http://localhost/api/admin/domain-upgrade/request-transfer-out?company_id=1', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json', cookie: tenantCookie },
+			body: JSON.stringify({ requestNote: 'Please coordinate registrar migration.' })
+		});
+		ctx = createExecutionContext();
+		response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		body = await response.json();
+		expect(String(body.request?.renewalStatus || body.request?.renewal_status || '')).toBe('transfer_out_requested');
+
+		request = new Request(`http://localhost/api/platform/admin/domain-requests/${encodeURIComponent(domainRequestId)}/mark-transferred-out`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json', cookie: platformCookie },
+			body: JSON.stringify({ operatorNote: 'Transfer completed with registrar.' })
+		});
+		ctx = createExecutionContext();
+		response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		body = await response.json();
+		expect(String(body.request?.renewalStatus || body.request?.renewal_status || '')).toBe('transferred_out');
+
+		const stored = await env.DB.prepare(
+			`SELECT renewal_status, auto_renew_enabled FROM custom_domain_requests WHERE id = ? LIMIT 1`
+		).bind(domainRequestId).first();
+		expect(String(stored?.renewal_status || '')).toBe('transferred_out');
+		expect(Number(stored?.auto_renew_enabled || 0)).toBe(0);
+
+		const events = await env.DB.prepare(
+			`SELECT event_type FROM custom_domain_request_events WHERE request_id = ? ORDER BY created_at DESC`
+		).bind(domainRequestId).all();
+		expect((events.results || []).map((row) => String(row.event_type || ''))).toEqual(expect.arrayContaining([
+			'transfer_out_requested',
+			'transfer_out_completed'
+		]));
+	});
+
 	it('resolves tenant website payload by custom domain host after activation', async () => {
 		await initializeDatabase(env.DB);
 

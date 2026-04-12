@@ -229,7 +229,15 @@ const DAY_END       = 24;   // 24:00
 // On localhost, default to company 1 so the board opens without extra typing.
 let boardCompanyId = null;
 const boardLaunchEntry = String(new URLSearchParams(window.location.search).get('entry') || '').trim().toLowerCase();
-const boardReturnTo = String(new URLSearchParams(window.location.search).get('return_to') || '').trim();
+
+function sanitizeReturnPath(rawValue) {
+  const raw = String(rawValue || '').trim();
+  if (!raw.startsWith('/')) return '/admin';
+  if (raw.startsWith('//')) return '/admin';
+  return raw;
+}
+
+const boardReturnTo = sanitizeReturnPath(new URLSearchParams(window.location.search).get('return_to') || '');
 
 function isCompanyIdQueryHost() {
   const host = String(window.location.hostname || '').toLowerCase();

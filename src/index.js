@@ -5655,9 +5655,9 @@ export default {
       }
     }
 
-    if (url.pathname.match(/^\/api\/platform\/admin\/domain-requests\/([^/]+)\/(approve|reject|verify|activate)$/) && request.method === "POST") {
+    if (url.pathname.match(/^\/api\/platform\/admin\/domain-requests\/([^/]+)\/(approve|reject|verify|activate|mark-transferred-out)$/) && request.method === "POST") {
       try {
-        const routeMatch = url.pathname.match(/^\/api\/platform\/admin\/domain-requests\/([^/]+)\/(approve|reject|verify|activate)$/);
+        const routeMatch = url.pathname.match(/^\/api\/platform\/admin\/domain-requests\/([^/]+)\/(approve|reject|verify|activate|mark-transferred-out)$/);
         const requestId = decodeURIComponent(String(routeMatch?.[1] || '')).trim();
         const action = String(routeMatch?.[2] || '').trim().toLowerCase();
         const body = await request.json().catch(() => ({}));
@@ -5803,6 +5803,26 @@ export default {
             note: activationHealth.note,
             metadataJson: {
               activationHealthStatus: activationHealth.status
+            }
+          });
+        }
+
+        if (action === 'mark-transferred-out') {
+          if (String(domainRequest.request_status || '').trim().toLowerCase() !== 'active') {
+            return Response.json({ ok: false, error: 'Only active custom domains can be marked transferred out.' }, { status: 409 });
+          }
+
+          updatedRequest = await updateCustomDomainRequestState(env, requestId, {
+            renewalStatus: 'transferred_out',
+            operatorNote,
+            autoRenewEnabled: 0,
+            actorType: 'platform_operator',
+            actorId: actorName,
+            eventType: 'transfer_out_completed',
+            eventNote: operatorNote || 'Operator marked the custom domain as transferred out.',
+            metadataJson: {
+              requestedDomain: String(domainRequest.requested_domain || '').trim(),
+              source: 'platform_operator'
             }
           });
         }
@@ -7457,6 +7477,43 @@ export default {
           });
 
           return Response.json({ ok: true, request: updatedRequest });
+        } catch (e) {
+          return Response.json({ ok: false, error: e.message }, { status: 500 });
+        }
+      });
+    }
+
+    if (url.pathname === "/api/admin/domain-upgrade/request-transfer-out" && request.method === "POST") {
+      return runTenantRoute(async ({ companyId }) => {
+        try {
+          const body = await request.json().catch(() => ({}));
+          const auth = await authorizeCompanyAdminRequest(env, request, companyId, body, url, { allowManager: false });
+          if (!auth.ok) {
+            return Response.json({ ok: false, error: auth.error }, { status: auth.status });
+          }
+
+          const latestRequest = await getLatestCustomDomainRequest(env, companyId);
+          if (!latestRequest?.id) {
+            return Response.json({ ok: false, error: 'No custom-domain request found.' }, { status: 404 });
+          }
+          if (String(latestRequest.request_status || '').trim().toLowerCase() !== 'active') {
+            return Response.json({ ok: false, error: 'Transfer-out can only be requested for an active custom domain.' }, { status: 409 });
+          }
+
+          const note = String(body?.requestNote || body?.note || '').trim() || 'Tenant requested transfer-out support.';
+          const updatedRequest = await updateCustomDomainRequestState(env, latestRequest.id, {
+            renewalStatus: 'transfer_out_requested',
+            actorType: 'tenant_admin',
+            actorId: String(auth.staff.name || auth.staff.id || 'tenant-admin'),
+            eventType: 'transfer_out_requested',
+            eventNote: note,
+            metadataJson: {
+              requestedDomain: String(latestRequest.requested_domain || '').trim(),
+              source: 'tenant_admin'
+            }
+          });
+
+          return Response.json({ ok: true, request: annotateCustomDomainRequest(updatedRequest) });
         } catch (e) {
           return Response.json({ ok: false, error: e.message }, { status: 500 });
         }
