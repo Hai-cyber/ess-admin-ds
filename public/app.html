@@ -208,6 +208,7 @@
       border-radius: 10px;
       padding: 0.75rem;
       min-width: 0;
+      position: relative;
     }
 
     .summary-card strong {
@@ -223,6 +224,34 @@
       color: var(--muted);
       text-transform: uppercase;
       letter-spacing: 0.04em;
+    }
+
+    .summary-badge {
+      position: absolute;
+      top: 0.55rem;
+      right: 0.55rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.2rem 0.45rem;
+      border-radius: 999px;
+      background: rgba(239, 68, 68, 0.18);
+      color: #fecaca;
+      font-size: 0.66rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      border: none;
+      cursor: pointer;
+    }
+
+    .summary-badge small {
+      display: inline;
+      font-size: 0.64rem;
+      font-weight: 700;
+      color: #fca5a5;
+      text-transform: none;
+      letter-spacing: normal;
     }
 
     .filter-row {
@@ -829,6 +858,37 @@
 
   <script>
     (function() {
+      const COLLAPSED_SECTION_STORAGE_KEY = 'staffAppCollapsedSections';
+
+      function getDefaultCollapsedSections() {
+        return {
+          noshow: true,
+          cancelled: true,
+          done: true
+        };
+      }
+
+      function loadCollapsedSectionsPreference() {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(COLLAPSED_SECTION_STORAGE_KEY) || 'null');
+          if (!parsed || typeof parsed !== 'object') return getDefaultCollapsedSections();
+          return {
+            ...getDefaultCollapsedSections(),
+            ...parsed
+          };
+        } catch {
+          return getDefaultCollapsedSections();
+        }
+      }
+
+      function persistCollapsedSectionsPreference(collapsedSections) {
+        try {
+          localStorage.setItem(COLLAPSED_SECTION_STORAGE_KEY, JSON.stringify(collapsedSections || getDefaultCollapsedSections()));
+        } catch {
+          // Ignore storage failures and keep runtime state only.
+        }
+      }
+
       // State
       let state = {
         companyId: null,
@@ -837,11 +897,7 @@
         requestedCompanyId: null,
         soundEnabled: localStorage.getItem('soundEnabled') !== 'false',
         activeFilter: 'active',
-        collapsedSections: {
-          noshow: true,
-          cancelled: true,
-          done: true
-        },
+        collapsedSections: loadCollapsedSectionsPreference(),
         bookings: [],
         eventSource: null,
         bookingUpdate: null
@@ -934,6 +990,13 @@
           return all.filter((booking) => ['pending', 'confirmed', 'arrived'].includes(booking.stage));
         }
 
+        if (state.activeFilter === 'hot') {
+          return all.filter((booking) => {
+            if (booking.stage === 'pending') return true;
+            return booking.stage === 'confirmed' && getConfirmedTimingBucket(booking) === 'overdue';
+          });
+        }
+
         if (state.activeFilter === 'completed') {
           return all.filter((booking) => ['done', 'cancelled', 'noshow'].includes(booking.stage));
         }
@@ -948,6 +1011,7 @@
       function getEmptyStateMessage() {
         if (!state.bookings.length) return 'No bookings yet';
         if (state.activeFilter === 'active') return 'No active bookings right now';
+        if (state.activeFilter === 'hot') return 'No urgent bookings right now';
         if (state.activeFilter === 'completed') return 'No completed bookings yet';
         if (state.activeFilter === 'all') return 'No bookings yet';
         return `No ${state.activeFilter} bookings right now`;
@@ -957,19 +1021,24 @@
         if (!summaryGrid || !filterRow || !urgentBar || !urgentBarCount || !urgentList) return;
 
         const summary = getBookingStageSummary();
+        const overdueConfirmed = state.bookings.filter((booking) => booking.stage === 'confirmed' && getConfirmedTimingBucket(booking) === 'overdue').length;
+        const urgentQueueCount = summary.pending + overdueConfirmed;
+        const hotBreakdown = `${summary.pending} pending • ${overdueConfirmed} overdue`;
         summaryGrid.innerHTML = [
-          { key: 'all', label: 'Today', value: summary.all },
+          { key: 'all', label: 'Today', value: summary.all, badge: urgentQueueCount > 0 ? `Hot ${urgentQueueCount}` : '', badgeDetail: urgentQueueCount > 0 ? hotBreakdown : '' },
           { key: 'pending', label: 'Pending', value: summary.pending },
           { key: 'confirmed', label: 'Confirmed', value: summary.confirmed },
           { key: 'arrived', label: 'Arrived', value: summary.arrived }
         ].map((item) => `
           <div class="summary-card">
+            ${item.badge ? `<button type="button" class="summary-badge" data-summary-filter="hot">${item.badge}${item.badgeDetail ? ` <small>${item.badgeDetail}</small>` : ''}</button>` : ''}
             <strong>${item.value}</strong>
             <span>${item.label}</span>
           </div>
         `).join('');
 
         const filters = [
+          ...(urgentQueueCount > 0 ? [{ key: 'hot', label: `Hot ${urgentQueueCount} • ${hotBreakdown}` }] : []),
           { key: 'active', label: `Active ${summary.pending + summary.confirmed + summary.arrived}` },
           { key: 'pending', label: `Pending ${summary.pending}` },
           { key: 'confirmed', label: `Confirmed ${summary.confirmed}` },
@@ -989,6 +1058,14 @@
         filterRow.querySelectorAll('.filter-chip').forEach((button) => {
           button.addEventListener('click', () => {
             state.activeFilter = button.dataset.filter || 'active';
+            renderMobileSummary();
+            renderFeed();
+          });
+        });
+
+        summaryGrid.querySelectorAll('[data-summary-filter]').forEach((button) => {
+          button.addEventListener('click', () => {
+            state.activeFilter = button.dataset.summaryFilter || 'hot';
             renderMobileSummary();
             renderFeed();
           });
@@ -1135,11 +1212,7 @@
           requestedCompanyId: getRequestedCompanyIdFromLocation(),
           soundEnabled: state.soundEnabled,
           activeFilter: 'active',
-          collapsedSections: {
-            noshow: true,
-            cancelled: true,
-            done: true
-          },
+          collapsedSections: loadCollapsedSectionsPreference(),
           bookings: [],
           eventSource: null
         };
@@ -1283,6 +1356,19 @@
           return;
         }
 
+        if (state.activeFilter === 'hot') {
+          const pendingItems = visibleBookings.filter((booking) => booking.stage === 'pending');
+          const overdueConfirmedItems = visibleBookings.filter((booking) => booking.stage === 'confirmed');
+
+          appFeed.innerHTML = [
+            renderHotQueueSubsection('Pending first', pendingItems),
+            renderHotQueueSubsection('Overdue arrivals', overdueConfirmedItems)
+          ].filter(Boolean).join('');
+
+          attachQueueEventListeners();
+          return;
+        }
+
         const groups = [
           { key: 'pending', label: 'Needs confirmation' },
           { key: 'confirmed', label: 'Expected soon' },
@@ -1323,7 +1409,25 @@
 
         appFeed.innerHTML = sections.join('');
 
-        // Attach event listeners
+        attachQueueEventListeners();
+      }
+
+      function renderHotQueueSubsection(label, items) {
+        if (!items.length) return '';
+
+        return `
+          <section class="queue-section">
+            <div class="queue-section-header">
+              <strong>${label}</strong>
+              <span>${items.length} booking${items.length === 1 ? '' : 's'}</span>
+            </div>
+            ${items.map((booking) => renderBookingCard(booking)).join('')}
+          </section>
+        `;
+      }
+
+      function attachQueueEventListeners() {
+
         document.querySelectorAll('.btn-stage').forEach(btn => {
           btn.addEventListener('click', async (e) => {
             const bookingId = btn.dataset.bookingId;
@@ -1337,6 +1441,7 @@
             const sectionKey = button.dataset.sectionToggle || '';
             if (!sectionKey) return;
             state.collapsedSections[sectionKey] = !isSectionCollapsed(sectionKey);
+            persistCollapsedSectionsPreference(state.collapsedSections);
             renderFeed();
           });
         });
