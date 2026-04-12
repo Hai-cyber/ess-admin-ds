@@ -2990,6 +2990,14 @@
           <div class="setting-value" style="padding-top: 10px;">${escapeHtml(humanizeDomainRequestStatus(request?.renewalStatus || request?.renewal_status || 'external'))}</div>
         </div>
         <div class="setting-row">
+          <div class="setting-label">Operator Cutover Note</div>
+          <div class="setting-value" style="padding-top: 10px;">${escapeHtml(request?.cutover_note || 'none')}</div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Cutover ETA</div>
+          <div class="setting-value" style="padding-top: 10px;">${escapeHtml(request?.cutover_eta ? formatDateTime(request.cutover_eta) : 'not scheduled')}</div>
+        </div>
+        <div class="setting-row">
           <div class="setting-label">Requested Domain</div>
           <input type="text" class="setting-value" id="domain_request_domain" value="${escapeHtml(request?.request_status && request.request_status !== 'rejected' ? (request.requested_domain || '') : '')}" placeholder="www.restaurant-example.com">
         </div>

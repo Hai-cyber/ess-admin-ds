@@ -453,6 +453,38 @@ describe('ESSKULTUR worker', () => {
 		expect(html).toContain('<title>Ess Admin DS</title>');
 	});
 
+	it('serves Restaurant Admin HTML with payment readiness and transfer-out UI hooks', async () => {
+		const response = await SELF.fetch('http://example.com/admin?company_id=1');
+		const html = await response.text();
+
+		expect(response.status).toBe(200);
+		expect(html).toContain('getTenantPaymentReadinessFromValues');
+		expect(html).toContain('Payment readiness:');
+		expect(html).toContain('requestDomainTransferOut');
+		expect(html).toContain('Operator Cutover Note');
+	});
+
+	it('serves SaaS Admin HTML with domain cutover checklist hooks', async () => {
+		const response = await SELF.fetch('http://example.com/platform/admin.html');
+		const html = await response.text();
+
+		expect(response.status).toBe(200);
+		expect(html).toContain('buildDomainCutoverChecklist');
+		expect(html).toContain('getDomainNextActionLabel');
+		expect(html).toContain('domain_cutover_eta_');
+		expect(html).toContain('Mark transferred out');
+	});
+
+	it('serves Booking Board HTML with launch-context and safe return-path hooks', async () => {
+		const response = await SELF.fetch('http://example.com/board?company_id=1&entry=restaurant_admin&return_to=/admin?company_id=1');
+		const html = await response.text();
+
+		expect(response.status).toBe(200);
+		expect(html).toContain('sanitizeReturnPath');
+		expect(html).toContain('Launched from Restaurant Admin');
+		expect(html).toContain('launchContextBackLink');
+	});
+
 	it('blocks reserved system subdomains during availability checks', async () => {
 		await initializeDatabase(env.DB);
 
@@ -794,7 +826,11 @@ describe('ESSKULTUR worker', () => {
 		request = new Request(`http://localhost/api/platform/admin/domain-requests/${encodeURIComponent(domainRequestId)}/approve`, {
 			method: 'POST',
 			headers: { 'content-type': 'application/json', cookie: platformCookie },
-			body: JSON.stringify({ operatorNote: 'Approved for DNS setup.' })
+			body: JSON.stringify({
+				operatorNote: 'Approved for DNS setup.',
+				cutoverNote: 'Target Tuesday morning cutover window.',
+				cutoverEta: '2026-04-15T09:30:00.000Z'
+			})
 		});
 		ctx = createExecutionContext();
 		response = await worker.fetch(request, env, ctx);
@@ -856,10 +892,12 @@ describe('ESSKULTUR worker', () => {
 		expect(String(body.request?.renewalStatus || body.request?.renewal_status || '')).toBe('transferred_out');
 
 		const stored = await env.DB.prepare(
-			`SELECT renewal_status, auto_renew_enabled FROM custom_domain_requests WHERE id = ? LIMIT 1`
+			`SELECT renewal_status, auto_renew_enabled, cutover_note, cutover_eta FROM custom_domain_requests WHERE id = ? LIMIT 1`
 		).bind(domainRequestId).first();
 		expect(String(stored?.renewal_status || '')).toBe('transferred_out');
 		expect(Number(stored?.auto_renew_enabled || 0)).toBe(0);
+		expect(String(stored?.cutover_note || '')).toBe('Target Tuesday morning cutover window.');
+		expect(String(stored?.cutover_eta || '')).toBe('2026-04-15T09:30:00.000Z');
 
 		const events = await env.DB.prepare(
 			`SELECT event_type FROM custom_domain_request_events WHERE request_id = ? ORDER BY created_at DESC`

@@ -1581,7 +1581,7 @@ async function getCustomDomainRequestHistory(env, companyId, limit = 12) {
   if (!companyId) return [];
   const result = await env.DB.prepare(`
     SELECT id, company_id, organization_id, requested_domain, registration_mode, request_status,
-           dns_record_type, dns_name, dns_value, request_note, operator_note, renewal_mode,
+          dns_record_type, dns_name, dns_value, request_note, operator_note, cutover_note, cutover_eta, renewal_mode,
            renewal_status, renewal_due_at, renewal_last_reminded_at, auto_renew_enabled,
            approved_at, approved_by, dns_ready_at, verified_at, activated_at, activated_by,
            last_health_check_at, last_health_check_status, last_health_check_note,
@@ -1603,7 +1603,7 @@ async function getCustomDomainRequestById(env, requestId) {
   if (!requestId) return null;
   const request = await env.DB.prepare(`
     SELECT id, company_id, organization_id, requested_domain, registration_mode, request_status,
-           dns_record_type, dns_name, dns_value, request_note, operator_note, renewal_mode,
+          dns_record_type, dns_name, dns_value, request_note, operator_note, cutover_note, cutover_eta, renewal_mode,
            renewal_status, renewal_due_at, renewal_last_reminded_at, auto_renew_enabled,
            approved_at, approved_by, dns_ready_at, verified_at, activated_at, activated_by,
            last_health_check_at, last_health_check_status, last_health_check_note,
@@ -1724,7 +1724,7 @@ async function processManagedDomainRenewalReminders(env, options = {}) {
   const sendDigest = options.sendDigest !== false;
   const result = await env.DB.prepare(`
     SELECT id, company_id, organization_id, requested_domain, registration_mode, request_status,
-           dns_record_type, dns_name, dns_value, request_note, operator_note, renewal_mode,
+          dns_record_type, dns_name, dns_value, request_note, operator_note, cutover_note, cutover_eta, renewal_mode,
            renewal_status, renewal_due_at, renewal_last_reminded_at, auto_renew_enabled,
            approved_at, approved_by, dns_ready_at, verified_at, activated_at, activated_by,
            last_health_check_at, last_health_check_status, last_health_check_note,
@@ -2026,6 +2026,8 @@ async function updateCustomDomainRequestState(env, requestId, updates = {}) {
     UPDATE custom_domain_requests
     SET request_status = ?,
         operator_note = ?,
+      cutover_note = ?,
+      cutover_eta = ?,
         renewal_status = ?,
         renewal_due_at = ?,
         renewal_last_reminded_at = ?,
@@ -2046,6 +2048,8 @@ async function updateCustomDomainRequestState(env, requestId, updates = {}) {
   `).bind(
     updates.requestStatus ?? existing.request_status,
     updates.operatorNote ?? existing.operator_note ?? null,
+    updates.cutoverNote ?? existing.cutover_note ?? null,
+    updates.cutoverEta ?? existing.cutover_eta ?? null,
     updates.renewalStatus ?? existing.renewal_status ?? null,
     updates.renewalDueAt ?? existing.renewal_due_at ?? null,
     updates.renewalLastRemindedAt ?? existing.renewal_last_reminded_at ?? null,
@@ -3355,7 +3359,7 @@ async function getPlatformAdminDashboard(env) {
     `).all(),
     env.DB.prepare(`
       SELECT id, company_id, organization_id, requested_domain, registration_mode, request_status,
-            dns_record_type, dns_name, dns_value, request_note, operator_note, renewal_mode,
+        dns_record_type, dns_name, dns_value, request_note, operator_note, cutover_note, cutover_eta, renewal_mode,
             renewal_status, renewal_due_at, renewal_last_reminded_at, auto_renew_enabled,
              approved_at, approved_by, dns_ready_at, verified_at, activated_at, activated_by,
             last_health_check_at, last_health_check_status, last_health_check_note,
@@ -5662,6 +5666,8 @@ export default {
         const action = String(routeMatch?.[2] || '').trim().toLowerCase();
         const body = await request.json().catch(() => ({}));
         const operatorNote = String(body?.operatorNote || body?.note || '').trim();
+        const cutoverNote = String(body?.cutoverNote || '').trim() || undefined;
+        const cutoverEta = String(body?.cutoverEta || '').trim() || undefined;
         const auth = await authorizePlatformOperatorRequest(env, request, body, url);
         if (!auth.ok) {
           return Response.json({ ok: false, error: auth.error }, { status: auth.status });
@@ -5682,6 +5688,8 @@ export default {
           updatedRequest = await updateCustomDomainRequestState(env, requestId, {
             requestStatus: 'approved_waiting_dns',
             operatorNote,
+            cutoverNote,
+            cutoverEta,
             approvedAt: new Date().toISOString(),
             approvedBy: actorName,
             eventType: 'request_approved',
@@ -5698,6 +5706,8 @@ export default {
           updatedRequest = await updateCustomDomainRequestState(env, requestId, {
             requestStatus: 'rejected',
             operatorNote,
+            cutoverNote,
+            cutoverEta,
             rejectedAt: new Date().toISOString(),
             rejectedBy: actorName,
             eventType: 'request_rejected',
@@ -5733,6 +5743,8 @@ export default {
           updatedRequest = await updateCustomDomainRequestState(env, requestId, {
             requestStatus: 'verified_waiting_activation',
             operatorNote,
+            cutoverNote,
+            cutoverEta,
             verifiedAt: new Date().toISOString(),
             eventType: 'dns_verified',
             actorType: 'platform_operator',
@@ -5770,6 +5782,8 @@ export default {
           updatedRequest = await updateCustomDomainRequestState(env, requestId, {
             requestStatus: 'active',
             operatorNote,
+            cutoverNote,
+            cutoverEta,
             activatedAt: new Date().toISOString(),
             activatedBy: actorName,
             renewalStatus: renewalTracking.renewalStatus,
@@ -5815,6 +5829,8 @@ export default {
           updatedRequest = await updateCustomDomainRequestState(env, requestId, {
             renewalStatus: 'transferred_out',
             operatorNote,
+            cutoverNote,
+            cutoverEta,
             autoRenewEnabled: 0,
             actorType: 'platform_operator',
             actorId: actorName,

@@ -345,14 +345,15 @@
       const status = String(row?.request_status || '').trim();
       const renewalStatus = String(row?.renewalStatus || row?.renewal_status || '').trim();
       const healthStatus = String(row?.last_health_check_status || '').trim().toLowerCase();
+      const cutoverEta = String(row?.cutover_eta || '').trim();
 
-      if (status === 'requested') return 'Next: operator approval';
-      if (status === 'approved_waiting_dns') return 'Next: tenant configures DNS';
-      if (status === 'verification_pending') return 'Next: operator verifies DNS';
-      if (status === 'verified_waiting_activation') return 'Next: operator activates domain';
-      if (status === 'active' && renewalStatus === 'transfer_out_requested') return 'Next: operator completes transfer-out';
+      if (status === 'requested') return cutoverEta ? `Next: operator approval before ${cutoverEta}` : 'Next: operator approval';
+      if (status === 'approved_waiting_dns') return cutoverEta ? `Next: tenant configures DNS before ${cutoverEta}` : 'Next: tenant configures DNS';
+      if (status === 'verification_pending') return cutoverEta ? `Next: operator verifies DNS before ${cutoverEta}` : 'Next: operator verifies DNS';
+      if (status === 'verified_waiting_activation') return cutoverEta ? `Next: operator activates domain before ${cutoverEta}` : 'Next: operator activates domain';
+      if (status === 'active' && renewalStatus === 'transfer_out_requested') return cutoverEta ? `Next: operator completes transfer-out before ${cutoverEta}` : 'Next: operator completes transfer-out';
       if (status === 'active' && healthStatus !== 'healthy') return 'Next: investigate activation health';
-      if (status === 'active') return 'Live: monitor renewals and support';
+      if (status === 'active') return cutoverEta ? `Live: cutover target ${cutoverEta}` : 'Live: monitor renewals and support';
       if (status === 'rejected') return 'Closed: tenant must open a new request';
       return 'Next step available in timeline';
     }
@@ -831,6 +832,8 @@
                 <div>DNS: ${escapeHtml(row.dns_record_type || 'CNAME')} ${escapeHtml(row.dns_name || '')} → ${escapeHtml(row.dns_value || '')}</div>
                 <div>Requested: ${escapeHtml(row.created_at || '')}</div>
                 <div>Operator note: ${escapeHtml(row.operator_note || 'n/a')}</div>
+                <div>Cutover note: ${escapeHtml(row.cutover_note || 'n/a')}</div>
+                <div>Cutover ETA: ${escapeHtml(row.cutover_eta || 'n/a')}</div>
                 <div>Renewal: ${escapeHtml(humanizeDomainRequestStatus(row.renewalStatus || row.renewal_status || 'external'))} ${row.renewal_due_at ? `• due ${escapeHtml(row.renewal_due_at)}` : ''}</div>
                 <div>Health: ${escapeHtml(String(row.last_health_check_status || 'n/a'))} • ${escapeHtml(String(row.last_health_check_note || 'no activation health check yet'))}</div>
                 <div>Cutover: ${escapeHtml(nextAction)}</div>
@@ -866,7 +869,8 @@
           </div>
           <div class="lead-controls">
             <input id="domain_note_${row.id}" type="text" placeholder="Operator note" value="${escapeHtml(row.operator_note || '')}">
-            <div></div>
+            <input id="domain_cutover_note_${row.id}" type="text" placeholder="Cutover note" value="${escapeHtml(row.cutover_note || '')}">
+            <input id="domain_cutover_eta_${row.id}" type="datetime-local" value="${escapeHtml(String(row.cutover_eta || '').replace(/Z$/, '').slice(0, 16))}">
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
               ${String(row.renewal_mode || '') === 'platform_managed' ? `<button class="btn btn-sm btn-outline" onclick="previewDomainRenewalReminder('${row.id}')">Preview reminder</button>` : ''}
               ${String(row.request_status || '') === 'active' && String(row.renewal_mode || '') === 'platform_managed' ? `<button class="btn btn-sm btn-warn-lite" onclick="forceDomainRenewalOverdue('${row.id}')">Force overdue</button>` : ''}
@@ -1114,10 +1118,13 @@
     async function runDomainRequestAction(requestId, action) {
       if (!currentSaasUser?.id) return alert('Sign in to SaaS Admin first.');
       const operatorNote = document.getElementById(`domain_note_${requestId}`)?.value || '';
+      const cutoverNote = document.getElementById(`domain_cutover_note_${requestId}`)?.value || '';
+      const cutoverEtaRaw = document.getElementById(`domain_cutover_eta_${requestId}`)?.value || '';
+      const cutoverEta = cutoverEtaRaw ? new Date(cutoverEtaRaw).toISOString() : '';
       const res = await fetch(`/api/platform/admin/domain-requests/${encodeURIComponent(requestId)}/${encodeURIComponent(action)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ operatorNote })
+        body: JSON.stringify({ operatorNote, cutoverNote, cutoverEta })
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) return alert(data.error || `Failed to ${action} domain request.`);

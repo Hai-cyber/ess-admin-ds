@@ -359,6 +359,8 @@ CREATE TABLE IF NOT EXISTS custom_domain_requests (
   dns_value TEXT,
   request_note TEXT,
   operator_note TEXT,
+  cutover_note TEXT,
+  cutover_eta TEXT,
   renewal_mode TEXT DEFAULT 'external',
   renewal_status TEXT DEFAULT 'external',
   renewal_due_at TEXT,
