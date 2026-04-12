@@ -1530,6 +1530,89 @@ describe('ESSKULTUR worker', () => {
 		expect(String(company?.website_status || '')).toBe('published');
 	});
 
+	it('persists website editor content through save, reload, publish, and public payload resolution', async () => {
+		await initializeDatabase(env.DB);
+		const cookie = await createRestaurantAdminSessionCookie(env, { companyId: 1 });
+
+		let request = new Request('http://localhost/api/admin/platform-config?company_id=1', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json', cookie },
+			body: JSON.stringify({
+				company: null,
+				operationalSettings: {
+					site_hero_title: 'ESSKULTUR Spring Menu',
+					site_hero_subtitle: 'Fresh dishes, sharper copy, and a cleaner booking path.',
+					site_about_title: 'Why guests come back',
+					site_about_body: 'Seasonal plates, neighborhood rhythm, and service that stays fast.',
+					site_content_json: JSON.stringify({
+						hero_note: 'Now serving the spring tasting sequence.',
+						footer_copy: 'Open daily for lunch and dinner.'
+					})
+				},
+				modules: {}
+			})
+		});
+		let ctx = createExecutionContext();
+		let response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		let body = await response.json();
+		expect(body.success).toBe(true);
+		expect(String(body.operationalSettings?.site_hero_title || '')).toBe('ESSKULTUR Spring Menu');
+
+		request = new Request('http://localhost/api/admin/platform-config?company_id=1', {
+			method: 'GET',
+			headers: { cookie }
+		});
+		ctx = createExecutionContext();
+		response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		body = await response.json();
+		expect(body.success).toBe(true);
+		expect(String(body.operationalSettings?.site_hero_title || '')).toBe('ESSKULTUR Spring Menu');
+		expect(String(body.operationalSettings?.site_about_title || '')).toBe('Why guests come back');
+
+		request = new Request('http://localhost/api/admin/website/publish?company_id=1', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json', cookie },
+			body: JSON.stringify({ reviewNote: 'Website editor QA release.' })
+		});
+		ctx = createExecutionContext();
+		response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		body = await response.json();
+		expect(body.ok).toBe(true);
+		expect(String(body.release_status || '')).toBe('approved');
+
+		request = new Request('http://localhost/api/admin/website/publish-approved?company_id=1', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json', cookie },
+			body: JSON.stringify({ releaseNote: 'Push editor changes live.' })
+		});
+		ctx = createExecutionContext();
+		response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		body = await response.json();
+		expect(body.ok).toBe(true);
+		expect(String(body.release_status || '')).toBe('published');
+
+		request = new Request('http://localhost/api/website/payload?company_id=1');
+		ctx = createExecutionContext();
+		response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		body = await response.json();
+		expect(body.ok).toBe(true);
+		expect(String(body.source?.settings?.site_hero_title || '')).toBe('ESSKULTUR Spring Menu');
+		expect(String(body.source?.settings?.site_hero_subtitle || '')).toContain('cleaner booking path');
+		expect(String(body.source?.settings?.site_about_title || '')).toBe('Why guests come back');
+		expect(String(body.source?.content?.hero_note || '')).toBe('Now serving the spring tasting sequence.');
+		expect(String(body.source?.content?.footer_copy || '')).toBe('Open daily for lunch and dinner.');
+	});
+
 	it('allows operator to approve a pending publish review', async () => {
 		await initializeDatabase(env.DB);
 		const cookie = await createPlatformAdminSessionCookie(env);
