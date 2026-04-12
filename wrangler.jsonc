@@ -84,8 +84,8 @@
 			"r2_buckets": [
 				{
 					"binding": "WEBSITE_PUBLISH_R2",
-					"bucket_name": "ess-admin-ds-website-publish-prod"
-				}
+					"bucket_name": "ess-admin-ds-website-publish-prod",
+				},
 			],
 		},
 	},

@@ -3320,7 +3320,7 @@ async function recalculateCompanyBillingSummary(env, companyId) {
   return { activeStaff, summary };
 }
 
-async function authorizePlatformOperator(env, pinRaw) {
+async function _authorizePlatformOperator(env, pinRaw) {
   return authorizeAdminByPin(env, PLATFORM_OPERATOR_COMPANY_ID, pinRaw);
 }
 
@@ -3851,7 +3851,7 @@ async function authorizeAdminByPin(env, companyId, pinRaw) {
   return { ok: true, staff: auth.staff };
 }
 
-async function authorizeManagerOrAdminByPin(env, companyId, pinRaw) {
+async function _authorizeManagerOrAdminByPin(env, companyId, pinRaw) {
   const auth = await authorizeStaffByPin(env, companyId, pinRaw);
   if (!auth.ok) {
     return {
@@ -4336,7 +4336,7 @@ function buildPinFallbackDisabledError(scope = 'admin', allowManager = false) {
   return { ok: false, status: 401, error: allowManager ? 'Manager/admin session required' : 'Admin session required' };
 }
 
-async function authorizePlatformOperatorRequest(env, request, body = null, url = null) {
+async function authorizePlatformOperatorRequest(env, request, _body = null, _url = null) {
   const session = await getActiveAuthSession(env, request);
   if (session && String(session.session_scope || '').trim() === 'platform_admin') {
     const membership = await getPlatformOperatorMembershipForUser(env, session.user_id);
@@ -4348,7 +4348,7 @@ async function authorizePlatformOperatorRequest(env, request, body = null, url =
   return buildPinFallbackDisabledError('platform_admin');
 }
 
-async function authorizeCompanyAdminRequest(env, request, companyId, body = null, url = null, options = {}) {
+async function authorizeCompanyAdminRequest(env, request, companyId, _body = null, _url = null, options = {}) {
   const allowManager = options.allowManager === true;
   const session = await getActiveAuthSession(env, request);
   if (session && String(session.session_scope || '').trim() === 'restaurant_admin') {
