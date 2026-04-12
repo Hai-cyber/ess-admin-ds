@@ -17,7 +17,7 @@
 ### "I need to understand the project RIGHT NOW"
 → Read **[QUICKSTART.md](./QUICKSTART.md)** (5 min)
 
-Summary: You're building Restaurant OS (vertical SaaS). Phase 1 (Booking + Platform Entry) is 98% done. Moderation/review queue, tenant host gating, enriched custom-domain ops, and tenant website publish/release QA are live; production Stripe is on hold pending account setup, and final beta validation remains.
+Summary: You're building Restaurant OS (vertical SaaS). Phase 1 is effectively stabilized at 98% and no longer waits on Stripe or managed-domain resale. Execution now shifts into Phase 2 staff-mobile kickoff, while the remaining Phase 1 blockers stay parked as external or ops follow-up.
 
 ### "I need to know what's blocked / what to work on?"
 → Read **[STATUS.md](./STATUS.md)** (3 min)
@@ -173,10 +173,10 @@ Multi-tenant system = restaurants are isolated. One restaurant can't see another
 
 ## 📊 Current Status (Right Now)
 
-**Phase**: 1 of 5 (Booking System)  
+**Phase**: Transition from Phase 1 to Phase 2  
 **Progress**: 98% complete  
 **ETA**: April 20, 2026  
-**Status**: 🟡 ON TRACK (remaining: production Stripe account setup, final beta validation, founder/KC OTP production delivery follow-up)
+**Status**: 🟡 MOVING TO PHASE 2 (remaining Phase 1 blockers are live board HTML cache refresh, Stripe account setup, and Founder/KC production OTP delivery follow-up)
 
 **What's done**:
 - ✅ Tenant isolation (verified)
@@ -190,19 +190,21 @@ Multi-tenant system = restaurants are isolated. One restaurant can't see another
 - ✅ Host-based public gating now blocks suspended websites and quarantined subdomains on tenant-facing routes
 - ✅ Managed-domain reminder, renewal completion, and snooze workflows are now available in SaaS Admin
 - ✅ Tenant website editor content now has end-to-end save/reload/publish/public-payload regression coverage
+- ✅ Managed-domain resale is explicitly deferred beyond Phase 1 so it no longer blocks execution
 - ✅ Repository hygiene pass completed: nested gitlink removed, lint clean, formatter checks pass, and CI now includes repo hygiene
 
 **What's in progress** (your focus):
+- 🔄 Phase 2 kickoff: mobile-first staff shell and board-first interactions
+- 🔄 Live board HTML cache refresh on `prod.gooddining.app`
 - 🔄 Production Stripe work is on hold pending Stripe account setup
-- 🔄 Founder/KC OTP runtime hardening
-- 🔄 Optional managed-domain resale follow-up
-- 🔄 Final production beta validation on the live custom-domain ingress
+- 🔄 Founder/KC production OTP delivery follow-up
+- 🔄 Final production beta onboarding on the live custom-domain ingress
 
 **What's next**:
-1. Re-check production admin HTML after cache purge on the custom domain
-2. Validate Booking Board launch from Restaurant Admin on production-like tenant URLs
-3. Decide whether managed-domain resale belongs in Phase 1 or later
-4. Fix founder/KC OTP production delivery follow-up and rerun targeted checks
+1. Start the smallest Phase 2 staff-mobile shell
+2. Purge the live board HTML cache on `prod.gooddining.app` and re-check the Restaurant-Admin launch context
+3. Run pilot onboarding on the live custom domain only once `/board` matches the preview build
+4. Prepare one approved real test recipient for Founder/KC production OTP smoke
 5. Resume production Stripe activation after a Stripe account exists
 
 **For full details** → Read [STATUS.md](./STATUS.md)
@@ -211,18 +213,18 @@ Multi-tenant system = restaurants are isolated. One restaurant can't see another
 
 ## 🎯 Your First Task (If You Don't Know What to Do)
 
-**Task**: Finish Beta Validation While Stripe Is On Hold
+**Task**: Start Phase 2 While Keeping Phase 1 External Blockers Parked
 
 **What to do**:
 1. Read [QUICKSTART.md](./QUICKSTART.md) (5 min)
 2. Read [STATUS.md](./STATUS.md) → "What Happens Next" (3 min)
-3. Read [docs/contracts/API_CONTRACTS.md](./docs/contracts/API_CONTRACTS.md) → search "admin", "board", and "website" (5 min)
-4. Start in `src/index.js`, `public/admin.html`, and `public/platform/admin.html`
-5. Validate with `npm test` and production smoke checks on `prod.gooddining.app`
+3. Read [docs/contracts/API_CONTRACTS.md](./docs/contracts/API_CONTRACTS.md) → search "admin", "board", "website", and "founder" (5 min)
+4. Start in `public/app.html`, `public/app.js`, and the board-related runtime APIs in `src/index.js`
+5. Validate with narrow smoke checks while building fast; run full-suite checks only at integration milestones
 
 **Est. time**: 3-4 days
 
-**Blocker**: Stripe account creation, Twilio credential wiring, plus final beta validation
+**Blocker**: live board HTML cache freshness, Stripe account creation, and approved Founder/KC OTP smoke recipient
 
 **Questions?** → Read relevant contract or ask in PR comments
 

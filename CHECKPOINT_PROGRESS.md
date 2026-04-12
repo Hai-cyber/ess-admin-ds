@@ -2,22 +2,23 @@
 
 **Purpose**: Track checkpoint completion as you move through phases. Update this weekly.
 
-**Last Updated**: 2026-04-12  
-**Current Phase**: Phase 1 (Booking + Platform Entry) — 98% complete
+**Last Updated**: 2026-04-13  
+**Current Phase**: Transition: Phase 1 stabilized at 98% / Phase 2 kickoff started
 
 ---
 
 ## Phase 1: Booking System + Platform Entry
 
 **ETA**: Q2 2026  
-**Status**: ⏳ IN PROGRESS (98% complete)
+**Status**: ⏳ TRANSITIONING (Phase 1 stabilized; Phase 2 kickoff active)
 
 | Checkpoint | Component | Status | Evidence | Owner | ETA |
 |-----------|-----------|--------|----------|-------|-----|
 | CP-1 | Tenant Isolation | ✅ DONE | E2E_TEST_SUMMARY.md | Team | ✅ Done |
 | CP-2 | Booking MVP | ✅ DONE | Local runtime verified: booking form render, board, staff-create, booking list, stage updates | Team | ✅ Done |
-| CP-3 | Admin UI Setup | ⏳ 98% | Identity auth foundation, session-first admin UIs, signup owner bootstrap, board-launch separation, tenant website publish-flow QA coverage, and production-like board launch validation are live; remaining work is beta-readiness follow-through while production Stripe stays on hold pending account setup | @dev-lead | Apr 20 |
-| CP-10 | Platform Site + Self-Service Signup | ⏳ 98% | Platform site, signup provisioning, payments, moderation, enriched domain queue, renewal history/snooze workflows, and owner identity bootstrap are live; remaining work is optional managed-domain resale follow-up while production Stripe stays on hold pending account setup | @dev-lead | Apr 20 |
+| CP-3 | Admin UI Setup | ⏳ 98% | Identity auth foundation, session-first admin UIs, signup owner bootstrap, board-launch separation, tenant website publish-flow QA coverage, and production-like board launch validation are live; remaining work is live board HTML cache refresh plus pilot onboarding closeout while production Stripe stays on hold pending account setup | @dev-lead | Apr 20 |
+| CP-4 | Staff Mobile | ⏳ 5% | Phase 2 kickoff started: mobile-first staff shell and board-first interaction scope are now the active execution focus | @dev-lead | May 1 |
+| CP-10 | Platform Site + Self-Service Signup | ⏳ 98% | Platform site, signup provisioning, payments, moderation, enriched domain queue, renewal history/snooze workflows, and owner identity bootstrap are live; managed-domain resale is explicitly deferred beyond Phase 1 while production Stripe stays on hold pending account setup | @dev-lead | Apr 20 |
 | **Phase 1 Total** | — | **98%** | — | — | **Apr 20** |
 
 ### CP-1 Evidence ✅
@@ -108,30 +109,35 @@
 ✅ R2 bucket `ess-admin-ds-website-publish-prod` confirmed live (write/read/delete validated); binding is wired in production wrangler.jsonc
 ✅ Tenant custom-domain upgrade workflow now includes richer reminder, renewal completion, and snooze ops beyond the activation guards
 ✅ Booking Board launch from Restaurant Admin is validated on a production-like preview host backed by production bindings
+⚠️ Live custom-domain board HTML on `prod.gooddining.app` still lags the preview build and needs cache refresh before beta onboarding uses that shell
+⚠️ Production deploy refresh attempt on 2026-04-13 completed successfully, but the live `/board` HTML still served the stale PIN-intro-only shell afterward
 ✅ Founder/KC OTP local stub shipped: `OTP_STUB_ENABLED=true` in dev returns `otp_debug_code` in register/resend responses for instant local verification without Twilio
+✅ Founder/KC local OTP strategy is now fixed: local development stays stub-first, while production delivery smoke requires an approved real test recipient
 ✅ Dead admin PIN fallback env vars removed from Wrangler config; `OTP_STUB_ENABLED=false` remains explicit in production
 ✅ `STRIPE_MODE=mock` added to dev env; local bank card signup now testable end-to-end without real Stripe credentials
 ✅ Tenant website editor save → reload → publish → public payload flow now has explicit end-to-end regression coverage
+✅ Beta-readiness baseline revalidated on 2026-04-13: `npm test -- --run` passed (`74/74`), live production `/api/health` + `/api/platform/plans` returned `200`, and preview-vs-live HTML comparison isolated the remaining board-shell cache issue
+✅ Managed-domain resale is now explicitly deferred beyond Phase 1 instead of blocking the current beta-readiness track
 ⏸️ Production Stripe activation is intentionally on hold until a real Stripe account exists and production credentials can be created.
-**Blockers**: Stripe account creation, optional managed-domain resale follow-up
+**Blockers**: live board HTML cache refresh on `prod.gooddining.app`, Stripe account creation
 
 **Next checkpoint steps**:
-1. Run beta-readiness validation and onboard pilot restaurants.
-2. Decide whether managed-domain resale is part of Phase 1 or deferred.
-3. Re-check production custom-domain HTML after cache purge.
-4. Decide Twilio strategy for founder/KC locally, then close the OTP runtime gap.
-5. Resume production Stripe activation after a Stripe account exists and credentials can be provisioned.
+1. Purge the live board HTML cache through the Cloudflare cache layer, then re-check the Restaurant-Admin launch context on `/board`.
+2. Run pilot onboarding on the live custom domain only after the live board shell matches the preview build.
+3. Prepare one approved real test recipient for Founder/KC production OTP smoke; keep local development on `OTP_STUB_ENABLED=true`.
+4. Resume production Stripe activation after a Stripe account exists and credentials can be provisioned.
+5. Start Phase 2 with the smallest mobile-first staff shell instead of extending Phase 1 polish.
 
 ---
 
 ## Phase 2: Staff Mobile UI Ready
 
 **ETA**: Q3 2026 (June-Aug)  
-**Status**: 📋 PLANNED (Design phase)
+**Status**: ⏳ KICKOFF STARTED
 
 | Checkpoint | Component | Status | Owner | ETA |
 |-----------|-----------|--------|-------|-----|
-| CP-4 | Staff Mobile | 📋 Design | @mobile-dev | May 1 |
+| CP-4 | Staff Mobile | ⏳ Kickoff | @dev-lead | May 1 |
 
 ### CP-4 Planned Work
 
@@ -142,6 +148,14 @@
 - E2E tests for mobile workflow
 - Beta with 2 restaurants (May)
 - GA (June)
+```
+
+### CP-4 Kickoff Decision
+
+```bash
+✅ Phase 2 begins before Stripe account setup because Stripe is an external blocker, not a Phase 2 prerequisite
+✅ Managed-domain resale is deferred beyond Phase 1 and will not hold Phase 2 kickoff
+✅ Testing policy for Phase 2 is now risk-based: narrow smoke checks during fast build loops, full suite only at integration milestones
 ```
 
 ---

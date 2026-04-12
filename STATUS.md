@@ -2,9 +2,9 @@
 
 **Purpose**: Real-time snapshot of project state. Update before/after every session.
 
-**Last Updated**: 2026-04-12  
+**Last Updated**: 2026-04-13  
 **By**: AI Agent  
-**Next Update**: 2026-04-13 (or sooner if major change)
+**Next Update**: 2026-04-14 (or sooner if major change)
 
 ## Runtime Note (2026-04-08)
 
@@ -19,19 +19,25 @@
 ## 🎯 Current State (Right Now)
 
 ### Phase
-**Phase 1: Booking + Platform Entry (98% complete)**
-- ETA: April 20, 2026
-- Status: 🟡 ON TRACK (remaining: production Stripe account setup, optional managed-domain resale follow-up, and production beta validation)
+**Execution Focus: Phase 2 Kickoff (while Phase 1 is stabilized at 98%)**
+- Phase 1 ETA: April 20, 2026
+- Status: 🟡 MOVING FORWARD (Phase 1 engineering scope is effectively stabilized; remaining blockers are live board HTML cache refresh and external Stripe account setup)
 
 ### Overall Progress
 ```
 ██████████ 98%
 
 Completed: 98%
-In Progress: 1% (final beta validation + board handoff checks)
-Blocked: 1% (Stripe account creation)
+In Progress: 1% (Phase 2 kickoff + final beta onboarding validation)
+Blocked: 1% (live board HTML cache refresh + Stripe account creation)
 Not Started: 0%
 ```
+
+### Strategic Decision
+- Stripe remains explicitly on hold until a real Stripe account exists.
+- Managed-domain resale is deferred beyond Phase 1.
+- Phase 2 starts now instead of waiting for those external or commercial dependencies.
+- Test strategy shifts to risk-based coverage: narrow smoke checks during fast build loops, full-suite validation only at integration or deploy milestones.
 
 ---
 
@@ -115,6 +121,7 @@ Not Started: 0%
 - [x] Explicit `production` Wrangler environment deploy executed successfully against a real D1 database id
 - [x] Tenant website editor save → reload → release submission → publish → public payload resolution now has end-to-end regression coverage
 - [x] Booking Board launch from Restaurant Admin is validated on a production-like preview host backed by production bindings
+- [x] Managed-domain resale is explicitly deferred beyond Phase 1 so it no longer blocks the current beta-readiness track
 
 **Approved architecture change**:
 - Signup will move to email as the baseline identity path, with Google as an optional accelerator.
@@ -149,6 +156,9 @@ Not Started: 0%
 - Managed domain renewal queue now supports preview, overdue escalation, renewal completion, snooze, and renewal summary tracking in test coverage ✅
 - Tenant website editor content now has end-to-end save/reload/publish/public-payload regression coverage ✅
 - Booking Board launch from Restaurant Admin now validates against the production-like preview host with the expected board launch context and return path ✅
+- Beta-readiness baseline revalidated on 2026-04-13: full `74/74` test suite passed, live production `/api/health` and `/api/platform/plans` returned `200`, and the remaining gap is isolated to cached live board HTML ✅
+- A production deploy refresh was attempted on 2026-04-13, but the live `/board` HTML still served the stale shell afterward, so the blocker is edge cache freshness rather than Worker deployment state ⚠️
+- Founder/KC local OTP strategy is now explicit: local dev stays on the stub-first path, and production delivery smoke waits for an approved real test recipient ✅
 - Known failures isolated to founder/KC OTP delivery paths ⚠️
 - Legacy Odoo references still exist in schema/init and archive-style utility files, but not in active runtime entrypoints or active admin/public UI ⚠️
 
@@ -188,17 +198,32 @@ Not Started: 0%
 - [x] Change signup from admin PIN bootstrap to owner identity bootstrap
 - [x] Continue removing legacy admin PIN fallback after observing preview usage logs and route-level dependencies
 - [x] Limit Booking Board PIN to board-scoped launch and operations only
-- [ ] Optional managed domain registration flow after BYOD custom-domain upgrade is stable
+- [ ] Optional managed domain registration resale flow is deferred beyond Phase 1
 - [ ] Tenant payment method onboarding UX (Stripe + manual modes)
 - [x] End-to-end QA for tenant website editor save/reload/review flow from Restaurant Admin to live tenant subdomain
 - [ ] Wire structured opening hours into shop and online-order availability once those modules land
-- [ ] Founder/KC OTP delivery path needs working Twilio credentials or a dedicated local stub
-- [ ] Document the local-dev caveat: Turnstile bypass only applies on localhost/workers.dev, not Host-header tenant simulation
+- [ ] Founder/KC production OTP smoke needs an approved test recipient and a final live delivery check
+- [x] Documented Founder/KC local-dev caveat: `OTP_STUB_ENABLED=true` and Turnstile bypass only apply on localhost or workers.dev, not Host-header tenant simulation
 - [ ] Re-run `/api/contact/create` smoke test against a freshly reloaded worker to confirm the new public contact route on the active dev runtime
 
 **Current dependency**:
+- Live board HTML cache refresh on `prod.gooddining.app`
 - Stripe account creation + later production credential provisioning
 - ETA: Apr 20
+
+### Phase 2 Kickoff (Staff Mobile)
+
+**Status**: Started in parallel while Phase 1 waits on external blockers.
+
+**Immediate scope**:
+- Define the mobile-first staff shell and the smallest useful board-first workflow.
+- Keep Booking Board as the operational anchor and adapt its highest-frequency actions to a staff-mobile surface.
+- Delay deeper polish and broad regression expansion until more Phase 2 slices are assembled.
+
+**Testing mode for this phase**:
+- Run narrow slice-level checks while building fast.
+- Keep core regression tests that protect auth, booking, publish, and tenant isolation.
+- Run full-suite validation at integration milestones, before deploys, and before pilot onboarding.
 
 **Where it lives**:
 - `src/index.js` (platform + tenant admin APIs)
@@ -243,11 +268,15 @@ All other phases (2-5) planned, not started:
 - **Owner**: @dev-lead
 - **Action Item**: Create the Stripe account first, then run `wrangler secret put STRIPE_API_KEY --env production` and `wrangler secret put STRIPE_WEBHOOK_SECRET --env production`, then smoke-test signup.
 
-### Blocker 2: Custom-Domain Enrichment
-- **Issue**: Core cutover, reminder, renewal completion, and snooze workflows are now live, but optional managed-domain resale and registrar-handling follow-up are still incomplete.
-- **Impact**: CP-10 is operationally stronger, but managed registration is not yet a full resale product.
-- **ETA Fix**: Apr 20
+### Blocker 2: Live Board HTML Cache Refresh
+- **Issue**: The live custom-domain board HTML on `prod.gooddining.app` still lags the current preview build, even though the preview host serves the expected Restaurant-Admin launch context and return path. A production deploy on 2026-04-13 did not clear this stale shell.
+- **Impact**: Pilot onboarding should wait until the live `/board` shell matches the current runtime before using that path in production.
+- **ETA Fix**: After a true cache purge or cache-layer refresh is completed
 - **Owner**: @dev-lead
+
+### Product Decision: Managed-Domain Resale
+- **Decision**: Deferred beyond Phase 1.
+- **Reason**: Core custom-domain cutover, verification, renewal, and transfer operations are already production-usable. Resale adds commercial scope, not current beta-readiness leverage.
 
 ---
 
