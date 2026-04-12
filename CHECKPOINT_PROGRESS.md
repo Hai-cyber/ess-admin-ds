@@ -16,8 +16,8 @@
 |-----------|-----------|--------|----------|-------|-----|
 | CP-1 | Tenant Isolation | ✅ DONE | E2E_TEST_SUMMARY.md | Team | ✅ Done |
 | CP-2 | Booking MVP | ✅ DONE | Local runtime verified: booking form render, board, staff-create, booking list, stage updates | Team | ✅ Done |
-| CP-3 | Admin UI Setup | ⏳ 98% | Identity auth foundation, session-first admin UIs, signup owner bootstrap, board-launch separation, and tenant website publish-flow QA coverage are live; remaining work is production Stripe activation plus final board handoff validation | @dev-lead | Apr 20 |
-| CP-10 | Platform Site + Self-Service Signup | ⏳ 98% | Platform site, signup provisioning, payments, moderation, enriched domain queue, renewal history/snooze workflows, and owner identity bootstrap are live; remaining work is production Stripe activation plus optional managed-domain resale follow-up | @dev-lead | Apr 20 |
+| CP-3 | Admin UI Setup | ⏳ 98% | Identity auth foundation, session-first admin UIs, signup owner bootstrap, board-launch separation, tenant website publish-flow QA coverage, and production-like board launch validation are live; remaining work is beta-readiness follow-through while production Stripe stays on hold pending account setup | @dev-lead | Apr 20 |
+| CP-10 | Platform Site + Self-Service Signup | ⏳ 98% | Platform site, signup provisioning, payments, moderation, enriched domain queue, renewal history/snooze workflows, and owner identity bootstrap are live; remaining work is optional managed-domain resale follow-up while production Stripe stays on hold pending account setup | @dev-lead | Apr 20 |
 | **Phase 1 Total** | — | **98%** | — | — | **Apr 20** |
 
 ### CP-1 Evidence ✅
@@ -107,20 +107,20 @@
 ✅ Explicit `production` env now deploys against a real D1 database id
 ✅ R2 bucket `ess-admin-ds-website-publish-prod` confirmed live (write/read/delete validated); binding is wired in production wrangler.jsonc
 ✅ Tenant custom-domain upgrade workflow now includes richer reminder, renewal completion, and snooze ops beyond the activation guards
+✅ Booking Board launch from Restaurant Admin is validated on a production-like preview host backed by production bindings
 ✅ Founder/KC OTP local stub shipped: `OTP_STUB_ENABLED=true` in dev returns `otp_debug_code` in register/resend responses for instant local verification without Twilio
 ✅ Dead admin PIN fallback env vars removed from Wrangler config; `OTP_STUB_ENABLED=false` remains explicit in production
 ✅ `STRIPE_MODE=mock` added to dev env; local bank card signup now testable end-to-end without real Stripe credentials
 ✅ Tenant website editor save → reload → publish → public payload flow now has explicit end-to-end regression coverage
-⏳ Production Stripe checkout blocked until `STRIPE_API_KEY` + `STRIPE_WEBHOOK_SECRET` secrets are set: `wrangler secret put STRIPE_API_KEY --env production`
-**Blockers**: production Stripe secrets, optional managed-domain resale follow-up
+⏸️ Production Stripe activation is intentionally on hold until a real Stripe account exists and production credentials can be created.
+**Blockers**: Stripe account creation, optional managed-domain resale follow-up
 
 **Next checkpoint steps**:
-1. Provision production Stripe secrets and smoke-test bank-card signup on `prod.gooddining.app`.
-2. Validate Booking Board launch from Restaurant Admin on production-like tenant URLs.
-3. Run beta-readiness validation and onboard pilot restaurants.
-4. Decide whether managed-domain resale is part of Phase 1 or deferred.
-5. Re-check production custom-domain HTML after cache purge.
-6. Decide Twilio strategy for founder/KC locally, then close the OTP runtime gap.
+1. Run beta-readiness validation and onboard pilot restaurants.
+2. Decide whether managed-domain resale is part of Phase 1 or deferred.
+3. Re-check production custom-domain HTML after cache purge.
+4. Decide Twilio strategy for founder/KC locally, then close the OTP runtime gap.
+5. Resume production Stripe activation after a Stripe account exists and credentials can be provisioned.
 
 ---
 
@@ -291,7 +291,7 @@ SSE notifications: < 200ms ✅
 Cross-tenant data leak: 0 ✅
 Success rate: 99.5% ✅
 Lint clean: yes ✅
-Vitest root suite: 63/63 ✅
+Vitest root suite: 74/74 ✅
 ```
 
 ### Phase 2 Metrics (TBD)

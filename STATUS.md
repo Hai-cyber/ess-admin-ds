@@ -21,15 +21,15 @@
 ### Phase
 **Phase 1: Booking + Platform Entry (98% complete)**
 - ETA: April 20, 2026
-- Status: 🟡 ON TRACK (remaining: production Stripe secrets, optional managed-domain resale follow-up, and production beta validation)
+- Status: 🟡 ON TRACK (remaining: production Stripe account setup, optional managed-domain resale follow-up, and production beta validation)
 
 ### Overall Progress
 ```
 ██████████ 98%
 
 Completed: 98%
-In Progress: 1% (production Stripe activation + final beta validation)
-Blocked: 1% (production Stripe secrets)
+In Progress: 1% (final beta validation + board handoff checks)
+Blocked: 1% (Stripe account creation)
 Not Started: 0%
 ```
 
@@ -114,6 +114,7 @@ Not Started: 0%
 - [x] Local smoke tests verified health, plans, signup policy, platform contact, platform admin dashboard, website payload, publish review, suspend, and quarantine actions on localhost
 - [x] Explicit `production` Wrangler environment deploy executed successfully against a real D1 database id
 - [x] Tenant website editor save → reload → release submission → publish → public payload resolution now has end-to-end regression coverage
+- [x] Booking Board launch from Restaurant Admin is validated on a production-like preview host backed by production bindings
 
 **Approved architecture change**:
 - Signup will move to email as the baseline identity path, with Google as an optional accelerator.
@@ -147,6 +148,7 @@ Not Started: 0%
 - Platform signup now bootstraps owner identity plus a verification challenge in test coverage, while preserving a board-only seeded PIN ✅
 - Managed domain renewal queue now supports preview, overdue escalation, renewal completion, snooze, and renewal summary tracking in test coverage ✅
 - Tenant website editor content now has end-to-end save/reload/publish/public-payload regression coverage ✅
+- Booking Board launch from Restaurant Admin now validates against the production-like preview host with the expected board launch context and return path ✅
 - Known failures isolated to founder/KC OTP delivery paths ⚠️
 - Legacy Odoo references still exist in schema/init and archive-style utility files, but not in active runtime entrypoints or active admin/public UI ⚠️
 
@@ -195,7 +197,7 @@ Not Started: 0%
 - [ ] Re-run `/api/contact/create` smoke test against a freshly reloaded worker to confirm the new public contact route on the active dev runtime
 
 **Current dependency**:
-- Production Stripe secrets + deploy-time production smoke validation
+- Stripe account creation + later production credential provisioning
 - ETA: Apr 20
 
 **Where it lives**:
@@ -235,11 +237,11 @@ All other phases (2-5) planned, not started:
 ## 🚨 Blockers (Current)
 
 ### Blocker 1: Production Stripe Activation
-- **Issue**: Production still needs real `STRIPE_API_KEY` and `STRIPE_WEBHOOK_SECRET` secrets. The code path is ready; the missing step is operational.
-- **Impact**: Bank-card signup on `prod.gooddining.app` still returns the graceful non-configured path until secrets are provisioned.
-- **ETA Fix**: As soon as secrets are available
+- **Issue**: A real Stripe account does not exist yet, so production `STRIPE_API_KEY` and `STRIPE_WEBHOOK_SECRET` cannot be provisioned.
+- **Impact**: Bank-card signup on `prod.gooddining.app` remains intentionally on hold and still returns the graceful non-configured path.
+- **ETA Fix**: As soon as a Stripe account exists and credentials can be created
 - **Owner**: @dev-lead
-- **Action Item**: Run `wrangler secret put STRIPE_API_KEY --env production` and `wrangler secret put STRIPE_WEBHOOK_SECRET --env production`, then smoke-test signup.
+- **Action Item**: Create the Stripe account first, then run `wrangler secret put STRIPE_API_KEY --env production` and `wrangler secret put STRIPE_WEBHOOK_SECRET --env production`, then smoke-test signup.
 
 ### Blocker 2: Custom-Domain Enrichment
 - **Issue**: Core cutover, reminder, renewal completion, and snooze workflows are now live, but optional managed-domain resale and registrar-handling follow-up are still incomplete.
