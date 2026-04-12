@@ -315,17 +315,29 @@
       }[String(status || '').trim()] || String(status || 'n/a');
     }
 
+    function humanizeCutoverStatus(status) {
+      return {
+        not_started: 'Not started',
+        scheduled: 'Scheduled',
+        in_progress: 'In progress',
+        completed: 'Completed'
+      }[String(status || '').trim()] || String(status || 'n/a');
+    }
+
     function buildDomainCutoverChecklist(row) {
       const status = String(row?.request_status || '').trim();
       const healthStatus = String(row?.last_health_check_status || '').trim().toLowerCase();
       const renewalStatus = String(row?.renewalStatus || row?.renewal_status || '').trim();
+      const cutoverStatus = String(row?.cutover_status || 'not_started').trim();
 
       return [
         { label: 'Request logged', done: !!String(row?.id || '').trim() },
+        { label: 'Cutover planned', done: ['scheduled', 'in_progress', 'completed'].includes(cutoverStatus) },
+        { label: 'Cutover in progress', done: ['in_progress', 'completed'].includes(cutoverStatus) },
         { label: 'Operator approved', done: !!String(row?.approved_at || '').trim() || ['verification_pending', 'verified_waiting_activation', 'active'].includes(status) },
         { label: 'Tenant DNS ready', done: !!String(row?.dns_ready_at || '').trim() || ['verified_waiting_activation', 'active'].includes(status) },
         { label: 'DNS verified', done: !!String(row?.verified_at || '').trim() || ['verified_waiting_activation', 'active'].includes(status) },
-        { label: 'Live activation', done: !!String(row?.activated_at || '').trim() || status === 'active' },
+        { label: 'Live activation', done: !!String(row?.activated_at || '').trim() || status === 'active' || cutoverStatus === 'completed' },
         { label: 'Health check green', done: status === 'active' && healthStatus === 'healthy' },
         {
           label: 'Transfer support',
@@ -346,14 +358,17 @@
       const renewalStatus = String(row?.renewalStatus || row?.renewal_status || '').trim();
       const healthStatus = String(row?.last_health_check_status || '').trim().toLowerCase();
       const cutoverEta = String(row?.cutover_eta || '').trim();
+      const cutoverStatus = String(row?.cutover_status || 'not_started').trim();
 
+      if (cutoverStatus === 'scheduled' && status !== 'active') return cutoverEta ? `Next: execute scheduled cutover before ${cutoverEta}` : 'Next: execute scheduled cutover';
+      if (cutoverStatus === 'in_progress' && status !== 'active') return 'Next: finish cutover and activate domain';
       if (status === 'requested') return cutoverEta ? `Next: operator approval before ${cutoverEta}` : 'Next: operator approval';
       if (status === 'approved_waiting_dns') return cutoverEta ? `Next: tenant configures DNS before ${cutoverEta}` : 'Next: tenant configures DNS';
       if (status === 'verification_pending') return cutoverEta ? `Next: operator verifies DNS before ${cutoverEta}` : 'Next: operator verifies DNS';
       if (status === 'verified_waiting_activation') return cutoverEta ? `Next: operator activates domain before ${cutoverEta}` : 'Next: operator activates domain';
       if (status === 'active' && renewalStatus === 'transfer_out_requested') return cutoverEta ? `Next: operator completes transfer-out before ${cutoverEta}` : 'Next: operator completes transfer-out';
       if (status === 'active' && healthStatus !== 'healthy') return 'Next: investigate activation health';
-      if (status === 'active') return cutoverEta ? `Live: cutover target ${cutoverEta}` : 'Live: monitor renewals and support';
+      if (status === 'active') return cutoverStatus === 'completed' ? 'Live: cutover completed' : (cutoverEta ? `Live: cutover target ${cutoverEta}` : 'Live: monitor renewals and support');
       if (status === 'rejected') return 'Closed: tenant must open a new request';
       return 'Next step available in timeline';
     }
@@ -834,6 +849,7 @@
                 <div>Operator note: ${escapeHtml(row.operator_note || 'n/a')}</div>
                 <div>Cutover note: ${escapeHtml(row.cutover_note || 'n/a')}</div>
                 <div>Cutover ETA: ${escapeHtml(row.cutover_eta || 'n/a')}</div>
+                <div>Cutover status: ${escapeHtml(humanizeCutoverStatus(row.cutover_status || 'not_started'))}</div>
                 <div>Renewal: ${escapeHtml(humanizeDomainRequestStatus(row.renewalStatus || row.renewal_status || 'external'))} ${row.renewal_due_at ? `• due ${escapeHtml(row.renewal_due_at)}` : ''}</div>
                 <div>Health: ${escapeHtml(String(row.last_health_check_status || 'n/a'))} • ${escapeHtml(String(row.last_health_check_note || 'no activation health check yet'))}</div>
                 <div>Cutover: ${escapeHtml(nextAction)}</div>
@@ -871,6 +887,9 @@
             <input id="domain_note_${row.id}" type="text" placeholder="Operator note" value="${escapeHtml(row.operator_note || '')}">
             <input id="domain_cutover_note_${row.id}" type="text" placeholder="Cutover note" value="${escapeHtml(row.cutover_note || '')}">
             <input id="domain_cutover_eta_${row.id}" type="datetime-local" value="${escapeHtml(String(row.cutover_eta || '').replace(/Z$/, '').slice(0, 16))}">
+            <select id="domain_cutover_status_${row.id}">
+              ${['not_started', 'scheduled', 'in_progress', 'completed'].map((value) => `<option value="${value}" ${String(row.cutover_status || 'not_started') === value ? 'selected' : ''}>${escapeHtml(humanizeCutoverStatus(value))}</option>`).join('')}
+            </select>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
               ${String(row.renewal_mode || '') === 'platform_managed' ? `<button class="btn btn-sm btn-outline" onclick="previewDomainRenewalReminder('${row.id}')">Preview reminder</button>` : ''}
               ${String(row.request_status || '') === 'active' && String(row.renewal_mode || '') === 'platform_managed' ? `<button class="btn btn-sm btn-warn-lite" onclick="forceDomainRenewalOverdue('${row.id}')">Force overdue</button>` : ''}
@@ -1120,11 +1139,12 @@
       const operatorNote = document.getElementById(`domain_note_${requestId}`)?.value || '';
       const cutoverNote = document.getElementById(`domain_cutover_note_${requestId}`)?.value || '';
       const cutoverEtaRaw = document.getElementById(`domain_cutover_eta_${requestId}`)?.value || '';
+      const cutoverStatus = document.getElementById(`domain_cutover_status_${requestId}`)?.value || 'not_started';
       const cutoverEta = cutoverEtaRaw ? new Date(cutoverEtaRaw).toISOString() : '';
       const res = await fetch(`/api/platform/admin/domain-requests/${encodeURIComponent(requestId)}/${encodeURIComponent(action)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ operatorNote, cutoverNote, cutoverEta })
+        body: JSON.stringify({ operatorNote, cutoverNote, cutoverEta, cutoverStatus })
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) return alert(data.error || `Failed to ${action} domain request.`);

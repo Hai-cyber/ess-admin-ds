@@ -1580,8 +1580,8 @@ async function getLatestPublishedWebsiteRelease(env, companyId) {
 async function getCustomDomainRequestHistory(env, companyId, limit = 12) {
   if (!companyId) return [];
   const result = await env.DB.prepare(`
-    SELECT id, company_id, organization_id, requested_domain, registration_mode, request_status,
-          dns_record_type, dns_name, dns_value, request_note, operator_note, cutover_note, cutover_eta, renewal_mode,
+        SELECT id, company_id, organization_id, requested_domain, registration_mode, request_status,
+          dns_record_type, dns_name, dns_value, request_note, operator_note, cutover_note, cutover_eta, cutover_status, renewal_mode,
            renewal_status, renewal_due_at, renewal_last_reminded_at, auto_renew_enabled,
            approved_at, approved_by, dns_ready_at, verified_at, activated_at, activated_by,
            last_health_check_at, last_health_check_status, last_health_check_note,
@@ -1602,8 +1602,8 @@ async function getLatestCustomDomainRequest(env, companyId) {
 async function getCustomDomainRequestById(env, requestId) {
   if (!requestId) return null;
   const request = await env.DB.prepare(`
-    SELECT id, company_id, organization_id, requested_domain, registration_mode, request_status,
-          dns_record_type, dns_name, dns_value, request_note, operator_note, cutover_note, cutover_eta, renewal_mode,
+        SELECT id, company_id, organization_id, requested_domain, registration_mode, request_status,
+          dns_record_type, dns_name, dns_value, request_note, operator_note, cutover_note, cutover_eta, cutover_status, renewal_mode,
            renewal_status, renewal_due_at, renewal_last_reminded_at, auto_renew_enabled,
            approved_at, approved_by, dns_ready_at, verified_at, activated_at, activated_by,
            last_health_check_at, last_health_check_status, last_health_check_note,
@@ -1645,6 +1645,13 @@ async function logCustomDomainRequestEvent(env, payload = {}) {
     payload.metadataJson ? JSON.stringify(payload.metadataJson) : null,
     now
   ).run();
+}
+
+function normalizeCutoverStatus(value, fallback = 'not_started') {
+  const normalized = String(value || '').trim().toLowerCase();
+  return ['not_started', 'scheduled', 'in_progress', 'completed'].includes(normalized)
+    ? normalized
+    : fallback;
 }
 
 function normalizeDnsHostnameValue(value) {
@@ -1723,8 +1730,8 @@ async function processManagedDomainRenewalReminders(env, options = {}) {
   const actorId = String(options.actorId || 'system-renewal-job').trim();
   const sendDigest = options.sendDigest !== false;
   const result = await env.DB.prepare(`
-    SELECT id, company_id, organization_id, requested_domain, registration_mode, request_status,
-          dns_record_type, dns_name, dns_value, request_note, operator_note, cutover_note, cutover_eta, renewal_mode,
+        SELECT id, company_id, organization_id, requested_domain, registration_mode, request_status,
+          dns_record_type, dns_name, dns_value, request_note, operator_note, cutover_note, cutover_eta, cutover_status, renewal_mode,
            renewal_status, renewal_due_at, renewal_last_reminded_at, auto_renew_enabled,
            approved_at, approved_by, dns_ready_at, verified_at, activated_at, activated_by,
            last_health_check_at, last_health_check_status, last_health_check_note,
@@ -1980,8 +1987,8 @@ async function createCustomDomainUpgradeRequest(env, payload = {}) {
   await env.DB.prepare(`
     INSERT INTO custom_domain_requests (
       id, company_id, organization_id, requested_domain, registration_mode, request_status,
-      dns_record_type, dns_name, dns_value, request_note, renewal_mode, renewal_status, renewal_due_at, auto_renew_enabled, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, 'requested', 'CNAME', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      dns_record_type, dns_name, dns_value, request_note, cutover_status, renewal_mode, renewal_status, renewal_due_at, auto_renew_enabled, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, 'requested', 'CNAME', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     requestId,
     companyId,
@@ -1991,6 +1998,7 @@ async function createCustomDomainUpgradeRequest(env, payload = {}) {
     requestedDomain,
     dnsTarget,
     requestNote,
+    'not_started',
     registrationMode === 'managed_registration' ? 'platform_managed' : 'external',
     registrationMode === 'managed_registration' ? 'managed_active' : 'external',
     renewalDueAt,
@@ -2028,6 +2036,7 @@ async function updateCustomDomainRequestState(env, requestId, updates = {}) {
         operator_note = ?,
       cutover_note = ?,
       cutover_eta = ?,
+        cutover_status = ?,
         renewal_status = ?,
         renewal_due_at = ?,
         renewal_last_reminded_at = ?,
@@ -2050,6 +2059,7 @@ async function updateCustomDomainRequestState(env, requestId, updates = {}) {
     updates.operatorNote ?? existing.operator_note ?? null,
     updates.cutoverNote ?? existing.cutover_note ?? null,
     updates.cutoverEta ?? existing.cutover_eta ?? null,
+    normalizeCutoverStatus(updates.cutoverStatus, existing.cutover_status || 'not_started'),
     updates.renewalStatus ?? existing.renewal_status ?? null,
     updates.renewalDueAt ?? existing.renewal_due_at ?? null,
     updates.renewalLastRemindedAt ?? existing.renewal_last_reminded_at ?? null,
@@ -3359,7 +3369,7 @@ async function getPlatformAdminDashboard(env) {
     `).all(),
     env.DB.prepare(`
       SELECT id, company_id, organization_id, requested_domain, registration_mode, request_status,
-        dns_record_type, dns_name, dns_value, request_note, operator_note, cutover_note, cutover_eta, renewal_mode,
+        dns_record_type, dns_name, dns_value, request_note, operator_note, cutover_note, cutover_eta, cutover_status, renewal_mode,
             renewal_status, renewal_due_at, renewal_last_reminded_at, auto_renew_enabled,
              approved_at, approved_by, dns_ready_at, verified_at, activated_at, activated_by,
             last_health_check_at, last_health_check_status, last_health_check_note,
@@ -5668,6 +5678,9 @@ export default {
         const operatorNote = String(body?.operatorNote || body?.note || '').trim();
         const cutoverNote = String(body?.cutoverNote || '').trim() || undefined;
         const cutoverEta = String(body?.cutoverEta || '').trim() || undefined;
+        const cutoverStatus = body?.cutoverStatus == null || String(body.cutoverStatus).trim() === ''
+          ? undefined
+          : normalizeCutoverStatus(body.cutoverStatus, undefined);
         const auth = await authorizePlatformOperatorRequest(env, request, body, url);
         if (!auth.ok) {
           return Response.json({ ok: false, error: auth.error }, { status: auth.status });
@@ -5690,6 +5703,7 @@ export default {
             operatorNote,
             cutoverNote,
             cutoverEta,
+            cutoverStatus: cutoverStatus || (cutoverEta || cutoverNote ? 'scheduled' : undefined),
             approvedAt: new Date().toISOString(),
             approvedBy: actorName,
             eventType: 'request_approved',
@@ -5708,6 +5722,7 @@ export default {
             operatorNote,
             cutoverNote,
             cutoverEta,
+            cutoverStatus,
             rejectedAt: new Date().toISOString(),
             rejectedBy: actorName,
             eventType: 'request_rejected',
@@ -5745,6 +5760,7 @@ export default {
             operatorNote,
             cutoverNote,
             cutoverEta,
+            cutoverStatus: cutoverStatus || (String(domainRequest.cutover_status || '') === 'scheduled' ? 'in_progress' : undefined),
             verifiedAt: new Date().toISOString(),
             eventType: 'dns_verified',
             actorType: 'platform_operator',
@@ -5784,6 +5800,7 @@ export default {
             operatorNote,
             cutoverNote,
             cutoverEta,
+            cutoverStatus: cutoverStatus || 'completed',
             activatedAt: new Date().toISOString(),
             activatedBy: actorName,
             renewalStatus: renewalTracking.renewalStatus,
@@ -5831,6 +5848,7 @@ export default {
             operatorNote,
             cutoverNote,
             cutoverEta,
+            cutoverStatus: cutoverStatus || 'completed',
             autoRenewEnabled: 0,
             actorType: 'platform_operator',
             actorId: actorName,

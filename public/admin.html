@@ -2717,6 +2717,15 @@
       }[String(status || '').trim()] || String(status || 'n/a');
     }
 
+    function humanizeCutoverStatus(status) {
+      return {
+        not_started: 'Not started',
+        scheduled: 'Scheduled',
+        in_progress: 'In progress',
+        completed: 'Completed'
+      }[String(status || '').trim()] || String(status || 'n/a');
+    }
+
     function renderWebsiteReleaseSection() {
       const container = document.getElementById('websiteReleaseList');
       if (!container) return;
@@ -2996,6 +3005,10 @@
         <div class="setting-row">
           <div class="setting-label">Cutover ETA</div>
           <div class="setting-value" style="padding-top: 10px;">${escapeHtml(request?.cutover_eta ? formatDateTime(request.cutover_eta) : 'not scheduled')}</div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Cutover Status</div>
+          <div class="setting-value" style="padding-top: 10px;">${escapeHtml(humanizeCutoverStatus(request?.cutover_status || 'not_started'))}</div>
         </div>
         <div class="setting-row">
           <div class="setting-label">Requested Domain</div>

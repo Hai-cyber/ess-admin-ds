@@ -462,6 +462,7 @@ describe('ESSKULTUR worker', () => {
 		expect(html).toContain('Payment readiness:');
 		expect(html).toContain('requestDomainTransferOut');
 		expect(html).toContain('Operator Cutover Note');
+		expect(html).toContain('Cutover Status');
 	});
 
 	it('serves SaaS Admin HTML with domain cutover checklist hooks', async () => {
@@ -472,6 +473,7 @@ describe('ESSKULTUR worker', () => {
 		expect(html).toContain('buildDomainCutoverChecklist');
 		expect(html).toContain('getDomainNextActionLabel');
 		expect(html).toContain('domain_cutover_eta_');
+		expect(html).toContain('domain_cutover_status_');
 		expect(html).toContain('Mark transferred out');
 	});
 
@@ -829,7 +831,8 @@ describe('ESSKULTUR worker', () => {
 			body: JSON.stringify({
 				operatorNote: 'Approved for DNS setup.',
 				cutoverNote: 'Target Tuesday morning cutover window.',
-				cutoverEta: '2026-04-15T09:30:00.000Z'
+				cutoverEta: '2026-04-15T09:30:00.000Z',
+				cutoverStatus: 'scheduled'
 			})
 		});
 		ctx = createExecutionContext();
@@ -892,12 +895,13 @@ describe('ESSKULTUR worker', () => {
 		expect(String(body.request?.renewalStatus || body.request?.renewal_status || '')).toBe('transferred_out');
 
 		const stored = await env.DB.prepare(
-			`SELECT renewal_status, auto_renew_enabled, cutover_note, cutover_eta FROM custom_domain_requests WHERE id = ? LIMIT 1`
+			`SELECT renewal_status, auto_renew_enabled, cutover_note, cutover_eta, cutover_status FROM custom_domain_requests WHERE id = ? LIMIT 1`
 		).bind(domainRequestId).first();
 		expect(String(stored?.renewal_status || '')).toBe('transferred_out');
 		expect(Number(stored?.auto_renew_enabled || 0)).toBe(0);
 		expect(String(stored?.cutover_note || '')).toBe('Target Tuesday morning cutover window.');
 		expect(String(stored?.cutover_eta || '')).toBe('2026-04-15T09:30:00.000Z');
+		expect(String(stored?.cutover_status || '')).toBe('completed');
 
 		const events = await env.DB.prepare(
 			`SELECT event_type FROM custom_domain_request_events WHERE request_id = ? ORDER BY created_at DESC`
