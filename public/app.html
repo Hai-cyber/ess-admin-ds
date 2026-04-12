@@ -349,6 +349,27 @@
       color: var(--muted);
     }
 
+    .queue-toggle {
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 0.35rem 0.65rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .queue-toggle:hover {
+      color: var(--text);
+      border-color: rgba(255, 255, 255, 0.16);
+    }
+
+    .queue-section-content[hidden] {
+      display: none;
+    }
+
     .queue-subsection {
       display: grid;
       gap: 0.65rem;
@@ -816,6 +837,11 @@
         requestedCompanyId: null,
         soundEnabled: localStorage.getItem('soundEnabled') !== 'false',
         activeFilter: 'active',
+        collapsedSections: {
+          noshow: true,
+          cancelled: true,
+          done: true
+        },
         bookings: [],
         eventSource: null,
         bookingUpdate: null
@@ -1109,6 +1135,11 @@
           requestedCompanyId: getRequestedCompanyIdFromLocation(),
           soundEnabled: state.soundEnabled,
           activeFilter: 'active',
+          collapsedSections: {
+            noshow: true,
+            cancelled: true,
+            done: true
+          },
           bookings: [],
           eventSource: null
         };
@@ -1269,14 +1300,22 @@
             const content = group.key === 'confirmed'
               ? renderConfirmedQueue(items)
               : items.map((booking) => renderBookingCard(booking)).join('');
+            const isCollapsed = isSectionCollapsed(group.key);
 
             return `
               <section class="queue-section">
                 <div class="queue-section-header">
                   <strong>${group.label}</strong>
-                  <span>${items.length} booking${items.length === 1 ? '' : 's'}</span>
+                  <div style="display:flex;align-items:center;gap:0.45rem;">
+                    <span>${items.length} booking${items.length === 1 ? '' : 's'}</span>
+                    <button
+                      type="button"
+                      class="queue-toggle"
+                      data-section-toggle="${group.key}"
+                    >${isCollapsed ? 'Show' : 'Hide'}</button>
+                  </div>
                 </div>
-                ${content}
+                <div class="queue-section-content" ${isCollapsed ? 'hidden' : ''}>${content}</div>
               </section>
             `;
           })
@@ -1292,6 +1331,21 @@
             await updateStage(bookingId, newStage, btn);
           });
         });
+
+        document.querySelectorAll('[data-section-toggle]').forEach((button) => {
+          button.addEventListener('click', () => {
+            const sectionKey = button.dataset.sectionToggle || '';
+            if (!sectionKey) return;
+            state.collapsedSections[sectionKey] = !isSectionCollapsed(sectionKey);
+            renderFeed();
+          });
+        });
+      }
+
+      function isSectionCollapsed(sectionKey) {
+        return state.activeFilter === 'all' || state.activeFilter === 'active'
+          ? state.collapsedSections[sectionKey] === true
+          : false;
       }
 
       function getNextActionLabel(booking) {
