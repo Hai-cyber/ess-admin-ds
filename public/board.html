@@ -46,6 +46,11 @@ body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--
 .pin-error{color:#ef4444;font-size:.85rem;min-height:1.2em;margin-bottom:10px;}
 .tenant-panel{display:none;margin-bottom:10px;}
 .tenant-help{color:var(--muted);font-size:.78rem;line-height:1.35;margin-bottom:10px;}
+.launch-context{margin-bottom:12px;padding:10px 12px;border:1px solid var(--grid);border-radius:12px;background:#172033;text-align:left;}
+.launch-context strong{display:block;margin-bottom:4px;color:#fff;font-size:.82rem;}
+.launch-context span{display:block;color:var(--muted);font-size:.76rem;line-height:1.35;}
+.launch-context a{display:inline-block;margin-top:8px;color:#f9a8d4;font-size:.76rem;font-weight:700;text-decoration:none;}
+.launch-context a:hover{text-decoration:underline;}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:500;}
 .modal.open{display:flex;}
 .modal-content{background:var(--card);width:560px;max-width:calc(100vw - 20px);padding:28px;border-radius:20px;border:1px solid var(--grid);}
@@ -70,7 +75,12 @@ label{font-size:.7rem;font-weight:bold;color:var(--muted);display:block;margin-b
 <div id="authModal">
   <div class="pin-pad">
     <h2 style="color:var(--brand);margin-top:0;">ESSKULTUR BOARD</h2>
-    <p style="color:var(--muted);font-size:.85rem;margin-bottom:18px;">Enter your staff PIN to continue</p>
+    <p id="pinIntroCopy" style="color:var(--muted);font-size:.85rem;margin-bottom:18px;">Enter your staff PIN to continue</p>
+    <div id="launchContext" class="launch-context" style="display:none;">
+      <strong>Launched from Restaurant Admin</strong>
+      <span id="launchContextMessage">Tenant context is preloaded for this board session.</span>
+      <a id="launchContextBackLink" href="/admin">Back to Restaurant Admin</a>
+    </div>
     <div id="tenantPanel" class="tenant-panel">
       <label for="companyIdInput" style="text-align:left;">Company ID (localhost/dev)</label>
       <input type="number" id="companyIdInput" min="1" step="1" placeholder="e.g. 1" style="margin-bottom:8px;"/>
@@ -218,6 +228,8 @@ const DAY_END       = 24;   // 24:00
 // Read ?company_id= from page URL so localhost dev testing works.
 // On localhost, default to company 1 so the board opens without extra typing.
 let boardCompanyId = null;
+const boardLaunchEntry = String(new URLSearchParams(window.location.search).get('entry') || '').trim().toLowerCase();
+const boardReturnTo = String(new URLSearchParams(window.location.search).get('return_to') || '').trim();
 
 function isCompanyIdQueryHost() {
   const host = String(window.location.hostname || '').toLowerCase();
@@ -242,6 +254,10 @@ boardCompanyId = getInitialBoardCompanyId();
 function syncTenantLoginUi() {
   const panel = document.getElementById('tenantPanel');
   const input = document.getElementById('companyIdInput');
+  const intro = document.getElementById('pinIntroCopy');
+  const launchContext = document.getElementById('launchContext');
+  const launchContextMessage = document.getElementById('launchContextMessage');
+  const launchContextBackLink = document.getElementById('launchContextBackLink');
   if (!panel || !input) return;
 
   const needsCompanyId = isCompanyIdQueryHost() && !boardCompanyId;
@@ -249,6 +265,24 @@ function syncTenantLoginUi() {
 
   if (boardCompanyId) {
     input.value = String(boardCompanyId);
+  }
+
+  if (intro) {
+    intro.textContent = boardLaunchEntry === 'restaurant_admin'
+      ? 'Enter the staff PIN for the current restaurant to continue.'
+      : 'Enter your staff PIN to continue';
+  }
+
+  if (launchContext && launchContextMessage && launchContextBackLink) {
+    if (boardLaunchEntry === 'restaurant_admin') {
+      launchContext.style.display = 'block';
+      launchContextMessage.textContent = boardCompanyId
+        ? `Restaurant Admin passed company ${boardCompanyId} into the board. Staff PIN stays board-scoped.`
+        : 'Restaurant Admin opened the board, but localhost still needs a company ID before PIN entry.';
+      launchContextBackLink.href = boardReturnTo || '/admin';
+    } else {
+      launchContext.style.display = 'none';
+    }
   }
 }
 

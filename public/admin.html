@@ -969,7 +969,7 @@
           <span class="user-session-email" id="userEmail">No active session</span>
         </div>
         <button class="session-btn" id="refreshSessionBtn" onclick="refreshAdminSession()">Refresh Session</button>
-        <button class="board-btn" id="boardLaunchBtn" onclick="openBookingBoard()" disabled>Booking Board</button>
+        <button class="board-btn" id="boardLaunchBtn" onclick="openBookingBoard()" disabled>Launch Booking Board</button>
         <button class="logout-btn" id="logoutBtn" onclick="logout()" disabled>Logout</button>
       </div>
     </div>
@@ -978,14 +978,14 @@
       <div class="auth-card">
         <div>
           <h2>Restaurant Admin Sign In</h2>
-          <p>Restaurant Admin now uses an identity session. Enter your email to receive a magic link, or continue with Google. Booking Board stays PIN-first and can still be opened separately.</p>
+          <p>Restaurant Admin now uses an identity session. Enter your email to receive a magic link, or continue with Google. Booking Board stays staff-PIN only and should be launched from Restaurant Admin once tenant context is set.</p>
         </div>
         <div class="auth-form">
           <input id="adminAuthEmail" class="auth-input" type="email" placeholder="owner@restaurant.com" autocomplete="email" />
           <div class="auth-actions">
             <button class="auth-btn primary" type="button" onclick="requestAdminMagicLink()">Email Magic Link</button>
             <button class="auth-btn" type="button" onclick="startAdminGoogleLogin()">Continue With Google</button>
-            <button class="auth-btn ghost" type="button" onclick="openBookingBoard()">Open Booking Board (PIN)</button>
+            <button class="auth-btn ghost" type="button" onclick="openBookingBoard()">Launch Booking Board (staff PIN)</button>
           </div>
         </div>
         <div class="auth-status" id="authStatus">Waiting for an admin session.</div>
@@ -1538,7 +1538,11 @@
         alert('Missing company_id for Booking Board launch.');
         return;
       }
-      window.open(`/board?company_id=${encodeURIComponent(companyId)}`, '_blank', 'noopener');
+      const boardUrl = new URL('/board', window.location.origin);
+      boardUrl.searchParams.set('company_id', String(companyId));
+      boardUrl.searchParams.set('entry', 'restaurant_admin');
+      boardUrl.searchParams.set('return_to', `${window.location.pathname}${window.location.search}`);
+      window.open(boardUrl.toString(), '_blank', 'noopener');
     }
 
     async function refreshAdminSession() {

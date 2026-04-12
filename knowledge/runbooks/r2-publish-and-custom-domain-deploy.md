@@ -225,8 +225,5 @@ curl -s https://prod.gooddining.app/api/health | jq .
 | `WEBSITE_PUBLISH_R2` | Production binding | Yes | R2 bucket binding, not a var |
 | `OTP_STUB_ENABLED` | Default (dev) only | Dev only | Must NOT be in production vars |
 | `DISABLE_TURNSTILE_FOR_DEV` | Default (dev) only | Dev only | Must NOT be in production vars |
-| `ADMIN_PIN_FALLBACK_ENABLED` | Default (dev) | `false` | Set to `false` in dev; production may keep `true` during rollout |
-| `RESTAURANT_ADMIN_PIN_FALLBACK_ENABLED` | Default (dev) | `false` | Same as above |
-| `PLATFORM_ADMIN_PIN_FALLBACK_ENABLED` | Both | `false` | Already disabled in both envs |
 | `CUSTOM_DOMAIN_DNS_VERIFY_MODE` | Production | Omit | Only set to `mock` in local dev/test |
 | `CUSTOM_DOMAIN_ACTIVATION_HEALTHCHECK_MODE` | Production | Omit | Only set to `mock` in local dev/test |

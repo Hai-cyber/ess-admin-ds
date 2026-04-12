@@ -19,17 +19,17 @@
 ## 🎯 Current State (Right Now)
 
 ### Phase
-**Phase 1: Booking + Platform Entry (95% complete)**
+**Phase 1: Booking + Platform Entry (97% complete)**
 - ETA: April 20, 2026
-- Status: 🟡 ON TRACK (remaining: deployment publish path validation, richer custom-domain ops, board PIN scope cleanup, and founder/KC OTP delivery decision)
+- Status: 🟡 ON TRACK (remaining: production Stripe secrets, richer custom-domain ops, and production beta validation)
 
 ### Overall Progress
 ```
-█████████▌ 95%
+██████████ 97%
 
-Completed: 95%
-In Progress: 3% (deployment publish path + custom-domain hardening + board PIN scope cleanup)
-Blocked: 2% (founder/KC OTP delivery decision + missing live storage validation)
+Completed: 97%
+In Progress: 2% (production Stripe activation + custom-domain hardening)
+Blocked: 1% (production Stripe secrets)
 Not Started: 0%
 ```
 
@@ -102,14 +102,12 @@ Not Started: 0%
 - [x] CP-3E step 1 is now specified in `knowledge/specs/identity-auth-migration-spec.md` with target schema, backfill rules, and rollout phases
 - [x] Identity auth foundation is now implemented in runtime: email magic link, Google callback path, session lookup, and logout
 - [x] Restaurant Admin and SaaS Admin now use session-first entry UIs with explicit signed-in email, refresh-session, and logout controls
-- [x] Admin APIs now support session-first auth with phased legacy PIN fallback behind env flags
-- [x] Preview or non-production now defaults to SaaS Admin PIN fallback disabled; production keeps it temporarily enabled during rollout
-- [x] Legacy admin PIN fallback usage now emits structured logs for rollout observation before removal
+- [x] Admin APIs now require session auth for Restaurant Admin and SaaS Admin; legacy admin PIN fallback code is removed
 - [x] Auth coverage now includes expired token, reused token, missing membership, Google-not-configured, and fallback-disabled cases
 - [x] Platform signup now seeds owner identity plus memberships and returns auth bootstrap details for owner verification instead of using admin PIN as the owner login path
 - [x] Runtime now supports storage-backed publish artifacts for live tenant releases when a `WEBSITE_PUBLISH_R2` bucket binding is configured
 - [x] R2 bucket `ess-admin-ds-website-publish-prod` confirmed live: write/read/delete validated against the real Cloudflare R2 bucket
-- [x] Production wrangler.jsonc now explicitly disables all admin PIN fallback surfaces (`ADMIN_PIN_FALLBACK_ENABLED`, `PLATFORM_ADMIN_PIN_FALLBACK_ENABLED`, `RESTAURANT_ADMIN_PIN_FALLBACK_ENABLED` all `false`) and sets `OTP_STUB_ENABLED=false`; Wrangler inheritance warnings eliminated
+- [x] Wrangler config no longer carries dead admin PIN fallback env vars; production still keeps `OTP_STUB_ENABLED=false`
 - [x] `STRIPE_MODE=mock` is now in the default (dev) env so local bank card signup is testable without real credentials; production sets `STRIPE_MODE=""` explicitly to return HTTP 503 gracefully until `STRIPE_API_KEY` and `STRIPE_WEBHOOK_SECRET` secrets are provisioned
 - [x] Custom-domain activation now requires a published release and rejects conflicting reserved/active domains before cutover
 - [x] Local smoke tests verified health, plans, signup policy, platform contact, platform admin dashboard, website payload, publish review, suspend, and quarantine actions on localhost
@@ -172,18 +170,18 @@ Not Started: 0%
 - [x] Auth restructure direction is approved: admin surfaces stop using PIN; board remains PIN-only
 - [x] Identity auth foundation now exists in worker runtime and contracts
 - [x] Restaurant Admin and SaaS Admin now run session-first UI entry with magic link or Google
-- [x] Admin auth rollout now supports env-controlled legacy PIN fallback and usage logging
+- [x] Admin auth cleanup is complete: admin surfaces are session-only and Booking Board remains the only PIN surface
 
 **What needs work** (next 3-4 days):
 - [x] Attach a real production custom-domain ingress to `ess-admin-ds-prod` and verify public ingress beyond workers.dev
-- [ ] Stripe test checkout flow (replace demo-paid simulation while keeping the new demo/manual payment method options)
+- [x] Stripe test checkout flow now replaces demo-paid simulation in dev or mock mode while preserving manual payment options
 - [x] Connect the new tenant website-content editor to an explicit publish/release workflow with release states and rollback history
 - [x] Enforce the website validator inside the actual tenant publish submission path
-- [ ] Provision the real `WEBSITE_PUBLISH_R2` bucket binding in deploy config and validate storage-backed publish output on the target environment
+- [x] Provision the real `WEBSITE_PUBLISH_R2` bucket binding in deploy config and validate storage-backed publish output on the target environment
 - [ ] Extend custom-domain ops beyond the hardened activation path with richer reminder, cutover, and renewal workflows
 - [x] Change signup from admin PIN bootstrap to owner identity bootstrap
-- [ ] Continue removing legacy admin PIN fallback after observing preview usage logs and route-level dependencies
-- [ ] Limit Booking Board PIN to board-scoped launch and operations only
+- [x] Continue removing legacy admin PIN fallback after observing preview usage logs and route-level dependencies
+- [x] Limit Booking Board PIN to board-scoped launch and operations only
 - [ ] Optional managed domain registration flow after BYOD custom-domain upgrade is stable
 - [ ] Tenant payment method onboarding UX (Stripe + manual modes)
 - [ ] End-to-end QA for tenant website editor save/reload/review flow from Restaurant Admin to live tenant subdomain
@@ -193,7 +191,7 @@ Not Started: 0%
 - [ ] Re-run `/api/contact/create` smoke test against a freshly reloaded worker to confirm the new public contact route on the active dev runtime
 
 **Current dependency**:
-- Stripe test credentials + Twilio credentials (or explicit local OTP stub) + deploy-time R2 validation
+- Production Stripe secrets + deploy-time production smoke validation
 - ETA: Apr 20
 
 **Where it lives**:
@@ -232,26 +230,18 @@ All other phases (2-5) planned, not started:
 
 ## 🚨 Blockers (Current)
 
-### Blocker 1: Founder/KC OTP Runtime
-- **Issue**: Founder/KC OTP delivery still needs a clear local-development strategy: real Twilio test credentials or an explicit local stub
-- **Impact**: End-to-end delivery verification remains incomplete even though current Vitest coverage passes
-- **ETA Fix**: As soon as Twilio test credentials or a local stub are configured
+### Blocker 1: Production Stripe Activation
+- **Issue**: Production still needs real `STRIPE_API_KEY` and `STRIPE_WEBHOOK_SECRET` secrets. The code path is ready; the missing step is operational.
+- **Impact**: Bank-card signup on `prod.gooddining.app` still returns the graceful non-configured path until secrets are provisioned.
+- **ETA Fix**: As soon as secrets are available
 - **Owner**: @dev-lead
-- **Action Item**: Decide whether local OTP should require live Twilio or use a development stub
+- **Action Item**: Run `wrangler secret put STRIPE_API_KEY --env production` and `wrangler secret put STRIPE_WEBHOOK_SECRET --env production`, then smoke-test signup.
 
-### Blocker 2: Deployment Publish Path + Custom Domain Hardening
-- **Issue**: R2 bucket is confirmed live and binding is wired; local Stripe checkout (mock) is now testable. Remaining gaps: real `STRIPE_API_KEY`/`STRIPE_WEBHOOK_SECRET` secrets for production Stripe, and richer custom-domain ops beyond hardened activation.
-- **Impact**: CP-10 is ~97% — only Stripe secrets + custom-domain enrichment remain
+### Blocker 2: Custom-Domain Enrichment
+- **Issue**: Activation is hardened, but richer cutover, reminder, and renewal operator workflows are still incomplete.
+- **Impact**: CP-10 remains just short of full production hardening.
 - **ETA Fix**: Apr 20
 - **Owner**: @dev-lead
-
-### Blocker 3: Identity/Auth Refactor
-- **Issue**: All three PIN fallback env flags are now `false` in production. Legacy fallback code still exists in the router but is gated off by the flags. Remaining: route-by-route removal of the fallback code itself after observing zero usage in production logs.
-- **Impact**: CP-3 is functionally complete (fallback is disabled); code cleanup is cosmetic but should be finished before Phase 2
-- **ETA Fix**: Apr 20
-- **Owner**: @dev-lead
-- **Action Item**: Monitor production logs for `legacy_admin_pin_fallback_used` events; once confirmed zero, delete the fallback code branches.
-- **Action Item**: Finish deployment output path, then harden BYOD custom-domain upgrade/activation beyond the current MVP.
 
 ---
 

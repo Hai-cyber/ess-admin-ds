@@ -8,10 +8,6 @@ const originalFetch = globalThis.fetch.bind(globalThis);
 beforeEach(() => {
 	env.TWILIO_ACCOUNT_SID = 'AC_TEST_ACCOUNT_SID';
 	env.TWILIO_AUTH_TOKEN = 'test-auth-token';
-	env.ADMIN_PIN_FALLBACK_ENABLED = 'true';
-	env.PLATFORM_ADMIN_PIN_FALLBACK_ENABLED = 'true';
-	env.RESTAURANT_ADMIN_PIN_FALLBACK_ENABLED = 'true';
-	env.STAFF_SESSION_PIN_FALLBACK_ENABLED = 'true';
 	env.GOOGLE_CLIENT_ID = '';
 	env.GOOGLE_CLIENT_SECRET = '';
 });
@@ -121,6 +117,49 @@ async function requestMagicLink(env, baseOrigin, payload) {
 	expect(requestBody.ok).toBe(true);
 	expect(String(requestBody.preview_url || '')).toContain('/auth/email/callback?token=');
 	return requestBody;
+}
+
+async function createRestaurantAdminSessionCookie(env, {
+	companyId = 1,
+	role = 'tenant_admin',
+	userId = `restaurant_admin_${companyId}`,
+	email = `restaurant-admin-${companyId}@example.com`,
+	displayName = 'Restaurant Admin'
+} = {}) {
+	await seedIdentityAccess(env, {
+		userId,
+		email,
+		displayName,
+		companyId,
+		companyRole: role
+	});
+
+	return createMagicLinkSessionCookie(env, 'http://localhost', {
+		email,
+		scope: 'restaurant_admin',
+		company_id: companyId,
+		redirect_path: `/admin?company_id=${companyId}`
+	});
+}
+
+async function createPlatformAdminSessionCookie(env, {
+	userId = 'platform_admin_user',
+	email = 'platform-admin@example.com',
+	displayName = 'Platform Admin',
+	role = 'platform_admin'
+} = {}) {
+	await seedIdentityAccess(env, {
+		userId,
+		email,
+		displayName,
+		platformRole: role
+	});
+
+	return createMagicLinkSessionCookie(env, 'http://localhost', {
+		email,
+		scope: 'platform_admin',
+		redirect_path: '/platform/admin.html'
+	});
 }
 
 describe('ESSKULTUR worker', () => {
@@ -310,10 +349,8 @@ describe('ESSKULTUR worker', () => {
 		expect(String(body.code || '')).toBe('google_auth_not_configured');
 	});
 
-	it('rejects legacy platform admin PIN auth when PIN fallback is disabled', async () => {
+	it('rejects platform admin PIN auth without a session', async () => {
 		await initializeDatabase(env.DB);
-		env.ADMIN_PIN_FALLBACK_ENABLED = 'true';
-		env.PLATFORM_ADMIN_PIN_FALLBACK_ENABLED = 'false';
 
 		const ctx = createExecutionContext();
 		const response = await worker.fetch(new Request('http://localhost/api/platform/admin/dashboard?pin=1234'), env, ctx);
@@ -324,10 +361,8 @@ describe('ESSKULTUR worker', () => {
 		expect(String(body.error || '')).toBe('Platform admin session required');
 	});
 
-	it('rejects legacy tenant admin PIN auth when restaurant admin PIN fallback is disabled', async () => {
+	it('rejects tenant admin PIN auth without a session', async () => {
 		await initializeDatabase(env.DB);
-		env.ADMIN_PIN_FALLBACK_ENABLED = 'true';
-		env.RESTAURANT_ADMIN_PIN_FALLBACK_ENABLED = 'false';
 
 		const ctx = createExecutionContext();
 		const response = await worker.fetch(new Request('http://localhost/api/admin/platform-config?company_id=1&pin=1234'), env, ctx);
@@ -470,10 +505,11 @@ describe('ESSKULTUR worker', () => {
 
 	it('saves SaaS admin payment method toggles and exposes them in platform plans', async () => {
 		await initializeDatabase(env.DB);
+		const cookie = await createPlatformAdminSessionCookie(env);
 
 		const saveRequest = new Request('http://localhost/api/platform/admin/config', {
 			method: 'POST',
-			headers: { 'content-type': 'application/json' },
+			headers: { 'content-type': 'application/json', cookie },
 			body: JSON.stringify({
 				pin: '1234',
 				values: {
@@ -545,10 +581,11 @@ describe('ESSKULTUR worker', () => {
 
 	it('returns tenant admin payment method policy in platform config payload', async () => {
 		await initializeDatabase(env.DB);
+		const cookie = await createRestaurantAdminSessionCookie(env, { companyId: 1 });
 
 		const request = new Request('http://localhost/api/admin/platform-config?company_id=1&pin=1234');
 		const ctx = createExecutionContext();
-		const response = await worker.fetch(request, env, ctx);
+		const response = await worker.fetch(new Request(request, { headers: { cookie } }), env, ctx);
 		await waitOnExecutionContext(ctx);
 
 		expect(response.status).toBe(200);
@@ -560,10 +597,11 @@ describe('ESSKULTUR worker', () => {
 
 	it('creates a tenant custom-domain upgrade request and returns it in platform config', async () => {
 		await initializeDatabase(env.DB);
+		const cookie = await createRestaurantAdminSessionCookie(env, { companyId: 1 });
 
 		const request = new Request('http://localhost/api/admin/domain-upgrade/request?company_id=1', {
 			method: 'POST',
-			headers: { 'content-type': 'application/json' },
+			headers: { 'content-type': 'application/json', cookie },
 			body: JSON.stringify({
 				pin: '1234',
 				requestedDomain: 'www.restaurant-one.de',
@@ -579,7 +617,9 @@ describe('ESSKULTUR worker', () => {
 		expect(body.ok).toBe(true);
 		expect(String(body.request?.request_status || '')).toBe('requested');
 
-		const configRequest = new Request('http://localhost/api/admin/platform-config?company_id=1&pin=1234');
+		const configRequest = new Request('http://localhost/api/admin/platform-config?company_id=1&pin=1234', {
+			headers: { cookie }
+		});
 		ctx = createExecutionContext();
 		response = await worker.fetch(configRequest, env, ctx);
 		await waitOnExecutionContext(ctx);
@@ -595,6 +635,8 @@ describe('ESSKULTUR worker', () => {
 		await initializeDatabase(env.DB);
 		env.CUSTOM_DOMAIN_DNS_VERIFY_MODE = 'mock';
 		env.CUSTOM_DOMAIN_ACTIVATION_HEALTHCHECK_MODE = 'mock';
+		const tenantCookie = await createRestaurantAdminSessionCookie(env, { companyId: 1 });
+		const platformCookie = await createPlatformAdminSessionCookie(env);
 		const now = new Date().toISOString();
 
 		await env.DB.prepare(`
@@ -624,7 +666,7 @@ describe('ESSKULTUR worker', () => {
 
 		let request = new Request('http://localhost/api/admin/domain-upgrade/request?company_id=1', {
 			method: 'POST',
-			headers: { 'content-type': 'application/json' },
+			headers: { 'content-type': 'application/json', cookie: tenantCookie },
 			body: JSON.stringify({
 				pin: '1234',
 				requestedDomain: 'www.restaurant-activation.de',
@@ -643,7 +685,7 @@ describe('ESSKULTUR worker', () => {
 			if (action === 'verify') {
 				request = new Request('http://localhost/api/admin/domain-upgrade/mark-dns-ready?company_id=1', {
 					method: 'POST',
-					headers: { 'content-type': 'application/json' },
+					headers: { 'content-type': 'application/json', cookie: tenantCookie },
 					body: JSON.stringify({ pin: '1234' })
 				});
 				ctx = createExecutionContext();
@@ -654,7 +696,7 @@ describe('ESSKULTUR worker', () => {
 
 			request = new Request(`http://localhost/api/platform/admin/domain-requests/${encodeURIComponent(domainRequestId)}/${action}`, {
 				method: 'POST',
-				headers: { 'content-type': 'application/json' },
+				headers: { 'content-type': 'application/json', cookie: platformCookie },
 				body: JSON.stringify({ pin: '1234', operatorNote: `Operator ${action}` })
 			});
 			ctx = createExecutionContext();
@@ -686,7 +728,9 @@ describe('ESSKULTUR worker', () => {
 			'activation_health_checked'
 		]));
 
-		request = new Request('http://localhost/api/platform/admin/dashboard?pin=1234');
+		request = new Request('http://localhost/api/platform/admin/dashboard?pin=1234', {
+			headers: { cookie: platformCookie }
+		});
 		ctx = createExecutionContext();
 		response = await worker.fetch(request, env, ctx);
 		await waitOnExecutionContext(ctx);
@@ -720,10 +764,11 @@ describe('ESSKULTUR worker', () => {
 
 	it('stores renewal tracking fields for managed registration requests', async () => {
 		await initializeDatabase(env.DB);
+		const cookie = await createRestaurantAdminSessionCookie(env, { companyId: 1 });
 
 		const request = new Request('http://localhost/api/admin/domain-upgrade/request?company_id=1', {
 			method: 'POST',
-			headers: { 'content-type': 'application/json' },
+			headers: { 'content-type': 'application/json', cookie },
 			body: JSON.stringify({
 				pin: '1234',
 				requestedDomain: 'www.restaurant-renewal.de',
@@ -745,10 +790,12 @@ describe('ESSKULTUR worker', () => {
 
 	it('runs managed domain renewal reminders from the platform admin route', async () => {
 		await initializeDatabase(env.DB);
+		const tenantCookie = await createRestaurantAdminSessionCookie(env, { companyId: 1 });
+		const platformCookie = await createPlatformAdminSessionCookie(env);
 
 		let request = new Request('http://localhost/api/admin/domain-upgrade/request?company_id=1', {
 			method: 'POST',
-			headers: { 'content-type': 'application/json' },
+			headers: { 'content-type': 'application/json', cookie: tenantCookie },
 			body: JSON.stringify({
 				pin: '1234',
 				requestedDomain: 'www.renewal-reminder.de',
@@ -769,7 +816,7 @@ describe('ESSKULTUR worker', () => {
 
 		request = new Request('http://localhost/api/platform/admin/domain-renewals/run-reminders', {
 			method: 'POST',
-			headers: { 'content-type': 'application/json' },
+			headers: { 'content-type': 'application/json', cookie: platformCookie },
 			body: JSON.stringify({ pin: '1234' })
 		});
 		ctx = createExecutionContext();
@@ -788,10 +835,12 @@ describe('ESSKULTUR worker', () => {
 
 	it('supports renewal reminder preview and forced overdue escalation for operators', async () => {
 		await initializeDatabase(env.DB);
+		const tenantCookie = await createRestaurantAdminSessionCookie(env, { companyId: 1 });
+		const platformCookie = await createPlatformAdminSessionCookie(env);
 
 		let request = new Request('http://localhost/api/admin/domain-upgrade/request?company_id=1', {
 			method: 'POST',
-			headers: { 'content-type': 'application/json' },
+			headers: { 'content-type': 'application/json', cookie: tenantCookie },
 			body: JSON.stringify({
 				pin: '1234',
 				requestedDomain: 'www.preview-overdue.de',
@@ -811,7 +860,7 @@ describe('ESSKULTUR worker', () => {
 
 		request = new Request(`http://localhost/api/platform/admin/domain-renewals/${encodeURIComponent(requestId)}/preview`, {
 			method: 'POST',
-			headers: { 'content-type': 'application/json' },
+			headers: { 'content-type': 'application/json', cookie: platformCookie },
 			body: JSON.stringify({ pin: '1234' })
 		});
 		ctx = createExecutionContext();
@@ -824,7 +873,7 @@ describe('ESSKULTUR worker', () => {
 
 		request = new Request(`http://localhost/api/platform/admin/domain-renewals/${encodeURIComponent(requestId)}/force-overdue`, {
 			method: 'POST',
-			headers: { 'content-type': 'application/json' },
+			headers: { 'content-type': 'application/json', cookie: platformCookie },
 			body: JSON.stringify({ pin: '1234', note: 'Manual escalation' })
 		});
 		ctx = createExecutionContext();
@@ -838,6 +887,8 @@ describe('ESSKULTUR worker', () => {
 
 	it('sends operator digest channels when renewal reminders are generated', async () => {
 		await initializeDatabase(env.DB);
+		const tenantCookie = await createRestaurantAdminSessionCookie(env, { companyId: 1 });
+		const platformCookie = await createPlatformAdminSessionCookie(env);
 
 		const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
 			const url = String(input || '');
@@ -854,7 +905,7 @@ describe('ESSKULTUR worker', () => {
 
 		let request = new Request('http://localhost/api/admin/domain-upgrade/request?company_id=1', {
 			method: 'POST',
-			headers: { 'content-type': 'application/json' },
+			headers: { 'content-type': 'application/json', cookie: tenantCookie },
 			body: JSON.stringify({
 				pin: '1234',
 				requestedDomain: 'www.digest-test.de',
@@ -873,7 +924,7 @@ describe('ESSKULTUR worker', () => {
 
 		request = new Request('http://localhost/api/platform/admin/domain-renewals/run-reminders', {
 			method: 'POST',
-			headers: { 'content-type': 'application/json' },
+			headers: { 'content-type': 'application/json', cookie: platformCookie },
 			body: JSON.stringify({ pin: '1234', sendDigest: true })
 		});
 		ctx = createExecutionContext();
@@ -890,6 +941,7 @@ describe('ESSKULTUR worker', () => {
 
 	it('rejects tenant admin subdomain updates that hit blocked policy terms', async () => {
 		await initializeDatabase(env.DB);
+		const cookie = await createRestaurantAdminSessionCookie(env, { companyId: 1 });
 
 		const baseline = await env.DB.prepare(
 			`SELECT name, email, phone, timezone FROM companies WHERE id = ? LIMIT 1`
@@ -897,7 +949,7 @@ describe('ESSKULTUR worker', () => {
 
 		const request = new Request('http://localhost/api/admin/platform-config?company_id=1', {
 			method: 'POST',
-			headers: { 'content-type': 'application/json' },
+			headers: { 'content-type': 'application/json', cookie },
 			body: JSON.stringify({
 				pin: '1234',
 				company: {
@@ -925,6 +977,7 @@ describe('ESSKULTUR worker', () => {
 
 	it('creates a website publish review and notifies Telegram for suspicious content', async () => {
 		await initializeDatabase(env.DB);
+		const cookie = await createRestaurantAdminSessionCookie(env, { companyId: 1 });
 		env.TELEGRAM_BOT_TOKEN = 'telegram-test-token';
 		env.TELEGRAM_REVIEW_CHAT_ID = '-1001234567890';
 
@@ -960,7 +1013,7 @@ describe('ESSKULTUR worker', () => {
 
 		const request = new Request('http://localhost/api/admin/website/publish?company_id=1', {
 			method: 'POST',
-			headers: { 'content-type': 'application/json' },
+			headers: { 'content-type': 'application/json', cookie },
 			body: JSON.stringify({ pin: '1234' })
 		});
 
@@ -989,6 +1042,7 @@ describe('ESSKULTUR worker', () => {
 
 	it('rejects a new publish submission while another release is pending review', async () => {
 		await initializeDatabase(env.DB);
+		const cookie = await createRestaurantAdminSessionCookie(env, { companyId: 1 });
 
 		const now = new Date().toISOString();
 		await env.DB.prepare(`
@@ -1038,7 +1092,7 @@ describe('ESSKULTUR worker', () => {
 
 		const request = new Request('http://localhost/api/admin/website/publish?company_id=1', {
 			method: 'POST',
-			headers: { 'content-type': 'application/json' },
+			headers: { 'content-type': 'application/json', cookie },
 			body: JSON.stringify({ pin: '1234', reviewNote: 'Try to resubmit while pending.' })
 		});
 
@@ -1054,6 +1108,7 @@ describe('ESSKULTUR worker', () => {
 
 	it('submits a clean website release for publish approval without making it live immediately', async () => {
 		await initializeDatabase(env.DB);
+		const cookie = await createRestaurantAdminSessionCookie(env, { companyId: 1 });
 
 		const now = new Date().toISOString();
 		await env.DB.prepare(`
@@ -1079,7 +1134,7 @@ describe('ESSKULTUR worker', () => {
 
 		const request = new Request('http://localhost/api/admin/website/publish?company_id=1', {
 			method: 'POST',
-			headers: { 'content-type': 'application/json' },
+			headers: { 'content-type': 'application/json', cookie },
 			body: JSON.stringify({ pin: '1234', reviewNote: 'Ready for release.' })
 		});
 
@@ -1108,6 +1163,7 @@ describe('ESSKULTUR worker', () => {
 
 	it('publishes the latest approved release through the dedicated tenant publish endpoint', async () => {
 		await initializeDatabase(env.DB);
+		const cookie = await createRestaurantAdminSessionCookie(env, { companyId: 1 });
 
 		const now = new Date().toISOString();
 		await env.DB.prepare(`
@@ -1157,7 +1213,7 @@ describe('ESSKULTUR worker', () => {
 
 		const request = new Request('http://localhost/api/admin/website/publish-approved?company_id=1', {
 			method: 'POST',
-			headers: { 'content-type': 'application/json' },
+			headers: { 'content-type': 'application/json', cookie },
 			body: JSON.stringify({ pin: '1234', releaseNote: 'Go live now.' })
 		});
 
@@ -1180,6 +1236,7 @@ describe('ESSKULTUR worker', () => {
 
 	it('allows operator to approve a pending publish review', async () => {
 		await initializeDatabase(env.DB);
+		const cookie = await createPlatformAdminSessionCookie(env);
 		env.TELEGRAM_BOT_TOKEN = 'telegram-test-token';
 		env.TELEGRAM_REVIEW_CHAT_ID = '-1001234567890';
 
@@ -1218,7 +1275,7 @@ describe('ESSKULTUR worker', () => {
 
 		const request = new Request(`http://localhost/api/platform/moderation/review/${reviewId}/approve`, {
 			method: 'POST',
-			headers: { 'content-type': 'application/json' },
+			headers: { 'content-type': 'application/json', cookie },
 			body: JSON.stringify({ pin: '1234', reviewNote: 'Looks like a valid restaurant website.' })
 		});
 
@@ -1260,6 +1317,7 @@ describe('ESSKULTUR worker', () => {
 
 	it('allows operator to reject a pending publish review', async () => {
 		await initializeDatabase(env.DB);
+		const cookie = await createPlatformAdminSessionCookie(env);
 
 		const reviewId = crypto.randomUUID();
 		const now = new Date().toISOString();
@@ -1285,7 +1343,7 @@ describe('ESSKULTUR worker', () => {
 
 		const request = new Request(`http://localhost/api/platform/moderation/review/${reviewId}/reject`, {
 			method: 'POST',
-			headers: { 'content-type': 'application/json' },
+			headers: { 'content-type': 'application/json', cookie },
 			body: JSON.stringify({ pin: '1234', reviewNote: 'Suspicious outbound link remains unresolved.' })
 		});
 
@@ -1313,10 +1371,11 @@ describe('ESSKULTUR worker', () => {
 
 	it('allows operator to suspend a tenant website', async () => {
 		await initializeDatabase(env.DB);
+		const cookie = await createPlatformAdminSessionCookie(env);
 
 		const request = new Request('http://localhost/api/platform/tenants/2/suspend-website', {
 			method: 'POST',
-			headers: { 'content-type': 'application/json' },
+			headers: { 'content-type': 'application/json', cookie },
 			body: JSON.stringify({ pin: '1234', reason: 'phishing_review_confirmed' })
 		});
 
@@ -1340,10 +1399,11 @@ describe('ESSKULTUR worker', () => {
 
 	it('allows operator to quarantine a subdomain', async () => {
 		await initializeDatabase(env.DB);
+		const cookie = await createPlatformAdminSessionCookie(env);
 
 		const request = new Request('http://localhost/api/platform/subdomains/restaurant2/quarantine', {
 			method: 'POST',
-			headers: { 'content-type': 'application/json' },
+			headers: { 'content-type': 'application/json', cookie },
 			body: JSON.stringify({ pin: '1234', reason: 'brand_protection_hold' })
 		});
 
@@ -1449,6 +1509,7 @@ describe('ESSKULTUR worker', () => {
 
 	it('writes published release artifacts to storage and serves the stored snapshot for public payloads', async () => {
 		await initializeDatabase(env.DB);
+		const cookie = await createRestaurantAdminSessionCookie(env, { companyId: 2 });
 		const storedObjects = new Map();
 		env.WEBSITE_PUBLISH_R2 = {
 			async put(key, value) {
@@ -1513,7 +1574,7 @@ describe('ESSKULTUR worker', () => {
 
 		let request = new Request('http://localhost/api/admin/website/publish-approved?company_id=2', {
 			method: 'POST',
-			headers: { 'content-type': 'application/json' },
+			headers: { 'content-type': 'application/json', cookie },
 			body: JSON.stringify({ pin: '1234', releaseNote: 'Publish to storage.' })
 		});
 		let ctx = createExecutionContext();
@@ -1545,6 +1606,7 @@ describe('ESSKULTUR worker', () => {
 
 	it('allows tenant admin to roll back to an older published release snapshot', async () => {
 		await initializeDatabase(env.DB);
+		const cookie = await createRestaurantAdminSessionCookie(env, { companyId: 1 });
 		const earlier = '2026-04-01T08:00:00.000Z';
 		const later = '2026-04-02T08:00:00.000Z';
 
@@ -1599,7 +1661,7 @@ describe('ESSKULTUR worker', () => {
 
 		const rollbackRequest = new Request('http://localhost/api/admin/website/releases/release_old_live/rollback?company_id=1', {
 			method: 'POST',
-			headers: { 'content-type': 'application/json' },
+			headers: { 'content-type': 'application/json', cookie },
 			body: JSON.stringify({ pin: '1234', rollbackNote: 'Restore stable version' })
 		});
 		ctx = createExecutionContext();
@@ -1625,6 +1687,7 @@ describe('ESSKULTUR worker', () => {
 
 	it('rejects rollback for releases that were never published', async () => {
 		await initializeDatabase(env.DB);
+		const cookie = await createRestaurantAdminSessionCookie(env, { companyId: 1 });
 		const now = new Date().toISOString();
 
 		await env.DB.prepare(`
@@ -1654,7 +1717,7 @@ describe('ESSKULTUR worker', () => {
 
 		const rollbackRequest = new Request('http://localhost/api/admin/website/releases/rejected_release_1/rollback?company_id=1', {
 			method: 'POST',
-			headers: { 'content-type': 'application/json' },
+			headers: { 'content-type': 'application/json', cookie },
 			body: JSON.stringify({ pin: '1234', rollbackNote: 'Should fail' })
 		});
 
@@ -1670,6 +1733,7 @@ describe('ESSKULTUR worker', () => {
 
 	it('includes moderation reviews in platform admin dashboard data', async () => {
 		await initializeDatabase(env.DB);
+		const cookie = await createPlatformAdminSessionCookie(env);
 
 		const now = new Date().toISOString();
 		await env.DB.prepare(`
@@ -1692,7 +1756,9 @@ describe('ESSKULTUR worker', () => {
 			now
 		).run();
 
-		const request = new Request('http://localhost/api/platform/admin/dashboard?pin=1234');
+		const request = new Request('http://localhost/api/platform/admin/dashboard?pin=1234', {
+			headers: { cookie }
+		});
 		const ctx = createExecutionContext();
 		const response = await worker.fetch(request, env, ctx);
 		await waitOnExecutionContext(ctx);
@@ -1708,12 +1774,15 @@ describe('ESSKULTUR worker', () => {
 
 	it('returns tenant go-live blockers for platform operators', async () => {
 		await initializeDatabase(env.DB);
+		const cookie = await createPlatformAdminSessionCookie(env);
 
 		await env.DB.prepare(
 			`UPDATE companies SET email = '', phone = '' WHERE id = ?`
 		).bind(1).run();
 
-		const request = new Request('http://localhost/api/platform/admin/tenants/1/go-live-readiness?pin=1234');
+		const request = new Request('http://localhost/api/platform/admin/tenants/1/go-live-readiness?pin=1234', {
+			headers: { cookie }
+		});
 		const ctx = createExecutionContext();
 		const response = await worker.fetch(request, env, ctx);
 		await waitOnExecutionContext(ctx);
@@ -2422,8 +2491,17 @@ describe('ESSKULTUR worker', () => {
 
 	it('allows manager role to manage social settings but not full company profile', async () => {
 		await initializeDatabase(env.DB);
+		const cookie = await createRestaurantAdminSessionCookie(env, {
+			companyId: 1,
+			role: 'manager',
+			userId: 'restaurant_manager_1',
+			email: 'manager-1@example.com',
+			displayName: 'Restaurant Manager'
+		});
 
-		const getReq = new Request('http://localhost/api/admin/platform-config?company_id=1&pin=8888');
+		const getReq = new Request('http://localhost/api/admin/platform-config?company_id=1&pin=8888', {
+			headers: { cookie }
+		});
 		let ctx = createExecutionContext();
 		const getRes = await worker.fetch(getReq, env, ctx);
 		await waitOnExecutionContext(ctx);
@@ -2435,7 +2513,7 @@ describe('ESSKULTUR worker', () => {
 
 		const socialPostReq = new Request('http://localhost/api/admin/platform-config?company_id=1', {
 			method: 'POST',
-			headers: { 'content-type': 'application/json' },
+			headers: { 'content-type': 'application/json', cookie },
 			body: JSON.stringify({
 				pin: '8888',
 				company: null,
@@ -2466,7 +2544,7 @@ describe('ESSKULTUR worker', () => {
 
 		const deniedCompanyPostReq = new Request('http://localhost/api/admin/platform-config?company_id=1', {
 			method: 'POST',
-			headers: { 'content-type': 'application/json' },
+			headers: { 'content-type': 'application/json', cookie },
 			body: JSON.stringify({
 				pin: '8888',
 				company: {
@@ -2482,7 +2560,9 @@ describe('ESSKULTUR worker', () => {
 		await waitOnExecutionContext(ctx);
 		expect(deniedCompanyPostRes.status).toBe(403);
 
-		const mediaGetReq = new Request('http://localhost/api/admin/media-assets?company_id=1&pin=8888');
+		const mediaGetReq = new Request('http://localhost/api/admin/media-assets?company_id=1&pin=8888', {
+			headers: { cookie }
+		});
 		ctx = createExecutionContext();
 		const mediaGetRes = await worker.fetch(mediaGetReq, env, ctx);
 		await waitOnExecutionContext(ctx);
@@ -2491,8 +2571,11 @@ describe('ESSKULTUR worker', () => {
 
 	it('returns go-live readiness checklist in admin platform config payload', async () => {
 		await initializeDatabase(env.DB);
+		const cookie = await createRestaurantAdminSessionCookie(env, { companyId: 1 });
 
-		const request = new Request('http://localhost/api/admin/platform-config?company_id=1&pin=1234');
+		const request = new Request('http://localhost/api/admin/platform-config?company_id=1&pin=1234', {
+			headers: { cookie }
+		});
 		const ctx = createExecutionContext();
 		const response = await worker.fetch(request, env, ctx);
 		await waitOnExecutionContext(ctx);
@@ -2871,6 +2954,7 @@ describe('ESSKULTUR worker', () => {
 	it('creates a new Stripe checkout session when retrying a failed signup payment', async () => {
 		await initializeDatabase(env.DB);
 		env.STRIPE_MODE = 'mock';
+		const cookie = await createPlatformAdminSessionCookie(env);
 
 		let request = new Request('http://localhost/api/platform/signup', {
 			method: 'POST',
@@ -2907,7 +2991,7 @@ describe('ESSKULTUR worker', () => {
 
 		request = new Request(`http://localhost/api/platform/admin/signups/${encodeURIComponent(String(signupIdRow?.id || ''))}/retry-payment`, {
 			method: 'POST',
-			headers: { 'content-type': 'application/json' },
+			headers: { 'content-type': 'application/json', cookie },
 			body: JSON.stringify({ pin: '1234' })
 		});
 		ctx = createExecutionContext();
@@ -3004,6 +3088,7 @@ describe('ESSKULTUR worker', () => {
 
 	it('allows empty tenant subdomain for single-domain mode', async () => {
 		await initializeDatabase(env.DB);
+		const cookie = await createRestaurantAdminSessionCookie(env, { companyId: 1 });
 
 		const baseline = await env.DB.prepare(
 			`SELECT name, email, phone, timezone FROM companies WHERE id = ? LIMIT 1`
@@ -3011,7 +3096,7 @@ describe('ESSKULTUR worker', () => {
 
 		const request = new Request('http://localhost/api/admin/platform-config?company_id=1', {
 			method: 'POST',
-			headers: { 'content-type': 'application/json' },
+			headers: { 'content-type': 'application/json', cookie },
 			body: JSON.stringify({
 				pin: '1234',
 				company: {

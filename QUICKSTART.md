@@ -10,16 +10,19 @@
 
 **What we're building**: Restaurant OS (vertical SaaS for restaurant bookings, POS, payments)
 
-**Where we are**: Phase 1 of 5 (Booking system) — 75% complete
+**Where we are**: Phase 1 of 5 (Booking + Platform Entry) — 97% complete
 
 **What's working**:
 - ✅ Guests can book online (form → confirmation)
 - ✅ Staff see bookings on live board (real-time updates)
 - ✅ Multi-restaurant isolation (no cross-tenant data leaks)
+- ✅ Restaurant Admin and SaaS Admin use email or Google session auth
+- ✅ Signup bootstraps owner identity and verification handoff
+- ✅ Founder and KC local OTP can run through the built-in dev stub
 
-**What's blocked**: Admin UI setup wizard (refactoring, ETA Mar 31)
+**What's blocked**: production Stripe secrets plus richer custom-domain operations
 
-**What's next**: Complete admin UI, beta with 2-3 restaurants, GA launch (Apr 15)
+**What's next**: validate the board-launch handoff, provision production Stripe secrets, then start beta onboarding
 
 ---
 
@@ -27,7 +30,7 @@
 
 ```
 Restaurant OS Project (2026)
-├── Phase 1: Booking ✅97% (ends Apr 20)
+├── Phase 1: Booking + Platform Entry ✅97% (ends Apr 20)
 │   ├── CP-1: Tenant isolation ✅ DONE
 │   ├── CP-2: Booking MVP ✅ DONE
 │   └── CP-3/CP-10: Platform + Admin 🔄 97% (YOUR FOCUS)
@@ -36,7 +39,7 @@ Restaurant OS Project (2026)
 ├── Phase 4: Odoo removal (Jan 2027)
 └── Phase 5: Growth (Apr-Jun 2027)
 
-You are here: Phase 1, finishing production hardening
+You are here: Phase 1, production hardening + beta readiness
 ```
 
 ---
@@ -70,32 +73,33 @@ You are here: Phase 1, finishing production hardening
 ### Production Hardening + Beta Readiness (97% → ship)
 
 **What works**:
-- Identity auth (email magic link + Google), session-first Restaurant Admin and SaaS Admin
-- Website publish/release state machine (`draft → pending_review → approved → published → rolled_back`)
-- R2 publish storage confirmed live; binding wired in production
-- Local bank-card Stripe checkout working via `STRIPE_MODE=mock`
-- Founder/KC OTP local stub: register returns `otp_debug_code` for instant local verify
-- All production PIN fallback flags disabled; board PIN scoped to board-only operations
-- 65/65 tests passing
+- Identity auth is live for Restaurant Admin and SaaS Admin
+- Booking Board stays staff-PIN only and now launches with explicit Restaurant Admin context
+- Signup seeds owner identity and verification handoff
+- Founder and KC local OTP can be verified immediately with `OTP_STUB_ENABLED=true`
+- R2 publish storage is wired for production
+- Vitest passes end to end
 
-**What's needed to ship Phase 1**:
-1. Production Stripe secrets (`STRIPE_API_KEY` + `STRIPE_WEBHOOK_SECRET`)
-2. Legacy admin PIN fallback code removal (flags already off, code cleanup remains)
-3. Board-launch UX entry point from Restaurant Admin (closes CP-3F)
-4. Custom-domain enrichment (transfer-out, cutover indicator)
+**What's needed** (to finish Phase 1):
+1. Provision `STRIPE_API_KEY` and `STRIPE_WEBHOOK_SECRET` in production
+2. Smoke-test bank-card signup on `prod.gooddining.app`
+3. Validate Restaurant Admin → Booking Board launch on real tenant URLs
+4. Extend custom-domain cutover, reminder, and renewal operator workflows
+5. Start beta with 2-3 restaurants
 
-**Est. time to complete**: 1 week
+**Est. time to complete**: about 1 week
 
 **Files to edit**:
-- `src/index.js` — PIN fallback code removal
-- `public/admin.html` — board-launch UX
-- `wrangler.jsonc` — already updated
+- `src/index.js` — auth, signup, payments, domain ops
+- `public/admin.html` — Restaurant Admin shell + board launch
+- `public/board.html` — board entry flow
+- `knowledge/runbooks/r2-publish-and-custom-domain-deploy.md` — deploy and domain validation
 
 **How to verify you're done**:
 ```bash
-npm test  # 65/65 pass
-npx wrangler dev --config wrangler.jsonc  # local smoke test
-npx wrangler deploy --env production      # ship it
+npm test
+npx wrangler dev --config wrangler.jsonc
+# Then run production smoke tests once Stripe secrets exist
 ```
 
 ---
@@ -150,19 +154,26 @@ Why? Multi-tenant system. One restaurant ≠ sees other restaurants' data.
 **Owner**: @dev-lead
 
 **Step-by-step**:
-1. [ ] `wrangler secret put STRIPE_API_KEY --env production`
-2. [ ] `wrangler secret put STRIPE_WEBHOOK_SECRET --env production`
-3. [ ] Remove legacy PIN fallback code from `src/index.js` (flags already off)
-4. [ ] Add board-launch UX entry point in `public/admin.html`
-5. [ ] Extend custom-domain BYOD workflow (transfer-out + cutover ops)
-6. [ ] Run `npm test` (must stay 65/65)
-7. [ ] Deploy: `npx wrangler deploy --env production`
-8. [ ] Smoke test `prod.gooddining.app`
+1. [ ] Set `STRIPE_API_KEY` in production
+2. [ ] Set `STRIPE_WEBHOOK_SECRET` in production
+3. [ ] Deploy with `npx wrangler deploy --env production`
+4. [ ] Smoke-test bank-card signup on `prod.gooddining.app`
+5. [ ] Validate Restaurant Admin → Booking Board launch on a real tenant URL
+6. [ ] Extend custom-domain ops beyond activation
+7. [ ] Re-run `npm test`
+8. [ ] Start beta onboarding
+
+**How to test as you go**:
+```bash
+npm test
+npx wrangler dev --config wrangler.jsonc
+npx wrangler deploy --env production
+```
 
 **When you get stuck**:
-1. Check [STATUS.md](./STATUS.md) for blockers
-2. Check [knowledge/runbooks/](./knowledge/runbooks/) for deploy + domain runbooks
-3. Check relevant contract in `docs/contracts/`
+1. Check STATUS.md for the current blocker list
+2. Check `knowledge/runbooks/` for deploy and custom-domain steps
+3. Read the relevant contract in `docs/contracts/`
 
 ---
 

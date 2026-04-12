@@ -236,9 +236,9 @@ export async function handleRequest(request) {
 
 ### Dual-Stack Transition Rule
 
-During the migration window:
+Current state:
 
-- admin routes may accept either a valid admin session or the legacy PIN fallback
+- admin routes require a valid admin session
 - board routes continue to accept PIN
 - new features must default to session auth for admin surfaces
 

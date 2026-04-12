@@ -4287,21 +4287,6 @@ function buildAdminActorFromSession(session, role, companyId = 0) {
   };
 }
 
-function isAdminPinFallbackEnabled(env, surface = 'restaurant_admin') {
-  // Board PIN (staff_session_or_pin surface) is handled unconditionally in
-  // authorizeSessionOrStaffPinRequest and must never route through this function.
-  // Only admin-surface (restaurant_admin, platform_admin) PIN usage is a legacy fallback
-  // that should be phased out via the env flags below.
-  const globalEnabled = parseBooleanLike(env.ADMIN_PIN_FALLBACK_ENABLED, true);
-  if (!globalEnabled) return false;
-
-  if (surface === 'platform_admin') {
-    return parseBooleanLike(env.PLATFORM_ADMIN_PIN_FALLBACK_ENABLED, true);
-  }
-
-  return parseBooleanLike(env.RESTAURANT_ADMIN_PIN_FALLBACK_ENABLED, true);
-}
-
 function buildPinFallbackDisabledError(scope = 'admin', allowManager = false) {
   if (scope === 'platform_admin') {
     return { ok: false, status: 401, error: 'Platform admin session required' };
@@ -4310,29 +4295,6 @@ function buildPinFallbackDisabledError(scope = 'admin', allowManager = false) {
     return { ok: false, status: 401, error: allowManager ? 'Manager/admin session required' : 'Staff session required' };
   }
   return { ok: false, status: 401, error: allowManager ? 'Manager/admin session required' : 'Admin session required' };
-}
-
-function logLegacyPinFallbackUsage(request, payload = {}) {
-  try {
-    const requestUrl = new URL(String(request?.url || 'http://localhost/'));
-    console.warn('legacy_admin_pin_fallback_used', JSON.stringify({
-      surface: String(payload.surface || 'unknown').trim(),
-      allowManager: !!payload.allowManager,
-      companyId: Number(payload.companyId || 0) || null,
-      path: requestUrl.pathname,
-      host: requestUrl.host,
-      method: String(request?.method || 'GET').trim(),
-      hasAdminPinHeader: !!String(request?.headers?.get('x-admin-pin') || '').trim(),
-      hasStaffPinHeader: !!String(request?.headers?.get('x-staff-pin') || '').trim(),
-      source: 'pin_fallback'
-    }));
-  } catch (error) {
-    console.warn('legacy_admin_pin_fallback_used', JSON.stringify({
-      surface: String(payload.surface || 'unknown').trim(),
-      source: 'pin_fallback',
-      loggingError: String(error?.message || error || 'unknown')
-    }));
-  }
 }
 
 async function authorizePlatformOperatorRequest(env, request, body = null, url = null) {
@@ -4344,13 +4306,7 @@ async function authorizePlatformOperatorRequest(env, request, body = null, url =
     }
   }
 
-  if (!isAdminPinFallbackEnabled(env, 'platform_admin')) {
-    return buildPinFallbackDisabledError('platform_admin');
-  }
-
-  logLegacyPinFallbackUsage(request, { surface: 'platform_admin', companyId: PLATFORM_OPERATOR_COMPANY_ID, allowManager: false });
-  const pin = String(body?.pin || url?.searchParams?.get('pin') || request.headers.get('x-admin-pin') || '').trim();
-  return authorizePlatformOperator(env, pin);
+  return buildPinFallbackDisabledError('platform_admin');
 }
 
 async function authorizeCompanyAdminRequest(env, request, companyId, body = null, url = null, options = {}) {
@@ -4367,15 +4323,7 @@ async function authorizeCompanyAdminRequest(env, request, companyId, body = null
     }
   }
 
-  if (!isAdminPinFallbackEnabled(env, 'restaurant_admin')) {
-    return buildPinFallbackDisabledError('restaurant_admin', allowManager);
-  }
-
-  logLegacyPinFallbackUsage(request, { surface: 'restaurant_admin', companyId, allowManager });
-  const pin = String(body?.pin || url?.searchParams?.get('pin') || request.headers.get('x-admin-pin') || request.headers.get('x-staff-pin') || '').trim();
-  return allowManager
-    ? authorizeManagerOrAdminByPin(env, companyId, pin)
-    : authorizeAdminByPin(env, companyId, pin);
+  return buildPinFallbackDisabledError('restaurant_admin', allowManager);
 }
 
 async function authorizeSessionOrStaffPinRequest(env, request, companyId, body = null, url = null, options = {}) {

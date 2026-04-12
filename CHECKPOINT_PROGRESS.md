@@ -16,7 +16,7 @@
 |-----------|-----------|--------|----------|-------|-----|
 | CP-1 | Tenant Isolation | ✅ DONE | E2E_TEST_SUMMARY.md | Team | ✅ Done |
 | CP-2 | Booking MVP | ✅ DONE | Local runtime verified: booking form render, board, staff-create, booking list, stage updates | Team | ✅ Done |
-| CP-3 | Admin UI Setup | ⏳ 96% | Identity auth foundation, session-first admin UIs, signup owner bootstrap, and phased fallback controls are live; remaining work is board-scope cleanup and further reducing legacy PIN fallback usage | @dev-lead | Apr 20 |
+| CP-3 | Admin UI Setup | ⏳ 98% | Identity auth foundation, session-first admin UIs, signup owner bootstrap, and board-launch separation are live; remaining work is production Stripe activation plus final board handoff validation | @dev-lead | Apr 20 |
 | CP-10 | Platform Site + Self-Service Signup | ⏳ 95% | Platform site, signup provisioning, payments, moderation, domain queue, and owner identity bootstrap are live; remaining work is deploy/output hardening plus richer custom-domain ops | @dev-lead | Apr 20 |
 | **Phase 1 Total** | — | **97%** | — | — | **Apr 20** |
 
@@ -90,8 +90,7 @@
 ✅ Identity auth schema, migration spec, and backfill path are now implemented in the repo
 ✅ Worker runtime now supports email magic link, Google auth callback, session inspection, and logout for admin surfaces
 ✅ Restaurant Admin and SaaS Admin now use session-first UI entry with explicit signed-in email, session refresh, and logout controls
-✅ Admin APIs now prefer session auth and legacy admin PIN fallback is behind rollout flags
-✅ Preview or non-production config now disables SaaS Admin PIN fallback by default while production keeps it temporarily enabled
+✅ Admin APIs now require session auth for admin surfaces; legacy admin PIN fallback code has been removed
 ✅ Auth coverage now includes success and failure branches for expired token, reused token, missing membership, Google-not-configured, and fallback-disabled behavior
 ✅ Signup now seeds owner `users` and memberships, creates a verification challenge, and returns auth bootstrap details instead of relying on admin PIN for owner access
 ✅ SaaS Admin moderation queue now has summary/filter/refresh controls on top of approve/reject/suspend/quarantine actions
@@ -108,16 +107,16 @@
 ✅ R2 bucket `ess-admin-ds-website-publish-prod` confirmed live (write/read/delete validated); binding is wired in production wrangler.jsonc
 ⏳ Tenant custom-domain upgrade workflow still needs richer reminder/cutover ops beyond the newly hardened activation guards
 ✅ Founder/KC OTP local stub shipped: `OTP_STUB_ENABLED=true` in dev returns `otp_debug_code` in register/resend responses for instant local verification without Twilio
-✅ All production PIN fallback env flags now explicitly `false`; `OTP_STUB_ENABLED=false` explicit in production; Wrangler inheritance warnings eliminated
+✅ Dead admin PIN fallback env vars removed from Wrangler config; `OTP_STUB_ENABLED=false` remains explicit in production
 ✅ `STRIPE_MODE=mock` added to dev env; local bank card signup now testable end-to-end without real Stripe credentials
 ⏳ Production Stripe checkout blocked until `STRIPE_API_KEY` + `STRIPE_WEBHOOK_SECRET` secrets are set: `wrangler secret put STRIPE_API_KEY --env production`
 **Blockers**: richer custom-domain ops beyond activation hardening, production Stripe secrets
 
 **Next checkpoint steps**:
-1. Continue removing legacy admin PIN fallback route-by-route after observing preview usage logs.
-2. Keep Booking Board PIN-only, but launch it from Restaurant Admin with explicit tenant context.
-3. Finish board-scope cleanup so signup and admin surfaces no longer describe board PIN as a general admin unlock.
-4. Publish tenant website output + assets to deployment storage and validate the subdomain-first public serving path.
+1. Provision production Stripe secrets and smoke-test bank-card signup on `prod.gooddining.app`.
+2. Validate Booking Board launch from Restaurant Admin on production-like tenant URLs.
+3. Extend custom-domain cutover, reminder, and renewal ops.
+4. Run beta-readiness validation and onboard pilot restaurants.
 5. Harden the tenant custom-domain upgrade workflow beyond the current MVP.
 6. Decide Twilio strategy for founder/KC locally, then close the OTP runtime gap.
 

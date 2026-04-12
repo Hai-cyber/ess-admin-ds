@@ -36,7 +36,7 @@
 - [x] Decision records (DECISIONS.md)
 - [x] Legacy reference policy formalized (Founder/KC retained as reference assets)
 
-#### Implementation (91%)
+#### Implementation (97%)
 - [x] Tenant isolation (CP-1) ✅ VERIFIED
 - [x] Booking MVP (CP-2) ✅ VERIFIED
 - [x] Booking form live
@@ -45,7 +45,7 @@
 - [x] Staff PIN authentication for Booking Board
 - [x] Tenant guard middleware
 - [x] Local runtime verified for platform home/plans/contact, signup provisioning, board, admin config, staff auth, booking create, and stage updates
-- [x] Vitest baseline is now clean on the root repo: 29/29 passing
+- [x] Vitest baseline is now clean on the root repo: 65/65 passing
 - [x] Platform UX/copy pass shipped locally: signup redesign, contextual login modal, browser-language detection, and localized pricing/add-on messaging
 - [x] Website master runtime preview shipped in `public/website-master/` with a universal tenant template, preset-driven content, and runtime-shaped source payload examples
 - [x] Website master now wires booking, contact, and founder/KC membership forms to current runtime endpoints with automatic preview-safe tenant injection
@@ -94,13 +94,9 @@
 - [x] Publish moderation and operator review flow now exists in runtime and SaaS Admin
 - [x] Local smoke verification completed for health, plans, contact, signup policy, publish review, suspend, quarantine, and host-based tenant blocking
 - [x] Explicit `production` Wrangler env deployed against a real D1 database id
-- [x] Wrangler upgraded to 4.81.1 — resolves `cloudflare-internal:d1-api` runtime crash on older Workers runtimes
-- [x] Founder/KC OTP local stub delivered: `OTP_STUB_ENABLED=true` in dev env returns `otp_debug_code` in register/resend responses; founder verify works locally without Twilio
-- [x] Board-only PIN scope hardened: `authorizeSessionOrStaffPinRequest` no longer routes through the legacy fallback gate; board PIN is a first-class credential, not a legacy fallback
-- [x] R2 bucket `ess-admin-ds-website-publish-prod` confirmed live; write/read/delete validated with Wrangler CLI; binding wired in production `wrangler.jsonc`
-- [x] All production PIN fallback env flags explicitly `false` (`ADMIN_PIN_FALLBACK_ENABLED`, `PLATFORM_ADMIN_PIN_FALLBACK_ENABLED`, `RESTAURANT_ADMIN_PIN_FALLBACK_ENABLED`); `OTP_STUB_ENABLED=false` explicit in production; zero Wrangler inheritance warnings
-- [x] `STRIPE_MODE=mock` in default (dev) env enables local bank‑card checkout testing end-to-end without real credentials; production sets `STRIPE_MODE=""` → graceful HTTP 503 until `STRIPE_API_KEY` + `STRIPE_WEBHOOK_SECRET` secrets are provisioned
-- [x] R2 publish-and-custom-domain runbook created in `knowledge/runbooks/` covering bucket provisioning, deploy checklist, smoke tests, R2 artifact inspection, custom-domain hardening steps, and rollback procedure
+- [x] Founder/KC local runtime now supports an explicit OTP stub; register and resend return `otp_debug_code` when `OTP_STUB_ENABLED=true`
+- [x] Admin auth migration is complete: Restaurant Admin and SaaS Admin are session-only, and Booking Board remains board-scoped PIN auth
+- [x] Restaurant Admin now launches Booking Board with explicit tenant context instead of treating the board as a parallel admin login surface
 
 #### Contracts & Specifications (100%)
 - [x] API Contracts (all endpoints defined)
@@ -114,12 +110,12 @@
 
 ### 🔄 In Progress (Current Sprint)
 
-#### CP-3: Admin UI Setup (89% complete)
+#### CP-3: Admin UI Setup (96% complete)
 
 **What's done**:
 - [x] Restaurant admin page + platform-config API + staff API are live
 - [x] SaaS admin dashboard/config routes are live
-- [x] Tenant signup endpoint provisions organization/company plus current admin bootstrap path; identity-auth migration is now approved as the next restructuring step
+- [x] Tenant signup provisions organization/company, seeds owner identity, creates memberships, and issues an owner verification handoff
 - [x] Platform landing and signup pricing copy now reflects Service POS/German checkout and Repeat Guests SMS/loyal-guest positioning in EN/DE/VI
 - [x] Included/add-on pricing notes and signup commercial summary are now language-aware instead of hardcoded English
 - [x] Website master preview can consume runtime-shaped website settings and preview tenant/company context without hardcoded tenant pages
@@ -134,12 +130,12 @@
 - [x] Stripe payment lifecycle no longer depends solely on frontend redirect; webhook and post-checkout confirmation both update the same persisted state
 - [x] Payment remediation now includes retry checkout plus a persisted audit trail across checkout creation, retry, confirmation, and webhook updates
 - [ ] Restaurant config form (email/phone/hours/areas)
-- [ ] Identity auth foundation for signup, Restaurant Admin, and SaaS Admin
-- [ ] Board-launch separation so Booking Board stays PIN-only
+- [x] Identity auth foundation for signup, Restaurant Admin, and SaaS Admin
+- [x] Board-launch separation so Booking Board stays PIN-only and launches with explicit Restaurant Admin context
 - [ ] Payment integration setup
 - [ ] Final deployment publish path verification
 
-**What's blocked**: storage bucket provisioning + deployment publish validation, richer custom-domain ops beyond activation hardening, plus founder/KC OTP runtime depending on Twilio credentials
+**What's blocked**: production Stripe secrets plus richer custom-domain ops beyond activation hardening
 
 **CP-3 execution plan now fixed into six sub-checkpoints**:
 - `CP-3A` Go-Live Console Gating
@@ -215,51 +211,52 @@ Recommended order: `3A -> 3B -> 3C -> 3D -> 3E -> 3F`
 
 ## 🎯 Current Phase: Phase 1 (Booking System)
 
-**Status**: 91% complete  
-**ETA**: April 15, 2026  
+**Status**: 97% complete  
+**ETA**: April 20, 2026  
 **Owner**: Development team
 
 | Checkpoint | Status | Evidence | Blockers |
 |-----------|--------|----------|----------|
 | CP-1: Tenant Isolation | ✅ DONE | E2E_TEST_SUMMARY.md | None |
 | CP-2: Booking MVP | ✅ DONE | Local runtime verified on 2026-03-30 | None |
-| CP-3: Admin UI Setup | 🔄 98% | Identity auth, session-first UIs, board-PIN scope, signup owner bootstrap, and phased fallback controls complete; all production PIN fallback flags now `false`; remaining: route-by-route removal of fallback code + board-launch UX | PIN fallback code cleanup |
-| CP-10: Platform Site + Self-Service Signup | 🔄 98% | Platform home/contact/admin/signup verified live; R2 bucket confirmed live and binding validated; `STRIPE_MODE=mock` enables local Stripe checkout; remaining: production Stripe secrets + richer custom-domain ops | Production Stripe secrets |
-| **Phase 1 Total** | **🔄 97%** | — | **Production Stripe secrets + custom-domain enrichment + PIN fallback code removal** |
+| CP-3: Admin UI Setup | 🔄 98% | Session-first Restaurant Admin, board-launch separation, publish workflow, role-aware IA, and storage-ready runtime hardening are active; remaining work is production Stripe ops plus richer domain ops | Stripe secrets + custom-domain |
+| CP-10: Platform Site + Self-Service Signup | 🔄 98% | Platform home/contact/admin/signup verified live; wildcard tenant subdomains resolve; owner identity bootstrap is live; remaining work is production Stripe secrets plus custom-domain hardening | Stripe secrets + custom-domain |
+| **Phase 1 Total** | **🔄 97%** | — | **Production Stripe secrets + custom-domain enrichment** |
 
 ---
 
 ## 📍 What Needs to Happen Next
 
-### Immediate (Apr 12–20)
+### Immediate (Apr 12-20)
 
-**Task 1 — Production Stripe credentials (1 day)**
+**Task 1**: Provision production Stripe secrets
 - `wrangler secret put STRIPE_API_KEY --env production`
 - `wrangler secret put STRIPE_WEBHOOK_SECRET --env production`
-- Smoke-test bank-card signup against `prod.gooddining.app`
+- verify bank-card signup on `prod.gooddining.app`
+- Time estimate: 1 day
 - Owner: @dev-lead
 
-**Task 2 — Remove legacy admin PIN fallback code (2 days)**
-- Monitor production logs for zero `legacy_admin_pin_fallback_used` events
-- Delete fallback branches in `authorizeCompanyAdminRequest` and `authorizePlatformOperatorRequest`
-- Remove `isAdminPinFallbackEnabled` helper and `logLegacyPinFallbackUsage` once all call sites are gone
+**Task 2**: Validate Restaurant Admin → Booking Board launch on production-like tenant URLs
+- confirm tenant context is preloaded
+- confirm board PIN remains board-scoped only
+- Time estimate: Half day
 - Owner: @dev-lead
 
-**Task 3 — Board-launch UX from Restaurant Admin (2 days)**
-- Add a "Launch Booking Board" entry point in Restaurant Admin that opens the board with pre-populated tenant context
-- Closes CP-3F; ensures board PIN is only reachable from the admin surface, not as a general entry
-- Owner: @dev-lead
+**Task 3**: Harden custom-domain upgrade workflow
+- extend the current custom-domain request MVP into fuller cutover/reminder/renewal ops
+- Time estimate: 2-3 days
 
-**Task 4 — Custom-domain enrichment (2 days)**
-- Extend BYOD workflow: transfer-out request flow, cutover progress indicator, multi-host renewal reminder ops
-- Owner: @dev-lead
+**Task 4**: Run beta readiness smoke suite
+- `npm test`
+- `npx wrangler dev --config wrangler.jsonc`
+- production smoke tests from the R2/custom-domain runbook once Stripe secrets exist
 
 ### After Apr 20
 
-**Beta with 2–3 restaurants**
-- Deploy complete Phase 1 build to production
-- Onboard 2–3 real restaurants through the full signup → admin → go-live flow
-- Collect feedback, fix issues, gate Phase 2 start
+**Task 5**: Beta with 2-3 restaurants
+- Onboard 2-3 real restaurants
+- Collect feedback
+- Fix bugs before Phase 2 starts
 
 ---
 
