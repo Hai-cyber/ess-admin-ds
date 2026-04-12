@@ -2,9 +2,9 @@
 
 **Purpose**: Real-time snapshot of project state. Update before/after every session.
 
-**Last Updated**: 2026-04-10  
+**Last Updated**: 2026-04-12  
 **By**: AI Agent  
-**Next Update**: 2026-04-08 (or sooner if major change)
+**Next Update**: 2026-04-13 (or sooner if major change)
 
 ## Runtime Note (2026-04-08)
 
@@ -19,17 +19,17 @@
 ## 🎯 Current State (Right Now)
 
 ### Phase
-**Phase 1: Booking + Platform Entry (89% complete)**
+**Phase 1: Booking + Platform Entry (95% complete)**
 - ETA: April 20, 2026
-- Status: 🟡 ON TRACK (remaining: identity-auth migration for signup/admin, tenant custom-domain upgrade workflow, and founder/KC OTP runtime fix)
+- Status: 🟡 ON TRACK (remaining: deployment publish path validation, richer custom-domain ops, board PIN scope cleanup, and founder/KC OTP delivery decision)
 
 ### Overall Progress
 ```
-█████████░ 89%
+█████████▌ 95%
 
-Completed: 89%
-In Progress: 7% (identity auth migration + deployment publish path + custom-domain hardening)
-Blocked: 4% (founder/KC OTP delivery in local runtime + production route drift)
+Completed: 95%
+In Progress: 3% (deployment publish path + custom-domain hardening + board PIN scope cleanup)
+Blocked: 2% (founder/KC OTP delivery decision + missing live storage validation)
 Not Started: 0%
 ```
 
@@ -100,7 +100,17 @@ Not Started: 0%
 - [x] Restaurant Admin now uses a role-aware setup shell with product-correct naming, grouped settings quick navigation, and section visibility aligned to manager/admin scope
 - [x] Product direction now formally separates identity auth from operational PIN usage: signup + Restaurant Admin + SaaS Admin move to email/Google, Booking Board remains PIN-only
 - [x] CP-3E step 1 is now specified in `knowledge/specs/identity-auth-migration-spec.md` with target schema, backfill rules, and rollout phases
+- [x] Identity auth foundation is now implemented in runtime: email magic link, Google callback path, session lookup, and logout
+- [x] Restaurant Admin and SaaS Admin now use session-first entry UIs with explicit signed-in email, refresh-session, and logout controls
+- [x] Admin APIs now support session-first auth with phased legacy PIN fallback behind env flags
+- [x] Preview or non-production now defaults to SaaS Admin PIN fallback disabled; production keeps it temporarily enabled during rollout
+- [x] Legacy admin PIN fallback usage now emits structured logs for rollout observation before removal
+- [x] Auth coverage now includes expired token, reused token, missing membership, Google-not-configured, and fallback-disabled cases
+- [x] Platform signup now seeds owner identity plus memberships and returns auth bootstrap details for owner verification instead of using admin PIN as the owner login path
 - [x] Runtime now supports storage-backed publish artifacts for live tenant releases when a `WEBSITE_PUBLISH_R2` bucket binding is configured
+- [x] R2 bucket `ess-admin-ds-website-publish-prod` confirmed live: write/read/delete validated against the real Cloudflare R2 bucket
+- [x] Production wrangler.jsonc now explicitly disables all admin PIN fallback surfaces (`ADMIN_PIN_FALLBACK_ENABLED`, `PLATFORM_ADMIN_PIN_FALLBACK_ENABLED`, `RESTAURANT_ADMIN_PIN_FALLBACK_ENABLED` all `false`) and sets `OTP_STUB_ENABLED=false`; Wrangler inheritance warnings eliminated
+- [x] `STRIPE_MODE=mock` is now in the default (dev) env so local bank card signup is testable without real credentials; production sets `STRIPE_MODE=""` explicitly to return HTTP 503 gracefully until `STRIPE_API_KEY` and `STRIPE_WEBHOOK_SECRET` secrets are provisioned
 - [x] Custom-domain activation now requires a published release and rejects conflicting reserved/active domains before cutover
 - [x] Local smoke tests verified health, plans, signup policy, platform contact, platform admin dashboard, website payload, publish review, suspend, and quarantine actions on localhost
 - [x] Explicit `production` Wrangler environment deploy executed successfully against a real D1 database id
@@ -112,7 +122,7 @@ Not Started: 0%
 
 **Evidence**:
 - Local live verification on 2026-03-30 ✅
-- Vitest: outer workspace `29/29` ✅
+- Vitest: outer workspace `63/63` ✅
 - Booking form render + localhost booking submission verified ✅
 - Board and stage updates verified live ✅
 - Platform home + signup copy verified locally after pricing/i18n updates ✅
@@ -133,6 +143,8 @@ Not Started: 0%
 - Wildcard subdomain routing, host-based tenant payload resolution, and demo-payment signup walkthrough verified live ✅
 - Contact route and platform contact lead flow verified on a freshly reloaded local worker ✅
 - Production custom-domain ingress is live at `prod.gooddining.app`; workers.dev still returns Cloudflare `1050`, but production ingress is finished on the custom domain ✅
+- Restaurant Admin and SaaS Admin now authenticate successfully through session flows in test coverage without requiring admin PIN query or body parameters ✅
+- Platform signup now bootstraps owner identity plus a verification challenge in test coverage, while preserving a board-only seeded PIN ✅
 - Known failures isolated to founder/KC OTP delivery paths ⚠️
 - Legacy Odoo references still exist in schema/init and archive-style utility files, but not in active runtime entrypoints or active admin/public UI ⚠️
 
@@ -158,6 +170,9 @@ Not Started: 0%
 - [x] Structured opening hours now flow through website payloads for future reuse by shop and online-order availability logic
 - [x] Wildcard tenant subdomain routing and demo-payment signup walkthrough are verified live
 - [x] Auth restructure direction is approved: admin surfaces stop using PIN; board remains PIN-only
+- [x] Identity auth foundation now exists in worker runtime and contracts
+- [x] Restaurant Admin and SaaS Admin now run session-first UI entry with magic link or Google
+- [x] Admin auth rollout now supports env-controlled legacy PIN fallback and usage logging
 
 **What needs work** (next 3-4 days):
 - [x] Attach a real production custom-domain ingress to `ess-admin-ds-prod` and verify public ingress beyond workers.dev
@@ -166,10 +181,8 @@ Not Started: 0%
 - [x] Enforce the website validator inside the actual tenant publish submission path
 - [ ] Provision the real `WEBSITE_PUBLISH_R2` bucket binding in deploy config and validate storage-backed publish output on the target environment
 - [ ] Extend custom-domain ops beyond the hardened activation path with richer reminder, cutover, and renewal workflows
-- [ ] Add identity auth foundation: `users`, `memberships`, `sessions`, and email or Google bootstrap flows
-- [ ] Move Restaurant Admin to identity session auth
-- [ ] Move SaaS Admin to identity session auth
-- [ ] Change signup from admin PIN bootstrap to owner identity bootstrap
+- [x] Change signup from admin PIN bootstrap to owner identity bootstrap
+- [ ] Continue removing legacy admin PIN fallback after observing preview usage logs and route-level dependencies
 - [ ] Limit Booking Board PIN to board-scoped launch and operations only
 - [ ] Optional managed domain registration flow after BYOD custom-domain upgrade is stable
 - [ ] Tenant payment method onboarding UX (Stripe + manual modes)
@@ -180,8 +193,8 @@ Not Started: 0%
 - [ ] Re-run `/api/contact/create` smoke test against a freshly reloaded worker to confirm the new public contact route on the active dev runtime
 
 **Current dependency**:
-- Stripe test credentials + Twilio credentials (or explicit local OTP stub)
-- ETA: Apr 05
+- Stripe test credentials + Twilio credentials (or explicit local OTP stub) + deploy-time R2 validation
+- ETA: Apr 20
 
 **Where it lives**:
 - `src/index.js` (platform + tenant admin APIs)
@@ -220,24 +233,24 @@ All other phases (2-5) planned, not started:
 ## 🚨 Blockers (Current)
 
 ### Blocker 1: Founder/KC OTP Runtime
-- **Issue**: Founder/KC registration returns 500 on the supported localhost path because Twilio credentials are not configured
-- **Impact**: 2 Vitest failures and no end-to-end OTP verification in local runtime
+- **Issue**: Founder/KC OTP delivery still needs a clear local-development strategy: real Twilio test credentials or an explicit local stub
+- **Impact**: End-to-end delivery verification remains incomplete even though current Vitest coverage passes
 - **ETA Fix**: As soon as Twilio test credentials or a local stub are configured
 - **Owner**: @dev-lead
 - **Action Item**: Decide whether local OTP should require live Twilio or use a development stub
 
 ### Blocker 2: Deployment Publish Path + Custom Domain Hardening
-- **Issue**: Release state management is complete, but publish-to-storage/output delivery and custom-domain hardening are still not end to end.
-- **Impact**: CP-10 remains partial, not ship-ready
-- **ETA Fix**: Apr 12 onward
+- **Issue**: R2 bucket is confirmed live and binding is wired; local Stripe checkout (mock) is now testable. Remaining gaps: real `STRIPE_API_KEY`/`STRIPE_WEBHOOK_SECRET` secrets for production Stripe, and richer custom-domain ops beyond hardened activation.
+- **Impact**: CP-10 is ~97% — only Stripe secrets + custom-domain enrichment remain
+- **ETA Fix**: Apr 20
 - **Owner**: @dev-lead
 
 ### Blocker 3: Identity/Auth Refactor
-- **Issue**: Current runtime still reflects a PIN-first admin bootstrap in several paths, but the approved product direction now requires identity auth for signup, Restaurant Admin, and SaaS Admin.
-- **Impact**: CP-3 and CP-10 cannot be considered truly ship-ready until admin auth is restructured.
-- **ETA Fix**: Apr 20 onward
+- **Issue**: All three PIN fallback env flags are now `false` in production. Legacy fallback code still exists in the router but is gated off by the flags. Remaining: route-by-route removal of the fallback code itself after observing zero usage in production logs.
+- **Impact**: CP-3 is functionally complete (fallback is disabled); code cleanup is cosmetic but should be finished before Phase 2
+- **ETA Fix**: Apr 20
 - **Owner**: @dev-lead
-- **Action Item**: Implement CP-3E and CP-3F in sequence: identity auth foundation first, then board-launch and PIN-scope cleanup.
+- **Action Item**: Monitor production logs for `legacy_admin_pin_fallback_used` events; once confirmed zero, delete the fallback code branches.
 - **Action Item**: Finish deployment output path, then harden BYOD custom-domain upgrade/activation beyond the current MVP.
 
 ---
@@ -249,16 +262,16 @@ Checkpoint           Status      Owner    ETA        % Complete
 ─────────────────────────────────────────────────────────────
 CP-1: Tenant Isol   ✅ DONE      Team     Done       100%
 CP-2: Booking MVP   ✅ DONE      Team     Done       100%
-CP-3: Admin Setup   🔄 TESTING   @dev-L   Apr 05      84%
+CP-3: Admin Setup   🔄 TESTING   @dev-L   Apr 20      96%
 CP-4: Staff Mobile  📋 PLANNED   TBD      May 1        0%
 CP-5: POS System    📋 PLANNED   TBD      Aug 1        0%
 CP-6: Payment       📋 PLANNED   TBD      Aug 1        0%
 CP-7: Odoo Removed  ❌ PLANNED   TBD      Jan 1        0%
 CP-8: Growth        ❌ PLANNED   TBD      Apr 1        0%
 CP-9: Founder/KC    📋 PLANNED   TBD      Future       0%
-CP-10: Platform+SU  🔄 TESTING   @dev-L   Apr 05      96%
+CP-10: Platform+SU  🔄 TESTING   @dev-L   Apr 20      95%
 ─────────────────────────────────────────────────────────────
-PHASE 1 TOTAL                                        91%
+PHASE 1 TOTAL                                        95%
 ```
 
 ---

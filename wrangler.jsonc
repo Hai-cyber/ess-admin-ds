@@ -19,6 +19,14 @@
 
 	"vars": {
 		"TURNSTILE_SITE_KEY": "0x4AAAAAACsnreaoe8DRwhYJ",
+		"ADMIN_PIN_FALLBACK_ENABLED": "false",
+		"PLATFORM_ADMIN_PIN_FALLBACK_ENABLED": "false",
+		"RESTAURANT_ADMIN_PIN_FALLBACK_ENABLED": "false",
+		"OTP_STUB_ENABLED": "true",
+		// Enable mock Stripe checkout in local dev so bank card signup is testable without real credentials.
+		// Production intentionally omits STRIPE_MODE; set STRIPE_API_KEY + STRIPE_WEBHOOK_SECRET as secrets
+		// via `wrangler secret put STRIPE_API_KEY --env production` to enable real checkout.
+		"STRIPE_MODE": "mock",
 		"OPERATOR_DIGEST_EMAIL_FROM": "noreply@gooddining.app",
 		"OPERATOR_DIGEST_EMAIL_TO": "info@quan-esskultur.de",
 		"FOUNDER_OTP_CHANNELS": "sms",
@@ -55,6 +63,17 @@
 			},
 			"vars": {
 				"TURNSTILE_SITE_KEY": "0x4AAAAAACmwktNVObyT3tQ7",
+				// All PIN fallback surfaces are disabled in production. Admin and SaaS Admin surfaces
+				// authenticate through session (email magic link or Google). Booking Board uses board-PIN only.
+				"ADMIN_PIN_FALLBACK_ENABLED": "false",
+				"PLATFORM_ADMIN_PIN_FALLBACK_ENABLED": "false",
+				"RESTAURANT_ADMIN_PIN_FALLBACK_ENABLED": "false",
+				// OTP stub must be explicitly false in production; dev default is true.
+				"OTP_STUB_ENABLED": "false",
+				// STRIPE_MODE is intentionally empty in production. Set STRIPE_API_KEY + STRIPE_WEBHOOK_SECRET
+				// as secrets to enable real Stripe checkout. Empty string = 503 graceful until secrets are set.
+				// Dev env uses STRIPE_MODE=mock for local bank-card checkout testing without real credentials.
+				"STRIPE_MODE": "",
 				"OPERATOR_DIGEST_EMAIL_FROM": "noreply@gooddining.app",
 				"OPERATOR_DIGEST_EMAIL_TO": "info@quan-esskultur.de",
 				"FOUNDER_OTP_CHANNELS": "sms",

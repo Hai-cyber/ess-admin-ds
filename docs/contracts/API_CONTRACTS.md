@@ -131,15 +131,29 @@ GET /api/platform/signup/check-subdomain?slug=trattoria-roma
   "owner_phone": "+49123456789",   // optional
   "subdomain": "trattoria-roma",
   "plan": "core",                   // core | commerce | growth | enterprise
-  "country": "DE"
+  "country": "DE",
+  "board_pin": "1234"               // required 4-digit board PIN for the seeded operational admin/staff record
 }
 
 // Response (201 Created)
 {
   "ok": true,
-  "message": "Account created. Complete identity verification to continue.",
-  "tenant_id": "trattoria-roma",
+  "message": "Workspace created. Complete owner identity verification to continue.",
+  "company_id": 21,
+  "organization_id": 7,
   "subdomain": "trattoria-roma",
+  "website_url": "https://trattoria-roma.gooddining.app",
+  "preview_admin_url": "/admin?company_id=21",
+  "preview_board_url": "/board?company_id=21",
+  "board_pin_hint": "1234",
+  "auth": {
+    "scope": "restaurant_admin",
+    "email": "owner@roma.de",
+    "redirect_path": "/admin?company_id=21",
+    "expires_in_seconds": 900,
+    "delivery": "email",
+    "preview_verify_url": "https://.../auth/email/callback?token=..."
+  },
   "status": "pending_identity_verification"
 }
 
@@ -151,7 +165,7 @@ GET /api/platform/signup/check-subdomain?slug=trattoria-roma
 **Auth**: None (public signup)  
 **Rate limit**: 5 signups/hour per IP (prevent abuse)  
 **Latency**: < 1s  
-**Side effect**: Creates tenant bootstrap and starts owner identity verification
+**Side effect**: Creates tenant bootstrap, seeds owner identity plus memberships, and starts owner identity verification
 
 ---
 

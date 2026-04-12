@@ -50,7 +50,7 @@ const T = {
     'nav.login':          'Log in',
     'nav.signup':         'Start free trial',
     'log.title':          'Choose your login surface',
-    'log.subtitle':       'Restaurant OS uses different entry points for platform operators, tenant admins, and staff. Pick the right surface first, then continue with your PIN on the next screen.',
+    'log.subtitle':       'Restaurant OS uses different entry points for platform operators, tenant admins, and staff. Admin surfaces continue with email or Google sessions; the booking board remains PIN-first.',
     'log.role_platform':  'Platform operator',
     'log.role_platform_desc': 'Pricing, signups, and operator console',
     'log.role_tenant':    'Restaurant admin',
@@ -69,7 +69,7 @@ const T = {
     'log.slug_hint':      'Optional in single-domain mode. Example: esskultur-main',
     'log.local_note':     'Local preview needs company_id to resolve the tenant context.',
     'log.remote_note':    'If your tenant uses a subdomain, enter it here. Otherwise the current host will be used.',
-    'log.platform_note':  'Platform operator access does not need tenant context. You will enter the operator PIN on the next screen.',
+    'log.platform_note':  'Platform operator access does not need tenant context. Continue to the SaaS Admin sign-in screen and use email or Google.',
     'log.continue_platform': 'Continue to platform admin',
     'log.continue_tenant': 'Continue to restaurant admin',
     'log.continue_board': 'Continue to booking board',
@@ -277,7 +277,7 @@ const T = {
     'nav.login':          'Anmelden',
     'nav.signup':         'Kostenlos testen',
     'log.title':          'Anmeldebereich wählen',
-    'log.subtitle':       'Restaurant OS hat unterschiedliche Einstiege für Plattform-Operatoren, Mandanten-Admins und Service-Mitarbeiter. Wähle zuerst den passenden Bereich und gib den PIN dann auf der nächsten Ansicht ein.',
+    'log.subtitle':       'Restaurant OS hat unterschiedliche Einstiege für Plattform-Operatoren, Mandanten-Admins und Service-Mitarbeiter. Admin-Bereiche nutzen E-Mail- oder Google-Sessions; nur das Buchungsboard bleibt PIN-basiert.',
     'log.role_platform':  'Plattform-Operator',
     'log.role_platform_desc': 'Preise, Signups und Operator-Konsole',
     'log.role_tenant':    'Restaurant-Admin',
@@ -296,7 +296,7 @@ const T = {
     'log.slug_hint':      'Optional im Single-Domain-Modus. Beispiel: esskultur-main',
     'log.local_note':     'In der lokalen Vorschau wird company_id benötigt, um den Mandantenkontext aufzulösen.',
     'log.remote_note':    'Wenn dein Mandant eine Subdomain nutzt, trage sie hier ein. Andernfalls wird der aktuelle Host verwendet.',
-    'log.platform_note':  'Der Zugang für Plattform-Operatoren braucht keinen Mandantenkontext. Den Operator-PIN gibst du auf der nächsten Ansicht ein.',
+    'log.platform_note':  'Der Zugang für Plattform-Operatoren braucht keinen Mandantenkontext. Auf der nächsten Ansicht meldest du dich per E-Mail oder Google an.',
     'log.continue_platform': 'Weiter zur Plattform-Admin',
     'log.continue_tenant': 'Weiter zur Restaurant-Admin',
     'log.continue_board': 'Weiter zum Buchungsboard',
@@ -498,7 +498,7 @@ const T = {
     'nav.login':          'Đăng nhập',
     'nav.signup':         'Dùng thử miễn phí',
     'log.title':          'Chọn đúng cổng đăng nhập',
-    'log.subtitle':       'Restaurant OS có các điểm vào khác nhau cho operator của nền tảng, admin nhà hàng và nhân viên vận hành. Hãy chọn đúng bối cảnh trước, rồi nhập PIN ở màn hình kế tiếp.',
+    'log.subtitle':       'Restaurant OS có các điểm vào khác nhau cho operator của nền tảng, admin nhà hàng và nhân viên vận hành. Các màn hình admin dùng session bằng email hoặc Google; chỉ booking board vẫn giữ PIN-first.',
     'log.role_platform':  'Operator nền tảng',
     'log.role_platform_desc': 'Giá dịch vụ, signup và operator console',
     'log.role_tenant':    'Admin nhà hàng',
@@ -517,7 +517,7 @@ const T = {
     'log.slug_hint':      'Tùy chọn trong chế độ single-domain. Ví dụ: esskultur-main',
     'log.local_note':     'Bản local preview cần company_id để xác định đúng tenant context.',
     'log.remote_note':    'Nếu tenant của bạn dùng subdomain riêng, hãy nhập tại đây. Nếu không, hệ thống sẽ dùng host hiện tại.',
-    'log.platform_note':  'Truy cập operator nền tảng không cần tenant context. Bạn sẽ nhập operator PIN ở màn hình kế tiếp.',
+    'log.platform_note':  'Truy cập operator nền tảng không cần tenant context. Ở màn hình kế tiếp bạn sẽ đăng nhập bằng email hoặc Google.',
     'log.continue_platform': 'Tiếp tục tới platform admin',
     'log.continue_tenant': 'Tiếp tục tới admin nhà hàng',
     'log.continue_board': 'Tiếp tục tới booking board',
@@ -1298,12 +1298,12 @@ function wizardNext() {
   } else if (state.step === 3) {
     const email    = document.getElementById('f-email')?.value.trim();
     const subdomain = document.getElementById('f-subdomain')?.value.trim();
-    const adminPin = document.getElementById('f-admin-pin')?.value;
+    const boardPin = document.getElementById('f-admin-pin')?.value;
     const agreed   = document.getElementById('f-agree')?.checked;
     if (!email || !email.includes('@')) { showFieldError('f-email', 'Valid email required'); return; }
     if (!subdomain || subdomain.length < 3) { showFieldError('f-subdomain', 'Subdomain required (min 3 chars)'); return; }
     if (!subdomainValid) { showFieldError('f-subdomain', 'Please wait for availability check'); return; }
-    if (!/^\d{4}$/.test(adminPin || '')) { showFieldError('f-admin-pin', 'Admin PIN must be exactly 4 digits'); return; }
+    if (!/^\d{4}$/.test(boardPin || '')) { showFieldError('f-admin-pin', 'Board PIN must be exactly 4 digits'); return; }
     if (!agreed) { alert('Please accept the Terms & Conditions and Privacy Policy'); return; }
     state.email = email;
     submitSignup();
@@ -1331,6 +1331,7 @@ async function submitSignup() {
     address:         document.getElementById('f-address')?.value.trim(),
     country:         document.getElementById('f-country')?.value,
     admin_name:      document.getElementById('f-admin-name')?.value.trim(),
+    board_pin:       document.getElementById('f-admin-pin')?.value.trim(),
     admin_pin:       document.getElementById('f-admin-pin')?.value.trim(),
     owner_email:     document.getElementById('f-email')?.value.trim(),
     owner_phone:     document.getElementById('f-phone')?.value.trim(),
@@ -1357,17 +1358,23 @@ async function submitSignup() {
 
     if (data.ok) {
       state.signupResult = data;
+      const authDelivery = String(data.auth?.delivery || 'email');
+      const authPreview = String(data.auth?.preview_verify_url || '').trim();
       const body = `
         Account created for <strong>${payload.restaurant_name}</strong>.<br>
+        Owner identity status: <strong>${data.status || 'pending_identity_verification'}</strong><br>
+        Owner email: <strong>${data.auth?.email || payload.owner_email}</strong><br>
+        Verification delivery: <strong>${authDelivery}</strong><br>
         Demo payment status: <strong>${data.payment?.paymentStatus || 'demo_paid'}</strong><br>
         Demo payment method: <strong>${data.payment?.paymentMethod || payload.demo_payment_method || 'bankcard'}</strong><br>
         Due today: <strong>${euro(data.payment?.dueTodayEur || 0)}</strong><br>
         Recurring monthly: <strong>${euro(data.payment?.recurringMonthlyEur || 0)}</strong><br><br>
         ${data.checkout_url ? `Stripe test checkout: <a href="${data.checkout_url}" target="_blank" rel="noopener">open checkout</a><br>` : ''}
-        Preview admin: <a href="${data.preview_admin_url}" target="_blank" rel="noopener">open admin</a><br>
+        ${authPreview ? `Preview owner verification: <a href="${authPreview}" target="_blank" rel="noopener">verify and open admin</a><br>` : ''}
+        Restaurant Admin: <a href="${data.preview_admin_url}" target="_blank" rel="noopener">open admin shell</a><br>
         ${data.preview_board_url ? `Preview board: <a href="${data.preview_board_url}" target="_blank" rel="noopener">open board</a><br>` : ''}
         Future public URL: <strong>${data.website_url}</strong><br>
-        Admin PIN for test login: <strong>${data.admin_pin_hint}</strong>
+        Board PIN for test login: <strong>${data.board_pin_hint || data.admin_pin_hint || payload.board_pin}</strong>
       `;
       document.getElementById('success-body').innerHTML = body;
       goStep(4);

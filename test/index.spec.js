@@ -8,6 +8,12 @@ const originalFetch = globalThis.fetch.bind(globalThis);
 beforeEach(() => {
 	env.TWILIO_ACCOUNT_SID = 'AC_TEST_ACCOUNT_SID';
 	env.TWILIO_AUTH_TOKEN = 'test-auth-token';
+	env.ADMIN_PIN_FALLBACK_ENABLED = 'true';
+	env.PLATFORM_ADMIN_PIN_FALLBACK_ENABLED = 'true';
+	env.RESTAURANT_ADMIN_PIN_FALLBACK_ENABLED = 'true';
+	env.STAFF_SESSION_PIN_FALLBACK_ENABLED = 'true';
+	env.GOOGLE_CLIENT_ID = '';
+	env.GOOGLE_CLIENT_SECRET = '';
 });
 
 afterEach(() => {
@@ -82,6 +88,16 @@ async function seedIdentityAccess(env, {
 }
 
 async function createMagicLinkSessionCookie(env, baseOrigin, payload) {
+	const requestBody = await requestMagicLink(env, baseOrigin, payload);
+
+	let ctx = createExecutionContext();
+	const response = await worker.fetch(new Request(String(requestBody.preview_url)), env, ctx);
+	await waitOnExecutionContext(ctx);
+	expect(response.status).toBe(302);
+	return extractCookieValue(response.headers.get('set-cookie'));
+}
+
+async function requestMagicLink(env, baseOrigin, payload) {
 	vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
 		const requestUrl = typeof input === 'string' ? input : String(input?.url || '');
 		if (requestUrl.startsWith('https://api.mailchannels.net/tx/v1/send')) {
@@ -104,12 +120,7 @@ async function createMagicLinkSessionCookie(env, baseOrigin, payload) {
 	expect(response.status).toBe(200);
 	expect(requestBody.ok).toBe(true);
 	expect(String(requestBody.preview_url || '')).toContain('/auth/email/callback?token=');
-
-	ctx = createExecutionContext();
-	response = await worker.fetch(new Request(String(requestBody.preview_url)), env, ctx);
-	await waitOnExecutionContext(ctx);
-	expect(response.status).toBe(302);
-	return extractCookieValue(response.headers.get('set-cookie'));
+	return requestBody;
 }
 
 describe('ESSKULTUR worker', () => {
@@ -191,6 +202,140 @@ describe('ESSKULTUR worker', () => {
 		await waitOnExecutionContext(ctx);
 		body = await response.json();
 		expect(body.authenticated).toBe(false);
+	});
+
+	it('rejects an expired email magic-link token', async () => {
+		await initializeDatabase(env.DB);
+		await seedIdentityAccess(env, {
+			userId: 'user_expired_token',
+			email: 'expired@restaurant1.quan-esskultur.de',
+			displayName: 'Expired Token Owner',
+			companyId: 1,
+			companyRole: 'tenant_admin'
+		});
+
+		const payload = await requestMagicLink(env, 'http://localhost', {
+			email: 'expired@restaurant1.quan-esskultur.de',
+			scope: 'restaurant_admin',
+			company_id: 1,
+			redirect_path: '/admin?company_id=1'
+		});
+		const previewUrl = new URL(String(payload.preview_url || ''));
+		const token = String(previewUrl.searchParams.get('token') || '');
+		expect(token).not.toBe('');
+
+		await env.DB.prepare(`UPDATE auth_challenges SET expires_at = ? WHERE email_normalized = ?`).bind(
+			new Date(Date.now() - 60_000).toISOString(),
+			'expired@restaurant1.quan-esskultur.de'
+		).run();
+
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(new Request(`http://localhost/auth/email/callback?token=${encodeURIComponent(token)}`), env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(400);
+		const body = await response.json();
+		expect(body.ok).toBe(false);
+		expect(String(body.code || '')).toBe('token_expired');
+	});
+
+	it('rejects a reused email magic-link token', async () => {
+		await initializeDatabase(env.DB);
+		await seedIdentityAccess(env, {
+			userId: 'user_reused_token',
+			email: 'reused@restaurant1.quan-esskultur.de',
+			displayName: 'Reused Token Owner',
+			companyId: 1,
+			companyRole: 'tenant_admin'
+		});
+
+		const payload = await requestMagicLink(env, 'http://localhost', {
+			email: 'reused@restaurant1.quan-esskultur.de',
+			scope: 'restaurant_admin',
+			company_id: 1,
+			redirect_path: '/admin?company_id=1'
+		});
+		const previewUrl = String(payload.preview_url || '');
+
+		let ctx = createExecutionContext();
+		let response = await worker.fetch(new Request(previewUrl), env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(302);
+
+		ctx = createExecutionContext();
+		response = await worker.fetch(new Request(previewUrl), env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(400);
+		const body = await response.json();
+		expect(body.ok).toBe(false);
+		expect(String(body.code || '')).toBe('token_already_used');
+	});
+
+	it('rejects email sign-in when the user has no matching admin membership', async () => {
+		await initializeDatabase(env.DB);
+		await seedIdentityAccess(env, {
+			userId: 'user_without_membership',
+			email: 'nomembership@restaurant1.quan-esskultur.de',
+			displayName: 'No Membership User'
+		});
+
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(new Request('http://localhost/api/auth/email/request-link', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				email: 'nomembership@restaurant1.quan-esskultur.de',
+				scope: 'restaurant_admin',
+				company_id: 1,
+				redirect_path: '/admin?company_id=1'
+			})
+		}), env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(404);
+		const body = await response.json();
+		expect(body.ok).toBe(false);
+		expect(String(body.code || '')).toBe('auth_membership_not_found');
+	});
+
+	it('rejects Google auth start when Google credentials are not configured', async () => {
+		await initializeDatabase(env.DB);
+		env.GOOGLE_CLIENT_ID = '';
+		env.GOOGLE_CLIENT_SECRET = '';
+
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(new Request('http://localhost/auth/google/start?scope=platform_admin&redirect_path=/platform/admin.html'), env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(503);
+		const body = await response.json();
+		expect(body.ok).toBe(false);
+		expect(String(body.code || '')).toBe('google_auth_not_configured');
+	});
+
+	it('rejects legacy platform admin PIN auth when PIN fallback is disabled', async () => {
+		await initializeDatabase(env.DB);
+		env.ADMIN_PIN_FALLBACK_ENABLED = 'true';
+		env.PLATFORM_ADMIN_PIN_FALLBACK_ENABLED = 'false';
+
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(new Request('http://localhost/api/platform/admin/dashboard?pin=1234'), env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(401);
+		const body = await response.json();
+		expect(body.ok).toBe(false);
+		expect(String(body.error || '')).toBe('Platform admin session required');
+	});
+
+	it('rejects legacy tenant admin PIN auth when restaurant admin PIN fallback is disabled', async () => {
+		await initializeDatabase(env.DB);
+		env.ADMIN_PIN_FALLBACK_ENABLED = 'true';
+		env.RESTAURANT_ADMIN_PIN_FALLBACK_ENABLED = 'false';
+
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(new Request('http://localhost/api/admin/platform-config?company_id=1&pin=1234'), env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(401);
+		const body = await response.json();
+		expect(body.success).toBe(false);
+		expect(String(body.error || '')).toBe('Manager/admin session required');
 	});
 
 	it('creates a platform admin Google session and allows SaaS admin APIs without PIN', async () => {
@@ -2203,6 +2348,78 @@ describe('ESSKULTUR worker', () => {
 		expect(html).not.toContain('Activate Founder Access');
 	});
 
+	it('OTP stub mode returns otp_debug_code and allows immediate verification without Twilio', async () => {
+		await initializeDatabase(env.DB);
+
+		// Enable OTP stub mode for this test (simulates local dev without Twilio credentials).
+		// Also bypass Turnstile, mirroring the recommended local dev setup for this path.
+		const savedStub = env.OTP_STUB_ENABLED;
+		const savedSid = env.TWILIO_ACCOUNT_SID;
+		const savedToken = env.TWILIO_AUTH_TOKEN;
+		const savedTurnstileBypass = env.DISABLE_TURNSTILE_FOR_DEV;
+		env.OTP_STUB_ENABLED = 'true';
+		env.TWILIO_ACCOUNT_SID = '';
+		env.TWILIO_AUTH_TOKEN = '';
+		env.DISABLE_TURNSTILE_FOR_DEV = 'true';
+
+		try {
+			const phone = `+49176${Date.now().toString().slice(-8)}`;
+
+			// Register: should succeed without Twilio and return otp_debug_code.
+			const registerReq = new Request('http://localhost/api/founder/register?company_id=1', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					name: 'Stub Test User',
+					phone,
+					cf_token: 'turnstile-test-token',
+					consent_sms: 'yes',
+					consent_terms: 'yes',
+					x_studio_founder_terms_accepted: 'yes',
+					x_studio_membership_type: 'Founder',
+					x_studio_notes: 'Founder Form Registration'
+				})
+			});
+
+			const ctx1 = createExecutionContext();
+			const registerRes = await worker.fetch(registerReq, env, ctx1);
+			await waitOnExecutionContext(ctx1);
+
+			expect(registerRes.status).toBe(200);
+			const registerBody = await registerRes.json();
+			expect(registerBody.status).toBe('success');
+			expect(registerBody.nextStep).toBe('verify_otp');
+			// otp_debug_code must be present and a 6-digit string in stub mode.
+			expect(String(registerBody.otp_debug_code || '')).toMatch(/^\d{6}$/);
+
+			// Verify: the debug code returned from register should work immediately.
+			const verifyReq = new Request('http://localhost/api/founder/verify?company_id=1', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ phone, otp: registerBody.otp_debug_code })
+			});
+
+			const ctx2 = createExecutionContext();
+			const verifyRes = await worker.fetch(verifyReq, env, ctx2);
+			await waitOnExecutionContext(ctx2);
+
+			expect(verifyRes.status).toBe(200);
+			const verifyBody = await verifyRes.json();
+			expect(verifyBody.status).toBe('success');
+
+			const customer = await env.DB.prepare(
+				`SELECT founder_status, otp_verified FROM customers WHERE company_id = ? AND phone = ? LIMIT 1`
+			).bind(1, phone).first();
+			expect(String(customer?.founder_status || '')).toBe('live');
+			expect(Number(customer?.otp_verified ?? 0)).toBe(1);
+		} finally {
+			env.OTP_STUB_ENABLED = savedStub;
+			env.TWILIO_ACCOUNT_SID = savedSid;
+			env.TWILIO_AUTH_TOKEN = savedToken;
+			env.DISABLE_TURNSTILE_FOR_DEV = savedTurnstileBypass;
+		}
+	});
+
 	it('allows manager role to manage social settings but not full company profile', async () => {
 		await initializeDatabase(env.DB);
 
@@ -2334,6 +2551,85 @@ describe('ESSKULTUR worker', () => {
 
 		expect(String(methodSetting?.value || '')).toBe('paypal');
 		expect(String(acceptedSetting?.value || '')).toContain('paypal');
+	});
+
+	it('bootstraps owner identity and verification challenge during platform signup', async () => {
+		await initializeDatabase(env.DB);
+		vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+			const requestUrl = typeof input === 'string' ? input : String(input?.url || '');
+			if (requestUrl.startsWith('https://api.mailchannels.net/tx/v1/send')) {
+				return new Response('{}', {
+					status: 202,
+					headers: { 'content-type': 'application/json' }
+				});
+			}
+			return originalFetch(input, init);
+		});
+
+		const request = new Request('http://localhost/api/platform/signup', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				restaurant_name: 'Identity Bootstrap Diner',
+				owner_email: 'identity-bootstrap@example.com',
+				subdomain: 'identity-bootstrap-diner',
+				plan: 'commerce',
+				board_pin: '2468',
+				admin_name: 'Owner Bootstrap'
+			})
+		});
+
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(201);
+		const body = await response.json();
+		expect(body.ok).toBe(true);
+		expect(String(body.status || '')).toBe('pending_identity_verification');
+		expect(String(body.board_pin_hint || '')).toBe('2468');
+		expect(String(body.auth?.scope || '')).toBe('restaurant_admin');
+		expect(String(body.auth?.email || '')).toBe('identity-bootstrap@example.com');
+		expect(String(body.auth?.preview_verify_url || '')).toContain('/auth/email/callback?token=');
+
+		const companyId = Number(body.company_id || 0);
+		const organizationId = Number(body.organization_id || 0);
+		const user = await env.DB.prepare(
+			`SELECT id, primary_email FROM users WHERE primary_email_normalized = ? LIMIT 1`
+		).bind('identity-bootstrap@example.com').first();
+		expect(String(user?.primary_email || '')).toBe('identity-bootstrap@example.com');
+
+		const emailIdentity = await env.DB.prepare(
+			`SELECT provider, provider_subject FROM user_identities WHERE user_id = ? AND provider = 'email_magic_link' LIMIT 1`
+		).bind(String(user?.id || '')).first();
+		expect(String(emailIdentity?.provider || '')).toBe('email_magic_link');
+		expect(String(emailIdentity?.provider_subject || '')).toBe('identity-bootstrap@example.com');
+
+		const companyMembership = await env.DB.prepare(
+			`SELECT role, status, source FROM company_memberships WHERE user_id = ? AND company_id = ? LIMIT 1`
+		).bind(String(user?.id || ''), companyId).first();
+		expect(String(companyMembership?.role || '')).toBe('tenant_admin');
+		expect(String(companyMembership?.status || '')).toBe('active');
+		expect(String(companyMembership?.source || '')).toBe('signup_bootstrap');
+
+		const organizationMembership = await env.DB.prepare(
+			`SELECT role, status FROM organization_memberships WHERE user_id = ? AND organization_id = ? LIMIT 1`
+		).bind(String(user?.id || ''), organizationId).first();
+		expect(String(organizationMembership?.role || '')).toBe('organization_owner');
+		expect(String(organizationMembership?.status || '')).toBe('active');
+
+		const challenge = await env.DB.prepare(
+			`SELECT challenge_type, company_id, organization_id FROM auth_challenges WHERE user_id = ? ORDER BY created_at DESC LIMIT 1`
+		).bind(String(user?.id || '')).first();
+		expect(String(challenge?.challenge_type || '')).toBe('signup_email_verify');
+		expect(Number(challenge?.company_id || 0)).toBe(companyId);
+		expect(Number(challenge?.organization_id || 0)).toBe(organizationId);
+
+		const staffRow = await env.DB.prepare(
+			`SELECT pin, role FROM staff WHERE company_id = ? ORDER BY created_at ASC LIMIT 1`
+		).bind(companyId).first();
+		expect(String(staffRow?.pin || '')).toBe('2468');
+		expect(String(staffRow?.role || '')).toBe('admin');
 	});
 
 	it('creates a Stripe test checkout session in mock mode for bank card signup', async () => {

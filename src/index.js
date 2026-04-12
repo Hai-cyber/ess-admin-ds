@@ -3622,6 +3622,13 @@ function isTurnstileBypassHost(url) {
   return isLocalDevelopmentHost(url) || hostname.includes('workers.dev');
 }
 
+function isOtpStubEnabled(env) {
+  // Dev stub: set OTP_STUB_ENABLED=true in wrangler.jsonc vars (default env only, never production).
+  // When active, sendFounderOtpViaTwilio returns success without calling Twilio and the API
+  // response includes an otp_debug_code field so the OTP can be used immediately in local dev.
+  return env.OTP_STUB_ENABLED === 'true';
+}
+
 function isWebsiteMasterPreviewPath(pathnameRaw) {
   const pathname = String(pathnameRaw || '').trim().toLowerCase();
   return pathname === '/website-master'
@@ -4013,6 +4020,117 @@ async function getUserByNormalizedEmail(env, emailNormalized) {
   `).bind(normalized).first();
 }
 
+async function ensureSignupOwnerIdentity(env, payload = {}) {
+  const email = normalizeOptionalEmail(payload.email || '');
+  if (!email) {
+    throw new Error('Valid signup owner email is required.');
+  }
+
+  const displayName = String(payload.displayName || '').trim() || null;
+  const organizationId = Number(payload.organizationId || 0) || null;
+  const companyId = Number(payload.companyId || 0) || null;
+  const createdBy = String(payload.createdBy || 'platform-signup').trim() || 'platform-signup';
+  const now = new Date().toISOString();
+
+  let user = await getUserByNormalizedEmail(env, email);
+  if (!user?.id) {
+    const userId = crypto.randomUUID();
+    await env.DB.prepare(`
+      INSERT INTO users (
+        id, primary_email, primary_email_normalized, display_name, status, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, 'active', ?, ?)
+    `).bind(
+      userId,
+      email,
+      email,
+      displayName,
+      now,
+      now
+    ).run();
+    user = await getUserByNormalizedEmail(env, email);
+  } else if (displayName && !String(user.display_name || '').trim()) {
+    await env.DB.prepare(`UPDATE users SET display_name = ?, updated_at = ? WHERE id = ?`).bind(displayName, now, user.id).run();
+    user = { ...user, display_name: displayName };
+  }
+
+  await env.DB.prepare(`
+    INSERT OR IGNORE INTO user_identities (
+      id, user_id, provider, provider_subject, email, email_normalized, is_primary, verified_at, metadata_json, created_at, updated_at
+    ) VALUES (?, ?, 'email_magic_link', ?, ?, ?, 1, NULL, ?, ?, ?)
+  `).bind(
+    crypto.randomUUID(),
+    String(user.id || '').trim(),
+    email,
+    email,
+    email,
+    JSON.stringify({ source: 'signup_bootstrap' }),
+    now,
+    now
+  ).run();
+
+  if (organizationId) {
+    await env.DB.prepare(`
+      INSERT OR IGNORE INTO organization_memberships (
+        id, organization_id, user_id, role, status, created_at, updated_at, created_by
+      ) VALUES (?, ?, ?, 'organization_owner', 'active', ?, ?, ?)
+    `).bind(
+      crypto.randomUUID(),
+      organizationId,
+      String(user.id || '').trim(),
+      now,
+      now,
+      createdBy
+    ).run();
+  }
+
+  if (companyId) {
+    await env.DB.prepare(`
+      INSERT OR IGNORE INTO company_memberships (
+        id, company_id, user_id, role, status, source, created_at, updated_at, created_by
+      ) VALUES (?, ?, ?, 'tenant_admin', 'active', 'signup_bootstrap', ?, ?, ?)
+    `).bind(
+      crypto.randomUUID(),
+      companyId,
+      String(user.id || '').trim(),
+      now,
+      now,
+      createdBy
+    ).run();
+  }
+
+  return user;
+}
+
+async function bootstrapSignupOwnerAuth(env, payload = {}) {
+  const email = normalizeOptionalEmail(payload.email || '');
+  const companyId = Number(payload.companyId || 0) || null;
+  const organizationId = Number(payload.organizationId || 0) || null;
+  const redirectPath = sanitizeRelativeRedirectPath(
+    payload.redirectPath || `/admin?company_id=${companyId || ''}`.replace(/\?company_id=$/, ''),
+    '/admin'
+  );
+
+  const user = await ensureSignupOwnerIdentity(env, {
+    email,
+    displayName: payload.displayName,
+    organizationId,
+    companyId,
+    createdBy: payload.createdBy || 'platform-signup'
+  });
+
+  const challenge = await createAuthChallenge(env, {
+    scope: 'restaurant_admin',
+    emailNormalized: email,
+    userId: user.id,
+    organizationId,
+    companyId,
+    redirectPath,
+    challengeType: 'signup_email_verify'
+  });
+
+  return { user, challenge, redirectPath };
+}
+
 async function getRestaurantAdminMembershipForUser(env, userId, companyId = 0) {
   if (!userId) return null;
 
@@ -4169,6 +4287,54 @@ function buildAdminActorFromSession(session, role, companyId = 0) {
   };
 }
 
+function isAdminPinFallbackEnabled(env, surface = 'restaurant_admin') {
+  // Board PIN (staff_session_or_pin surface) is handled unconditionally in
+  // authorizeSessionOrStaffPinRequest and must never route through this function.
+  // Only admin-surface (restaurant_admin, platform_admin) PIN usage is a legacy fallback
+  // that should be phased out via the env flags below.
+  const globalEnabled = parseBooleanLike(env.ADMIN_PIN_FALLBACK_ENABLED, true);
+  if (!globalEnabled) return false;
+
+  if (surface === 'platform_admin') {
+    return parseBooleanLike(env.PLATFORM_ADMIN_PIN_FALLBACK_ENABLED, true);
+  }
+
+  return parseBooleanLike(env.RESTAURANT_ADMIN_PIN_FALLBACK_ENABLED, true);
+}
+
+function buildPinFallbackDisabledError(scope = 'admin', allowManager = false) {
+  if (scope === 'platform_admin') {
+    return { ok: false, status: 401, error: 'Platform admin session required' };
+  }
+  if (scope === 'staff_session_or_pin') {
+    return { ok: false, status: 401, error: allowManager ? 'Manager/admin session required' : 'Staff session required' };
+  }
+  return { ok: false, status: 401, error: allowManager ? 'Manager/admin session required' : 'Admin session required' };
+}
+
+function logLegacyPinFallbackUsage(request, payload = {}) {
+  try {
+    const requestUrl = new URL(String(request?.url || 'http://localhost/'));
+    console.warn('legacy_admin_pin_fallback_used', JSON.stringify({
+      surface: String(payload.surface || 'unknown').trim(),
+      allowManager: !!payload.allowManager,
+      companyId: Number(payload.companyId || 0) || null,
+      path: requestUrl.pathname,
+      host: requestUrl.host,
+      method: String(request?.method || 'GET').trim(),
+      hasAdminPinHeader: !!String(request?.headers?.get('x-admin-pin') || '').trim(),
+      hasStaffPinHeader: !!String(request?.headers?.get('x-staff-pin') || '').trim(),
+      source: 'pin_fallback'
+    }));
+  } catch (error) {
+    console.warn('legacy_admin_pin_fallback_used', JSON.stringify({
+      surface: String(payload.surface || 'unknown').trim(),
+      source: 'pin_fallback',
+      loggingError: String(error?.message || error || 'unknown')
+    }));
+  }
+}
+
 async function authorizePlatformOperatorRequest(env, request, body = null, url = null) {
   const session = await getActiveAuthSession(env, request);
   if (session && String(session.session_scope || '').trim() === 'platform_admin') {
@@ -4178,6 +4344,11 @@ async function authorizePlatformOperatorRequest(env, request, body = null, url =
     }
   }
 
+  if (!isAdminPinFallbackEnabled(env, 'platform_admin')) {
+    return buildPinFallbackDisabledError('platform_admin');
+  }
+
+  logLegacyPinFallbackUsage(request, { surface: 'platform_admin', companyId: PLATFORM_OPERATOR_COMPANY_ID, allowManager: false });
   const pin = String(body?.pin || url?.searchParams?.get('pin') || request.headers.get('x-admin-pin') || '').trim();
   return authorizePlatformOperator(env, pin);
 }
@@ -4196,6 +4367,11 @@ async function authorizeCompanyAdminRequest(env, request, companyId, body = null
     }
   }
 
+  if (!isAdminPinFallbackEnabled(env, 'restaurant_admin')) {
+    return buildPinFallbackDisabledError('restaurant_admin', allowManager);
+  }
+
+  logLegacyPinFallbackUsage(request, { surface: 'restaurant_admin', companyId, allowManager });
   const pin = String(body?.pin || url?.searchParams?.get('pin') || request.headers.get('x-admin-pin') || request.headers.get('x-staff-pin') || '').trim();
   return allowManager
     ? authorizeManagerOrAdminByPin(env, companyId, pin)
@@ -4203,6 +4379,9 @@ async function authorizeCompanyAdminRequest(env, request, companyId, body = null
 }
 
 async function authorizeSessionOrStaffPinRequest(env, request, companyId, body = null, url = null, options = {}) {
+  // Board operations: session is the preferred path, but staff PIN is always accepted as a
+  // first-class board credential. This is NOT a legacy fallback — PIN login is the intended
+  // access model for the Booking Board and board-facing staff operations.
   const allowManager = options.allowManager !== false;
   const session = await getActiveAuthSession(env, request);
   if (session && String(session.session_scope || '').trim() === 'restaurant_admin') {
@@ -4215,6 +4394,7 @@ async function authorizeSessionOrStaffPinRequest(env, request, companyId, body =
     }
   }
 
+  // Board PIN: always accepted after session auth does not match. Not a legacy path.
   const pin = String(body?.pin || url?.searchParams?.get('pin') || request.headers.get('x-staff-pin') || request.headers.get('x-admin-pin') || '').trim();
   return authorizeStaffByPin(env, companyId, pin);
 }
@@ -4593,6 +4773,12 @@ async function handleFounderOtpVerificationRequest(request, env, companyId, opti
 }
 
 async function sendFounderOtpViaTwilio(env, phoneE164, name, otpCode, runtimeConfig = null, secretConfig = null) {
+  // Dev stub: skip real Twilio delivery when OTP_STUB_ENABLED=true.
+  if (isOtpStubEnabled(env)) {
+    console.info('otp_stub_active', JSON.stringify({ phone: phoneE164 }));
+    return { ok: true, stubMode: true, channels: ['stub'] };
+  }
+
   const sid = secretConfig?.twilioAccountSid || env.TWILIO_ACCOUNT_SID;
   const token = secretConfig?.twilioAuthToken || env.TWILIO_AUTH_TOKEN;
 
@@ -5967,11 +6153,11 @@ export default {
         const plan = normalizePlanId(body?.plan || '');
         const country = String(body?.country || 'DE').trim().slice(0, 10);
         const timezone = String(body?.timezone || 'Europe/Berlin').trim() || 'Europe/Berlin';
-        const adminPin = String(body?.admin_pin || '').trim();
+        const boardPin = String(body?.board_pin || body?.admin_pin || '').trim();
         const adminName = String(body?.admin_name || 'Owner').trim() || 'Owner';
         const websiteTemplate = normalizeWebsiteTemplate(body?.website_template || 'modern');
         const staffUsers = Math.max(1, Number(body?.staff_users || 1));
-        const demoPayment = parseBooleanLike(body?.demo_payment, true);
+        const _demoPayment = parseBooleanLike(body?.demo_payment, true);
         const demoPaymentMethod = normalizeDemoPaymentMethod(body?.demo_payment_method || 'bankcard');
         const extras = body?.extras && typeof body.extras === 'object' ? body.extras : {};
 
@@ -6018,8 +6204,8 @@ export default {
           }, { status: 409 });
         }
 
-        if (!/^\d{4}$/.test(adminPin)) {
-          return Response.json({ ok: false, code: 'validation_failed', message: 'Admin PIN must be exactly 4 digits.' }, { status: 400 });
+        if (!/^\d{4}$/.test(boardPin)) {
+          return Response.json({ ok: false, code: 'validation_failed', message: 'Board PIN must be exactly 4 digits.' }, { status: 400 });
         }
 
         signupStage = 'check_existing_email';
@@ -6141,7 +6327,7 @@ export default {
           crypto.randomUUID(),
           companyId,
           adminName,
-          adminPin,
+            boardPin,
           JSON.stringify(['*']),
           now,
           now,
@@ -6227,6 +6413,44 @@ export default {
           now
         ).run();
 
+        signupStage = 'bootstrap_owner_identity';
+        const ownerAuth = await bootstrapSignupOwnerAuth(env, {
+          email: ownerEmail,
+          displayName: adminName,
+          organizationId,
+          companyId,
+          redirectPath: `/admin?company_id=${companyId}`,
+          createdBy: 'platform-signup'
+        });
+
+        const ownerCallbackUrl = `${url.origin}/auth/email/callback?token=${encodeURIComponent(ownerAuth.challenge.rawToken)}`;
+        const ownerEmailText = [
+          `Welcome to Good Dining, ${adminName}.`,
+          '',
+          'Use the secure sign-in link below to verify your owner identity and open Restaurant Admin:',
+          '',
+          ownerCallbackUrl,
+          '',
+          `This link expires in ${AUTH_CHALLENGE_TTL_SECONDS / 60} minutes.`,
+          `Your board PIN remains ${boardPin} for board-scoped operational access.`
+        ].join('\n');
+
+        let ownerEmailResult = { ok: false, skipped: true };
+        try {
+          ownerEmailResult = await sendMailChannelsEmail({
+            from: getAuthEmailSender(env),
+            to: ownerEmail,
+            subject: 'Verify your Good Dining owner access',
+            text: ownerEmailText
+          });
+        } catch (emailError) {
+          console.error('signup_owner_auth_email_failed', {
+            companyId,
+            email: ownerEmail,
+            error: emailError?.message || String(emailError || 'unknown')
+          });
+        }
+
         signupStage = 'log_payment_event';
         await logPlatformSignupPaymentEvent(env, {
           signupId: signupRecordId,
@@ -6247,8 +6471,8 @@ export default {
         return Response.json({
           ok: true,
           message: paymentSummary.paymentStatus === 'stripe_checkout_pending'
-            ? 'Account created. Continue with Stripe test checkout.'
-            : (demoPayment ? 'Demo payment completed. Account created.' : 'Account created.'),
+            ? 'Workspace created. Continue with Stripe test checkout, then verify the owner email link to open Restaurant Admin.'
+            : 'Workspace created. Complete owner identity verification to continue into Restaurant Admin.',
           company_id: companyId,
           organization_id: organizationId,
           subdomain: requestedSlug,
@@ -6257,8 +6481,17 @@ export default {
           preview_board_url: previewBoardUrl,
           checkout_url: paymentSummary.checkoutUrl || '',
           payment: paymentSummary,
-          admin_pin_hint: adminPin,
-          status: 'trial_active'
+          board_pin_hint: boardPin,
+          admin_pin_hint: boardPin,
+          auth: {
+            scope: 'restaurant_admin',
+            email: ownerEmail,
+            redirect_path: ownerAuth.redirectPath,
+            expires_in_seconds: AUTH_CHALLENGE_TTL_SECONDS,
+            delivery: ownerEmailResult.ok ? 'email' : (isPreviewCapableAuthHost(url) ? 'preview_only' : 'email_attempted'),
+            preview_verify_url: isPreviewCapableAuthHost(url) ? ownerCallbackUrl : ''
+          },
+          status: 'pending_identity_verification'
         }, { status: 201 });
       } catch (e) {
         console.error('platform_signup_failed', {
@@ -6819,7 +7052,8 @@ export default {
           status: 'success',
           message: isExistingPending ? 'OTP wurde erneut gesendet.' : 'OTP wurde gesendet.',
           phone,
-          nextStep: 'verify_otp'
+          nextStep: 'verify_otp',
+          ...(sendResult.stubMode ? { otp_debug_code: otpCode } : {})
         });
         } catch (e) {
           console.error('Founder register error:', e);
@@ -6916,7 +7150,8 @@ export default {
           status: 'success',
           message: 'OTP wurde erneut gesendet.',
           phone,
-          nextStep: 'verify_otp'
+          nextStep: 'verify_otp',
+          ...(sendResult.stubMode ? { otp_debug_code: otpCode } : {})
         });
         } catch (e) {
           console.error('Founder resend OTP error:', e);

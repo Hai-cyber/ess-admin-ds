@@ -29,6 +29,6 @@
 		"eslint": "^8.57.1",
 		"prettier": "^3.8.1",
 		"vitest": "~3.2.0",
-		"wrangler": "^4.35.0"
+		"wrangler": "^4.81.1"
 	}
 }

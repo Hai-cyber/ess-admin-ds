@@ -8,7 +8,7 @@
 
 ---
 
-## 📊 CURRENT PROJECT STATUS (As of 2026-04-10)
+## 📊 CURRENT PROJECT STATUS (As of 2026-04-12)
 
 ### Runtime Odoo Status (2026-04-08)
 
@@ -94,8 +94,13 @@
 - [x] Publish moderation and operator review flow now exists in runtime and SaaS Admin
 - [x] Local smoke verification completed for health, plans, contact, signup policy, publish review, suspend, quarantine, and host-based tenant blocking
 - [x] Explicit `production` Wrangler env deployed against a real D1 database id
-- [ ] Founder/KC OTP runtime still fails locally without Twilio credentials
-- [ ] Admin UI setup wizard / go-live flow still incomplete (89% complete)
+- [x] Wrangler upgraded to 4.81.1 — resolves `cloudflare-internal:d1-api` runtime crash on older Workers runtimes
+- [x] Founder/KC OTP local stub delivered: `OTP_STUB_ENABLED=true` in dev env returns `otp_debug_code` in register/resend responses; founder verify works locally without Twilio
+- [x] Board-only PIN scope hardened: `authorizeSessionOrStaffPinRequest` no longer routes through the legacy fallback gate; board PIN is a first-class credential, not a legacy fallback
+- [x] R2 bucket `ess-admin-ds-website-publish-prod` confirmed live; write/read/delete validated with Wrangler CLI; binding wired in production `wrangler.jsonc`
+- [x] All production PIN fallback env flags explicitly `false` (`ADMIN_PIN_FALLBACK_ENABLED`, `PLATFORM_ADMIN_PIN_FALLBACK_ENABLED`, `RESTAURANT_ADMIN_PIN_FALLBACK_ENABLED`); `OTP_STUB_ENABLED=false` explicit in production; zero Wrangler inheritance warnings
+- [x] `STRIPE_MODE=mock` in default (dev) env enables local bank‑card checkout testing end-to-end without real credentials; production sets `STRIPE_MODE=""` → graceful HTTP 503 until `STRIPE_API_KEY` + `STRIPE_WEBHOOK_SECRET` secrets are provisioned
+- [x] R2 publish-and-custom-domain runbook created in `knowledge/runbooks/` covering bucket provisioning, deploy checklist, smoke tests, R2 artifact inspection, custom-domain hardening steps, and rollback procedure
 
 #### Contracts & Specifications (100%)
 - [x] API Contracts (all endpoints defined)
@@ -218,51 +223,43 @@ Recommended order: `3A -> 3B -> 3C -> 3D -> 3E -> 3F`
 |-----------|--------|----------|----------|
 | CP-1: Tenant Isolation | ✅ DONE | E2E_TEST_SUMMARY.md | None |
 | CP-2: Booking MVP | ✅ DONE | Local runtime verified on 2026-03-30 | None |
-| CP-3: Admin UI Setup | 🔄 98% | Admin routes/UI live; go-live console, explicit release workflow, operator overview, role-aware Restaurant Admin IA, and storage-ready publish/runtime hardening are active; remaining work is infra provisioning + richer domain ops | Deployment/custom-domain |
-| CP-10: Platform Site + Self-Service Signup | 🔄 99% | Platform home/contact/admin/signup verified live; wildcard tenant subdomains resolve; moderation/release workflow is explicit; fixed-skin website contract and validator run in the real submit path | Deployment publish path + custom-domain hardening + Twilio for founder/KC |
-| **Phase 1 Total** | **🔄 93%** | — | **Deployment/custom-domain/founder finalization** |
+| CP-3: Admin UI Setup | 🔄 98% | Identity auth, session-first UIs, board-PIN scope, signup owner bootstrap, and phased fallback controls complete; all production PIN fallback flags now `false`; remaining: route-by-route removal of fallback code + board-launch UX | PIN fallback code cleanup |
+| CP-10: Platform Site + Self-Service Signup | 🔄 98% | Platform home/contact/admin/signup verified live; R2 bucket confirmed live and binding validated; `STRIPE_MODE=mock` enables local Stripe checkout; remaining: production Stripe secrets + richer custom-domain ops | Production Stripe secrets |
+| **Phase 1 Total** | **🔄 97%** | — | **Production Stripe secrets + custom-domain enrichment + PIN fallback code removal** |
 
 ---
 
 ## 📍 What Needs to Happen Next
 
-### Immediate (This week - Apr 2-5)
+### Immediate (Apr 12–20)
 
-**Task 1**: Finish deployment publish path
-- publish tenant website output and assets to the delivery/storage layer
-- verify latest approved-and-published release is what public hosts actually serve after deployment
-- Time estimate: 2-3 days
+**Task 1 — Production Stripe credentials (1 day)**
+- `wrangler secret put STRIPE_API_KEY --env production`
+- `wrangler secret put STRIPE_WEBHOOK_SECRET --env production`
+- Smoke-test bank-card signup against `prod.gooddining.app`
 - Owner: @dev-lead
-- Files: `src/index.js` + deployment bindings/config
 
-**Task 2**: Finish deployment publish path
-- publish tenant website output and assets to the delivery/storage layer
-- verify latest approved-and-published release is what public hosts actually serve after deployment
-- Time estimate: 2-3 days
+**Task 2 — Remove legacy admin PIN fallback code (2 days)**
+- Monitor production logs for zero `legacy_admin_pin_fallback_used` events
+- Delete fallback branches in `authorizeCompanyAdminRequest` and `authorizePlatformOperatorRequest`
+- Remove `isAdminPinFallbackEnabled` helper and `logLegacyPinFallbackUsage` once all call sites are gone
 - Owner: @dev-lead
-- Verification path: `npm test` + `wrangler dev --config wrangler.jsonc` + deployment smoke tests
 
-**Task 3**: Harden subdomain-first custom-domain upgrade workflow
-- keep managed subdomain as the default live host for all new tenants
-- extend the current custom-domain request MVP into a fuller cutover/reminder/ops flow
-- verify production ingress beyond `prod.gooddining.app` only if additional hostnames are actually needed
-- Defer managed domain registration until the BYOD upgrade path is stable
-- Re-test tenant release/review state from Restaurant Admin to SaaS Admin to live tenant URL
-- Time estimate: 2-3 days
+**Task 3 — Board-launch UX from Restaurant Admin (2 days)**
+- Add a "Launch Booking Board" entry point in Restaurant Admin that opens the board with pre-populated tenant context
+- Closes CP-3F; ensures board PIN is only reachable from the admin surface, not as a general entry
+- Owner: @dev-lead
 
-**Task 4**: Fix founder/KC OTP local runtime
-- Configure Twilio test credentials or add an explicit development stub
-- Re-run founder/KC registration tests and localhost flow
-- Time estimate: Half day
+**Task 4 — Custom-domain enrichment (2 days)**
+- Extend BYOD workflow: transfer-out request flow, cutover progress indicator, multi-host renewal reminder ops
+- Owner: @dev-lead
 
-### Next Week (Mar 29-Apr 5)
+### After Apr 20
 
-**Task 4**: Beta with 2-3 restaurants
-- Deploy CP-3 to staging
-- Onboard 2-3 real restaurants
-- Collect feedback
-- Fix bugs
-- Time estimate: 3-4 days
+**Beta with 2–3 restaurants**
+- Deploy complete Phase 1 build to production
+- Onboard 2–3 real restaurants through the full signup → admin → go-live flow
+- Collect feedback, fix issues, gate Phase 2 start
 
 ---
 

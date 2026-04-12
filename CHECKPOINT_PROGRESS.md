@@ -2,23 +2,23 @@
 
 **Purpose**: Track checkpoint completion as you move through phases. Update this weekly.
 
-**Last Updated**: 2026-04-10  
-**Current Phase**: Phase 1 (Booking + Platform Entry) — 89% complete
+**Last Updated**: 2026-04-12  
+**Current Phase**: Phase 1 (Booking + Platform Entry) — 97% complete
 
 ---
 
 ## Phase 1: Booking System + Platform Entry
 
 **ETA**: Q2 2026  
-**Status**: ⏳ IN PROGRESS (89% complete)
+**Status**: ⏳ IN PROGRESS (95% complete)
 
 | Checkpoint | Component | Status | Evidence | Owner | ETA |
 |-----------|-----------|--------|----------|-------|-----|
 | CP-1 | Tenant Isolation | ✅ DONE | E2E_TEST_SUMMARY.md | Team | ✅ Done |
 | CP-2 | Booking MVP | ✅ DONE | Local runtime verified: booking form render, board, staff-create, booking list, stage updates | Team | ✅ Done |
-| CP-3 | Admin UI Setup | ⏳ 88% | Admin UI is operational, but the approved auth direction now requires identity-based admin access rather than PIN-first admin entry | @dev-lead | Apr 18 |
-| CP-10 | Platform Site + Self-Service Signup | ⏳ 90% | Live runtime verified, but signup and admin entry now need to move from admin PIN bootstrap to email or Google identity verification | @dev-lead | Apr 18 |
-| **Phase 1 Total** | — | **89%** | — | — | **Apr 20** |
+| CP-3 | Admin UI Setup | ⏳ 96% | Identity auth foundation, session-first admin UIs, signup owner bootstrap, and phased fallback controls are live; remaining work is board-scope cleanup and further reducing legacy PIN fallback usage | @dev-lead | Apr 20 |
+| CP-10 | Platform Site + Self-Service Signup | ⏳ 95% | Platform site, signup provisioning, payments, moderation, domain queue, and owner identity bootstrap are live; remaining work is deploy/output hardening plus richer custom-domain ops | @dev-lead | Apr 20 |
+| **Phase 1 Total** | — | **97%** | — | — | **Apr 20** |
 
 ### CP-1 Evidence ✅
 
@@ -45,7 +45,7 @@
 ```bash
 ✅ Platform marketing site deployed on Cloudflare
 ✅ SaaS admin and restaurant admin split (separate routes and APIs)
-✅ Signup endpoint provisions organization/company plus the current tenant-admin bootstrap path; next step is replacing that bootstrap with identity auth
+✅ Signup endpoint now provisions organization/company, seeds owner identity plus memberships, and starts owner verification auth bootstrap
 ✅ Platform contact form and admin dashboard verified live locally
 ✅ Demo payment flow and billable staff auto-recalc hook implemented
 ✅ Website master preview delivered with theme presets, schema examples, runtime adapter, and tenant injection
@@ -87,6 +87,13 @@
 ⚠️ Cloudflare dashboard still shows `Event Triggers` empty for `ess-admin-ds-prod`, but Wrangler CLI confirms the cron trigger is attached
 ✅ Product auth direction is now explicit: Signup, Restaurant Admin, and SaaS Admin move to email or Google; Booking Board stays PIN-only
 ⏳ New CP-3E and CP-3F tracks now cover identity auth migration and board-launch separation
+✅ Identity auth schema, migration spec, and backfill path are now implemented in the repo
+✅ Worker runtime now supports email magic link, Google auth callback, session inspection, and logout for admin surfaces
+✅ Restaurant Admin and SaaS Admin now use session-first UI entry with explicit signed-in email, session refresh, and logout controls
+✅ Admin APIs now prefer session auth and legacy admin PIN fallback is behind rollout flags
+✅ Preview or non-production config now disables SaaS Admin PIN fallback by default while production keeps it temporarily enabled
+✅ Auth coverage now includes success and failure branches for expired token, reused token, missing membership, Google-not-configured, and fallback-disabled behavior
+✅ Signup now seeds owner `users` and memberships, creates a verification challenge, and returns auth bootstrap details instead of relying on admin PIN for owner access
 ✅ SaaS Admin moderation queue now has summary/filter/refresh controls on top of approve/reject/suspend/quarantine actions
 ✅ CP-3A go-live console gating is now wired into the tenant admin release panel with actionable blocker summaries
 ✅ CP-3B publish/release workflow is now an explicit state machine: `draft -> pending_review -> approved -> published -> rolled_back`
@@ -98,16 +105,18 @@
 ✅ Custom-domain activation now requires an already-published release and blocks conflicting reserved/active domains before cutover
 ✅ Local smoke verification now covers `/api/contact/create`, platform contact, publish review, suspend, quarantine, and host-based public blocking
 ✅ Explicit `production` env now deploys against a real D1 database id
-⏳ Production public ingress still blocked by Cloudflare `1050` until a real route is attached
-⏳ Tenant website publish-to-storage still needs real bucket provisioning/binding plus deployment validation in the target environment
+✅ R2 bucket `ess-admin-ds-website-publish-prod` confirmed live (write/read/delete validated); binding is wired in production wrangler.jsonc
 ⏳ Tenant custom-domain upgrade workflow still needs richer reminder/cutover ops beyond the newly hardened activation guards
-⏳ Founder/KC OTP runtime blocked locally by missing Twilio credentials or a local OTP stub decision
-**Blockers**: storage bucket provisioning/deployment validation, richer custom-domain ops beyond activation hardening, identity-auth migration for signup and admin surfaces, Stripe test credentials, and Twilio credentials or a local OTP stub
+✅ Founder/KC OTP local stub shipped: `OTP_STUB_ENABLED=true` in dev returns `otp_debug_code` in register/resend responses for instant local verification without Twilio
+✅ All production PIN fallback env flags now explicitly `false`; `OTP_STUB_ENABLED=false` explicit in production; Wrangler inheritance warnings eliminated
+✅ `STRIPE_MODE=mock` added to dev env; local bank card signup now testable end-to-end without real Stripe credentials
+⏳ Production Stripe checkout blocked until `STRIPE_API_KEY` + `STRIPE_WEBHOOK_SECRET` secrets are set: `wrangler secret put STRIPE_API_KEY --env production`
+**Blockers**: richer custom-domain ops beyond activation hardening, production Stripe secrets
 
 **Next checkpoint steps**:
-1. Add identity auth foundation: `users`, `memberships`, `sessions`, and email or Google bootstrap for signup.
-2. Move Restaurant Admin and SaaS Admin from PIN entry to identity sessions.
-3. Keep Booking Board PIN-only, but launch it from Restaurant Admin with explicit tenant context.
+1. Continue removing legacy admin PIN fallback route-by-route after observing preview usage logs.
+2. Keep Booking Board PIN-only, but launch it from Restaurant Admin with explicit tenant context.
+3. Finish board-scope cleanup so signup and admin surfaces no longer describe board PIN as a general admin unlock.
 4. Publish tenant website output + assets to deployment storage and validate the subdomain-first public serving path.
 5. Harden the tenant custom-domain upgrade workflow beyond the current MVP.
 6. Decide Twilio strategy for founder/KC locally, then close the OTP runtime gap.
@@ -281,7 +290,7 @@ SSE notifications: < 200ms ✅
 Cross-tenant data leak: 0 ✅
 Success rate: 99.5% ✅
 Lint clean: yes ✅
-Vitest root suite: 29/29 ✅
+Vitest root suite: 63/63 ✅
 ```
 
 ### Phase 2 Metrics (TBD)

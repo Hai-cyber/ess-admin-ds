@@ -27,16 +27,16 @@
 
 ```
 Restaurant OS Project (2026)
-├── Phase 1: Booking ✅95% (ends Apr 15)
+├── Phase 1: Booking ✅97% (ends Apr 20)
 │   ├── CP-1: Tenant isolation ✅ DONE
 │   ├── CP-2: Booking MVP ✅ DONE
-│   └── CP-3: Admin setup 🔄 60% (YOUR FOCUS)
+│   └── CP-3/CP-10: Platform + Admin 🔄 97% (YOUR FOCUS)
 ├── Phase 2: Staff mobile (May-Jun)
 ├── Phase 3: POS + Payment (Aug-Oct)
 ├── Phase 4: Odoo removal (Jan 2027)
 └── Phase 5: Growth (Apr-Jun 2027)
 
-You are here: Phase 1, Task "Complete Admin UI"
+You are here: Phase 1, finishing production hardening
 ```
 
 ---
@@ -67,30 +67,35 @@ You are here: Phase 1, Task "Complete Admin UI"
 
 ## 🔄 What's In Progress (You Are Here)
 
-### Admin UI Setup Wizard (60% → ?)
+### Production Hardening + Beta Readiness (97% → ship)
 
 **What works**:
-- Basic form structure exists
-- Routing in place
+- Identity auth (email magic link + Google), session-first Restaurant Admin and SaaS Admin
+- Website publish/release state machine (`draft → pending_review → approved → published → rolled_back`)
+- R2 publish storage confirmed live; binding wired in production
+- Local bank-card Stripe checkout working via `STRIPE_MODE=mock`
+- Founder/KC OTP local stub: register returns `otp_debug_code` for instant local verify
+- All production PIN fallback flags disabled; board PIN scoped to board-only operations
+- 65/65 tests passing
 
-**What's needed** (Your focus):
-1. Restaurant config form (name, address, phone, hours, areas)
-2. Staff PIN setup (add multiple staff users)
-3. Payment config (Stripe account linking)
-4. "Setup Complete?" check (verify all required fields)
-5. "Go Live" button (→ restaurant is ready)
+**What's needed to ship Phase 1**:
+1. Production Stripe secrets (`STRIPE_API_KEY` + `STRIPE_WEBHOOK_SECRET`)
+2. Legacy admin PIN fallback code removal (flags already off, code cleanup remains)
+3. Board-launch UX entry point from Restaurant Admin (closes CP-3F)
+4. Custom-domain enrichment (transfer-out, cutover indicator)
 
-**Est. time to complete**: 3-4 days
+**Est. time to complete**: 1 week
 
 **Files to edit**:
-- `src/modules/admin/` — main implementation
-- Reference: `docs/contracts/API_CONTRACTS.md` (endpoint spec)
-- Reference: `docs/contracts/DATA_CONTRACTS.md` (database tables)
+- `src/index.js` — PIN fallback code removal
+- `public/admin.html` — board-launch UX
+- `wrangler.jsonc` — already updated
 
 **How to verify you're done**:
 ```bash
-npm run check:cp-admin-setup
-# Should show: ✅ Admin setup complete
+npm test  # 65/65 pass
+npx wrangler dev --config wrangler.jsonc  # local smoke test
+npx wrangler deploy --env production      # ship it
 ```
 
 ---
@@ -139,39 +144,25 @@ Why? Multi-tenant system. One restaurant ≠ sees other restaurants' data.
 
 ## 🎯 Your Task (If You're Assigned)
 
-### Task: Complete Admin UI Setup Wizard
+### Task: Finish Phase 1 — Production Hardening
 
-**Time estimate**: 3-4 days  
-**Owner**: @dev-lead (or you!)  
-**Blocker**: Component refactoring (approval by Mar 24)
+**Time estimate**: 1 week  
+**Owner**: @dev-lead
 
 **Step-by-step**:
-1. [ ] Read API_CONTRACTS.md → Admin module
-2. [ ] Read DATA_CONTRACTS.md → settings table
-3. [ ] Build restaurant config form (name, address, hours, areas)
-4. [ ] Build staff PIN setup (add/remove staff)
-5. [ ] Build payment config (Stripe account linking)
-6. [ ] Add validation (all required fields?)
-7. [ ] Add "Setup Complete?" check
-8. [ ] Add "Go Live" button
-9. [ ] Test with `npm run check:cp-admin-setup`
-10. [ ] PR review + merge
-
-**How to test as you go**:
-```bash
-# Start dev server
-npm run dev
-
-# In another terminal, run checkpoint
-npm run check:cp-admin-setup
-
-# Watch for errors
-```
+1. [ ] `wrangler secret put STRIPE_API_KEY --env production`
+2. [ ] `wrangler secret put STRIPE_WEBHOOK_SECRET --env production`
+3. [ ] Remove legacy PIN fallback code from `src/index.js` (flags already off)
+4. [ ] Add board-launch UX entry point in `public/admin.html`
+5. [ ] Extend custom-domain BYOD workflow (transfer-out + cutover ops)
+6. [ ] Run `npm test` (must stay 65/65)
+7. [ ] Deploy: `npx wrangler deploy --env production`
+8. [ ] Smoke test `prod.gooddining.app`
 
 **When you get stuck**:
-1. Check relevant contract (contracts/INDEX.md)
-2. Read SECURITY_CONTRACTS.md (auth rules)
-3. Ask in PR comments or Slack
+1. Check [STATUS.md](./STATUS.md) for blockers
+2. Check [knowledge/runbooks/](./knowledge/runbooks/) for deploy + domain runbooks
+3. Check relevant contract in `docs/contracts/`
 
 ---
 

@@ -75,6 +75,10 @@
     .btn-warn-lite { border: 1px solid #fdba74; color: #9a3412; background: #fff7ed; }
     .auth-status.error { color: #b91c1c; }
     .auth-status.success { color: #166534; }
+    .session-summary { display: grid; gap: 4px; margin-top: 14px; padding: 12px 14px; border-radius: 12px; background: #fafafa; border: 1px solid var(--border); }
+    .session-summary strong { font-size: 0.92rem; }
+    .session-summary span { font-size: 0.82rem; color: var(--text-muted); word-break: break-word; }
+    .session-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
     @media (max-width: 980px) { .saas-grid { grid-template-columns: 1fr; } .pricing-form { grid-template-columns: 1fr; } .pricing-plan-grid { grid-template-columns: 1fr; } .pricing-extras-grid { grid-template-columns: 1fr; } .lead-controls { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -101,6 +105,14 @@
         <button class="btn btn-outline" onclick="loadSaasDashboard()">Refresh Session</button>
       </div>
       <div id="saas-login-message" class="form-hint auth-status" style="margin-top:10px;">Checking current operator session...</div>
+      <div class="session-summary" id="saas-session-summary">
+        <strong id="saas-session-name">No active SaaS Admin session</strong>
+        <span id="saas-session-email">Sign in with email magic link or Google to unlock the operator console.</span>
+        <div class="session-actions">
+          <button class="btn btn-outline" onclick="loadSaasDashboard()">Refresh Session</button>
+          <button class="btn btn-outline" id="saas-logout-btn" onclick="logoutSaasSession()" disabled>Logout</button>
+        </div>
+      </div>
     </div>
 
     <div class="saas-grid">
@@ -417,11 +429,29 @@
       el.textContent = String(message || '');
     }
 
+    function updateSaasIdentityUi() {
+      const nameEl = document.getElementById('saas-session-name');
+      const emailEl = document.getElementById('saas-session-email');
+      const logoutBtn = document.getElementById('saas-logout-btn');
+      if (nameEl) {
+        nameEl.textContent = currentSaasUser?.name || 'No active SaaS Admin session';
+      }
+      if (emailEl) {
+        emailEl.textContent = currentSaasUser?.email
+          ? `${currentSaasUser.email} • ${String(currentSaasUser.role || 'platform_admin')}`
+          : 'Sign in with email magic link or Google to unlock the operator console.';
+      }
+      if (logoutBtn) {
+        logoutBtn.disabled = !currentSaasUser?.id;
+      }
+    }
+
     async function restoreSaasSession() {
       const res = await fetch('/api/auth/session');
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok || !data.authenticated || String(data.scope || '') !== 'platform_admin') {
         currentSaasUser = null;
+        updateSaasIdentityUi();
         setSaasAuthMessage('No SaaS Admin session found. Request a magic link or continue with Google.');
         return false;
       }
@@ -432,6 +462,7 @@
         name: data.user?.display_name || data.user?.email || 'Operator',
         role: data.user?.role || 'platform_admin'
       };
+      updateSaasIdentityUi();
       setSaasAuthMessage(`Signed in as ${currentSaasUser.email || currentSaasUser.name}.`, 'success');
       return true;
     }
@@ -469,6 +500,21 @@
         redirect_path: `${window.location.pathname}${window.location.search}`
       });
       window.location.href = `/auth/google/start?${params.toString()}`;
+    }
+
+    async function logoutSaasSession() {
+      try {
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        console.error('SaaS logout failed:', error);
+      }
+
+      currentSaasUser = null;
+      updateSaasIdentityUi();
+      setSaasAuthMessage('Signed out. Sign in again to continue.');
     }
 
     async function loadSaasDashboard() {
@@ -1071,6 +1117,7 @@
       if (navEl) navEl.outerHTML = renderNav();
       if (footerEl) footerEl.outerHTML = renderFooter();
       applyLang();
+      updateSaasIdentityUi();
       loadSaasDashboard().catch((error) => {
         setSaasAuthMessage(error.message || 'Unable to load SaaS Admin session.', 'error');
       });
