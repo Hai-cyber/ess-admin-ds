@@ -319,6 +319,11 @@
       animation: slideIn 0.3s ease-out;
     }
 
+    .booking-item.focused {
+      box-shadow: 0 0 0 2px rgba(249, 215, 232, 0.35);
+      transform: translateY(-1px);
+    }
+
     .queue-section {
       display: grid;
       gap: 0.7rem;
@@ -987,6 +992,7 @@
                 type="button"
                 class="urgent-chip ${urgentClass}"
                 data-urgent-filter="${booking.stage === 'pending' ? 'pending' : 'confirmed'}"
+                data-booking-id="${booking.id}"
               >${urgentLabel}: ${booking.booking_time} · ${booking.contact_name}</button>
             `;
           })
@@ -997,8 +1003,27 @@
             state.activeFilter = button.dataset.urgentFilter || 'active';
             renderMobileSummary();
             renderFeed();
+            focusBookingCard(button.dataset.bookingId || '');
           });
         });
+      }
+
+      function focusBookingCard(bookingId) {
+        if (!bookingId) return;
+
+        const target = document.querySelector(`[data-booking-card-id="${bookingId}"]`);
+        if (!target) return;
+
+        document.querySelectorAll('.booking-item.focused').forEach((element) => {
+          element.classList.remove('focused');
+        });
+
+        target.classList.add('focused');
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        window.setTimeout(() => {
+          target.classList.remove('focused');
+        }, 1800);
       }
 
       function getRequestedCompanyIdFromLocation() {
@@ -1350,7 +1375,7 @@
         const timingBucket = booking.stage === 'confirmed' ? getConfirmedTimingBucket(booking) : '';
         const timeDriftLabel = getTimeDriftLabel(booking);
         return `
-          <div class="booking-item ${booking.stage}">
+          <div class="booking-item ${booking.stage}" data-booking-card-id="${booking.id}">
             <div class="booking-time">${booking.booking_time}</div>
             <div class="booking-info">
               <div class="booking-meta-row">
