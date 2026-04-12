@@ -478,6 +478,39 @@
       word-break: break-word;
     }
 
+    .booking-title-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.3rem;
+    }
+
+    .booking-title-row .booking-name {
+      margin-bottom: 0;
+      flex: 1;
+    }
+
+    .hot-one-tap-btn {
+      border: none;
+      border-radius: 999px;
+      padding: 0.45rem 0.7rem;
+      font-size: 0.72rem;
+      font-weight: 800;
+      color: #fff;
+      cursor: pointer;
+      white-space: nowrap;
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08);
+    }
+
+    .hot-one-tap-btn.confirm {
+      background: var(--s-confirmed);
+    }
+
+    .hot-one-tap-btn.arrived {
+      background: var(--s-arrived);
+    }
+
     .booking-next-action {
       display: inline-flex;
       align-items: center;
@@ -1530,9 +1563,21 @@
         }).join('');
       }
 
+      function getHotPrimaryAction(booking) {
+        if (state.activeFilter !== 'hot') return null;
+        if (booking.stage === 'pending') {
+          return { stage: 'confirmed', label: 'One tap: confirm', className: 'confirm' };
+        }
+        if (booking.stage === 'confirmed' && getConfirmedTimingBucket(booking) === 'overdue') {
+          return { stage: 'arrived', label: 'One tap: arrived', className: 'arrived' };
+        }
+        return null;
+      }
+
       function renderBookingCard(booking) {
         const timingBucket = booking.stage === 'confirmed' ? getConfirmedTimingBucket(booking) : '';
         const timeDriftLabel = getTimeDriftLabel(booking);
+        const hotPrimaryAction = getHotPrimaryAction(booking);
         return `
           <div class="booking-item ${booking.stage}" data-booking-card-id="${booking.id}">
             <div class="booking-time">${booking.booking_time}</div>
@@ -1541,7 +1586,10 @@
                 <div class="booking-next-action">${getNextActionLabel(booking)}</div>
                 ${timeDriftLabel ? `<div class="booking-time-drift ${timingBucket}">${timeDriftLabel}</div>` : ''}
               </div>
-              <div class="booking-name">👤 ${booking.contact_name}</div>
+              <div class="booking-title-row">
+                <div class="booking-name">👤 ${booking.contact_name}</div>
+                ${hotPrimaryAction ? `<button type="button" class="btn-stage hot-one-tap-btn ${hotPrimaryAction.className}" data-booking-id="${booking.id}" data-stage="${hotPrimaryAction.stage}">${hotPrimaryAction.label}</button>` : ''}
+              </div>
               <div class="booking-details">
                 <span>👥 ${booking.guests_pax} pax</span>
                 <span>🏘️ ${booking.area}</span>
