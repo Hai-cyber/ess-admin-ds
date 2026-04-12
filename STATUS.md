@@ -19,16 +19,16 @@
 ## 🎯 Current State (Right Now)
 
 ### Phase
-**Phase 1: Booking + Platform Entry (97% complete)**
+**Phase 1: Booking + Platform Entry (98% complete)**
 - ETA: April 20, 2026
-- Status: 🟡 ON TRACK (remaining: production Stripe secrets, richer custom-domain ops, and production beta validation)
+- Status: 🟡 ON TRACK (remaining: production Stripe secrets, optional managed-domain resale follow-up, and production beta validation)
 
 ### Overall Progress
 ```
-██████████ 97%
+██████████ 98%
 
-Completed: 97%
-In Progress: 2% (production Stripe activation + custom-domain hardening)
+Completed: 98%
+In Progress: 1% (production Stripe activation + final beta validation)
 Blocked: 1% (production Stripe secrets)
 Not Started: 0%
 ```
@@ -83,6 +83,7 @@ Not Started: 0%
 - [x] Managed domain renewal reminder flow now has a runnable platform-admin trigger plus a scheduled handler path
 - [x] Production env now has a dedicated custom-domain ingress target at `prod.gooddining.app`
 - [x] Managed domain renewal flow now supports reminder preview, forced overdue escalation, and operator digest delivery
+- [x] Managed domain renewal flow now supports operator-side renewal completion, persisted renewal summary, and follow-up snooze controls
 - [x] Production ingress strategy is simplified to a single hostname: `prod.gooddining.app`
 - [x] Extra production sub-hosts were removed from Wrangler config because they were only adding Cloudflare `1050` debugging noise
 - [x] Cloudflare dashboard `Event Triggers` view can remain empty even though Wrangler confirms `schedule: 0 9 * * *` is attached to `ess-admin-ds-prod`
@@ -112,6 +113,7 @@ Not Started: 0%
 - [x] Custom-domain activation now requires a published release and rejects conflicting reserved/active domains before cutover
 - [x] Local smoke tests verified health, plans, signup policy, platform contact, platform admin dashboard, website payload, publish review, suspend, and quarantine actions on localhost
 - [x] Explicit `production` Wrangler environment deploy executed successfully against a real D1 database id
+- [x] Tenant website editor save → reload → release submission → publish → public payload resolution now has end-to-end regression coverage
 
 **Approved architecture change**:
 - Signup will move to email as the baseline identity path, with Google as an optional accelerator.
@@ -120,7 +122,7 @@ Not Started: 0%
 
 **Evidence**:
 - Local live verification on 2026-03-30 ✅
-- Vitest: outer workspace `63/63` ✅
+- Vitest: outer workspace `74/74` ✅
 - Booking form render + localhost booking submission verified ✅
 - Board and stage updates verified live ✅
 - Platform home + signup copy verified locally after pricing/i18n updates ✅
@@ -143,6 +145,8 @@ Not Started: 0%
 - Production custom-domain ingress is live at `prod.gooddining.app`; workers.dev still returns Cloudflare `1050`, but production ingress is finished on the custom domain ✅
 - Restaurant Admin and SaaS Admin now authenticate successfully through session flows in test coverage without requiring admin PIN query or body parameters ✅
 - Platform signup now bootstraps owner identity plus a verification challenge in test coverage, while preserving a board-only seeded PIN ✅
+- Managed domain renewal queue now supports preview, overdue escalation, renewal completion, snooze, and renewal summary tracking in test coverage ✅
+- Tenant website editor content now has end-to-end save/reload/publish/public-payload regression coverage ✅
 - Known failures isolated to founder/KC OTP delivery paths ⚠️
 - Legacy Odoo references still exist in schema/init and archive-style utility files, but not in active runtime entrypoints or active admin/public UI ⚠️
 
@@ -178,13 +182,13 @@ Not Started: 0%
 - [x] Connect the new tenant website-content editor to an explicit publish/release workflow with release states and rollback history
 - [x] Enforce the website validator inside the actual tenant publish submission path
 - [x] Provision the real `WEBSITE_PUBLISH_R2` bucket binding in deploy config and validate storage-backed publish output on the target environment
-- [ ] Extend custom-domain ops beyond the hardened activation path with richer reminder, cutover, and renewal workflows
+- [x] Extend custom-domain ops beyond the hardened activation path with richer reminder, cutover, and renewal workflows
 - [x] Change signup from admin PIN bootstrap to owner identity bootstrap
 - [x] Continue removing legacy admin PIN fallback after observing preview usage logs and route-level dependencies
 - [x] Limit Booking Board PIN to board-scoped launch and operations only
 - [ ] Optional managed domain registration flow after BYOD custom-domain upgrade is stable
 - [ ] Tenant payment method onboarding UX (Stripe + manual modes)
-- [ ] End-to-end QA for tenant website editor save/reload/review flow from Restaurant Admin to live tenant subdomain
+- [x] End-to-end QA for tenant website editor save/reload/review flow from Restaurant Admin to live tenant subdomain
 - [ ] Wire structured opening hours into shop and online-order availability once those modules land
 - [ ] Founder/KC OTP delivery path needs working Twilio credentials or a dedicated local stub
 - [ ] Document the local-dev caveat: Turnstile bypass only applies on localhost/workers.dev, not Host-header tenant simulation
@@ -238,8 +242,8 @@ All other phases (2-5) planned, not started:
 - **Action Item**: Run `wrangler secret put STRIPE_API_KEY --env production` and `wrangler secret put STRIPE_WEBHOOK_SECRET --env production`, then smoke-test signup.
 
 ### Blocker 2: Custom-Domain Enrichment
-- **Issue**: Activation is hardened, but richer cutover, reminder, and renewal operator workflows are still incomplete.
-- **Impact**: CP-10 remains just short of full production hardening.
+- **Issue**: Core cutover, reminder, renewal completion, and snooze workflows are now live, but optional managed-domain resale and registrar-handling follow-up are still incomplete.
+- **Impact**: CP-10 is operationally stronger, but managed registration is not yet a full resale product.
 - **ETA Fix**: Apr 20
 - **Owner**: @dev-lead
 
@@ -252,7 +256,7 @@ Checkpoint           Status      Owner    ETA        % Complete
 ─────────────────────────────────────────────────────────────
 CP-1: Tenant Isol   ✅ DONE      Team     Done       100%
 CP-2: Booking MVP   ✅ DONE      Team     Done       100%
-CP-3: Admin Setup   🔄 TESTING   @dev-L   Apr 20      96%
+CP-3: Admin Setup   🔄 TESTING   @dev-L   Apr 20      98%
 CP-4: Staff Mobile  📋 PLANNED   TBD      May 1        0%
 CP-5: POS System    📋 PLANNED   TBD      Aug 1        0%
 CP-6: Payment       📋 PLANNED   TBD      Aug 1        0%

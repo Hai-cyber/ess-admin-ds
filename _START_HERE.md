@@ -17,7 +17,7 @@
 ### "I need to understand the project RIGHT NOW"
 → Read **[QUICKSTART.md](./QUICKSTART.md)** (5 min)
 
-Summary: You're building Restaurant OS (vertical SaaS). Phase 1 (Booking + Platform Entry) is 91% done. Moderation/review queue and tenant host gating are live; production ingress, Stripe, publish/release completion, and founder/KC runtime hardening remain.
+Summary: You're building Restaurant OS (vertical SaaS). Phase 1 (Booking + Platform Entry) is 98% done. Moderation/review queue, tenant host gating, enriched custom-domain ops, and tenant website publish/release QA are live; production Stripe activation and final beta validation remain.
 
 ### "I need to know what's blocked / what to work on?"
 → Read **[STATUS.md](./STATUS.md)** (3 min)
@@ -174,9 +174,9 @@ Multi-tenant system = restaurants are isolated. One restaurant can't see another
 ## 📊 Current Status (Right Now)
 
 **Phase**: 1 of 5 (Booking System)  
-**Progress**: 91% complete  
-**ETA**: April 15, 2026  
-**Status**: 🟡 ON TRACK (remaining: Stripe wiring, website publish/domain workflow, founder/KC OTP local fix)
+**Progress**: 98% complete  
+**ETA**: April 20, 2026  
+**Status**: 🟡 ON TRACK (remaining: production Stripe secrets, final beta validation, founder/KC OTP production delivery follow-up)
 
 **What's done**:
 - ✅ Tenant isolation (verified)
@@ -188,19 +188,21 @@ Multi-tenant system = restaurants are isolated. One restaurant can't see another
 - ✅ Website master preview now exists under `public/website-master/` with preset-driven content, runtime form wiring, and automatic preview tenant injection
 - ✅ Moderation gate now evaluates tenant website publish attempts, writes review records, and exposes operator approve/reject/suspend/quarantine actions in SaaS Admin
 - ✅ Host-based public gating now blocks suspended websites and quarantined subdomains on tenant-facing routes
+- ✅ Managed-domain reminder, renewal completion, and snooze workflows are now available in SaaS Admin
+- ✅ Tenant website editor content now has end-to-end save/reload/publish/public-payload regression coverage
 - ✅ Repository hygiene pass completed: nested gitlink removed, lint clean, formatter checks pass, and CI now includes repo hygiene
 
 **What's in progress** (your focus):
-- 🔄 Production ingress/domain attachment for the explicit `production` environment (workers.dev returns Cloudflare `1050` until route/custom domain is attached)
-- 🔄 Tenant website publish/release workflow beyond the current moderation + release-status foundation
+- 🔄 Production Stripe activation and production smoke validation
 - 🔄 Founder/KC OTP runtime hardening
-- 🔄 Stripe checkout and tenant payment onboarding
+- 🔄 Optional managed-domain resale follow-up
+- 🔄 Final production beta validation on the live custom-domain ingress
 
 **What's next**:
-1. Attach a real production route/custom domain for `ess-admin-ds-prod`
-2. Finish tenant publish/release workflow from tenant admin to operator approval to live URL
-3. Wire Stripe test checkout and payment onboarding
-4. Fix founder/KC OTP local runtime and rerun tests
+1. Provision production Stripe secrets and smoke-test bank-card signup on `prod.gooddining.app`
+2. Re-check production admin HTML after cache purge on the custom domain
+3. Decide whether managed-domain resale belongs in Phase 1 or later
+4. Fix founder/KC OTP production delivery follow-up and rerun targeted checks
 
 **For full details** → Read [STATUS.md](./STATUS.md)
 
@@ -208,18 +210,18 @@ Multi-tenant system = restaurants are isolated. One restaurant can't see another
 
 ## 🎯 Your First Task (If You Don't Know What to Do)
 
-**Task**: Finish Production Ingress + Website Release Workflow
+**Task**: Finish Production Stripe Activation + Beta Validation
 
 **What to do**:
 1. Read [QUICKSTART.md](./QUICKSTART.md) (5 min)
 2. Read [STATUS.md](./STATUS.md) → "What Happens Next" (3 min)
-3. Read [docs/contracts/API_CONTRACTS.md](./docs/contracts/API_CONTRACTS.md) → search "admin" (5 min)
+3. Read [docs/contracts/API_CONTRACTS.md](./docs/contracts/API_CONTRACTS.md) → search "signup", "payment", and "admin" (5 min)
 4. Start in `src/index.js`, `public/admin.html`, and `public/platform/admin.html`
-5. Validate with `npm test` and `wrangler dev --config wrangler.jsonc`
+5. Validate with `npm test` and production smoke checks on `prod.gooddining.app`
 
 **Est. time**: 3-4 days
 
-**Blocker**: production route/domain attachment plus Stripe/Twilio credential wiring
+**Blocker**: production Stripe/Twilio credential wiring plus final beta validation
 
 **Questions?** → Read relevant contract or ask in PR comments
 

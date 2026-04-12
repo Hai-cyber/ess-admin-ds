@@ -3,22 +3,22 @@
 **Purpose**: Track checkpoint completion as you move through phases. Update this weekly.
 
 **Last Updated**: 2026-04-12  
-**Current Phase**: Phase 1 (Booking + Platform Entry) — 97% complete
+**Current Phase**: Phase 1 (Booking + Platform Entry) — 98% complete
 
 ---
 
 ## Phase 1: Booking System + Platform Entry
 
 **ETA**: Q2 2026  
-**Status**: ⏳ IN PROGRESS (95% complete)
+**Status**: ⏳ IN PROGRESS (98% complete)
 
 | Checkpoint | Component | Status | Evidence | Owner | ETA |
 |-----------|-----------|--------|----------|-------|-----|
 | CP-1 | Tenant Isolation | ✅ DONE | E2E_TEST_SUMMARY.md | Team | ✅ Done |
 | CP-2 | Booking MVP | ✅ DONE | Local runtime verified: booking form render, board, staff-create, booking list, stage updates | Team | ✅ Done |
-| CP-3 | Admin UI Setup | ⏳ 98% | Identity auth foundation, session-first admin UIs, signup owner bootstrap, and board-launch separation are live; remaining work is production Stripe activation plus final board handoff validation | @dev-lead | Apr 20 |
-| CP-10 | Platform Site + Self-Service Signup | ⏳ 95% | Platform site, signup provisioning, payments, moderation, domain queue, and owner identity bootstrap are live; remaining work is deploy/output hardening plus richer custom-domain ops | @dev-lead | Apr 20 |
-| **Phase 1 Total** | — | **97%** | — | — | **Apr 20** |
+| CP-3 | Admin UI Setup | ⏳ 98% | Identity auth foundation, session-first admin UIs, signup owner bootstrap, board-launch separation, and tenant website publish-flow QA coverage are live; remaining work is production Stripe activation plus final board handoff validation | @dev-lead | Apr 20 |
+| CP-10 | Platform Site + Self-Service Signup | ⏳ 98% | Platform site, signup provisioning, payments, moderation, enriched domain queue, renewal history/snooze workflows, and owner identity bootstrap are live; remaining work is production Stripe activation plus optional managed-domain resale follow-up | @dev-lead | Apr 20 |
+| **Phase 1 Total** | — | **98%** | — | — | **Apr 20** |
 
 ### CP-1 Evidence ✅
 
@@ -80,6 +80,7 @@
 ✅ Public tenant resolution now supports custom-domain hosts directly and activation checks validate tenant website payload resolution on those hosts
 ✅ Managed domain renewal reminder job design is documented for future cron/queue automation
 ✅ Managed domain renewal reminder flow now has manual operator trigger + scheduled execution path
+✅ Managed domain renewal flow now supports renewal completion, snooze, and renewal summary tracking in SaaS Admin
 ✅ Production env now targets a real custom-domain ingress path at `prod.gooddining.app`
 ✅ `prod.gooddining.app` verified live with `200` responses for `/api/health` and `/api/platform/plans`
 ✅ Renewal operator flow now supports preview, forced overdue escalation, and digest delivery channels
@@ -105,19 +106,20 @@
 ✅ Local smoke verification now covers `/api/contact/create`, platform contact, publish review, suspend, quarantine, and host-based public blocking
 ✅ Explicit `production` env now deploys against a real D1 database id
 ✅ R2 bucket `ess-admin-ds-website-publish-prod` confirmed live (write/read/delete validated); binding is wired in production wrangler.jsonc
-⏳ Tenant custom-domain upgrade workflow still needs richer reminder/cutover ops beyond the newly hardened activation guards
+✅ Tenant custom-domain upgrade workflow now includes richer reminder, renewal completion, and snooze ops beyond the activation guards
 ✅ Founder/KC OTP local stub shipped: `OTP_STUB_ENABLED=true` in dev returns `otp_debug_code` in register/resend responses for instant local verification without Twilio
 ✅ Dead admin PIN fallback env vars removed from Wrangler config; `OTP_STUB_ENABLED=false` remains explicit in production
 ✅ `STRIPE_MODE=mock` added to dev env; local bank card signup now testable end-to-end without real Stripe credentials
+✅ Tenant website editor save → reload → publish → public payload flow now has explicit end-to-end regression coverage
 ⏳ Production Stripe checkout blocked until `STRIPE_API_KEY` + `STRIPE_WEBHOOK_SECRET` secrets are set: `wrangler secret put STRIPE_API_KEY --env production`
-**Blockers**: richer custom-domain ops beyond activation hardening, production Stripe secrets
+**Blockers**: production Stripe secrets, optional managed-domain resale follow-up
 
 **Next checkpoint steps**:
 1. Provision production Stripe secrets and smoke-test bank-card signup on `prod.gooddining.app`.
 2. Validate Booking Board launch from Restaurant Admin on production-like tenant URLs.
-3. Extend custom-domain cutover, reminder, and renewal ops.
-4. Run beta-readiness validation and onboard pilot restaurants.
-5. Harden the tenant custom-domain upgrade workflow beyond the current MVP.
+3. Run beta-readiness validation and onboard pilot restaurants.
+4. Decide whether managed-domain resale is part of Phase 1 or deferred.
+5. Re-check production custom-domain HTML after cache purge.
 6. Decide Twilio strategy for founder/KC locally, then close the OTP runtime gap.
 
 ---
