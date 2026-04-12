@@ -1718,6 +1718,14 @@ function getApplicableRenewalReminderThreshold(daysUntilDue) {
   return null;
 }
 
+function computeNextManagedRenewalDueAt(domainRequest, monthsToAdd = 12) {
+  const baseRaw = String(domainRequest?.renewal_due_at || '').trim() || new Date().toISOString();
+  const baseDate = new Date(baseRaw);
+  if (Number.isNaN(baseDate.getTime())) return null;
+  baseDate.setUTCMonth(baseDate.getUTCMonth() + Math.max(1, Number(monthsToAdd || 12)));
+  return baseDate.toISOString();
+}
+
 async function hasCustomDomainRequestEvent(env, requestId, eventType) {
   const row = await env.DB.prepare(
     `SELECT id FROM custom_domain_request_events WHERE request_id = ? AND event_type = ? LIMIT 1`
@@ -2062,7 +2070,9 @@ async function updateCustomDomainRequestState(env, requestId, updates = {}) {
     normalizeCutoverStatus(updates.cutoverStatus, existing.cutover_status || 'not_started'),
     updates.renewalStatus ?? existing.renewal_status ?? null,
     updates.renewalDueAt ?? existing.renewal_due_at ?? null,
-    updates.renewalLastRemindedAt ?? existing.renewal_last_reminded_at ?? null,
+    Object.prototype.hasOwnProperty.call(updates, 'renewalLastRemindedAt')
+      ? (updates.renewalLastRemindedAt ?? null)
+      : (existing.renewal_last_reminded_at ?? null),
     typeof updates.autoRenewEnabled === 'number' || typeof updates.autoRenewEnabled === 'boolean' ? Number(updates.autoRenewEnabled) : (existing.auto_renew_enabled ?? null),
     updates.approvedAt ?? existing.approved_at ?? null,
     updates.approvedBy ?? existing.approved_by ?? null,
@@ -5661,6 +5671,53 @@ export default {
           actorId: String(auth.staff.name || auth.staff.id || 'platform-operator'),
           eventType: 'renewal_force_overdue',
           eventNote: note || 'Operator forced overdue escalation.'
+        });
+
+        return Response.json({ ok: true, request: annotateCustomDomainRequest(updatedRequest) });
+      } catch (e) {
+        return Response.json({ ok: false, error: e.message }, { status: 500 });
+      }
+    }
+
+    if (url.pathname.match(/^\/api\/platform\/admin\/domain-renewals\/([^/]+)\/mark-renewed$/) && request.method === "POST") {
+      try {
+        const routeMatch = url.pathname.match(/^\/api\/platform\/admin\/domain-renewals\/([^/]+)\/mark-renewed$/);
+        const requestId = decodeURIComponent(String(routeMatch?.[1] || '')).trim();
+        const body = await request.json().catch(() => ({}));
+        const note = String(body?.note || body?.operatorNote || '').trim();
+        const renewalDueAtRaw = String(body?.renewalDueAt || '').trim();
+        const auth = await authorizePlatformOperatorRequest(env, request, body, url);
+        if (!auth.ok) {
+          return Response.json({ ok: false, error: auth.error }, { status: auth.status });
+        }
+
+        const domainRequest = await getCustomDomainRequestById(env, requestId);
+        if (!domainRequest?.id) {
+          return Response.json({ ok: false, error: 'Domain request not found.' }, { status: 404 });
+        }
+        if (String(domainRequest.request_status || '').trim().toLowerCase() !== 'active') {
+          return Response.json({ ok: false, error: 'Only active domains can be marked renewed.' }, { status: 409 });
+        }
+        if (String(domainRequest.renewal_mode || '').trim().toLowerCase() !== 'platform_managed') {
+          return Response.json({ ok: false, error: 'Only platform-managed renewals can be updated here.' }, { status: 409 });
+        }
+
+        const nextRenewalDueAt = renewalDueAtRaw || computeNextManagedRenewalDueAt(domainRequest, 12);
+        if (!nextRenewalDueAt) {
+          return Response.json({ ok: false, error: 'Unable to compute the next renewal due date.' }, { status: 400 });
+        }
+
+        const updatedRequest = await updateCustomDomainRequestState(env, requestId, {
+          renewalStatus: 'managed_active',
+          renewalDueAt: nextRenewalDueAt,
+          renewalLastRemindedAt: null,
+          actorType: 'platform_operator',
+          actorId: String(auth.staff.name || auth.staff.id || 'platform-operator'),
+          eventType: 'renewal_marked_renewed',
+          eventNote: note || 'Operator marked the managed domain renewal as completed.',
+          metadataJson: {
+            renewalDueAt: nextRenewalDueAt
+          }
         });
 
         return Response.json({ ok: true, request: annotateCustomDomainRequest(updatedRequest) });

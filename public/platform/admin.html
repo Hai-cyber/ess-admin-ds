@@ -324,6 +324,17 @@
       }[String(status || '').trim()] || String(status || 'n/a');
     }
 
+    function humanizeRenewalStatus(status) {
+      return {
+        external: 'External renewal',
+        managed_active: 'Managed and healthy',
+        renewal_due_soon: 'Renewal due soon',
+        renewal_overdue: 'Renewal overdue',
+        transfer_out_requested: 'Transfer-out requested',
+        transferred_out: 'Transferred out'
+      }[String(status || '').trim()] || String(status || 'n/a');
+    }
+
     function buildDomainCutoverChecklist(row) {
       const status = String(row?.request_status || '').trim();
       const healthStatus = String(row?.last_health_check_status || '').trim().toLowerCase();
@@ -850,7 +861,7 @@
                 <div>Cutover note: ${escapeHtml(row.cutover_note || 'n/a')}</div>
                 <div>Cutover ETA: ${escapeHtml(row.cutover_eta || 'n/a')}</div>
                 <div>Cutover status: ${escapeHtml(humanizeCutoverStatus(row.cutover_status || 'not_started'))}</div>
-                <div>Renewal: ${escapeHtml(humanizeDomainRequestStatus(row.renewalStatus || row.renewal_status || 'external'))} ${row.renewal_due_at ? `• due ${escapeHtml(row.renewal_due_at)}` : ''}</div>
+                <div>Renewal: ${escapeHtml(humanizeRenewalStatus(row.renewalStatus || row.renewal_status || 'external'))} ${row.renewal_due_at ? `• due ${escapeHtml(row.renewal_due_at)}` : ''}</div>
                 <div>Health: ${escapeHtml(String(row.last_health_check_status || 'n/a'))} • ${escapeHtml(String(row.last_health_check_note || 'no activation health check yet'))}</div>
                 <div>Cutover: ${escapeHtml(nextAction)}</div>
               </div>
@@ -890,8 +901,10 @@
             <select id="domain_cutover_status_${row.id}">
               ${['not_started', 'scheduled', 'in_progress', 'completed'].map((value) => `<option value="${value}" ${String(row.cutover_status || 'not_started') === value ? 'selected' : ''}>${escapeHtml(humanizeCutoverStatus(value))}</option>`).join('')}
             </select>
+            <input id="domain_renewal_due_at_${row.id}" type="datetime-local" value="${escapeHtml(String(row.renewal_due_at || '').replace(/Z$/, '').slice(0, 16))}">
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
               ${String(row.renewal_mode || '') === 'platform_managed' ? `<button class="btn btn-sm btn-outline" onclick="previewDomainRenewalReminder('${row.id}')">Preview reminder</button>` : ''}
+              ${String(row.request_status || '') === 'active' && String(row.renewal_mode || '') === 'platform_managed' ? `<button class="btn btn-sm btn-outline" onclick="markDomainRenewed('${row.id}')">Mark renewed</button>` : ''}
               ${String(row.request_status || '') === 'active' && String(row.renewal_mode || '') === 'platform_managed' ? `<button class="btn btn-sm btn-warn-lite" onclick="forceDomainRenewalOverdue('${row.id}')">Force overdue</button>` : ''}
               ${String(row.request_status || '') === 'active' && String(row.renewalStatus || row.renewal_status || '') === 'transfer_out_requested' ? `<button class="btn btn-sm btn-outline" onclick="runDomainRequestAction('${row.id}', 'mark-transferred-out')">Mark transferred out</button>` : ''}
               ${String(row.request_status || '') === 'requested' ? `<button class="btn btn-sm btn-outline" onclick="runDomainRequestAction('${row.id}', 'approve')">Approve</button>` : ''}
@@ -952,6 +965,21 @@
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) return alert(data.error || 'Failed to force overdue escalation.');
+      await loadSaasDashboard();
+    }
+
+    async function markDomainRenewed(requestId) {
+      if (!currentSaasUser?.id) return alert('Sign in to SaaS Admin first.');
+      const note = document.getElementById(`domain_note_${requestId}`)?.value || '';
+      const renewalDueAtRaw = document.getElementById(`domain_renewal_due_at_${requestId}`)?.value || '';
+      const renewalDueAt = renewalDueAtRaw ? new Date(renewalDueAtRaw).toISOString() : '';
+      const res = await fetch(`/api/platform/admin/domain-renewals/${encodeURIComponent(requestId)}/mark-renewed`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ note, renewalDueAt })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) return alert(data.error || 'Failed to mark the renewal as completed.');
       await loadSaasDashboard();
     }
 

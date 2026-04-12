@@ -1003,6 +1003,61 @@ describe('ESSKULTUR worker', () => {
 		expect(String(reminderEvent?.event_type || '')).toBe('renewal_reminder_30d');
 	});
 
+	it('allows operators to mark a managed domain renewal as completed and advance the next due date', async () => {
+		await initializeDatabase(env.DB);
+		const tenantCookie = await createRestaurantAdminSessionCookie(env, { companyId: 1 });
+		const platformCookie = await createPlatformAdminSessionCookie(env);
+
+		let request = new Request('http://localhost/api/admin/domain-upgrade/request?company_id=1', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json', cookie: tenantCookie },
+			body: JSON.stringify({
+				pin: '1234',
+				requestedDomain: 'www.renewal-complete.de',
+				registrationMode: 'managed_registration',
+				requestNote: 'Managed renewal completion test.'
+			})
+		});
+		let ctx = createExecutionContext();
+		let response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		const createBody = await response.json();
+		const requestId = String(createBody.request?.id || '');
+		expect(requestId).not.toBe('');
+
+		await env.DB.prepare(
+			`UPDATE custom_domain_requests SET request_status = 'active', renewal_mode = 'platform_managed', renewal_status = 'renewal_due_soon', renewal_due_at = ?, renewal_last_reminded_at = ? WHERE id = ?`
+		).bind('2026-05-01T10:00:00.000Z', new Date().toISOString(), requestId).run();
+
+		const nextDueAt = '2027-05-01T10:00:00.000Z';
+		request = new Request(`http://localhost/api/platform/admin/domain-renewals/${encodeURIComponent(requestId)}/mark-renewed`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json', cookie: platformCookie },
+			body: JSON.stringify({ pin: '1234', note: 'Renewal invoice settled.', renewalDueAt: nextDueAt })
+		});
+		ctx = createExecutionContext();
+		response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(200);
+		const body = await response.json();
+		expect(body.ok).toBe(true);
+		expect(String(body.request?.renewalStatus || body.request?.renewal_status || '')).toBe('managed_active');
+		expect(String(body.request?.renewal_due_at || '')).toBe(nextDueAt);
+
+		const stored = await env.DB.prepare(
+			`SELECT renewal_status, renewal_due_at, renewal_last_reminded_at FROM custom_domain_requests WHERE id = ? LIMIT 1`
+		).bind(requestId).first();
+		expect(String(stored?.renewal_status || '')).toBe('managed_active');
+		expect(String(stored?.renewal_due_at || '')).toBe(nextDueAt);
+		expect(stored?.renewal_last_reminded_at ?? null).toBeNull();
+
+		const events = await env.DB.prepare(
+			`SELECT event_type FROM custom_domain_request_events WHERE request_id = ? ORDER BY created_at DESC`
+		).bind(requestId).all();
+		expect((events.results || []).map((row) => String(row.event_type || ''))).toContain('renewal_marked_renewed');
+	});
+
 	it('supports renewal reminder preview and forced overdue escalation for operators', async () => {
 		await initializeDatabase(env.DB);
 		const tenantCookie = await createRestaurantAdminSessionCookie(env, { companyId: 1 });
