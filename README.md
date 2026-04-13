@@ -58,10 +58,10 @@ Not an ERP. Not Odoo. Not generic.
 
 ## 🎯 Current Status
 
-**Phase 1: Booking + Platform Entry** (NOW → Q2 2026, ~91% complete)
+**Phase 1 stabilized / Phase 2 active build** (Q2 2026 transition, ~98% Phase 1 complete)
 
 - ✅ Platform home, plans, contact form, and SaaS admin dashboard working locally
-- ✅ Self-service signup provisions organization + company + admin PIN user
+- ✅ Self-service signup provisions organization + company + owner identity bootstrap
 - ✅ Booking board, staff app, onsite booking create, and stage updates verified locally
 - ✅ Platform login/signup/pricing copy now supports EN/DE/VI browser-driven localization with contextual login routing
 - ✅ Website master preview shipped with dynamic theme presets, schema examples, runtime tenant adapter, and form wiring for booking/contact/membership
@@ -69,20 +69,21 @@ Not an ERP. Not Odoo. Not generic.
 - ✅ Shared full-height mobile drawer shipped across website-master routes; luxury A/B navigation polish is live
 - ✅ Restaurant Admin now includes a tenant-facing website content and opening-hours editor
 - ✅ Wildcard tenant subdomains and demo-payment signup walkthrough verified live on gooddining.app
-- 🔄 Admin UI / go-live setup still incomplete
-- 🔄 Founder/KC OTP runtime still blocked locally by missing Twilio credentials
-- 🔄 Stripe checkout and tenant website publish/domain workflow still pending
+- ✅ Staff-mobile Phase 2 Wave 1 is live: triage queue, hot queue, one-tap actions, optimistic stage updates, and focused smoke coverage
+- ✅ Staff-mobile Phase 2 Wave 2 is underway: quick walk-ins, richer walk-in fields, smarter defaults, direct pending-queue insertion, and transient new-booking highlighting
+- 🔄 Remaining platform blockers are live board HTML cache freshness, production Stripe account setup, and Founder/KC production OTP follow-up
 
-**Verified** (2026-03-30 local runtime + tests):
+**Verified** (latest local runtime + focused tests):
 - Platform site + signup provisioning live on localhost
 - Platform landing/signup pricing updates live: Service POS + German checkout, Repeat Guests SMS + loyal guest messaging
 - Public booking form renders; localhost `company_id` override submit works
 - Staff create booking from board → all systems updated
-- Stage transitions (pending → confirmed → arrived → done)
+- Staff-mobile Wave 1 focused tests pass for success, hot-queue semantics, and invalid-stage rejection
+- Staff-mobile Wave 2 focused tests pass for quick walk-in shell and onsite booking creation
 - Website payload now includes structured `opening_hours_schedule` while preserving legacy open/close values
 - Tenant subdomain host-based website payload resolution verified live on wildcard routing
 - Per-tenant data isolation working
-- Vitest: 19/21 passing (2 founder/KC failures due Twilio credentials)
+- Vitest: focused staff-mobile Wave tests are passing locally; broader platform suite remains available via `npm test`
 
 ---
 
@@ -91,7 +92,7 @@ Not an ERP. Not Odoo. Not generic.
 | Module | Status | Purpose |
 |--------|--------|---------|
 | **Auth** | ✅ | Staff PIN login, role-based access |
-| **Booking** | ✅ | Online reservations, stage management |
+| **Booking** | ✅ | Online reservations, stage management, staff mobile triage, and quick walk-ins |
 | **POS** | 🔄 | Table management, orders, kitchen display |
 | **Payment** | 🔄 | Stripe integration, transaction handling |
 | **Website** | ✅ | Master template preview, menu, booking/contact/membership wiring |
@@ -131,7 +132,7 @@ See [CHECKPOINTS.md](./CHECKPOINTS.md) for 8 verification checkpoints across all
 | **CP-1: Tenant Isolation** | ✅ DONE | No cross-tenant data leaks |
 | **CP-2: Booking MVP** | ✅ DONE | Complete booking flow (form → board → notifications) |
 | **CP-3: Admin UI Setup** | ⏳ IN PROGRESS | Setup wizard, go-live flow |
-| **CP-4: Staff Mobile** | 📋 Phase 2 | Mobile-first, touch UI, 8h battery |
+| **CP-4: Staff Mobile** | ⏳ ACTIVE BUILD | Mobile-first triage live; Wave 2 quick walk-ins in progress |
 | **CP-5: POS System** | 📋 Phase 3 | Table mgmt, orders, kitchen, payment |
 | **CP-6: Payment** | 📋 Phase 3 | Card, split bill, TSE receipts |
 | **CP-7: Odoo Removed** | ❌ Phase 4 | Zero Odoo in critical path |

@@ -597,6 +597,20 @@
       color: #fecaca;
     }
 
+    .booking-origin-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.28rem 0.55rem;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 800;
+      background: rgba(16, 185, 129, 0.16);
+      color: #bbf7d0;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
     .booking-time-drift.later {
       background: rgba(16, 185, 129, 0.14);
       color: #bbf7d0;
@@ -1104,6 +1118,7 @@
       const QUICK_BOOKING_PREFS_STORAGE_KEY = 'staffAppQuickBookingPrefs';
       const TIMING_REFRESH_INTERVAL_MS = 30000;
       const stageTransitionTimers = {};
+      const quickBookingBadgeTimers = {};
       let timingRefreshIntervalId = null;
 
       function getDefaultCollapsedSections() {
@@ -1165,6 +1180,7 @@
         collapsedSections: loadCollapsedSectionsPreference(),
         pendingStageUpdates: {},
         recentStageTransitions: {},
+        recentQuickBookings: {},
         bookings: [],
         eventSource: null,
         bookingUpdate: null
@@ -1235,6 +1251,7 @@
         quickWalkInBtn.addEventListener('click', openQuickBookingModal);
         quickBookingCancel.addEventListener('click', closeQuickBookingModal);
         quickBookingForm.addEventListener('submit', submitQuickBooking);
+        quickBookingDate.addEventListener('change', syncQuickBookingTimeSuggestion);
         settingsModal.addEventListener('click', (e) => {
           if (e.target === settingsModal) settingsModal.style.display = 'none';
         });
@@ -1265,6 +1282,27 @@
         return `${adjustedHours}:${minutes}`;
       }
 
+      function isValidDateInputValue(value) {
+        return /^\d{4}-\d{2}-\d{2}$/.test(String(value || '').trim());
+      }
+
+      function isValidTimeInputValue(value) {
+        return /^\d{2}:\d{2}$/.test(String(value || '').trim());
+      }
+
+      function getSuggestedTimeForDate(dateValue, preferredTime) {
+        const normalizedDate = String(dateValue || '').trim();
+        const normalizedPreferredTime = String(preferredTime || '').trim();
+        const today = getTodayDateValue();
+
+        if (normalizedDate === today) {
+          return isValidTimeInputValue(normalizedPreferredTime) ? normalizedPreferredTime : getDefaultTimeValue();
+        }
+
+        if (isValidTimeInputValue(normalizedPreferredTime)) return normalizedPreferredTime;
+        return '19:00';
+      }
+
       function getRecentQuickBookingDefaults() {
         const preferences = loadQuickBookingPreferences();
         const recentAreaBooking = state.bookings.find((booking) => ['pending', 'confirmed', 'arrived'].includes(String(booking.stage || '')) && booking.area);
@@ -1276,8 +1314,14 @@
         const preferredFlag = ['vip', 'founder', 'kc'].includes(String(preferences.flag || ''))
           ? String(preferences.flag)
           : '';
+        const preferredDate = isValidDateInputValue(preferences.date) && String(preferences.date) >= getTodayDateValue()
+          ? String(preferences.date)
+          : getTodayDateValue();
+        const preferredTime = getSuggestedTimeForDate(preferredDate, preferences.time);
 
         return {
+          date: preferredDate,
+          time: preferredTime,
           area: preferredArea,
           pax: Number.isFinite(preferredPax) && preferredPax > 0 ? String(preferredPax) : '2',
           duration: Number.isFinite(preferredDuration) && preferredDuration >= 30 ? String(preferredDuration) : '120',
@@ -1285,11 +1329,26 @@
         };
       }
 
+      function syncQuickBookingTimeSuggestion() {
+        const selectedDate = quickBookingDate.value || getTodayDateValue();
+        const currentTime = quickBookingTime.value;
+        const today = getTodayDateValue();
+
+        if (!isValidTimeInputValue(currentTime)) {
+          quickBookingTime.value = getSuggestedTimeForDate(selectedDate, '');
+          return;
+        }
+
+        if (selectedDate !== today && currentTime === getDefaultTimeValue()) {
+          quickBookingTime.value = '19:00';
+        }
+      }
+
       function resetQuickBookingForm() {
         quickBookingForm.reset();
         const defaults = getRecentQuickBookingDefaults();
-        quickBookingDate.value = getTodayDateValue();
-        quickBookingTime.value = getDefaultTimeValue();
+        quickBookingDate.value = defaults.date;
+        quickBookingTime.value = defaults.time;
         quickBookingPax.value = defaults.pax;
         quickBookingDuration.value = defaults.duration;
         quickBookingArea.value = defaults.area;
@@ -1348,6 +1407,8 @@
 
           const createdBooking = body.booking || null;
           persistQuickBookingPreferences({
+            date: quickBookingDate.value,
+            time: quickBookingTime.value,
             area: quickBookingArea.value,
             pax: Number(quickBookingPax.value || 0),
             duration: Number(quickBookingDuration.value || 120),
@@ -1356,6 +1417,7 @@
           closeQuickBookingModal();
           state.activeFilter = 'pending';
           if (createdBooking && createdBooking.id) {
+            markQuickBookingBadge(createdBooking.id);
             addOrUpdateBooking(createdBooking);
             focusBookingCard(createdBooking.id);
           } else {
@@ -1605,6 +1667,38 @@
         });
       }
 
+      function clearQuickBookingBadge(bookingId) {
+        const normalizedBookingId = normalizeBookingId(bookingId);
+        if (!normalizedBookingId) return;
+
+        if (quickBookingBadgeTimers[normalizedBookingId]) {
+          window.clearTimeout(quickBookingBadgeTimers[normalizedBookingId]);
+          delete quickBookingBadgeTimers[normalizedBookingId];
+        }
+
+        if (state.recentQuickBookings[normalizedBookingId]) {
+          delete state.recentQuickBookings[normalizedBookingId];
+        }
+      }
+
+      function markQuickBookingBadge(bookingId) {
+        const normalizedBookingId = normalizeBookingId(bookingId);
+        if (!normalizedBookingId) return;
+
+        clearQuickBookingBadge(normalizedBookingId);
+        state.recentQuickBookings[normalizedBookingId] = true;
+        quickBookingBadgeTimers[normalizedBookingId] = window.setTimeout(() => {
+          clearQuickBookingBadge(normalizedBookingId);
+          renderFeed();
+        }, 4000);
+      }
+
+      function clearAllQuickBookingBadges() {
+        Object.keys(quickBookingBadgeTimers).forEach((bookingId) => {
+          clearQuickBookingBadge(bookingId);
+        });
+      }
+
       function getRequestedCompanyIdFromLocation() {
         try {
           const raw = String(new URLSearchParams(window.location.search || '').get('company_id') || '').trim();
@@ -1680,6 +1774,7 @@
       function handleLogout() {
         stopTimingRefreshLoop();
         clearAllStageTransitionHighlights();
+        clearAllQuickBookingBadges();
 
         if (state.eventSource) {
           state.eventSource.close();
@@ -1696,6 +1791,7 @@
           collapsedSections: loadCollapsedSectionsPreference(),
           pendingStageUpdates: {},
           recentStageTransitions: {},
+          recentQuickBookings: {},
           bookings: [],
           eventSource: null
         };
@@ -2030,12 +2126,14 @@
         const timeDriftLabel = getTimeDriftLabel(booking);
         const hotPrimaryAction = getHotPrimaryAction(booking);
         const hasRecentStageTransition = Boolean(state.recentStageTransitions[normalizeBookingId(booking.id)]);
+        const hasRecentQuickBooking = Boolean(state.recentQuickBookings[normalizeBookingId(booking.id)]);
         return `
           <div class="booking-item ${booking.stage} ${hasRecentStageTransition ? 'stage-changed' : ''}" data-booking-card-id="${booking.id}">
             <div class="booking-time">${booking.booking_time}</div>
             <div class="booking-info">
               <div class="booking-meta-row">
                 <div class="booking-next-action">${getNextActionLabel(booking)}</div>
+                ${hasRecentQuickBooking ? '<div class="booking-origin-badge">New walk-in</div>' : ''}
                 ${timeDriftLabel ? `<div class="booking-time-drift ${timingBucket}">${timeDriftLabel}</div>` : ''}
               </div>
               <div class="booking-title-row">

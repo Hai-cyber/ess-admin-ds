@@ -243,6 +243,9 @@ Not Started: 0%
 **Wave 2 progress (started)**:
 - The staff app now includes a quick walk-in capture flow in `public/app.html`.
 - Wave 2 smoke coverage now verifies the quick walk-in shell and the `staff-create` onsite booking API success path.
+- Quick walk-ins now return the created booking payload, insert directly into the pending queue, and focus the new card without a blind full reload.
+- Wave 2 walk-ins now support richer operational fields (`email`, `flag`) plus smarter defaults for area, pax, duration, date, and time.
+- Newly created walk-ins now surface a transient `New walk-in` badge so the pending queue change is visually obvious at service time.
 
 **Testing mode for this phase**:
 - Run narrow slice-level checks while building fast.

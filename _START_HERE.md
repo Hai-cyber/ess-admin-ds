@@ -192,17 +192,18 @@ Multi-tenant system = restaurants are isolated. One restaurant can't see another
 - ✅ Tenant website editor content now has end-to-end save/reload/publish/public-payload regression coverage
 - ✅ Managed-domain resale is explicitly deferred beyond Phase 1 so it no longer blocks execution
 - ✅ Staff mobile now has a working triage flow: summary filters, hot queue, one-tap actions, optimistic stage updates, queue preference persistence, and transition feedback inside `public/app.html`
+- ✅ Staff mobile Wave 2 now has a working quick walk-in flow with richer fields, smarter defaults, direct pending-queue insertion, and a transient `New walk-in` badge
 - ✅ Repository hygiene pass completed: nested gitlink removed, lint clean, formatter checks pass, and CI now includes repo hygiene
 
 **What's in progress** (your focus):
-- 🔄 Phase 2 active build: stabilize the current mobile triage flow before widening scope
+- 🔄 Phase 2 active build: continue extending staff-mobile booking operations while keeping offline and gesture work deferred
 - 🔄 Live board HTML cache refresh on `prod.gooddining.app`
 - 🔄 Production Stripe work is on hold pending Stripe account setup
 - 🔄 Founder/KC production OTP delivery follow-up
 - 🔄 Final production beta onboarding on the live custom-domain ingress
 
 **What's next**:
-1. Harden the existing Phase 2 staff-mobile triage flow and decide the next operational slice
+1. Continue Phase 2 Wave 2 within booking operations, with walk-ins and staff-created capture as the active surface
 2. Purge the live board HTML cache on `prod.gooddining.app` and re-check the Restaurant-Admin launch context
 3. Run pilot onboarding on the live custom domain only once `/board` matches the preview build
 4. Prepare one approved real test recipient for Founder/KC production OTP smoke

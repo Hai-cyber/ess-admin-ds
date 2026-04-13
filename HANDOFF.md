@@ -198,6 +198,7 @@ Recommended order: `3A -> 3B -> 3C -> 3D -> 3E -> 3F`
 - Wave 1 boundary is now fixed to booking-triage and booking-stage operations only; offline mode, service worker sync, gestures, and broader staff workflows are deferred to later CP-4 waves
 - Wave 2 scope is now opened for mobile walk-ins and staff-created onsite booking capture while keeping the surface centered on booking operations
 - Wave 2 has now started in code: the staff app includes a quick walk-in capture flow and the onsite booking path has focused smoke coverage
+- Wave 2 walk-ins now include richer fields (`email`, `flag`), smarter staff defaults, direct pending-queue insertion, and a transient `New walk-in` queue badge
 
 #### Phase 3: POS + Payment (Aug launch)
 - 📋 CP-5 defined (table management, orders)
@@ -273,6 +274,7 @@ Recommended order: `3A -> 3B -> 3C -> 3D -> 3E -> 3F`
 - Expand next into mobile walk-ins and staff-created onsite booking capture from the same staff surface
 - Keep queue-first operational flow as the anchor; do not widen into offline or gesture-heavy UX yet
 - Current evidence: `public/app.html` now includes a quick walk-in modal, and tests cover the `staff-create` success path
+- Current implementation depth: walk-ins now return a created-booking payload, appear immediately in the pending queue, and carry richer fields plus smarter defaults for repeated service-time use
 
 ---
 

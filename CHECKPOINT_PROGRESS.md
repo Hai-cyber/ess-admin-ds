@@ -17,7 +17,7 @@
 | CP-1 | Tenant Isolation | ✅ DONE | E2E_TEST_SUMMARY.md | Team | ✅ Done |
 | CP-2 | Booking MVP | ✅ DONE | Local runtime verified: booking form render, board, staff-create, booking list, stage updates | Team | ✅ Done |
 | CP-3 | Admin UI Setup | ⏳ 98% | Identity auth foundation, session-first admin UIs, signup owner bootstrap, board-launch separation, tenant website publish-flow QA coverage, and production-like board launch validation are live; remaining work is live board HTML cache refresh plus pilot onboarding closeout while production Stripe stays on hold pending account setup | @dev-lead | Apr 20 |
-| CP-4 | Staff Mobile | ⏳ 30% | Mobile-first staff triage flow is live, Wave 1 smoke coverage now locks success and failure paths, and Wave 2 has started with quick walk-in shell plus staff-created onsite booking capture smoke coverage | @dev-lead | May 1 |
+| CP-4 | Staff Mobile | ⏳ 35% | Mobile-first staff triage flow is live, Wave 1 smoke coverage locks success and failure paths, and Wave 2 now includes quick walk-ins with richer fields, smarter defaults, direct pending-queue insertion, and focused smoke coverage | @dev-lead | May 1 |
 | CP-10 | Platform Site + Self-Service Signup | ⏳ 98% | Platform site, signup provisioning, payments, moderation, enriched domain queue, renewal history/snooze workflows, and owner identity bootstrap are live; managed-domain resale is explicitly deferred beyond Phase 1 while production Stripe stays on hold pending account setup | @dev-lead | Apr 20 |
 | **Phase 1 Total** | — | **98%** | — | — | **Apr 20** |
 
@@ -181,6 +181,8 @@ Still deferred: offline mode, service worker sync, gesture shortcuts, battery tu
 ```bash
 ✅ Staff app now includes a quick walk-in capture flow in `public/app.html`
 ✅ Focused tests now verify the Wave 2 shell hook and `POST /api/bookings/staff-create?company_id=1` success path
+✅ Wave 2 walk-ins now return the created booking payload so the app can insert and focus the new pending card immediately
+✅ Quick walk-ins now support richer fields (`email`, `flag`) plus smarter defaults and a transient `New walk-in` queue badge
 ```
 
 ---
