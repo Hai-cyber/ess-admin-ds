@@ -17,7 +17,7 @@
 | CP-1 | Tenant Isolation | ✅ DONE | E2E_TEST_SUMMARY.md | Team | ✅ Done |
 | CP-2 | Booking MVP | ✅ DONE | Local runtime verified: booking form render, board, staff-create, booking list, stage updates | Team | ✅ Done |
 | CP-3 | Admin UI Setup | ⏳ 98% | Identity auth foundation, session-first admin UIs, signup owner bootstrap, board-launch separation, tenant website publish-flow QA coverage, and production-like board launch validation are live; remaining work is live board HTML cache refresh plus pilot onboarding closeout while production Stripe stays on hold pending account setup | @dev-lead | Apr 20 |
-| CP-4 | Staff Mobile | ⏳ 25% | Mobile-first staff triage flow is live in the active app shell, Wave 1 smoke coverage now locks success and failure paths, and Wave 2 scope is opened for mobile walk-ins and staff-created booking capture | @dev-lead | May 1 |
+| CP-4 | Staff Mobile | ⏳ 30% | Mobile-first staff triage flow is live, Wave 1 smoke coverage now locks success and failure paths, and Wave 2 has started with quick walk-in shell plus staff-created onsite booking capture smoke coverage | @dev-lead | May 1 |
 | CP-10 | Platform Site + Self-Service Signup | ⏳ 98% | Platform site, signup provisioning, payments, moderation, enriched domain queue, renewal history/snooze workflows, and owner identity bootstrap are live; managed-domain resale is explicitly deferred beyond Phase 1 while production Stripe stays on hold pending account setup | @dev-lead | Apr 20 |
 | **Phase 1 Total** | — | **98%** | — | — | **Apr 20** |
 
@@ -174,6 +174,13 @@ Deferred to later CP-4 waves: offline mode, service worker sync, gesture shortcu
 Next expansion target: mobile walk-ins and staff-created onsite booking capture
 Keep in scope: booking-triage-adjacent operations only
 Still deferred: offline mode, service worker sync, gesture shortcuts, battery tuning
+```
+
+### CP-4 Wave 2 Evidence
+
+```bash
+✅ Staff app now includes a quick walk-in capture flow in `public/app.html`
+✅ Focused tests now verify the Wave 2 shell hook and `POST /api/bookings/staff-create?company_id=1` success path
 ```
 
 ---

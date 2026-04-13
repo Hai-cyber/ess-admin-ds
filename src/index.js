@@ -8763,13 +8763,30 @@ export default {
             bookingId, companyId, newStage: 'pending', changedAt: now
           }).catch(() => {});
 
+          const booking = {
+            id: bookingId,
+            company_id: companyId,
+            contact_name: name,
+            phone,
+            email: email || null,
+            guests_pax: pax,
+            booking_date: date,
+            booking_time: time,
+            booking_datetime: bookingDateTime,
+            duration_minutes: duration,
+            area,
+            flag: flag || null,
+            notes: notes || null,
+            source: 'onsite',
+            stage: 'pending',
+            stage_id: 1,
+            submitted_at: now,
+            updated_at: now,
+            created_by: staffUser,
+            updated_by: staffUser
+          };
+
           if (sseClients.has(companyId)) {
-            const booking = {
-              id: bookingId, contact_name: name, phone,
-              email: email || null, guests_pax: pax, booking_date: date,
-              booking_time: time, area, flag: flag || null, source: 'onsite',
-              stage: 'pending'
-            };
             for (const client of sseClients.get(companyId)) {
               try { client.send('booking', booking); } catch {
                 sseClients.get(companyId).delete(client);
@@ -8777,7 +8794,7 @@ export default {
             }
           }
 
-          return Response.json({ ok: true, bookingId });
+          return Response.json({ ok: true, bookingId, booking });
         } catch (e) {
           console.error('Staff create error:', e);
           return Response.json({ ok: false, error: e.message }, { status: 500 });

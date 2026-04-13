@@ -240,6 +240,10 @@ Not Started: 0%
 - Keep the operational anchor on bookings and service-time actions, rather than branching into offline or gesture-heavy work yet.
 - Continue using narrow executable checks as each Wave 2 slice lands.
 
+**Wave 2 progress (started)**:
+- The staff app now includes a quick walk-in capture flow in `public/app.html`.
+- Wave 2 smoke coverage now verifies the quick walk-in shell and the `staff-create` onsite booking API success path.
+
 **Testing mode for this phase**:
 - Run narrow slice-level checks while building fast.
 - Keep core regression tests that protect auth, booking, publish, and tenant isolation.

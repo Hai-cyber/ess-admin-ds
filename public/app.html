@@ -196,6 +196,30 @@
       border-bottom: 1px solid rgba(148, 163, 184, 0.08);
     }
 
+    .quick-actions-row {
+      display: flex;
+      gap: 0.5rem;
+      overflow-x: auto;
+      padding-bottom: 0.1rem;
+    }
+
+    .quick-action-btn {
+      border: 1px solid rgba(165, 74, 123, 0.45);
+      background: rgba(165, 74, 123, 0.14);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 0.65rem 0.9rem;
+      font-size: 0.78rem;
+      font-weight: 800;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .quick-action-btn:hover {
+      border-color: rgba(165, 74, 123, 0.7);
+      background: rgba(165, 74, 123, 0.2);
+    }
+
     .summary-grid {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -785,6 +809,98 @@
       background: rgba(255, 255, 255, 0.1);
     }
 
+    .quick-booking-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(2, 6, 23, 0.82);
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 1rem;
+      z-index: 1100;
+    }
+
+    .quick-booking-modal.open {
+      display: flex;
+    }
+
+    .quick-booking-sheet {
+      width: min(100%, 560px);
+      background: #132034;
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      border-radius: 18px 18px 0 0;
+      padding: 1rem;
+      display: grid;
+      gap: 0.85rem;
+      box-shadow: 0 -16px 40px rgba(0, 0, 0, 0.35);
+    }
+
+    .quick-booking-sheet h3 {
+      margin: 0;
+      font-size: 1rem;
+      color: var(--text);
+    }
+
+    .quick-booking-sheet p {
+      margin: 0;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .quick-booking-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.75rem;
+    }
+
+    .quick-booking-field {
+      display: grid;
+      gap: 0.35rem;
+    }
+
+    .quick-booking-field.full {
+      grid-column: 1 / -1;
+    }
+
+    .quick-booking-field label {
+      font-size: 0.72rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .quick-booking-field input,
+    .quick-booking-field select,
+    .quick-booking-field textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      background: rgba(15, 23, 42, 0.92);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 0.8rem 0.85rem;
+      font-size: 0.92rem;
+    }
+
+    .quick-booking-field textarea {
+      min-height: 88px;
+      resize: vertical;
+    }
+
+    .quick-booking-actions {
+      display: flex;
+      gap: 0.65rem;
+    }
+
+    .quick-booking-actions button {
+      flex: 1;
+    }
+
+    .quick-booking-error {
+      min-height: 1.1rem;
+      font-size: 0.8rem;
+      color: #fca5a5;
+    }
+
     /* STATUS INDICATOR */
     .status-indicator {
       display: inline-block;
@@ -885,6 +1001,9 @@
     </div>
 
     <div class="mobile-summary">
+      <div class="quick-actions-row">
+        <button type="button" class="quick-action-btn" id="quickWalkInBtn">+ Quick walk-in</button>
+      </div>
       <div class="summary-grid" id="summaryGrid"></div>
       <div class="filter-row" id="filterRow"></div>
       <div class="urgent-bar" id="urgentBar" hidden>
@@ -913,9 +1032,76 @@
     </div>
   </div>
 
+  <div class="quick-booking-modal" id="quickBookingModal">
+    <div class="quick-booking-sheet">
+      <div>
+        <h3>Quick Walk-In</h3>
+        <p>Create an onsite booking without leaving the mobile queue.</p>
+      </div>
+      <form id="quickBookingForm" class="quick-booking-grid">
+        <div class="quick-booking-field full">
+          <label for="quickBookingName">Guest name</label>
+          <input type="text" id="quickBookingName" required />
+        </div>
+        <div class="quick-booking-field">
+          <label for="quickBookingPhone">Phone</label>
+          <input type="tel" id="quickBookingPhone" required />
+        </div>
+        <div class="quick-booking-field">
+          <label for="quickBookingEmail">Email</label>
+          <input type="email" id="quickBookingEmail" />
+        </div>
+        <div class="quick-booking-field">
+          <label for="quickBookingPax">Pax</label>
+          <input type="number" id="quickBookingPax" min="1" max="24" value="2" required />
+        </div>
+        <div class="quick-booking-field">
+          <label for="quickBookingDate">Date</label>
+          <input type="date" id="quickBookingDate" required />
+        </div>
+        <div class="quick-booking-field">
+          <label for="quickBookingTime">Time</label>
+          <input type="time" id="quickBookingTime" required />
+        </div>
+        <div class="quick-booking-field">
+          <label for="quickBookingArea">Area</label>
+          <select id="quickBookingArea">
+            <option value="indoor">Indoor</option>
+            <option value="outdoor">Outdoor</option>
+            <option value="garden">Garden</option>
+            <option value="bar">Bar</option>
+          </select>
+        </div>
+        <div class="quick-booking-field">
+          <label for="quickBookingFlag">Flag</label>
+          <select id="quickBookingFlag">
+            <option value="">None</option>
+            <option value="vip">VIP</option>
+            <option value="founder">Founder</option>
+            <option value="kc">KC</option>
+          </select>
+        </div>
+        <div class="quick-booking-field">
+          <label for="quickBookingDuration">Duration</label>
+          <input type="number" id="quickBookingDuration" min="30" step="15" value="120" />
+        </div>
+        <div class="quick-booking-field full">
+          <label for="quickBookingNotes">Notes</label>
+          <textarea id="quickBookingNotes"></textarea>
+        </div>
+        <div class="quick-booking-error full" id="quickBookingError"></div>
+        <div class="quick-booking-actions full">
+          <button type="button" class="close-settings" id="quickBookingCancel">Cancel</button>
+          <button type="submit" class="login-btn" id="quickBookingSubmit">Create booking</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
     (function() {
       const COLLAPSED_SECTION_STORAGE_KEY = 'staffAppCollapsedSections';
+      const QUICK_BOOKING_PREFS_STORAGE_KEY = 'staffAppQuickBookingPrefs';
       const TIMING_REFRESH_INTERVAL_MS = 30000;
       const stageTransitionTimers = {};
       let timingRefreshIntervalId = null;
@@ -949,6 +1135,24 @@
         }
       }
 
+      function loadQuickBookingPreferences() {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(QUICK_BOOKING_PREFS_STORAGE_KEY) || 'null');
+          if (!parsed || typeof parsed !== 'object') return {};
+          return parsed;
+        } catch {
+          return {};
+        }
+      }
+
+      function persistQuickBookingPreferences(preferences) {
+        try {
+          localStorage.setItem(QUICK_BOOKING_PREFS_STORAGE_KEY, JSON.stringify(preferences || {}));
+        } catch {
+          // Ignore storage failures and keep runtime behavior only.
+        }
+      }
+
       // State
       let state = {
         companyId: null,
@@ -956,6 +1160,7 @@
         staffName: null,
         requestedCompanyId: null,
         soundEnabled: localStorage.getItem('soundEnabled') !== 'false',
+        staffPin: null,
         activeFilter: 'active',
         collapsedSections: loadCollapsedSectionsPreference(),
         pendingStageUpdates: {},
@@ -1002,6 +1207,22 @@
       const closeSettings = document.getElementById('closeSettings');
       const statusIndicator = document.getElementById('statusIndicator');
       const statusText = document.getElementById('statusText');
+      const quickWalkInBtn = document.getElementById('quickWalkInBtn');
+      const quickBookingModal = document.getElementById('quickBookingModal');
+      const quickBookingForm = document.getElementById('quickBookingForm');
+      const quickBookingCancel = document.getElementById('quickBookingCancel');
+      const quickBookingError = document.getElementById('quickBookingError');
+      const quickBookingSubmit = document.getElementById('quickBookingSubmit');
+      const quickBookingName = document.getElementById('quickBookingName');
+      const quickBookingPhone = document.getElementById('quickBookingPhone');
+      const quickBookingEmail = document.getElementById('quickBookingEmail');
+      const quickBookingPax = document.getElementById('quickBookingPax');
+      const quickBookingDate = document.getElementById('quickBookingDate');
+      const quickBookingTime = document.getElementById('quickBookingTime');
+      const quickBookingArea = document.getElementById('quickBookingArea');
+      const quickBookingFlag = document.getElementById('quickBookingFlag');
+      const quickBookingDuration = document.getElementById('quickBookingDuration');
+      const quickBookingNotes = document.getElementById('quickBookingNotes');
 
       // Initialize
       function init() {
@@ -1011,13 +1232,140 @@
         settingsBtn.addEventListener('click', () => settingsModal.style.display = 'flex');
         closeSettings.addEventListener('click', () => settingsModal.style.display = 'none');
         soundToggle.addEventListener('click', toggleSound);
+        quickWalkInBtn.addEventListener('click', openQuickBookingModal);
+        quickBookingCancel.addEventListener('click', closeQuickBookingModal);
+        quickBookingForm.addEventListener('submit', submitQuickBooking);
         settingsModal.addEventListener('click', (e) => {
           if (e.target === settingsModal) settingsModal.style.display = 'none';
+        });
+        quickBookingModal.addEventListener('click', (e) => {
+          if (e.target === quickBookingModal) closeQuickBookingModal();
         });
 
         // Update sound toggle UI
         updateSoundToggleUI();
         renderMobileSummary();
+      }
+
+      function getTodayDateValue() {
+        const now = new Date();
+        const year = String(now.getFullYear());
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      }
+
+      function getDefaultTimeValue() {
+        const now = new Date();
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(Math.ceil(now.getMinutes() / 15) * 15 % 60).padStart(2, '0');
+        const adjustedHours = minutes === '00' && now.getMinutes() > 45
+          ? String((now.getHours() + 1) % 24).padStart(2, '0')
+          : hours;
+        return `${adjustedHours}:${minutes}`;
+      }
+
+      function getRecentQuickBookingDefaults() {
+        const preferences = loadQuickBookingPreferences();
+        const recentAreaBooking = state.bookings.find((booking) => ['pending', 'confirmed', 'arrived'].includes(String(booking.stage || '')) && booking.area);
+        const preferredArea = ['indoor', 'outdoor', 'garden', 'bar'].includes(String(preferences.area || ''))
+          ? String(preferences.area)
+          : String(recentAreaBooking?.area || 'indoor');
+        const preferredPax = Number(preferences.pax || 2);
+        const preferredDuration = Number(preferences.duration || 120);
+        const preferredFlag = ['vip', 'founder', 'kc'].includes(String(preferences.flag || ''))
+          ? String(preferences.flag)
+          : '';
+
+        return {
+          area: preferredArea,
+          pax: Number.isFinite(preferredPax) && preferredPax > 0 ? String(preferredPax) : '2',
+          duration: Number.isFinite(preferredDuration) && preferredDuration >= 30 ? String(preferredDuration) : '120',
+          flag: preferredFlag
+        };
+      }
+
+      function resetQuickBookingForm() {
+        quickBookingForm.reset();
+        const defaults = getRecentQuickBookingDefaults();
+        quickBookingDate.value = getTodayDateValue();
+        quickBookingTime.value = getDefaultTimeValue();
+        quickBookingPax.value = defaults.pax;
+        quickBookingDuration.value = defaults.duration;
+        quickBookingArea.value = defaults.area;
+        quickBookingFlag.value = defaults.flag;
+        quickBookingError.textContent = '';
+        quickBookingSubmit.disabled = false;
+      }
+
+      function openQuickBookingModal() {
+        resetQuickBookingForm();
+        quickBookingModal.classList.add('open');
+        quickBookingName.focus();
+      }
+
+      function closeQuickBookingModal() {
+        quickBookingModal.classList.remove('open');
+        quickBookingError.textContent = '';
+        quickBookingSubmit.disabled = false;
+      }
+
+      async function submitQuickBooking(event) {
+        event.preventDefault();
+        quickBookingError.textContent = '';
+
+        if (!state.companyId || !state.staffPin) {
+          quickBookingError.textContent = 'Staff session expired. Log in again.';
+          return;
+        }
+
+        quickBookingSubmit.disabled = true;
+        try {
+          const response = await fetch(`/api/bookings/staff-create?company_id=${encodeURIComponent(state.companyId)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              pin: state.staffPin,
+              name: quickBookingName.value.trim(),
+              phone: quickBookingPhone.value.trim(),
+              email: quickBookingEmail.value.trim(),
+              date: quickBookingDate.value,
+              time: quickBookingTime.value,
+              pax: Number(quickBookingPax.value || 0),
+              area: quickBookingArea.value,
+              flag: quickBookingFlag.value,
+              duration: Number(quickBookingDuration.value || 120),
+              notes: quickBookingNotes.value.trim()
+            })
+          });
+
+          const body = await response.json().catch(() => ({}));
+          if (!response.ok || !body.ok) {
+            quickBookingError.textContent = body.error || 'Unable to create booking';
+            quickBookingSubmit.disabled = false;
+            return;
+          }
+
+          const createdBooking = body.booking || null;
+          persistQuickBookingPreferences({
+            area: quickBookingArea.value,
+            pax: Number(quickBookingPax.value || 0),
+            duration: Number(quickBookingDuration.value || 120),
+            flag: quickBookingFlag.value || ''
+          });
+          closeQuickBookingModal();
+          state.activeFilter = 'pending';
+          if (createdBooking && createdBooking.id) {
+            addOrUpdateBooking(createdBooking);
+            focusBookingCard(createdBooking.id);
+          } else {
+            await loadInitialBookings();
+          }
+          showToast('Walk-in booking created');
+        } catch {
+          quickBookingError.textContent = 'Network error';
+          quickBookingSubmit.disabled = false;
+        }
       }
 
       function refreshTimeSensitiveUi() {
@@ -1302,6 +1650,7 @@
             state.companyId = Number(data.companyId || state.requestedCompanyId || 0) || null;
             state.staffId = data.staffId;
             state.staffName = data.staffName;
+            state.staffPin = pin;
             showApp();
             await loadInitialBookings();
             startSSEStream();
@@ -1342,6 +1691,7 @@
           staffName: null,
           requestedCompanyId: getRequestedCompanyIdFromLocation(),
           soundEnabled: state.soundEnabled,
+          staffPin: null,
           activeFilter: 'active',
           collapsedSections: loadCollapsedSectionsPreference(),
           pendingStageUpdates: {},

@@ -3830,6 +3830,69 @@ describe('ESSKULTUR worker', () => {
 		expect(String(unchangedBooking?.updated_by || '')).toBe('test');
 	});
 
+	it('smoke verifies the staff-mobile Wave 2 quick walk-in shell', async () => {
+		await initializeDatabase(env.DB);
+
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(new Request('http://localhost/app?company_id=1'), env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		const html = await response.text();
+		expect(html).toContain('Quick Walk-In');
+		expect(html).toContain('quickWalkInBtn');
+		expect(html).toContain('quickBookingForm');
+		expect(html).toContain('quickBookingEmail');
+		expect(html).toContain('quickBookingFlag');
+		expect(html).toContain('/api/bookings/staff-create?company_id=');
+	});
+
+	it('creates a Wave 2 onsite booking from the staff-create API', async () => {
+		await initializeDatabase(env.DB);
+
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(new Request('http://localhost/api/bookings/staff-create?company_id=1', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				pin: '1234',
+				name: 'Wave 2 Walk-In',
+				phone: '+491700001238',
+				email: 'wave2@example.com',
+				date: '2026-12-31',
+				time: '21:00',
+				pax: 3,
+				area: 'bar',
+				flag: 'vip',
+				duration: 90,
+				notes: 'Created from Wave 2 smoke test'
+			})
+		}), env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(200);
+		const body = await response.json();
+		expect(body.ok).toBe(true);
+		expect(String(body.bookingId || '')).not.toBe('');
+		expect(String(body.booking?.id || '')).toBe(String(body.bookingId || ''));
+		expect(String(body.booking?.stage || '')).toBe('pending');
+		expect(String(body.booking?.source || '')).toBe('onsite');
+		expect(String(body.booking?.contact_name || '')).toBe('Wave 2 Walk-In');
+		expect(String(body.booking?.email || '')).toBe('wave2@example.com');
+		expect(String(body.booking?.flag || '')).toBe('vip');
+
+		const booking = await env.DB.prepare(
+			`SELECT source, stage, area, guests_pax, email, flag, created_by, updated_by FROM bookings WHERE company_id = ? AND id = ? LIMIT 1`
+		).bind(1, String(body.bookingId)).first();
+		expect(String(booking?.source || '')).toBe('onsite');
+		expect(String(booking?.stage || '')).toBe('pending');
+		expect(String(booking?.area || '')).toBe('bar');
+		expect(Number(booking?.guests_pax || 0)).toBe(3);
+		expect(String(booking?.email || '')).toBe('wave2@example.com');
+		expect(String(booking?.flag || '')).toBe('vip');
+		expect(String(booking?.created_by || '')).toBe('Admin');
+		expect(String(booking?.updated_by || '')).toBe('Admin');
+	});
+
 	it('allows empty tenant subdomain for single-domain mode', async () => {
 		await initializeDatabase(env.DB);
 		const cookie = await createRestaurantAdminSessionCookie(env, { companyId: 1 });
