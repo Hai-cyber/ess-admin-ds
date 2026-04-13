@@ -353,6 +353,24 @@
       transform: translateY(-1px);
     }
 
+    .booking-item.stage-changed {
+      animation: stageShiftPulse 1.4s ease-out;
+    }
+
+    @keyframes stageShiftPulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(249, 215, 232, 0.5);
+        transform: translateY(-2px) scale(1.01);
+      }
+      45% {
+        box-shadow: 0 0 0 10px rgba(249, 215, 232, 0.08);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(249, 215, 232, 0);
+        transform: translateY(0) scale(1);
+      }
+    }
+
     .queue-section {
       display: grid;
       gap: 0.7rem;
@@ -662,6 +680,12 @@
       cursor: not-allowed;
     }
 
+    .btn-stage.is-busy {
+      opacity: 1;
+      filter: saturate(0.9) brightness(1.05);
+      cursor: progress;
+    }
+
     .empty-state {
       flex: 1;
       display: flex;
@@ -892,6 +916,9 @@
   <script>
     (function() {
       const COLLAPSED_SECTION_STORAGE_KEY = 'staffAppCollapsedSections';
+      const TIMING_REFRESH_INTERVAL_MS = 30000;
+      const stageTransitionTimers = {};
+      let timingRefreshIntervalId = null;
 
       function getDefaultCollapsedSections() {
         return {
@@ -931,6 +958,8 @@
         soundEnabled: localStorage.getItem('soundEnabled') !== 'false',
         activeFilter: 'active',
         collapsedSections: loadCollapsedSectionsPreference(),
+        pendingStageUpdates: {},
+        recentStageTransitions: {},
         bookings: [],
         eventSource: null,
         bookingUpdate: null
@@ -989,6 +1018,26 @@
         // Update sound toggle UI
         updateSoundToggleUI();
         renderMobileSummary();
+      }
+
+      function refreshTimeSensitiveUi() {
+        if (!state.companyId) return;
+        renderMobileSummary();
+        renderFeed();
+      }
+
+      function startTimingRefreshLoop() {
+        stopTimingRefreshLoop();
+        timingRefreshIntervalId = window.setInterval(() => {
+          refreshTimeSensitiveUi();
+        }, TIMING_REFRESH_INTERVAL_MS);
+      }
+
+      function stopTimingRefreshLoop() {
+        if (timingRefreshIntervalId) {
+          window.clearInterval(timingRefreshIntervalId);
+          timingRefreshIntervalId = null;
+        }
       }
 
       function getBookingStageSummary() {
@@ -1162,6 +1211,39 @@
         }, 1800);
       }
 
+      function clearStageTransitionHighlight(bookingId) {
+        const normalizedBookingId = String(bookingId || '').trim();
+        if (!normalizedBookingId) return;
+
+        if (stageTransitionTimers[normalizedBookingId]) {
+          window.clearTimeout(stageTransitionTimers[normalizedBookingId]);
+          delete stageTransitionTimers[normalizedBookingId];
+        }
+
+        if (state.recentStageTransitions[normalizedBookingId]) {
+          delete state.recentStageTransitions[normalizedBookingId];
+        }
+      }
+
+      function markStageTransitionHighlight(bookingId, nextStage) {
+        const normalizedBookingId = String(bookingId || '').trim();
+        if (!normalizedBookingId) return;
+
+        clearStageTransitionHighlight(normalizedBookingId);
+        state.recentStageTransitions[normalizedBookingId] = nextStage;
+
+        stageTransitionTimers[normalizedBookingId] = window.setTimeout(() => {
+          clearStageTransitionHighlight(normalizedBookingId);
+          renderFeed();
+        }, 1600);
+      }
+
+      function clearAllStageTransitionHighlights() {
+        Object.keys(stageTransitionTimers).forEach((bookingId) => {
+          clearStageTransitionHighlight(bookingId);
+        });
+      }
+
       function getRequestedCompanyIdFromLocation() {
         try {
           const raw = String(new URLSearchParams(window.location.search || '').get('company_id') || '').trim();
@@ -1234,6 +1316,9 @@
       }
 
       function handleLogout() {
+        stopTimingRefreshLoop();
+        clearAllStageTransitionHighlights();
+
         if (state.eventSource) {
           state.eventSource.close();
           state.eventSource = null;
@@ -1246,6 +1331,8 @@
           soundEnabled: state.soundEnabled,
           activeFilter: 'active',
           collapsedSections: loadCollapsedSectionsPreference(),
+          pendingStageUpdates: {},
+          recentStageTransitions: {},
           bookings: [],
           eventSource: null
         };
@@ -1260,6 +1347,7 @@
       function showApp() {
         loginScreen.style.display = 'none';
         appScreen.style.display = 'flex';
+        startTimingRefreshLoop();
       }
 
       async function loadInitialBookings() {
@@ -1487,6 +1575,8 @@
       }
 
       function getNextActionLabel(booking) {
+        const pendingUpdate = state.pendingStageUpdates[String(booking.id || '')];
+        if (pendingUpdate?.loadingLabel) return pendingUpdate.loadingLabel;
         if (booking.stage === 'pending') return 'Next action: confirm or cancel';
         if (booking.stage === 'confirmed') {
           const timing = getConfirmedTimingBucket(booking);
@@ -1578,8 +1668,9 @@
         const timingBucket = booking.stage === 'confirmed' ? getConfirmedTimingBucket(booking) : '';
         const timeDriftLabel = getTimeDriftLabel(booking);
         const hotPrimaryAction = getHotPrimaryAction(booking);
+        const hasRecentStageTransition = Boolean(state.recentStageTransitions[String(booking.id || '')]);
         return `
-          <div class="booking-item ${booking.stage}" data-booking-card-id="${booking.id}">
+          <div class="booking-item ${booking.stage} ${hasRecentStageTransition ? 'stage-changed' : ''}" data-booking-card-id="${booking.id}">
             <div class="booking-time">${booking.booking_time}</div>
             <div class="booking-info">
               <div class="booking-meta-row">
@@ -1604,6 +1695,11 @@
       }
 
       function getActionButtons(booking) {
+        const pendingUpdate = state.pendingStageUpdates[String(booking.id || '')];
+        if (pendingUpdate?.loadingLabel) {
+          return `<button class="btn-stage is-busy" type="button" disabled>${pendingUpdate.loadingLabel}</button>`;
+        }
+
         const btns = [];
 
         // Stage: pending → Show: Confirm, Cancel
@@ -1628,12 +1724,56 @@
         return btns.join('');
       }
 
+      function getStageLoadingLabel(newStage) {
+        if (newStage === 'confirmed') return 'Confirming...';
+        if (newStage === 'arrived') return 'Marking arrived...';
+        if (newStage === 'done') return 'Closing service...';
+        if (newStage === 'cancelled') return 'Cancelling...';
+        if (newStage === 'noshow') return 'Marking no-show...';
+        return 'Updating...';
+      }
+
+      function applyOptimisticStageUpdate(bookingId, newStage) {
+        const normalizedBookingId = String(bookingId || '').trim();
+        if (!normalizedBookingId) return null;
+
+        const booking = state.bookings.find((item) => String(item.id || '').trim() === normalizedBookingId);
+        if (!booking) return null;
+
+        const previousStage = booking.stage;
+        state.pendingStageUpdates[normalizedBookingId] = {
+          previousStage,
+          nextStage: newStage,
+          loadingLabel: getStageLoadingLabel(newStage)
+        };
+        booking.stage = newStage;
+        markStageTransitionHighlight(normalizedBookingId, newStage);
+        renderMobileSummary();
+        renderFeed();
+        focusBookingCard(normalizedBookingId);
+        return previousStage;
+      }
+
+      function clearOptimisticStageUpdate(bookingId) {
+        const normalizedBookingId = String(bookingId || '').trim();
+        if (!normalizedBookingId) return;
+        delete state.pendingStageUpdates[normalizedBookingId];
+      }
+
       // Update Stage
       async function updateStage(bookingId, newStage, btn) {
-        btn.disabled = true;
+        const normalizedBookingId = String(bookingId || '').trim();
+        if (!normalizedBookingId || state.pendingStageUpdates[normalizedBookingId]) {
+          return;
+        }
+
+        const previousStage = applyOptimisticStageUpdate(normalizedBookingId, newStage);
+        if (!previousStage) return;
+
+        let succeeded = false;
 
         try {
-          const stageUrl = `/api/bookings/${encodeURIComponent(bookingId)}/stage?company_id=${encodeURIComponent(state.companyId)}`;
+          const stageUrl = `/api/bookings/${encodeURIComponent(normalizedBookingId)}/stage?company_id=${encodeURIComponent(state.companyId)}`;
           const res = await fetch(stageUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1647,7 +1787,10 @@
           const data = await res.json();
 
           if (res.ok && (data.ok || data.success)) {
-            updateBookingStage(bookingId, newStage);
+            succeeded = true;
+            clearOptimisticStageUpdate(normalizedBookingId);
+            renderMobileSummary();
+            renderFeed();
             showToast(`Booking updated to ${STAGE_LABELS[newStage]}`);
           } else {
             showToast(data.error || 'Error updating booking', 'error');
@@ -1657,7 +1800,16 @@
           showToast('Network error', 'error');
         }
 
-        btn.disabled = false;
+        if (!succeeded) {
+          const booking = state.bookings.find((item) => String(item.id || '').trim() === normalizedBookingId);
+          if (booking) {
+            booking.stage = previousStage;
+          }
+          clearStageTransitionHighlight(normalizedBookingId);
+          clearOptimisticStageUpdate(normalizedBookingId);
+          renderMobileSummary();
+          renderFeed();
+        }
       }
 
       // Sound Toggle
