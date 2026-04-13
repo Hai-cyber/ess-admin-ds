@@ -229,10 +229,16 @@ Not Started: 0%
 - Stage updates now use optimistic UI, loading feedback, transition highlighting, and auto-focus on moved cards.
 - Queue collapse preferences persist locally and time-sensitive urgency labels refresh on an interval while the app is open.
 - Local Wave 1 smoke pass succeeded on 2026-04-13: staff app page loaded on local runtime, PIN auth worked for `company_id=1`, and the core action path `pending -> confirmed -> arrived` completed against the live worker APIs.
+- Wave 1 now also has failure-path coverage: invalid stage updates are rejected and do not mutate booking state.
 
 **Wave 1 boundary (now fixed)**:
 - Included: mobile triage, urgent queue handling, booking-stage operations, and fast one-tap transitions for the hottest work.
 - Not included yet: offline mode, service worker sync, gesture shortcuts, battery tuning, or broader staff-module expansion beyond booking operations.
+
+**Wave 2 scope (now opened)**:
+- Extend the mobile surface from triage into staff-created walk-ins and same-session queue entry.
+- Keep the operational anchor on bookings and service-time actions, rather than branching into offline or gesture-heavy work yet.
+- Continue using narrow executable checks as each Wave 2 slice lands.
 
 **Testing mode for this phase**:
 - Run narrow slice-level checks while building fast.

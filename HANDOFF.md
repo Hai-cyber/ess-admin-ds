@@ -194,7 +194,9 @@ Recommended order: `3A -> 3B -> 3C -> 3D -> 3E -> 3F`
 - ⏳ CP-4 active build, no longer design-only
 - Mobile-first staff triage flow is live in `public/app.html`: summary filters, hot queue, one-tap actions, optimistic stage updates, local queue preferences, and transition feedback
 - Local Wave 1 smoke passed on 2026-04-13 against the live worker runtime: staff PIN auth worked and a real booking moved `pending -> confirmed -> arrived`
+- Wave 1 failure-path smoke now verifies invalid stage updates are rejected and do not mutate booking state
 - Wave 1 boundary is now fixed to booking-triage and booking-stage operations only; offline mode, service worker sync, gestures, and broader staff workflows are deferred to later CP-4 waves
+- Wave 2 scope is now opened for mobile walk-ins and staff-created onsite booking capture while keeping the surface centered on booking operations
 
 #### Phase 3: POS + Payment (Aug launch)
 - 📋 CP-5 defined (table management, orders)
@@ -264,6 +266,11 @@ Recommended order: `3A -> 3B -> 3C -> 3D -> 3E -> 3F`
 
 - Included now: mobile triage, urgent queue handling, and booking-stage operations on top of the existing booking board runtime
 - Explicitly not in Wave 1: offline mode, service worker sync, gesture shortcuts, battery tuning, or expansion into non-booking staff workflows
+
+### Phase 2 Wave 2 Scope (Opened)
+
+- Expand next into mobile walk-ins and staff-created onsite booking capture from the same staff surface
+- Keep queue-first operational flow as the anchor; do not widen into offline or gesture-heavy UX yet
 
 ---
 

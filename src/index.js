@@ -256,6 +256,7 @@ const WEBSITE_THEME_FALLBACK_BY_TEMPLATE = {
   modern: 'theme-basic-a',
   premium: 'theme-luxury-a'
 };
+const BOOKING_ALLOWED_STAGES = new Set(['pending', 'confirmed', 'arrived', 'done', 'cancelled', 'noshow']);
 const WEBSITE_SUPPORTED_THEME_VARIANTS = new Set([
   'theme-basic-a',
   'theme-basic-b',
@@ -8585,6 +8586,13 @@ export default {
         if (!bookingId || !newStage) {
           return Response.json(
             { ok: false, error: "bookingId and stage required" },
+            { status: 400 }
+          );
+        }
+
+        if (!BOOKING_ALLOWED_STAGES.has(newStage)) {
+          return Response.json(
+            { ok: false, code: 'invalid_stage', error: 'Unsupported booking stage' },
             { status: 400 }
           );
         }

@@ -3766,6 +3766,70 @@ describe('ESSKULTUR worker', () => {
 		expect(bookings.some((booking) => String(booking.id || '') === 'wave1_hot_overdue' && String(booking.stage || '') === 'confirmed')).toBe(true);
 	});
 
+	it('rejects invalid staff-mobile Wave 1 stage updates without mutating the booking', async () => {
+		await initializeDatabase(env.DB);
+
+		const now = new Date().toISOString();
+		const bookingId = 'wave1_invalid_stage_booking';
+		await env.DB.prepare(`
+			INSERT INTO bookings (
+				id, company_id, customer_id, contact_name, phone, email,
+				guests_pax, booking_date, booking_time, booking_datetime,
+				duration_minutes, area, stage, stage_id, flag, notes,
+				chat_id, message_id, odoo_lead_id, source, submitted_at,
+				updated_at, created_by, updated_by
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`).bind(
+			bookingId,
+			1,
+			null,
+			'Wave 1 Invalid Stage Booking',
+			'+491700001237',
+			null,
+			2,
+			'2026-12-31',
+			'20:15',
+			'2026-12-31T20:15:00Z',
+			120,
+			'indoor',
+			'pending',
+			1,
+			null,
+			null,
+			null,
+			null,
+			null,
+			'test',
+			now,
+			now,
+			'test',
+			'test'
+		).run();
+
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(new Request(`http://localhost/api/bookings/${encodeURIComponent(bookingId)}/stage?company_id=1`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				stage: 'made_up_stage',
+				staffId: 'staff_3',
+				companyId: 1
+			})
+		}), env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(400);
+		const body = await response.json();
+		expect(body.ok).toBe(false);
+		expect(String(body.code || '')).toBe('invalid_stage');
+
+		const unchangedBooking = await env.DB.prepare(
+			`SELECT stage, updated_by FROM bookings WHERE company_id = ? AND id = ? LIMIT 1`
+		).bind(1, bookingId).first();
+		expect(String(unchangedBooking?.stage || '')).toBe('pending');
+		expect(String(unchangedBooking?.updated_by || '')).toBe('test');
+	});
+
 	it('allows empty tenant subdomain for single-domain mode', async () => {
 		await initializeDatabase(env.DB);
 		const cookie = await createRestaurantAdminSessionCookie(env, { companyId: 1 });
