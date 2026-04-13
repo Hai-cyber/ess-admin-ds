@@ -191,8 +191,10 @@ Recommended order: `3A -> 3B -> 3C -> 3D -> 3E -> 3F`
 ### ❌ Not Started Yet
 
 #### Phase 2: Staff Mobile UI (May launch)
-- 📋 CP-4 defined (specification ready)
-- Design phase starts after CP-3 completes
+- ⏳ CP-4 active build, no longer design-only
+- Mobile-first staff triage flow is live in `public/app.html`: summary filters, hot queue, one-tap actions, optimistic stage updates, local queue preferences, and transition feedback
+- Local Wave 1 smoke passed on 2026-04-13 against the live worker runtime: staff PIN auth worked and a real booking moved `pending -> confirmed -> arrived`
+- Wave 1 boundary is now fixed to booking-triage and booking-stage operations only; offline mode, service worker sync, gestures, and broader staff workflows are deferred to later CP-4 waves
 
 #### Phase 3: POS + Payment (Aug launch)
 - 📋 CP-5 defined (table management, orders)
@@ -257,6 +259,11 @@ Recommended order: `3A -> 3B -> 3C -> 3D -> 3E -> 3F`
 - Onboard 2-3 real restaurants
 - Collect feedback
 - Fix bugs before Phase 2 starts
+
+### Phase 2 Wave 1 Boundary
+
+- Included now: mobile triage, urgent queue handling, and booking-stage operations on top of the existing booking board runtime
+- Explicitly not in Wave 1: offline mode, service worker sync, gesture shortcuts, battery tuning, or expansion into non-booking staff workflows
 
 ---
 

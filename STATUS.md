@@ -228,6 +228,11 @@ Not Started: 0%
 - Hot queue supports one-tap primary actions for `pending -> confirmed` and `confirmed overdue -> arrived`.
 - Stage updates now use optimistic UI, loading feedback, transition highlighting, and auto-focus on moved cards.
 - Queue collapse preferences persist locally and time-sensitive urgency labels refresh on an interval while the app is open.
+- Local Wave 1 smoke pass succeeded on 2026-04-13: staff app page loaded on local runtime, PIN auth worked for `company_id=1`, and the core action path `pending -> confirmed -> arrived` completed against the live worker APIs.
+
+**Wave 1 boundary (now fixed)**:
+- Included: mobile triage, urgent queue handling, booking-stage operations, and fast one-tap transitions for the hottest work.
+- Not included yet: offline mode, service worker sync, gesture shortcuts, battery tuning, or broader staff-module expansion beyond booking operations.
 
 **Testing mode for this phase**:
 - Run narrow slice-level checks while building fast.

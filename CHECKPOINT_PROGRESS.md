@@ -157,6 +157,14 @@
 ✅ Managed-domain resale is deferred beyond Phase 1 and will not hold Phase 2 kickoff
 ✅ Testing policy for Phase 2 is now risk-based: narrow smoke checks during fast build loops, full suite only at integration milestones
 ✅ Staff mobile now ships a working triage surface in `public/app.html`: queue sections, urgent strip, hot queue, one-tap actions, optimistic stage updates, and local collapse persistence
+✅ Local Wave 1 smoke on 2026-04-13 passed: `company_id=1` staff PIN auth worked and a real booking moved `pending -> confirmed -> arrived` through the live local worker APIs
+```
+
+### CP-4 Wave 1 Boundary
+
+```bash
+Included now: mobile triage, urgent queue handling, and booking-stage operations
+Deferred to later CP-4 waves: offline mode, service worker sync, gesture shortcuts, and broader staff workflow expansion outside booking operations
 ```
 
 ---
