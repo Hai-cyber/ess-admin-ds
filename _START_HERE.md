@@ -17,7 +17,7 @@
 ### "I need to understand the project RIGHT NOW"
 → Read **[QUICKSTART.md](./QUICKSTART.md)** (5 min)
 
-Summary: You're building Restaurant OS (vertical SaaS). Phase 1 is effectively stabilized at 98% and no longer waits on Stripe or managed-domain resale. Execution now shifts into Phase 2 staff-mobile kickoff, while the remaining Phase 1 blockers stay parked as external or ops follow-up.
+Summary: You're building Restaurant OS (vertical SaaS). Phase 1 is effectively stabilized at 98% and no longer waits on Stripe or managed-domain resale. Execution is now in an active Phase 2 staff-mobile build, while the remaining Phase 1 blockers stay parked as external or ops follow-up.
 
 ### "I need to know what's blocked / what to work on?"
 → Read **[STATUS.md](./STATUS.md)** (3 min)
@@ -191,17 +191,18 @@ Multi-tenant system = restaurants are isolated. One restaurant can't see another
 - ✅ Managed-domain reminder, renewal completion, and snooze workflows are now available in SaaS Admin
 - ✅ Tenant website editor content now has end-to-end save/reload/publish/public-payload regression coverage
 - ✅ Managed-domain resale is explicitly deferred beyond Phase 1 so it no longer blocks execution
+- ✅ Staff mobile now has a working triage flow: summary filters, hot queue, one-tap actions, optimistic stage updates, queue preference persistence, and transition feedback inside `public/app.html`
 - ✅ Repository hygiene pass completed: nested gitlink removed, lint clean, formatter checks pass, and CI now includes repo hygiene
 
 **What's in progress** (your focus):
-- 🔄 Phase 2 kickoff: mobile-first staff shell and board-first interactions
+- 🔄 Phase 2 active build: stabilize the current mobile triage flow before widening scope
 - 🔄 Live board HTML cache refresh on `prod.gooddining.app`
 - 🔄 Production Stripe work is on hold pending Stripe account setup
 - 🔄 Founder/KC production OTP delivery follow-up
 - 🔄 Final production beta onboarding on the live custom-domain ingress
 
 **What's next**:
-1. Start the smallest Phase 2 staff-mobile shell
+1. Harden the existing Phase 2 staff-mobile triage flow and decide the next operational slice
 2. Purge the live board HTML cache on `prod.gooddining.app` and re-check the Restaurant-Admin launch context
 3. Run pilot onboarding on the live custom domain only once `/board` matches the preview build
 4. Prepare one approved real test recipient for Founder/KC production OTP smoke

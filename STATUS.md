@@ -28,7 +28,7 @@
 ██████████ 98%
 
 Completed: 98%
-In Progress: 1% (Phase 2 kickoff + final beta onboarding validation)
+In Progress: 1% (Phase 2 staff-mobile triage flow + final beta onboarding validation)
 Blocked: 1% (live board HTML cache refresh + Stripe account creation)
 Not Started: 0%
 ```
@@ -213,12 +213,21 @@ Not Started: 0%
 
 ### Phase 2 Kickoff (Staff Mobile)
 
-**Status**: Started in parallel while Phase 1 waits on external blockers.
+**Status**: Active build. The staff-mobile surface now has a working triage flow on top of the booking board runtime.
 
 **Immediate scope**:
-- Define the mobile-first staff shell and the smallest useful board-first workflow.
 - Keep Booking Board as the operational anchor and adapt its highest-frequency actions to a staff-mobile surface.
+- Stabilize the current mobile triage flow before widening into offline, deeper gestures, or broader mobile module scope.
 - Delay deeper polish and broad regression expansion until more Phase 2 slices are assembled.
+
+**What is already working**:
+- Mobile summary cards and quick stage filters are live in the staff app.
+- The staff queue now groups active work into triage-oriented sections instead of one flat list.
+- Confirmed bookings are prioritized by timing buckets: overdue, due now, and later today.
+- Urgent bar and hot-queue entry now surface pending plus overdue-confirmed work immediately.
+- Hot queue supports one-tap primary actions for `pending -> confirmed` and `confirmed overdue -> arrived`.
+- Stage updates now use optimistic UI, loading feedback, transition highlighting, and auto-focus on moved cards.
+- Queue collapse preferences persist locally and time-sensitive urgency labels refresh on an interval while the app is open.
 
 **Testing mode for this phase**:
 - Run narrow slice-level checks while building fast.
@@ -242,8 +251,7 @@ npx wrangler dev --config wrangler.jsonc
 
 ## ❌ Not Started Yet (10%)
 
-All other phases (2-5) planned, not started:
-- Phase 2: Staff mobile UI (May launch)
+Remaining later phases are still planned, not started:
 - Phase 3: POS + payment (Aug launch)
 - Phase 4: Odoo removal (Jan 2027)
 - Phase 5: Growth features (Apr 2027)

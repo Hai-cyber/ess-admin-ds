@@ -1099,6 +1099,21 @@
         return `No ${state.activeFilter} bookings right now`;
       }
 
+      function refreshUi() {
+        renderMobileSummary();
+        renderFeed();
+      }
+
+      function normalizeBookingId(bookingId) {
+        return String(bookingId || '').trim();
+      }
+
+      function findBookingById(bookingId) {
+        const normalizedBookingId = normalizeBookingId(bookingId);
+        if (!normalizedBookingId) return null;
+        return state.bookings.find((item) => normalizeBookingId(item.id) === normalizedBookingId) || null;
+      }
+
       function renderMobileSummary() {
         if (!summaryGrid || !filterRow || !urgentBar || !urgentBarCount || !urgentList) return;
 
@@ -1140,16 +1155,14 @@
         filterRow.querySelectorAll('.filter-chip').forEach((button) => {
           button.addEventListener('click', () => {
             state.activeFilter = button.dataset.filter || 'active';
-            renderMobileSummary();
-            renderFeed();
+            refreshUi();
           });
         });
 
         summaryGrid.querySelectorAll('[data-summary-filter]').forEach((button) => {
           button.addEventListener('click', () => {
             state.activeFilter = button.dataset.summaryFilter || 'hot';
-            renderMobileSummary();
-            renderFeed();
+            refreshUi();
           });
         });
 
@@ -1186,17 +1199,17 @@
         urgentList.querySelectorAll('.urgent-chip').forEach((button) => {
           button.addEventListener('click', () => {
             state.activeFilter = button.dataset.urgentFilter || 'active';
-            renderMobileSummary();
-            renderFeed();
+            refreshUi();
             focusBookingCard(button.dataset.bookingId || '');
           });
         });
       }
 
       function focusBookingCard(bookingId) {
-        if (!bookingId) return;
+        const normalizedBookingId = normalizeBookingId(bookingId);
+        if (!normalizedBookingId) return;
 
-        const target = document.querySelector(`[data-booking-card-id="${bookingId}"]`);
+        const target = document.querySelector(`[data-booking-card-id="${normalizedBookingId}"]`);
         if (!target) return;
 
         document.querySelectorAll('.booking-item.focused').forEach((element) => {
@@ -1212,7 +1225,7 @@
       }
 
       function clearStageTransitionHighlight(bookingId) {
-        const normalizedBookingId = String(bookingId || '').trim();
+        const normalizedBookingId = normalizeBookingId(bookingId);
         if (!normalizedBookingId) return;
 
         if (stageTransitionTimers[normalizedBookingId]) {
@@ -1226,7 +1239,7 @@
       }
 
       function markStageTransitionHighlight(bookingId, nextStage) {
-        const normalizedBookingId = String(bookingId || '').trim();
+        const normalizedBookingId = normalizeBookingId(bookingId);
         if (!normalizedBookingId) return;
 
         clearStageTransitionHighlight(normalizedBookingId);
@@ -1362,8 +1375,7 @@
           }
 
           state.bookings = Array.isArray(data.data) ? data.data : [];
-          renderMobileSummary();
-          renderFeed();
+          refreshUi();
         } catch (err) {
           console.warn('Initial bookings load failed:', err);
         }
@@ -1419,22 +1431,21 @@
 
       // Add or Update Booking
       function addOrUpdateBooking(booking) {
-        const existing = state.bookings.findIndex(b => b.id === booking.id);
+        const normalizedBookingId = normalizeBookingId(booking.id);
+        const existing = state.bookings.findIndex((item) => normalizeBookingId(item.id) === normalizedBookingId);
         if (existing >= 0) {
           state.bookings[existing] = booking;
         } else {
           state.bookings.unshift(booking);
         }
-        renderMobileSummary();
-        renderFeed();
+        refreshUi();
       }
 
       function updateBookingStage(bookingId, newStage) {
-        const booking = state.bookings.find(b => b.id === bookingId);
+        const booking = findBookingById(bookingId);
         if (booking) {
           booking.stage = newStage;
-          renderMobileSummary();
-          renderFeed();
+          refreshUi();
         }
       }
 
@@ -1575,7 +1586,7 @@
       }
 
       function getNextActionLabel(booking) {
-        const pendingUpdate = state.pendingStageUpdates[String(booking.id || '')];
+        const pendingUpdate = state.pendingStageUpdates[normalizeBookingId(booking.id)];
         if (pendingUpdate?.loadingLabel) return pendingUpdate.loadingLabel;
         if (booking.stage === 'pending') return 'Next action: confirm or cancel';
         if (booking.stage === 'confirmed') {
@@ -1668,7 +1679,7 @@
         const timingBucket = booking.stage === 'confirmed' ? getConfirmedTimingBucket(booking) : '';
         const timeDriftLabel = getTimeDriftLabel(booking);
         const hotPrimaryAction = getHotPrimaryAction(booking);
-        const hasRecentStageTransition = Boolean(state.recentStageTransitions[String(booking.id || '')]);
+        const hasRecentStageTransition = Boolean(state.recentStageTransitions[normalizeBookingId(booking.id)]);
         return `
           <div class="booking-item ${booking.stage} ${hasRecentStageTransition ? 'stage-changed' : ''}" data-booking-card-id="${booking.id}">
             <div class="booking-time">${booking.booking_time}</div>
@@ -1695,7 +1706,7 @@
       }
 
       function getActionButtons(booking) {
-        const pendingUpdate = state.pendingStageUpdates[String(booking.id || '')];
+        const pendingUpdate = state.pendingStageUpdates[normalizeBookingId(booking.id)];
         if (pendingUpdate?.loadingLabel) {
           return `<button class="btn-stage is-busy" type="button" disabled>${pendingUpdate.loadingLabel}</button>`;
         }
@@ -1734,10 +1745,10 @@
       }
 
       function applyOptimisticStageUpdate(bookingId, newStage) {
-        const normalizedBookingId = String(bookingId || '').trim();
+        const normalizedBookingId = normalizeBookingId(bookingId);
         if (!normalizedBookingId) return null;
 
-        const booking = state.bookings.find((item) => String(item.id || '').trim() === normalizedBookingId);
+        const booking = findBookingById(normalizedBookingId);
         if (!booking) return null;
 
         const previousStage = booking.stage;
@@ -1748,21 +1759,20 @@
         };
         booking.stage = newStage;
         markStageTransitionHighlight(normalizedBookingId, newStage);
-        renderMobileSummary();
-        renderFeed();
+        refreshUi();
         focusBookingCard(normalizedBookingId);
         return previousStage;
       }
 
       function clearOptimisticStageUpdate(bookingId) {
-        const normalizedBookingId = String(bookingId || '').trim();
+        const normalizedBookingId = normalizeBookingId(bookingId);
         if (!normalizedBookingId) return;
         delete state.pendingStageUpdates[normalizedBookingId];
       }
 
       // Update Stage
       async function updateStage(bookingId, newStage, btn) {
-        const normalizedBookingId = String(bookingId || '').trim();
+        const normalizedBookingId = normalizeBookingId(bookingId);
         if (!normalizedBookingId || state.pendingStageUpdates[normalizedBookingId]) {
           return;
         }
@@ -1789,8 +1799,7 @@
           if (res.ok && (data.ok || data.success)) {
             succeeded = true;
             clearOptimisticStageUpdate(normalizedBookingId);
-            renderMobileSummary();
-            renderFeed();
+            refreshUi();
             showToast(`Booking updated to ${STAGE_LABELS[newStage]}`);
           } else {
             showToast(data.error || 'Error updating booking', 'error');
@@ -1801,14 +1810,13 @@
         }
 
         if (!succeeded) {
-          const booking = state.bookings.find((item) => String(item.id || '').trim() === normalizedBookingId);
+          const booking = findBookingById(normalizedBookingId);
           if (booking) {
             booking.stage = previousStage;
           }
           clearStageTransitionHighlight(normalizedBookingId);
           clearOptimisticStageUpdate(normalizedBookingId);
-          renderMobileSummary();
-          renderFeed();
+          refreshUi();
         }
       }
 

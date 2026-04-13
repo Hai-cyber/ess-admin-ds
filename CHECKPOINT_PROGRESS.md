@@ -3,21 +3,21 @@
 **Purpose**: Track checkpoint completion as you move through phases. Update this weekly.
 
 **Last Updated**: 2026-04-13  
-**Current Phase**: Transition: Phase 1 stabilized at 98% / Phase 2 kickoff started
+**Current Phase**: Transition: Phase 1 stabilized at 98% / Phase 2 staff-mobile build active
 
 ---
 
 ## Phase 1: Booking System + Platform Entry
 
 **ETA**: Q2 2026  
-**Status**: ⏳ TRANSITIONING (Phase 1 stabilized; Phase 2 kickoff active)
+**Status**: ⏳ TRANSITIONING (Phase 1 stabilized; Phase 2 staff-mobile build active)
 
 | Checkpoint | Component | Status | Evidence | Owner | ETA |
 |-----------|-----------|--------|----------|-------|-----|
 | CP-1 | Tenant Isolation | ✅ DONE | E2E_TEST_SUMMARY.md | Team | ✅ Done |
 | CP-2 | Booking MVP | ✅ DONE | Local runtime verified: booking form render, board, staff-create, booking list, stage updates | Team | ✅ Done |
 | CP-3 | Admin UI Setup | ⏳ 98% | Identity auth foundation, session-first admin UIs, signup owner bootstrap, board-launch separation, tenant website publish-flow QA coverage, and production-like board launch validation are live; remaining work is live board HTML cache refresh plus pilot onboarding closeout while production Stripe stays on hold pending account setup | @dev-lead | Apr 20 |
-| CP-4 | Staff Mobile | ⏳ 5% | Phase 2 kickoff started: mobile-first staff shell and board-first interaction scope are now the active execution focus | @dev-lead | May 1 |
+| CP-4 | Staff Mobile | ⏳ 20% | Mobile-first staff triage flow is now live in the active app shell: summary filters, hot queue, one-tap actions, optimistic updates, and local queue preferences are implemented on top of the booking board runtime | @dev-lead | May 1 |
 | CP-10 | Platform Site + Self-Service Signup | ⏳ 98% | Platform site, signup provisioning, payments, moderation, enriched domain queue, renewal history/snooze workflows, and owner identity bootstrap are live; managed-domain resale is explicitly deferred beyond Phase 1 while production Stripe stays on hold pending account setup | @dev-lead | Apr 20 |
 | **Phase 1 Total** | — | **98%** | — | — | **Apr 20** |
 
@@ -126,18 +126,18 @@
 2. Run pilot onboarding on the live custom domain only after the live board shell matches the preview build.
 3. Prepare one approved real test recipient for Founder/KC production OTP smoke; keep local development on `OTP_STUB_ENABLED=true`.
 4. Resume production Stripe activation after a Stripe account exists and credentials can be provisioned.
-5. Start Phase 2 with the smallest mobile-first staff shell instead of extending Phase 1 polish.
+5. Harden the existing Phase 2 staff-mobile triage flow before widening scope into offline or deeper mobile workflows.
 
 ---
 
 ## Phase 2: Staff Mobile UI Ready
 
 **ETA**: Q3 2026 (June-Aug)  
-**Status**: ⏳ KICKOFF STARTED
+**Status**: ⏳ ACTIVE BUILD
 
 | Checkpoint | Component | Status | Owner | ETA |
 |-----------|-----------|--------|-------|-----|
-| CP-4 | Staff Mobile | ⏳ Kickoff | @dev-lead | May 1 |
+| CP-4 | Staff Mobile | ⏳ Active build | @dev-lead | May 1 |
 
 ### CP-4 Planned Work
 
@@ -156,6 +156,7 @@
 ✅ Phase 2 begins before Stripe account setup because Stripe is an external blocker, not a Phase 2 prerequisite
 ✅ Managed-domain resale is deferred beyond Phase 1 and will not hold Phase 2 kickoff
 ✅ Testing policy for Phase 2 is now risk-based: narrow smoke checks during fast build loops, full suite only at integration milestones
+✅ Staff mobile now ships a working triage surface in `public/app.html`: queue sections, urgent strip, hot queue, one-tap actions, optimistic stage updates, and local collapse persistence
 ```
 
 ---
