@@ -3557,6 +3557,215 @@ describe('ESSKULTUR worker', () => {
 		expect(String(body.error || '')).toContain('Booking management module is disabled');
 	});
 
+	it('smoke verifies the staff-mobile Wave 1 flow', async () => {
+		await initializeDatabase(env.DB);
+
+		let ctx = createExecutionContext();
+		let response = await worker.fetch(new Request('http://localhost/app?company_id=1'), env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		const html = await response.text();
+		expect(html).toContain('Staff App');
+		expect(html).toContain('summaryGrid');
+		expect(html).toContain('urgentBar');
+
+		ctx = createExecutionContext();
+		response = await worker.fetch(new Request('http://localhost/api/staff/auth?pin=1234&company_id=1'), env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		let body = await response.json();
+		expect(body.success).toBe(true);
+		expect(String(body.staffId || '')).toBe('staff_3');
+		expect(Number(body.companyId || 0)).toBe(1);
+
+		ctx = createExecutionContext();
+		response = await worker.fetch(new Request('http://localhost/api/bookings?company_id=1'), env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		body = await response.json();
+		expect(body.ok).toBe(true);
+
+		const now = new Date().toISOString();
+		const pendingBookingId = 'wave1_smoke_booking';
+		await env.DB.prepare(`
+			INSERT INTO bookings (
+				id, company_id, customer_id, contact_name, phone, email,
+				guests_pax, booking_date, booking_time, booking_datetime,
+				duration_minutes, area, stage, stage_id, flag, notes,
+				chat_id, message_id, odoo_lead_id, source, submitted_at,
+				updated_at, created_by, updated_by
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`).bind(
+			pendingBookingId,
+			1,
+			null,
+			'Wave 1 Smoke Booking',
+			'+491700001234',
+			null,
+			2,
+			'2026-12-31',
+			'18:00',
+			'2026-12-31T18:00:00Z',
+			120,
+			'indoor',
+			'pending',
+			1,
+			null,
+			null,
+			null,
+			null,
+			null,
+			'test',
+			now,
+			now,
+			'test',
+			'test'
+		).run();
+
+		const pendingBooking = { id: pendingBookingId };
+		expect(pendingBooking).toBeTruthy();
+
+		ctx = createExecutionContext();
+		response = await worker.fetch(new Request(`http://localhost/api/bookings/${encodeURIComponent(String(pendingBooking.id))}/stage?company_id=1`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				stage: 'confirmed',
+				staffId: 'staff_3',
+				companyId: 1
+			})
+		}), env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		body = await response.json();
+		expect(body.ok).toBe(true);
+		expect(String(body.bookingId || '')).toBe(String(pendingBooking.id));
+
+		ctx = createExecutionContext();
+		response = await worker.fetch(new Request(`http://localhost/api/bookings/${encodeURIComponent(String(pendingBooking.id))}/stage?company_id=1`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				stage: 'arrived',
+				staffId: 'staff_3',
+				companyId: 1
+			})
+		}), env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		body = await response.json();
+		expect(body.ok).toBe(true);
+		expect(String(body.bookingId || '')).toBe(String(pendingBooking.id));
+
+		const updatedBooking = await env.DB.prepare(
+			`SELECT stage, updated_by FROM bookings WHERE company_id = ? AND id = ? LIMIT 1`
+		).bind(1, String(pendingBooking.id)).first();
+		expect(String(updatedBooking?.stage || '')).toBe('arrived');
+		expect(String(updatedBooking?.updated_by || '')).toContain('staff_3');
+	});
+
+	it('smoke verifies the staff-mobile Wave 1 hot-queue semantics', async () => {
+		await initializeDatabase(env.DB);
+
+		const now = new Date();
+		const overdueDate = new Date(now.getTime() - (30 * 60 * 1000));
+		const overdueHours = String(overdueDate.getHours()).padStart(2, '0');
+		const overdueMinutes = String(overdueDate.getMinutes()).padStart(2, '0');
+		const overdueTime = `${overdueHours}:${overdueMinutes}`;
+		const createdAt = now.toISOString();
+
+		await env.DB.prepare(`
+			INSERT INTO bookings (
+				id, company_id, customer_id, contact_name, phone, email,
+				guests_pax, booking_date, booking_time, booking_datetime,
+				duration_minutes, area, stage, stage_id, flag, notes,
+				chat_id, message_id, odoo_lead_id, source, submitted_at,
+				updated_at, created_by, updated_by
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`).bind(
+			'wave1_hot_pending',
+			1,
+			null,
+			'Wave 1 Hot Pending',
+			'+491700001235',
+			null,
+			2,
+			'2026-12-31',
+			'19:00',
+			'2026-12-31T19:00:00Z',
+			120,
+			'indoor',
+			'pending',
+			1,
+			null,
+			null,
+			null,
+			null,
+			null,
+			'test',
+			createdAt,
+			createdAt,
+			'test',
+			'test'
+		).run();
+
+		await env.DB.prepare(`
+			INSERT INTO bookings (
+				id, company_id, customer_id, contact_name, phone, email,
+				guests_pax, booking_date, booking_time, booking_datetime,
+				duration_minutes, area, stage, stage_id, flag, notes,
+				chat_id, message_id, odoo_lead_id, source, submitted_at,
+				updated_at, created_by, updated_by
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`).bind(
+			'wave1_hot_overdue',
+			1,
+			null,
+			'Wave 1 Hot Overdue',
+			'+491700001236',
+			null,
+			4,
+			'2026-12-31',
+			overdueTime,
+			`2026-12-31T${overdueTime}:00Z`,
+			120,
+			'bar',
+			'confirmed',
+			2,
+			null,
+			null,
+			null,
+			null,
+			null,
+			'test',
+			createdAt,
+			createdAt,
+			'test',
+			'test'
+		).run();
+
+		let ctx = createExecutionContext();
+		let response = await worker.fetch(new Request('http://localhost/app?company_id=1'), env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		const html = await response.text();
+		expect(html).toContain('Pending first');
+		expect(html).toContain('Overdue arrivals');
+		expect(html).toContain('One tap: confirm');
+		expect(html).toContain('One tap: arrived');
+		expect(html).toContain('data-summary-filter="hot"');
+
+		ctx = createExecutionContext();
+		response = await worker.fetch(new Request('http://localhost/api/bookings?company_id=1'), env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		const body = await response.json();
+		expect(body.ok).toBe(true);
+		const bookings = Array.isArray(body.data) ? body.data : [];
+		expect(bookings.some((booking) => String(booking.id || '') === 'wave1_hot_pending' && String(booking.stage || '') === 'pending')).toBe(true);
+		expect(bookings.some((booking) => String(booking.id || '') === 'wave1_hot_overdue' && String(booking.stage || '') === 'confirmed')).toBe(true);
+	});
+
 	it('allows empty tenant subdomain for single-domain mode', async () => {
 		await initializeDatabase(env.DB);
 		const cookie = await createRestaurantAdminSessionCookie(env, { companyId: 1 });
