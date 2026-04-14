@@ -2,6 +2,17 @@ import { env, createExecutionContext, waitOnExecutionContext, SELF } from 'cloud
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import worker from '../src';
 import { initializeDatabase } from '../src/db/init';
+import {
+	applyStageUpdateToBookings,
+	formatArrivalsLaneLabel,
+	filterBookingsForServiceDate,
+	getArrivalsTimingBucket,
+	matchesServiceDate,
+	normalizeServiceDate,
+	summarizeArrivalsLane,
+	syncAdjacentDateBookings,
+	upsertBookingForServiceDate,
+} from '../src/utils/staff-app-bookings.js';
 
 const originalFetch = globalThis.fetch.bind(globalThis);
 
@@ -163,6 +174,91 @@ async function createPlatformAdminSessionCookie(env, {
 }
 
 describe('ESSKULTUR worker', () => {
+	it('normalizes and matches service-date values for staff app queues', () => {
+		expect(normalizeServiceDate('2026-12-31', '2026-01-01')).toBe('2026-12-31');
+		expect(normalizeServiceDate('', '2026-01-01')).toBe('2026-01-01');
+		expect(matchesServiceDate({ booking_date: '2026-12-31' }, '2026-12-31')).toBe(true);
+		expect(matchesServiceDate({ booking_date: '2027-01-01' }, '2026-12-31')).toBe(false);
+	});
+
+	it('filters and upserts staff app bookings against the active service date', () => {
+		const original = [
+			{ id: 'keep_me', booking_date: '2026-12-31', stage: 'pending' },
+			{ id: 'drop_me', booking_date: '2027-01-01', stage: 'confirmed' }
+		];
+
+		const filtered = filterBookingsForServiceDate(original, '2026-12-31');
+		expect(filtered.map((booking) => booking.id)).toEqual(['keep_me']);
+
+		const withIncomingSameDay = upsertBookingForServiceDate(filtered, {
+			id: 'new_same_day',
+			booking_date: '2026-12-31',
+			stage: 'pending'
+		}, '2026-12-31');
+		expect(withIncomingSameDay.map((booking) => booking.id)).toEqual(['new_same_day', 'keep_me']);
+
+		const withIncomingOtherDay = upsertBookingForServiceDate(withIncomingSameDay, {
+			id: 'new_same_day',
+			booking_date: '2027-01-01',
+			stage: 'pending'
+		}, '2026-12-31');
+		expect(withIncomingOtherDay.map((booking) => booking.id)).toEqual(['keep_me']);
+	});
+
+	it('applies SSE-like stage updates only when the booking is still in the active staff queue', () => {
+		const original = [
+			{ id: 'booking_1', booking_date: '2026-12-31', stage: 'pending' },
+			{ id: 'booking_2', booking_date: '2026-12-31', stage: 'confirmed' }
+		];
+
+		const updated = applyStageUpdateToBookings(original, 'booking_2', 'arrived');
+		expect(updated.find((booking) => booking.id === 'booking_2')?.stage).toBe('arrived');
+
+		const untouched = applyStageUpdateToBookings(updated, 'missing_booking', 'done');
+		expect(untouched).toEqual(updated);
+	});
+
+	it('syncs adjacent service-date booking buckets from SSE-like booking events', () => {
+		const original = {
+			'2026-12-30': [{ id: 'prev_existing', booking_date: '2026-12-30', stage: 'pending' }],
+			'2027-01-01': [{ id: 'next_existing', booking_date: '2027-01-01', stage: 'confirmed' }]
+		};
+
+		const withPrevIncoming = syncAdjacentDateBookings(original, {
+			id: 'prev_new',
+			booking_date: '2026-12-30',
+			stage: 'pending'
+		}, ['2026-12-30', '2027-01-01']);
+		expect(withPrevIncoming['2026-12-30'].map((booking) => booking.id)).toEqual(['prev_new', 'prev_existing']);
+
+		const withMovedBooking = syncAdjacentDateBookings(withPrevIncoming, {
+			id: 'prev_new',
+			booking_date: '2026-12-31',
+			stage: 'pending'
+		}, ['2026-12-30', '2027-01-01']);
+		expect(withMovedBooking['2026-12-30'].map((booking) => booking.id)).toEqual(['prev_existing']);
+		expect(withMovedBooking['2027-01-01'].map((booking) => booking.id)).toEqual(['next_existing']);
+	});
+
+	it('summarizes arrivals lane counts and labels for due-now and overdue check-ins', () => {
+		const referenceDate = new Date(2026, 11, 31, 18, 0, 0);
+		const bookings = [
+			{ id: 'arrivals_due_now', stage: 'confirmed', booking_time: '18:10' },
+			{ id: 'arrivals_overdue', stage: 'confirmed', booking_time: '17:30' },
+			{ id: 'arrivals_later', stage: 'confirmed', booking_time: '19:15' },
+			{ id: 'ignore_pending', stage: 'pending', booking_time: '18:05' }
+		];
+
+		expect(getArrivalsTimingBucket({ booking_time: '17:30' }, referenceDate)).toBe('overdue');
+		expect(getArrivalsTimingBucket({ booking_time: '18:10' }, referenceDate)).toBe('due_now');
+		expect(getArrivalsTimingBucket({ booking_time: '19:15' }, referenceDate)).toBe('later');
+
+		const summary = summarizeArrivalsLane(bookings, referenceDate);
+		expect(summary).toEqual({ total: 3, dueNow: 1, overdue: 1, later: 1 });
+		expect(formatArrivalsLaneLabel(summary)).toBe('1 due now • 1 overdue');
+		expect(formatArrivalsLaneLabel({ total: 0, dueNow: 0, overdue: 0, later: 0 })).toBe('No confirmed arrivals');
+	});
+
 	it('returns a JSON 404 for unknown unit routes', async () => {
 		const request = new Request('http://example.com/not-found');
 		const ctx = createExecutionContext();
@@ -184,6 +280,18 @@ describe('ESSKULTUR worker', () => {
 		expect(body.ok).toBe(true);
 		expect(body.service).toBe('ess-admin-ds');
 		expect(typeof body.time).toBe('string');
+	});
+
+	it('injects the shared staff-app booking helper into the served /app HTML', async () => {
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(new Request('http://localhost/app?company_id=1'), env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(200);
+		const html = await response.text();
+		expect(html).toContain('window.StaffAppBookingHelpers');
+		expect(html).toContain('filterBookingsForServiceDate');
+		expect(html).not.toContain('/*__STAFF_APP_BOOKING_HELPERS__*/');
 	});
 
 	it('creates a restaurant admin email session and allows tenant admin APIs without PIN', async () => {
@@ -3180,9 +3288,11 @@ describe('ESSKULTUR worker', () => {
 		expect(Number(challenge?.organization_id || 0)).toBe(organizationId);
 
 		const staffRow = await env.DB.prepare(
-			`SELECT pin, role FROM staff WHERE company_id = ? ORDER BY created_at ASC LIMIT 1`
+			`SELECT pin, pin_hash, role FROM staff WHERE company_id = ? ORDER BY created_at ASC LIMIT 1`
 		).bind(companyId).first();
-		expect(String(staffRow?.pin || '')).toBe('2468');
+		expect(String(staffRow?.pin || '')).not.toBe('2468');
+		expect(String(staffRow?.pin || '')).toContain('__hashed_pin__:');
+		expect(String(staffRow?.pin_hash || '')).not.toBe('');
 		expect(String(staffRow?.role || '')).toBe('admin');
 	});
 
@@ -3566,8 +3676,21 @@ describe('ESSKULTUR worker', () => {
 		expect(response.status).toBe(200);
 		const html = await response.text();
 		expect(html).toContain('Staff App');
+		expect(html).toContain('operationsFocus');
+		expect(html).toContain('What To Do Now');
 		expect(html).toContain('summaryGrid');
 		expect(html).toContain('urgentBar');
+		expect(html).toContain('arrivalsLaneBtn');
+		expect(html).toContain('serviceDateShortcutTomorrow');
+		expect(html).toContain('serviceDateShortcutWeekend');
+		expect(html).toContain('serviceDateLabel');
+		expect(html).toContain('serviceDatePrev');
+		expect(html).toContain('serviceDateNext');
+		expect(html).toContain('serviceDateInput');
+		expect(html).toContain('serviceDatePrevCount');
+		expect(html).toContain('serviceDateNextCount');
+		expect(html).toContain('serviceDateShortcutTomorrow');
+		expect(html).toContain('serviceDateShortcutWeekend');
 
 		ctx = createExecutionContext();
 		response = await worker.fetch(new Request('http://localhost/api/staff/auth?pin=1234&company_id=1'), env, ctx);
@@ -3579,7 +3702,7 @@ describe('ESSKULTUR worker', () => {
 		expect(Number(body.companyId || 0)).toBe(1);
 
 		ctx = createExecutionContext();
-		response = await worker.fetch(new Request('http://localhost/api/bookings?company_id=1'), env, ctx);
+		response = await worker.fetch(new Request('http://localhost/api/bookings?company_id=1&pin=1234'), env, ctx);
 		await waitOnExecutionContext(ctx);
 		expect(response.status).toBe(200);
 		body = await response.json();
@@ -3632,7 +3755,8 @@ describe('ESSKULTUR worker', () => {
 			body: JSON.stringify({
 				stage: 'confirmed',
 				staffId: 'staff_3',
-				companyId: 1
+				companyId: 1,
+				pin: '1234'
 			})
 		}), env, ctx);
 		await waitOnExecutionContext(ctx);
@@ -3648,7 +3772,8 @@ describe('ESSKULTUR worker', () => {
 			body: JSON.stringify({
 				stage: 'arrived',
 				staffId: 'staff_3',
-				companyId: 1
+				companyId: 1,
+				pin: '1234'
 			})
 		}), env, ctx);
 		await waitOnExecutionContext(ctx);
@@ -3753,10 +3878,14 @@ describe('ESSKULTUR worker', () => {
 		expect(html).toContain('Overdue arrivals');
 		expect(html).toContain('One tap: confirm');
 		expect(html).toContain('One tap: arrived');
+		expect(html).toContain('Arrivals lane');
+		expect(html).toContain('Confirm waiting bookings first');
+		expect(html).toContain('service-shortcut-btn');
 		expect(html).toContain('data-summary-filter="hot"');
+		expect(html).toContain('Service date');
 
 		ctx = createExecutionContext();
-		response = await worker.fetch(new Request('http://localhost/api/bookings?company_id=1'), env, ctx);
+		response = await worker.fetch(new Request('http://localhost/api/bookings?company_id=1&pin=1234'), env, ctx);
 		await waitOnExecutionContext(ctx);
 		expect(response.status).toBe(200);
 		const body = await response.json();
@@ -3764,6 +3893,160 @@ describe('ESSKULTUR worker', () => {
 		const bookings = Array.isArray(body.data) ? body.data : [];
 		expect(bookings.some((booking) => String(booking.id || '') === 'wave1_hot_pending' && String(booking.stage || '') === 'pending')).toBe(true);
 		expect(bookings.some((booking) => String(booking.id || '') === 'wave1_hot_overdue' && String(booking.stage || '') === 'confirmed')).toBe(true);
+	});
+
+	it('filters booking API results by the requested service date for staff app loading', async () => {
+		await initializeDatabase(env.DB);
+
+		const createdAt = new Date().toISOString();
+		await env.DB.prepare(`
+			INSERT INTO bookings (
+				id, company_id, customer_id, contact_name, phone, email,
+				guests_pax, booking_date, booking_time, booking_datetime,
+				duration_minutes, area, stage, stage_id, flag, notes,
+				chat_id, message_id, odoo_lead_id, source, submitted_at,
+				updated_at, created_by, updated_by
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`).bind(
+			'service_date_today_only',
+			1,
+			null,
+			'Service Date Today',
+			'+491700001250',
+			null,
+			2,
+			'2026-12-31',
+			'18:30',
+			'2026-12-31T18:30:00Z',
+			120,
+			'indoor',
+			'pending',
+			1,
+			null,
+			null,
+			null,
+			null,
+			null,
+			'test',
+			createdAt,
+			createdAt,
+			'test',
+			'test'
+		).run();
+
+		await env.DB.prepare(`
+			INSERT INTO bookings (
+				id, company_id, customer_id, contact_name, phone, email,
+				guests_pax, booking_date, booking_time, booking_datetime,
+				duration_minutes, area, stage, stage_id, flag, notes,
+				chat_id, message_id, odoo_lead_id, source, submitted_at,
+				updated_at, created_by, updated_by
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`).bind(
+			'service_date_other_day',
+			1,
+			null,
+			'Service Date Other Day',
+			'+491700001251',
+			null,
+			4,
+			'2027-01-01',
+			'19:15',
+			'2027-01-01T19:15:00Z',
+			120,
+			'bar',
+			'confirmed',
+			2,
+			null,
+			null,
+			null,
+			null,
+			null,
+			'test',
+			createdAt,
+			createdAt,
+			'test',
+			'test'
+		).run();
+
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(new Request('http://localhost/api/bookings?company_id=1&pin=1234&date=2026-12-31'), env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(200);
+		const body = await response.json();
+		expect(body.ok).toBe(true);
+		const bookings = Array.isArray(body.data) ? body.data : [];
+		expect(bookings.some((booking) => String(booking.id || '') === 'service_date_today_only')).toBe(true);
+		expect(bookings.some((booking) => String(booking.id || '') === 'service_date_other_day')).toBe(false);
+		expect(bookings.every((booking) => String(booking.booking_date || '') === '2026-12-31')).toBe(true);
+	});
+
+	it('renders the arrivals lane with overdue, due-now, and later confirmed buckets', async () => {
+		await initializeDatabase(env.DB);
+
+		const now = new Date();
+		const dueNowDate = new Date(now.getTime() + (5 * 60 * 1000));
+		const overdueDate = new Date(now.getTime() - (30 * 60 * 1000));
+		const laterDate = new Date(now.getTime() + (75 * 60 * 1000));
+		const dueNowTime = `${String(dueNowDate.getHours()).padStart(2, '0')}:${String(dueNowDate.getMinutes()).padStart(2, '0')}`;
+		const overdueTime = `${String(overdueDate.getHours()).padStart(2, '0')}:${String(overdueDate.getMinutes()).padStart(2, '0')}`;
+		const laterTime = `${String(laterDate.getHours()).padStart(2, '0')}:${String(laterDate.getMinutes()).padStart(2, '0')}`;
+		const activeDate = `${String(now.getFullYear())}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+		const createdAt = now.toISOString();
+
+		for (const booking of [
+			{ id: 'arrivals_overdue_ui', name: 'Arrivals Overdue UI', time: overdueTime },
+			{ id: 'arrivals_due_now_ui', name: 'Arrivals Due Now UI', time: dueNowTime },
+			{ id: 'arrivals_later_ui', name: 'Arrivals Later UI', time: laterTime }
+		]) {
+			await env.DB.prepare(`
+				INSERT INTO bookings (
+					id, company_id, customer_id, contact_name, phone, email,
+					guests_pax, booking_date, booking_time, booking_datetime,
+					duration_minutes, area, stage, stage_id, flag, notes,
+					chat_id, message_id, odoo_lead_id, source, submitted_at,
+					updated_at, created_by, updated_by
+				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			`).bind(
+				booking.id,
+				1,
+				null,
+				booking.name,
+				'+491700001260',
+				null,
+				2,
+				activeDate,
+				booking.time,
+				`${activeDate}T${booking.time}:00Z`,
+				120,
+				'indoor',
+				'confirmed',
+				2,
+				null,
+				null,
+				null,
+				null,
+				null,
+				'test',
+				createdAt,
+				createdAt,
+				'test',
+				'test'
+			).run();
+		}
+
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(new Request('http://localhost/app?company_id=1'), env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(200);
+		const html = await response.text();
+		expect(html).toContain('Arrivals lane');
+		expect(html).toContain('Overdue check-ins');
+		expect(html).toContain('Check in now');
+		expect(html).toContain('Later arrivals');
+		expect(html).toContain('Arrivals 3');
 	});
 
 	it('rejects invalid staff-mobile Wave 1 stage updates without mutating the booking', async () => {
@@ -3813,7 +4096,8 @@ describe('ESSKULTUR worker', () => {
 			body: JSON.stringify({
 				stage: 'made_up_stage',
 				staffId: 'staff_3',
-				companyId: 1
+				companyId: 1,
+				pin: '1234'
 			})
 		}), env, ctx);
 		await waitOnExecutionContext(ctx);
@@ -3830,6 +4114,151 @@ describe('ESSKULTUR worker', () => {
 		expect(String(unchangedBooking?.updated_by || '')).toBe('test');
 	});
 
+	it('rejects tenant-host booking reads without board PIN or admin session', async () => {
+		await initializeDatabase(env.DB);
+
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(new Request('http://restaurant1.gooddining.app/api/bookings'), env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(401);
+		const body = await response.json();
+		expect(body.ok).toBe(false);
+		expect(String(body.error || '')).toContain('PIN');
+	});
+
+	it('allows tenant-host booking reads with a restaurant admin session', async () => {
+		await initializeDatabase(env.DB);
+		const cookie = await createRestaurantAdminSessionCookie(env, { companyId: 1 });
+
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(new Request('http://restaurant1.gooddining.app/api/bookings', {
+			headers: { cookie }
+		}), env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(200);
+		const body = await response.json();
+		expect(body.ok).toBe(true);
+		expect(Number(body.companyId || 0)).toBe(1);
+	});
+
+	it('rejects tenant-host stage updates without board PIN or admin session', async () => {
+		await initializeDatabase(env.DB);
+
+		const now = new Date().toISOString();
+		const bookingId = 'tenant_host_stage_auth_required';
+		await env.DB.prepare(`
+			INSERT INTO bookings (
+				id, company_id, customer_id, contact_name, phone, email,
+				guests_pax, booking_date, booking_time, booking_datetime,
+				duration_minutes, area, stage, stage_id, flag, notes,
+				chat_id, message_id, odoo_lead_id, source, submitted_at,
+				updated_at, created_by, updated_by
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`).bind(
+			bookingId,
+			1,
+			null,
+			'Tenant Host Stage Auth Required',
+			'+491700001299',
+			null,
+			2,
+			'2026-12-31',
+			'20:30',
+			'2026-12-31T20:30:00Z',
+			120,
+			'indoor',
+			'pending',
+			1,
+			null,
+			null,
+			null,
+			null,
+			null,
+			'test',
+			now,
+			now,
+			'test',
+			'test'
+		).run();
+
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(new Request(`http://restaurant1.gooddining.app/api/bookings/${encodeURIComponent(bookingId)}/stage`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ stage: 'confirmed', staffId: 'staff_3' })
+		}), env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(401);
+		const body = await response.json();
+		expect(body.ok).toBe(false);
+	});
+
+	it('does not expose raw board PINs in the admin staff payload', async () => {
+		await initializeDatabase(env.DB);
+		const cookie = await createRestaurantAdminSessionCookie(env, { companyId: 1 });
+
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(new Request('http://localhost/api/admin/staff?company_id=1', {
+			headers: { cookie }
+		}), env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(200);
+		const body = await response.json();
+		expect(body.success).toBe(true);
+		const staffRows = Array.isArray(body.staff) ? body.staff : [];
+		expect(staffRows.length).toBeGreaterThan(0);
+		expect(Object.prototype.hasOwnProperty.call(staffRows[0], 'pin')).toBe(false);
+		expect(Number(staffRows[0].has_pin || 0)).toBe(1);
+	});
+
+	it('preserves an existing board PIN when admin updates staff without entering a new one', async () => {
+		await initializeDatabase(env.DB);
+		const cookie = await createRestaurantAdminSessionCookie(env, { companyId: 1 });
+
+		let ctx = createExecutionContext();
+		let response = await worker.fetch(new Request('http://localhost/api/admin/staff?company_id=1', {
+			headers: { cookie }
+		}), env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		let body = await response.json();
+		const staffRows = Array.isArray(body.staff) ? body.staff : [];
+		const hostess = staffRows.find((row) => String(row.id || '') === 'staff_1');
+		expect(hostess).toBeTruthy();
+
+		ctx = createExecutionContext();
+		response = await worker.fetch(new Request('http://localhost/api/admin/staff?company_id=1', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json', cookie },
+			body: JSON.stringify({
+				staff: {
+					id: 'staff_1',
+					name: 'Hostess Renamed',
+					pin: '',
+					role: 'hostess',
+					is_active: 1,
+					permissions: hostess.permissions || '[]'
+				}
+			})
+		}), env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		body = await response.json();
+		expect(body.success).toBe(true);
+
+		ctx = createExecutionContext();
+		response = await worker.fetch(new Request('http://localhost/api/staff/auth?pin=1111&company_id=1'), env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		body = await response.json();
+		expect(body.success).toBe(true);
+		expect(String(body.staffName || '')).toBe('Hostess Renamed');
+	});
+
 	it('smoke verifies the staff-mobile Wave 2 quick walk-in shell', async () => {
 		await initializeDatabase(env.DB);
 
@@ -3840,9 +4269,14 @@ describe('ESSKULTUR worker', () => {
 		const html = await response.text();
 		expect(html).toContain('Quick Walk-In');
 		expect(html).toContain('quickWalkInBtn');
+		expect(html).toContain('arrivalsLaneBtn');
+		expect(html).toContain('operations-focus-btn');
 		expect(html).toContain('quickBookingForm');
 		expect(html).toContain('quickBookingEmail');
 		expect(html).toContain('quickBookingFlag');
+		expect(html).toContain('serviceDateToday');
+		expect(html).toContain('service-date-count');
+		expect(html).toContain('service-shortcut-btn');
 		expect(html).toContain('/api/bookings/staff-create?company_id=');
 	});
 

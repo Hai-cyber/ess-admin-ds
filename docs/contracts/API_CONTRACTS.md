@@ -333,7 +333,7 @@ GET /auth/google/callback?code=google_auth_code&state=opaque_state
 
 #### GET /api/staff/auth
 
-**Purpose**: Booking Board PIN authentication only
+**Purpose**: Booking Board onsite PIN authentication only
 
 ```javascript
 // Request
@@ -363,8 +363,9 @@ GET /api/staff/auth?pin=1234&company_id=21
 **Latency**: < 200ms
 
 **Important**:
-- This endpoint is for Booking Board and other fast operational board flows only.
-- It must not be treated as the primary login path for Restaurant Admin or SaaS Admin.
+- This endpoint is for Booking Board onsite and other explicitly board-scoped operational flows only.
+- It must not be treated as a general login path.
+- Restaurant Admin, SaaS Admin, signup, and other non-board surfaces must use identity sign-in instead of PIN.
 
 ---
 

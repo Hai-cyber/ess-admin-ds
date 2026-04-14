@@ -1,6 +1,25 @@
 // D1 Database initialization & setup (Multi-Tenant)
 import { sql } from './schema-sql';
 
+const STAFF_PIN_TOMBSTONE_PREFIX = '__hashed_pin__:';
+
+async function sha256Hex(value) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(value || '')));
+  return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function buildBoardPinHash(companyId, pin) {
+  return sha256Hex(`board-pin:${Number(companyId || 0)}:${String(pin || '').trim()}`);
+}
+
+function buildStaffPinTombstone(staffId) {
+  return `${STAFF_PIN_TOMBSTONE_PREFIX}${String(staffId || crypto.randomUUID()).trim()}`;
+}
+
+function isStaffPinTombstone(value) {
+  return String(value || '').startsWith(STAFF_PIN_TOMBSTONE_PREFIX);
+}
+
 async function ensureColumn(db, tableName, columnName, columnDefinition) {
   try {
     const info = await db.prepare(`PRAGMA table_info(${tableName})`).all();
@@ -96,6 +115,7 @@ async function ensureSchemaEvolution(db) {
   await ensureColumn(db, 'companies', 'suspended_reason', 'TEXT');
   await ensureColumn(db, 'companies', 'suspended_at', 'TEXT');
   await ensureColumn(db, 'companies', 'last_reviewed_at', 'TEXT');
+  await ensureColumn(db, 'staff', 'pin_hash', 'TEXT');
   await ensureColumn(db, 'customers', 'odoo_register_sync_state', "TEXT DEFAULT 'pending'");
   await ensureColumn(db, 'customers', 'odoo_register_sync_error', 'TEXT');
   await ensureColumn(db, 'customers', 'odoo_register_synced_at', 'TEXT');
@@ -121,6 +141,48 @@ async function ensureSchemaEvolution(db) {
   await db.prepare(`CREATE INDEX IF NOT EXISTS idx_custom_domain_requests_status ON custom_domain_requests(request_status, created_at)`).run();
   await db.prepare(`CREATE INDEX IF NOT EXISTS idx_custom_domain_request_events_request ON custom_domain_request_events(request_id, created_at)`).run();
   await db.prepare(`CREATE INDEX IF NOT EXISTS idx_custom_domain_request_events_company ON custom_domain_request_events(company_id, created_at)`).run();
+  await db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_staff_company_pin_hash ON staff(company_id, pin_hash)`).run();
+
+  try {
+    const result = await db.prepare(`SELECT id, company_id, pin, pin_hash, updated_at FROM staff`).all();
+    const rows = result?.results || [];
+    const now = new Date().toISOString();
+
+    for (const row of rows) {
+      const staffId = String(row.id || '').trim();
+      const companyId = Number(row.company_id || 0);
+      const rawPin = String(row.pin || '').trim();
+      const pinHash = String(row.pin_hash || '').trim();
+      const nextUpdatedAt = String(row.updated_at || '').trim() || now;
+
+      if (!staffId || !companyId) continue;
+
+      if (!pinHash && rawPin && !isStaffPinTombstone(rawPin)) {
+        const computedPinHash = await buildBoardPinHash(companyId, rawPin);
+        await db.prepare(`
+          UPDATE staff
+          SET pin = ?, pin_hash = ?, updated_at = ?
+          WHERE id = ?
+        `).bind(
+          buildStaffPinTombstone(staffId),
+          computedPinHash,
+          nextUpdatedAt,
+          staffId
+        ).run();
+        continue;
+      }
+
+      if (pinHash && rawPin && !isStaffPinTombstone(rawPin)) {
+        await db.prepare(`UPDATE staff SET pin = ?, updated_at = ? WHERE id = ?`).bind(
+          buildStaffPinTombstone(staffId),
+          nextUpdatedAt,
+          staffId
+        ).run();
+      }
+    }
+  } catch (error) {
+    console.warn('Staff PIN migration skipped:', error.message);
+  }
 }
 
 /**
@@ -480,9 +542,10 @@ export async function initializeDatabase(db) {
       ];
       
       for (const staff of defaultStaff) {
+        const pinHash = await buildBoardPinHash(staff.company_id, staff.pin);
         await db
-          .prepare(`INSERT OR IGNORE INTO staff (id, company_id, name, pin, role, is_active, permissions, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?)`)
-          .bind(staff.id, staff.company_id, staff.name, staff.pin, staff.role, staff.permissions, new Date().toISOString(), new Date().toISOString())
+          .prepare(`INSERT OR IGNORE INTO staff (id, company_id, name, pin, pin_hash, role, is_active, permissions, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`)
+          .bind(staff.id, staff.company_id, staff.name, buildStaffPinTombstone(staff.id), pinHash, staff.role, staff.permissions, new Date().toISOString(), new Date().toISOString())
           .run();
       }
     }

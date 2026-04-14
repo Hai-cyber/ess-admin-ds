@@ -48,7 +48,7 @@ You are here: Phase 1, production hardening + beta readiness
 
 ### Core System
 - ✅ Tenant isolation (verified: no data leaks)
-- ✅ PIN authentication (staff login)
+- ✅ Booking Board onsite PIN authentication (staff login)
 - ✅ Booking form (online reservations)
 - ✅ Booking board (real-time, staff view)
 - ✅ Stage engine (pending → confirmed → arrived → done)

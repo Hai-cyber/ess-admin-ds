@@ -68,6 +68,7 @@ function resolveTenant(url, options = {}) {
 **Applies to**:
 - Restaurant Admin
 - SaaS Admin
+- Signup and other non-board identity surfaces
 
 **Requirements**:
 - Browser session stored in `HttpOnly` cookie
@@ -106,14 +107,15 @@ async function verifyAdminSession(request) {
 
 - `restaurant_admin`: may access tenant admin routes only for the bound company or an active company membership
 - `platform_admin`: may access operator routes only with an active platform operator membership
+- PIN is not a valid substitute for these identity-authenticated surfaces.
 
 ### Board PIN Authentication
 
 **Requirements**:
 - 4 digits (1000-9999)
 - Per-tenant unique (same PIN can exist across tenants)
-- Valid only for Booking Board or other explicitly board-scoped operational flows
-- Not accepted as the primary login path for Restaurant Admin or SaaS Admin
+- Valid only for Booking Board onsite or other explicitly board-scoped operational flows
+- Not accepted for Restaurant Admin, SaaS Admin, signup, or any other non-board sign-in surface
 
 **PIN verification**:
 

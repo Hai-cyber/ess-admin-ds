@@ -270,7 +270,8 @@ CREATE TABLE IF NOT EXISTS staff (
   id TEXT PRIMARY KEY,
   company_id INTEGER NOT NULL,
   name TEXT NOT NULL,
-  pin TEXT NOT NULL,
+  pin TEXT,
+  pin_hash TEXT NOT NULL,
   role TEXT NOT NULL,
   is_active BOOLEAN DEFAULT 1,
   last_login TEXT,
@@ -280,7 +281,7 @@ CREATE TABLE IF NOT EXISTS staff (
   created_by TEXT,
   updated_by TEXT,
   FOREIGN KEY (company_id) REFERENCES companies(id),
-  UNIQUE(company_id, pin)
+  UNIQUE(company_id, pin_hash)
 );
 
 CREATE TABLE IF NOT EXISTS settings (

@@ -91,7 +91,7 @@ Not an ERP. Not Odoo. Not generic.
 
 | Module | Status | Purpose |
 |--------|--------|---------|
-| **Auth** | ✅ | Staff PIN login, role-based access |
+| **Auth** | ✅ | Identity auth for admin surfaces plus board-scoped staff PIN for onsite operations |
 | **Booking** | ✅ | Online reservations, stage management, staff mobile triage, and quick walk-ins |
 | **POS** | 🔄 | Table management, orders, kitchen display |
 | **Payment** | 🔄 | Stripe integration, transaction handling |

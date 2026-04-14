@@ -10,6 +10,12 @@
 
 **Total**: 30 min to full understanding
 
+## Auth Boundary
+
+- Booking Board onsite flows are the only staff-PIN surface.
+- Restaurant Admin, SaaS Admin, signup, and other non-board surfaces use identity sign-in, not PIN.
+- Do not treat board PIN as a general login path.
+
 ---
 
 ## 🎯 Pick Your Entry Point
@@ -181,7 +187,7 @@ Multi-tenant system = restaurants are isolated. One restaurant can't see another
 **What's done**:
 - ✅ Tenant isolation (verified)
 - ✅ Booking MVP (live form + board)
-- ✅ Staff authentication (PIN login)
+- ✅ Booking Board onsite authentication (staff PIN only)
 - ✅ Real-time notifications (SSE)
 - ✅ Platform site, SaaS admin, and self-service signup verified locally on 2026-03-30
 - ✅ Platform login/signup/pricing experience now includes browser-language auto-detect, contextual login, and localized pricing/add-on messaging

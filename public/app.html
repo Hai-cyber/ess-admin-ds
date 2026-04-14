@@ -203,6 +203,112 @@
       padding-bottom: 0.1rem;
     }
 
+    .service-date-row {
+      display: grid;
+      grid-template-columns: auto 1fr minmax(0, 160px) auto auto;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .service-shortcuts-row {
+      display: flex;
+      gap: 0.45rem;
+      flex-wrap: wrap;
+    }
+
+    .service-date-btn {
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      background: rgba(30, 41, 59, 0.88);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 0.6rem 0.8rem;
+      font-size: 0.78rem;
+      font-weight: 800;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .service-date-btn.has-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+    }
+
+    .service-date-count {
+      min-width: 1.2rem;
+      padding: 0.1rem 0.35rem;
+      border-radius: 999px;
+      background: rgba(165, 74, 123, 0.18);
+      border: 1px solid rgba(165, 74, 123, 0.28);
+      font-size: 0.68rem;
+      font-weight: 800;
+      line-height: 1.2;
+      text-align: center;
+    }
+
+    .service-shortcut-btn {
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      background: rgba(30, 41, 59, 0.88);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 0.45rem 0.75rem;
+      font-size: 0.74rem;
+      font-weight: 800;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .service-shortcut-btn.active {
+      border-color: rgba(165, 74, 123, 0.7);
+      background: rgba(165, 74, 123, 0.18);
+    }
+
+    .service-date-btn.active {
+      border-color: rgba(165, 74, 123, 0.7);
+      background: rgba(165, 74, 123, 0.18);
+    }
+
+    .service-date-label {
+      min-width: 0;
+      background: rgba(30, 41, 59, 0.88);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 10px;
+      padding: 0.6rem 0.85rem;
+      display: grid;
+      gap: 0.15rem;
+    }
+
+    .service-date-label strong {
+      font-size: 0.86rem;
+      color: var(--text);
+    }
+
+    .service-date-label span {
+      font-size: 0.72rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .service-date-input {
+      width: 100%;
+      min-width: 0;
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      background: rgba(30, 41, 59, 0.88);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 0.6rem 0.75rem;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    .service-date-input::-webkit-calendar-picker-indicator {
+      filter: invert(1);
+      opacity: 0.8;
+      cursor: pointer;
+    }
+
     .quick-action-btn {
       border: 1px solid rgba(165, 74, 123, 0.45);
       background: rgba(165, 74, 123, 0.14);
@@ -220,10 +326,83 @@
       background: rgba(165, 74, 123, 0.2);
     }
 
+    .quick-action-btn.active {
+      border-color: rgba(59, 130, 246, 0.7);
+      background: rgba(59, 130, 246, 0.18);
+      color: #dbeafe;
+    }
+
     .summary-grid {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 0.6rem;
+    }
+
+    .operations-focus {
+      display: grid;
+      gap: 0.55rem;
+      padding: 0.85rem 0.95rem;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.16) 0%, rgba(15, 23, 42, 0.92) 100%);
+      border: 1px solid rgba(59, 130, 246, 0.28);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    .operations-focus-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.6rem;
+    }
+
+    .operations-focus-label {
+      font-size: 0.7rem;
+      color: #bfdbfe;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 800;
+    }
+
+    .operations-focus-state {
+      font-size: 0.72rem;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .operations-focus-title {
+      font-size: 1rem;
+      color: var(--text);
+      font-weight: 800;
+    }
+
+    .operations-focus-copy {
+      font-size: 0.83rem;
+      color: #cbd5e1;
+      line-height: 1.45;
+    }
+
+    .operations-focus-actions {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .operations-focus-btn {
+      border: 1px solid rgba(59, 130, 246, 0.35);
+      background: rgba(59, 130, 246, 0.18);
+      color: #eff6ff;
+      border-radius: 999px;
+      padding: 0.58rem 0.85rem;
+      font-size: 0.76rem;
+      font-weight: 800;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .operations-focus-btn.secondary {
+      border-color: rgba(148, 163, 184, 0.24);
+      background: rgba(30, 41, 59, 0.78);
+      color: var(--text);
     }
 
     .summary-card {
@@ -963,6 +1142,18 @@
 
     /* RESPONSIVE */
     @media (max-width: 480px) {
+      .service-date-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .service-date-label {
+        grid-column: 1 / -1;
+      }
+
+      .service-date-input {
+        grid-column: 1 / -1;
+      }
+
       .summary-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
@@ -1017,7 +1208,23 @@
     <div class="mobile-summary">
       <div class="quick-actions-row">
         <button type="button" class="quick-action-btn" id="quickWalkInBtn">+ Quick walk-in</button>
+        <button type="button" class="quick-action-btn" id="arrivalsLaneBtn">Arrivals lane</button>
       </div>
+      <div class="service-date-row">
+        <button type="button" class="service-date-btn has-count" id="serviceDatePrev" aria-label="Previous service date"><span>←</span><span class="service-date-count" id="serviceDatePrevCount">0</span></button>
+        <div class="service-date-label" id="serviceDateLabel">
+          <strong>Today</strong>
+          <span>Service date</span>
+        </div>
+        <input type="date" class="service-date-input" id="serviceDateInput" aria-label="Select service date" />
+        <button type="button" class="service-date-btn active" id="serviceDateToday">Today</button>
+        <button type="button" class="service-date-btn has-count" id="serviceDateNext" aria-label="Next service date"><span>→</span><span class="service-date-count" id="serviceDateNextCount">0</span></button>
+      </div>
+      <div class="service-shortcuts-row">
+        <button type="button" class="service-shortcut-btn" id="serviceDateShortcutTomorrow">Tomorrow</button>
+        <button type="button" class="service-shortcut-btn" id="serviceDateShortcutWeekend">Weekend</button>
+      </div>
+      <div class="operations-focus" id="operationsFocus"></div>
       <div class="summary-grid" id="summaryGrid"></div>
       <div class="filter-row" id="filterRow"></div>
       <div class="urgent-bar" id="urgentBar" hidden>
@@ -1113,7 +1320,9 @@
   </div>
 
   <script>
+    /*__STAFF_APP_BOOKING_HELPERS__*/
     (function() {
+      const bookingHelpers = window.StaffAppBookingHelpers || {};
       const COLLAPSED_SECTION_STORAGE_KEY = 'staffAppCollapsedSections';
       const QUICK_BOOKING_PREFS_STORAGE_KEY = 'staffAppQuickBookingPrefs';
       const TIMING_REFRESH_INTERVAL_MS = 30000;
@@ -1176,6 +1385,9 @@
         requestedCompanyId: null,
         soundEnabled: localStorage.getItem('soundEnabled') !== 'false',
         staffPin: null,
+        serviceDate: null,
+        adjacentDateBookings: {},
+        adjacentDateCounts: {},
         activeFilter: 'active',
         collapsedSections: loadCollapsedSectionsPreference(),
         pendingStageUpdates: {},
@@ -1211,6 +1423,7 @@
       const pinInput = document.getElementById('pinInput');
       const loginError = document.getElementById('loginError');
       const appFeed = document.getElementById('appFeed');
+      const operationsFocus = document.getElementById('operationsFocus');
       const summaryGrid = document.getElementById('summaryGrid');
       const filterRow = document.getElementById('filterRow');
       const urgentBar = document.getElementById('urgentBar');
@@ -1224,6 +1437,7 @@
       const statusIndicator = document.getElementById('statusIndicator');
       const statusText = document.getElementById('statusText');
       const quickWalkInBtn = document.getElementById('quickWalkInBtn');
+      const arrivalsLaneBtn = document.getElementById('arrivalsLaneBtn');
       const quickBookingModal = document.getElementById('quickBookingModal');
       const quickBookingForm = document.getElementById('quickBookingForm');
       const quickBookingCancel = document.getElementById('quickBookingCancel');
@@ -1239,19 +1453,36 @@
       const quickBookingFlag = document.getElementById('quickBookingFlag');
       const quickBookingDuration = document.getElementById('quickBookingDuration');
       const quickBookingNotes = document.getElementById('quickBookingNotes');
+      const serviceDatePrev = document.getElementById('serviceDatePrev');
+      const serviceDatePrevCount = document.getElementById('serviceDatePrevCount');
+      const serviceDateToday = document.getElementById('serviceDateToday');
+      const serviceDateNext = document.getElementById('serviceDateNext');
+      const serviceDateNextCount = document.getElementById('serviceDateNextCount');
+      const serviceDateLabel = document.getElementById('serviceDateLabel');
+      const serviceDateInput = document.getElementById('serviceDateInput');
+      const serviceDateShortcutTomorrow = document.getElementById('serviceDateShortcutTomorrow');
+      const serviceDateShortcutWeekend = document.getElementById('serviceDateShortcutWeekend');
 
       // Initialize
       function init() {
         state.requestedCompanyId = getRequestedCompanyIdFromLocation();
+        state.serviceDate = getTodayDateValue();
         loginForm.addEventListener('submit', handleLogin);
         logoutBtn.addEventListener('click', handleLogout);
         settingsBtn.addEventListener('click', () => settingsModal.style.display = 'flex');
         closeSettings.addEventListener('click', () => settingsModal.style.display = 'none');
         soundToggle.addEventListener('click', toggleSound);
         quickWalkInBtn.addEventListener('click', openQuickBookingModal);
+        arrivalsLaneBtn.addEventListener('click', openArrivalsLane);
         quickBookingCancel.addEventListener('click', closeQuickBookingModal);
         quickBookingForm.addEventListener('submit', submitQuickBooking);
         quickBookingDate.addEventListener('change', syncQuickBookingTimeSuggestion);
+        serviceDatePrev.addEventListener('click', () => changeServiceDate(-1));
+        serviceDateToday.addEventListener('click', () => setServiceDate(getTodayDateValue()));
+        serviceDateNext.addEventListener('click', () => changeServiceDate(1));
+        serviceDateInput.addEventListener('change', () => setServiceDate(serviceDateInput.value));
+        serviceDateShortcutTomorrow.addEventListener('click', () => setServiceDate(shiftDateValue(getTodayDateValue(), 1)));
+        serviceDateShortcutWeekend.addEventListener('click', () => setServiceDate(getNextWeekendDateValue(state.serviceDate || getTodayDateValue())));
         settingsModal.addEventListener('click', (e) => {
           if (e.target === settingsModal) settingsModal.style.display = 'none';
         });
@@ -1261,6 +1492,7 @@
 
         // Update sound toggle UI
         updateSoundToggleUI();
+        renderServiceDateControls();
         renderMobileSummary();
       }
 
@@ -1280,6 +1512,114 @@
           ? String((now.getHours() + 1) % 24).padStart(2, '0')
           : hours;
         return `${adjustedHours}:${minutes}`;
+      }
+
+      function shiftDateValue(dateValue, offsetDays) {
+        const source = String(dateValue || '').trim() || getTodayDateValue();
+        const date = new Date(`${source}T00:00:00`);
+        if (Number.isNaN(date.getTime())) return getTodayDateValue();
+        date.setDate(date.getDate() + Number(offsetDays || 0));
+        const year = String(date.getFullYear());
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      }
+
+      function getNextWeekendDateValue(dateValue) {
+        const source = String(dateValue || '').trim() || getTodayDateValue();
+        const date = new Date(`${source}T00:00:00`);
+        if (Number.isNaN(date.getTime())) return getTodayDateValue();
+
+        const dayOfWeek = date.getDay();
+        const daysUntilSaturday = (6 - dayOfWeek + 7) % 7;
+        date.setDate(date.getDate() + daysUntilSaturday);
+        const year = String(date.getFullYear());
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      }
+
+      function formatServiceDateLabel(dateValue) {
+        const normalized = String(dateValue || '').trim() || getTodayDateValue();
+        const today = getTodayDateValue();
+        const tomorrow = shiftDateValue(today, 1);
+        const yesterday = shiftDateValue(today, -1);
+
+        if (normalized === today) return 'Today';
+        if (normalized === tomorrow) return 'Tomorrow';
+        if (normalized === yesterday) return 'Yesterday';
+
+        const parsed = new Date(`${normalized}T00:00:00`);
+        if (Number.isNaN(parsed.getTime())) return normalized;
+        return parsed.toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short' });
+      }
+
+      function renderServiceDateControls() {
+        if (!serviceDateLabel || !serviceDateToday || !serviceDateInput || !serviceDatePrevCount || !serviceDateNextCount) return;
+        const activeDate = state.serviceDate || getTodayDateValue();
+        const todayDate = getTodayDateValue();
+        const prevDate = shiftDateValue(activeDate, -1);
+        const nextDate = shiftDateValue(activeDate, 1);
+        const tomorrowDate = shiftDateValue(todayDate, 1);
+        const weekendDate = getNextWeekendDateValue(activeDate);
+        const tomorrowLabel = weekendDate === tomorrowDate ? 'Tomorrow (Weekend)' : 'Tomorrow';
+        const weekendLabel = weekendDate === todayDate
+          ? 'Weekend (Today)'
+          : weekendDate === tomorrowDate
+            ? 'Weekend (Tomorrow)'
+            : `Weekend ${formatServiceDateLabel(weekendDate)}`;
+        const labelStrong = serviceDateLabel.querySelector('strong');
+        const labelMeta = serviceDateLabel.querySelector('span');
+        if (labelStrong) labelStrong.textContent = formatServiceDateLabel(activeDate);
+        if (labelMeta) labelMeta.textContent = activeDate;
+        serviceDateInput.value = activeDate;
+        serviceDateToday.classList.toggle('active', activeDate === todayDate);
+        serviceDateShortcutTomorrow.classList.toggle('active', activeDate === tomorrowDate);
+        serviceDateShortcutWeekend.classList.toggle('active', activeDate === weekendDate);
+        serviceDateShortcutTomorrow.textContent = tomorrowLabel;
+        serviceDateShortcutTomorrow.title = `${formatServiceDateLabel(tomorrowDate)} shortcut`;
+        serviceDateShortcutWeekend.textContent = weekendLabel;
+        serviceDateShortcutWeekend.title = `${formatServiceDateLabel(weekendDate)} weekend shortcut`;
+        serviceDatePrev.title = `${formatServiceDateLabel(prevDate)} · ${Number(state.adjacentDateCounts?.[prevDate] || 0)} bookings`;
+        serviceDateNext.title = `${formatServiceDateLabel(nextDate)} · ${Number(state.adjacentDateCounts?.[nextDate] || 0)} bookings`;
+        serviceDatePrevCount.textContent = String(Number(state.adjacentDateCounts?.[prevDate] || 0));
+        serviceDateNextCount.textContent = String(Number(state.adjacentDateCounts?.[nextDate] || 0));
+      }
+
+      async function fetchBookingsForDate(targetDate) {
+        if (!state.companyId) return 0;
+
+        const params = new URLSearchParams({
+          company_id: String(state.companyId),
+          pin: String(state.staffPin || ''),
+          date: String(targetDate || '')
+        });
+        const response = await fetch(`/api/bookings?${params.toString()}`);
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok || !body.ok) {
+          throw new Error(body.error || `Unable to load bookings for ${targetDate}`);
+        }
+
+        return typeof bookingHelpers.filterBookingsForServiceDate === 'function'
+          ? bookingHelpers.filterBookingsForServiceDate(body.data, targetDate)
+          : (Array.isArray(body.data) ? body.data : []);
+      }
+
+      async function setServiceDate(nextDate) {
+        const normalized = isValidDateInputValue(nextDate) ? String(nextDate) : getTodayDateValue();
+        if (normalized === state.serviceDate) return;
+        state.serviceDate = normalized;
+        state.activeFilter = 'active';
+        renderServiceDateControls();
+        if (state.companyId) {
+          await loadInitialBookings();
+        } else {
+          refreshUi();
+        }
+      }
+
+      async function changeServiceDate(offsetDays) {
+        await setServiceDate(shiftDateValue(state.serviceDate || getTodayDateValue(), offsetDays));
       }
 
       function isValidDateInputValue(value) {
@@ -1314,9 +1654,11 @@
         const preferredFlag = ['vip', 'founder', 'kc'].includes(String(preferences.flag || ''))
           ? String(preferences.flag)
           : '';
-        const preferredDate = isValidDateInputValue(preferences.date) && String(preferences.date) >= getTodayDateValue()
-          ? String(preferences.date)
-          : getTodayDateValue();
+        const preferredDate = isValidDateInputValue(state.serviceDate)
+          ? String(state.serviceDate)
+          : isValidDateInputValue(preferences.date) && String(preferences.date) >= getTodayDateValue()
+            ? String(preferences.date)
+            : getTodayDateValue();
         const preferredTime = getSuggestedTimeForDate(preferredDate, preferences.time);
 
         return {
@@ -1418,6 +1760,7 @@
           state.activeFilter = 'pending';
           if (createdBooking && createdBooking.id) {
             markQuickBookingBadge(createdBooking.id);
+            syncAdjacentServiceDateState(createdBooking);
             addOrUpdateBooking(createdBooking);
             focusBookingCard(createdBooking.id);
           } else {
@@ -1428,6 +1771,100 @@
           quickBookingError.textContent = 'Network error';
           quickBookingSubmit.disabled = false;
         }
+      }
+
+      function getArrivalsLaneCounts() {
+        return typeof bookingHelpers.summarizeArrivalsLane === 'function'
+          ? bookingHelpers.summarizeArrivalsLane(state.bookings, new Date())
+          : { total: 0, dueNow: 0, overdue: 0, later: 0 };
+      }
+
+      function openArrivalsLane() {
+        setActiveLane('arrivals');
+      }
+
+      function getOperationsFocusState(summary, arrivalsLaneCounts) {
+        if (summary.pending > 0) {
+          return {
+            lane: 'pending',
+            state: `${summary.pending} pending`,
+            title: 'Confirm waiting bookings first',
+            copy: 'Start with pending bookings so unanswered guests do not block the service flow.',
+            primaryLabel: `Open pending ${summary.pending}`,
+            secondaryLane: arrivalsLaneCounts.total > 0 ? 'arrivals' : 'active',
+            secondaryLabel: arrivalsLaneCounts.total > 0 ? `Then check arrivals ${arrivalsLaneCounts.total}` : 'View active queue'
+          };
+        }
+
+        if (arrivalsLaneCounts.overdue > 0 || arrivalsLaneCounts.dueNow > 0) {
+          return {
+            lane: 'arrivals',
+            state: `${arrivalsLaneCounts.dueNow} due now • ${arrivalsLaneCounts.overdue} overdue`,
+            title: 'Check in arriving guests now',
+            copy: 'Use the arrivals lane to clear overdue check-ins first, then guests who should be arriving now.',
+            primaryLabel: `Open arrivals ${arrivalsLaneCounts.total}`,
+            secondaryLane: summary.arrived > 0 ? 'arrived' : 'confirmed',
+            secondaryLabel: summary.arrived > 0 ? `On site now ${summary.arrived}` : `Confirmed ${summary.confirmed}`
+          };
+        }
+
+        if (summary.arrived > 0) {
+          return {
+            lane: 'arrived',
+            state: `${summary.arrived} on site`,
+            title: 'Close active tables after service',
+            copy: 'Guests are already on site. Keep the arrived lane current so tables can be closed cleanly.',
+            primaryLabel: `Open arrived ${summary.arrived}`,
+            secondaryLane: summary.confirmed > 0 ? 'confirmed' : 'all',
+            secondaryLabel: summary.confirmed > 0 ? `Monitor confirmed ${summary.confirmed}` : 'See full queue'
+          };
+        }
+
+        if (summary.confirmed > 0) {
+          return {
+            lane: 'confirmed',
+            state: `${summary.confirmed} confirmed`,
+            title: 'Monitor upcoming arrivals',
+            copy: 'Nothing urgent is blocking right now. Stay ready for arrivals and keep the queue visible.',
+            primaryLabel: `Open confirmed ${summary.confirmed}`,
+            secondaryLane: 'all',
+            secondaryLabel: 'See full queue'
+          };
+        }
+
+        return {
+          lane: 'active',
+          state: 'Queue under control',
+          title: 'No urgent action right now',
+          copy: 'Use quick walk-in for new onsite guests or switch service date to prepare the next session.',
+          primaryLabel: 'Open active queue',
+          secondaryLane: null,
+          secondaryLabel: null
+        };
+      }
+
+      function renderOperationsFocus(summary, arrivalsLaneCounts) {
+        if (!operationsFocus) return;
+
+        const focus = getOperationsFocusState(summary, arrivalsLaneCounts);
+        operationsFocus.innerHTML = `
+          <div class="operations-focus-header">
+            <span class="operations-focus-label">What To Do Now</span>
+            <span class="operations-focus-state">${focus.state}</span>
+          </div>
+          <div class="operations-focus-title">${focus.title}</div>
+          <div class="operations-focus-copy">${focus.copy}</div>
+          <div class="operations-focus-actions">
+            <button type="button" class="operations-focus-btn" data-ops-lane="${focus.lane}">${focus.primaryLabel}</button>
+            ${focus.secondaryLane ? `<button type="button" class="operations-focus-btn secondary" data-ops-lane="${focus.secondaryLane}">${focus.secondaryLabel}</button>` : ''}
+          </div>
+        `;
+
+        operationsFocus.querySelectorAll('[data-ops-lane]').forEach((button) => {
+          button.addEventListener('click', () => {
+            setActiveLane(button.dataset.opsLane || 'active');
+          });
+        });
       }
 
       function refreshTimeSensitiveUi() {
@@ -1489,6 +1926,10 @@
           });
         }
 
+        if (state.activeFilter === 'arrivals') {
+          return all.filter((booking) => booking.stage === 'confirmed');
+        }
+
         if (state.activeFilter === 'completed') {
           return all.filter((booking) => ['done', 'cancelled', 'noshow'].includes(booking.stage));
         }
@@ -1504,6 +1945,7 @@
         if (!state.bookings.length) return 'No bookings yet';
         if (state.activeFilter === 'active') return 'No active bookings right now';
         if (state.activeFilter === 'hot') return 'No urgent bookings right now';
+        if (state.activeFilter === 'arrivals') return 'No arrivals need check-in right now';
         if (state.activeFilter === 'completed') return 'No completed bookings yet';
         if (state.activeFilter === 'all') return 'No bookings yet';
         return `No ${state.activeFilter} bookings right now`;
@@ -1512,6 +1954,14 @@
       function refreshUi() {
         renderMobileSummary();
         renderFeed();
+      }
+
+      function setActiveLane(filterKey) {
+        state.activeFilter = filterKey || 'active';
+        refreshUi();
+        if (appFeed && typeof appFeed.scrollTo === 'function') {
+          appFeed.scrollTo({ top: 0, behavior: 'smooth' });
+        }
       }
 
       function normalizeBookingId(bookingId) {
@@ -1525,14 +1975,26 @@
       }
 
       function renderMobileSummary() {
-        if (!summaryGrid || !filterRow || !urgentBar || !urgentBarCount || !urgentList) return;
+        if (!summaryGrid || !filterRow || !urgentBar || !urgentBarCount || !urgentList || !arrivalsLaneBtn || !operationsFocus) return;
 
         const summary = getBookingStageSummary();
+        const arrivalsLaneCounts = getArrivalsLaneCounts();
         const overdueConfirmed = state.bookings.filter((booking) => booking.stage === 'confirmed' && getConfirmedTimingBucket(booking) === 'overdue').length;
         const urgentQueueCount = summary.pending + overdueConfirmed;
         const hotBreakdown = `${summary.pending} pending • ${overdueConfirmed} overdue`;
+        const serviceDateLabelText = formatServiceDateLabel(state.serviceDate || getTodayDateValue());
+        const arrivalsBreakdown = typeof bookingHelpers.formatArrivalsLaneLabel === 'function'
+          ? bookingHelpers.formatArrivalsLaneLabel(arrivalsLaneCounts)
+          : 'No confirmed arrivals';
+
+        arrivalsLaneBtn.textContent = arrivalsLaneCounts.total > 0
+          ? `Arrivals ${arrivalsLaneCounts.total}`
+          : 'Arrivals lane';
+        arrivalsLaneBtn.title = arrivalsBreakdown;
+        arrivalsLaneBtn.classList.toggle('active', state.activeFilter === 'arrivals');
+        renderOperationsFocus(summary, arrivalsLaneCounts);
         summaryGrid.innerHTML = [
-          { key: 'all', label: 'Today', value: summary.all, badge: urgentQueueCount > 0 ? `Hot ${urgentQueueCount}` : '', badgeDetail: urgentQueueCount > 0 ? hotBreakdown : '' },
+          { key: 'all', label: serviceDateLabelText, value: summary.all, badge: urgentQueueCount > 0 ? `Hot ${urgentQueueCount}` : '', badgeDetail: urgentQueueCount > 0 ? hotBreakdown : '' },
           { key: 'pending', label: 'Pending', value: summary.pending },
           { key: 'confirmed', label: 'Confirmed', value: summary.confirmed },
           { key: 'arrived', label: 'Arrived', value: summary.arrived }
@@ -1547,6 +2009,7 @@
         const filters = [
           ...(urgentQueueCount > 0 ? [{ key: 'hot', label: `Hot ${urgentQueueCount} • ${hotBreakdown}` }] : []),
           { key: 'active', label: `Active ${summary.pending + summary.confirmed + summary.arrived}` },
+          ...(arrivalsLaneCounts.total > 0 ? [{ key: 'arrivals', label: `Arrivals ${arrivalsLaneCounts.total} • ${arrivalsBreakdown}` }] : []),
           { key: 'pending', label: `Pending ${summary.pending}` },
           { key: 'confirmed', label: `Confirmed ${summary.confirmed}` },
           { key: 'arrived', label: `Arrived ${summary.arrived}` },
@@ -1787,6 +2250,9 @@
           requestedCompanyId: getRequestedCompanyIdFromLocation(),
           soundEnabled: state.soundEnabled,
           staffPin: null,
+          serviceDate: getTodayDateValue(),
+          adjacentDateBookings: {},
+          adjacentDateCounts: {},
           activeFilter: 'active',
           collapsedSections: loadCollapsedSectionsPreference(),
           pendingStageUpdates: {},
@@ -1796,6 +2262,7 @@
           eventSource: null
         };
         appFeed.innerHTML = '<div class="empty-state">No bookings yet</div>';
+        renderServiceDateControls();
         renderMobileSummary();
         loginScreen.style.display = 'flex';
         appScreen.style.display = 'none';
@@ -1813,14 +2280,37 @@
         if (!state.companyId) return;
 
         try {
-          const res = await fetch(`/api/bookings?company_id=${encodeURIComponent(state.companyId)}`);
+          const activeDate = String(state.serviceDate || getTodayDateValue());
+          const prevDate = shiftDateValue(activeDate, -1);
+          const nextDate = shiftDateValue(activeDate, 1);
+
+          const params = new URLSearchParams({
+            company_id: String(state.companyId),
+            pin: String(state.staffPin || ''),
+            date: activeDate
+          });
+          const [res, prevBookings, nextBookings] = await Promise.all([
+            fetch(`/api/bookings?${params.toString()}`),
+            fetchBookingsForDate(prevDate).catch(() => []),
+            fetchBookingsForDate(nextDate).catch(() => [])
+          ]);
           const data = await res.json().catch(() => ({}));
           if (!res.ok || !data.ok) {
             console.warn('Unable to load initial bookings:', data.error || res.status);
             return;
           }
 
-          state.bookings = Array.isArray(data.data) ? data.data : [];
+          state.bookings = typeof bookingHelpers.filterBookingsForServiceDate === 'function'
+            ? bookingHelpers.filterBookingsForServiceDate(data.data, state.serviceDate || getTodayDateValue())
+            : (Array.isArray(data.data) ? data.data : []);
+          state.adjacentDateBookings = {
+            [prevDate]: Array.isArray(prevBookings) ? prevBookings : [],
+            [nextDate]: Array.isArray(nextBookings) ? nextBookings : []
+          };
+          state.adjacentDateCounts = {
+            [prevDate]: Array.isArray(prevBookings) ? prevBookings.length : 0,
+            [nextDate]: Array.isArray(nextBookings) ? nextBookings.length : 0
+          };
           refreshUi();
         } catch (err) {
           console.warn('Initial bookings load failed:', err);
@@ -1833,13 +2323,18 @@
           state.eventSource.close();
         }
 
-        const url = `/api/notifications/stream?company_id=${encodeURIComponent(state.companyId)}`;
+        const params = new URLSearchParams({
+          company_id: String(state.companyId),
+          pin: String(state.staffPin || '')
+        });
+        const url = `/api/notifications/stream?${params.toString()}`;
         state.eventSource = new EventSource(url);
 
         state.eventSource.addEventListener('booking', (e) => {
           try {
             const booking = JSON.parse(e.data);
             addOrUpdateBooking(booking);
+            syncAdjacentServiceDateState(booking);
             playNotification(booking);
           } catch (err) {
             console.error('Error parsing booking:', err);
@@ -1877,22 +2372,32 @@
 
       // Add or Update Booking
       function addOrUpdateBooking(booking) {
-        const normalizedBookingId = normalizeBookingId(booking.id);
-        const existing = state.bookings.findIndex((item) => normalizeBookingId(item.id) === normalizedBookingId);
-        if (existing >= 0) {
-          state.bookings[existing] = booking;
-        } else {
-          state.bookings.unshift(booking);
-        }
+        state.bookings = typeof bookingHelpers.upsertBookingForServiceDate === 'function'
+          ? bookingHelpers.upsertBookingForServiceDate(state.bookings, booking, state.serviceDate || getTodayDateValue())
+          : state.bookings;
         refreshUi();
       }
 
+      function syncAdjacentServiceDateState(booking) {
+        const activeDate = String(state.serviceDate || getTodayDateValue());
+        const prevDate = shiftDateValue(activeDate, -1);
+        const nextDate = shiftDateValue(activeDate, 1);
+
+        state.adjacentDateBookings = typeof bookingHelpers.syncAdjacentDateBookings === 'function'
+          ? bookingHelpers.syncAdjacentDateBookings(state.adjacentDateBookings, booking, [prevDate, nextDate])
+          : state.adjacentDateBookings;
+        state.adjacentDateCounts = {
+          [prevDate]: Array.isArray(state.adjacentDateBookings?.[prevDate]) ? state.adjacentDateBookings[prevDate].length : 0,
+          [nextDate]: Array.isArray(state.adjacentDateBookings?.[nextDate]) ? state.adjacentDateBookings[nextDate].length : 0
+        };
+        renderServiceDateControls();
+      }
+
       function updateBookingStage(bookingId, newStage) {
-        const booking = findBookingById(bookingId);
-        if (booking) {
-          booking.stage = newStage;
-          refreshUi();
-        }
+        state.bookings = typeof bookingHelpers.applyStageUpdateToBookings === 'function'
+          ? bookingHelpers.applyStageUpdateToBookings(state.bookings, bookingId, newStage)
+          : state.bookings;
+        refreshUi();
       }
 
       // Play Notification
@@ -1943,6 +2448,12 @@
             renderHotQueueSubsection('Overdue arrivals', overdueConfirmedItems)
           ].filter(Boolean).join('');
 
+          attachQueueEventListeners();
+          return;
+        }
+
+        if (state.activeFilter === 'arrivals') {
+          appFeed.innerHTML = renderArrivalsLane(visibleBookings);
           attachQueueEventListeners();
           return;
         }
@@ -2002,6 +2513,17 @@
             ${items.map((booking) => renderBookingCard(booking)).join('')}
           </section>
         `;
+      }
+
+      function renderArrivalsLane(items) {
+        if (!items.length) {
+          return `<div class="empty-state">${getEmptyStateMessage()}</div>`;
+        }
+
+        const counts = getArrivalsLaneCounts();
+        return [
+          `<section class="queue-section"><div class="queue-section-header"><strong>Arrivals check-in lane</strong><span>${typeof bookingHelpers.formatArrivalsLaneLabel === 'function' ? bookingHelpers.formatArrivalsLaneLabel(counts) : `${counts.total} confirmed`}</span></div>${renderConfirmedQueue(items, true)}</section>`
+        ].join('');
       }
 
       function attachQueueEventListeners() {
@@ -2087,11 +2609,11 @@
         return `starts in ${absMinutes}m`;
       }
 
-      function renderConfirmedQueue(items) {
+      function renderConfirmedQueue(items, arrivalsMode = false) {
         const buckets = [
-          { key: 'overdue', label: 'Arrival overdue' },
-          { key: 'due_now', label: 'Due now' },
-          { key: 'later', label: 'Later today' }
+          { key: 'overdue', label: arrivalsMode ? 'Overdue check-ins' : 'Arrival overdue' },
+          { key: 'due_now', label: arrivalsMode ? 'Check in now' : 'Due now' },
+          { key: 'later', label: arrivalsMode ? 'Later arrivals' : 'Later today' }
         ];
 
         return buckets.map((bucket) => {
@@ -2238,7 +2760,8 @@
             body: JSON.stringify({
               stage: newStage,
               staffId: state.staffId,
-              companyId: state.companyId
+              companyId: state.companyId,
+              pin: state.staffPin
             })
           });
 

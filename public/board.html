@@ -394,7 +394,7 @@ function init() {
 async function loadBookings(date) {
   setStatus('loading…', '#f59e0b');
   try {
-    const res  = await fetch(apiUrl('/api/bookings', { date }));
+    const res  = await fetch(apiUrl('/api/bookings', { date, pin: currentPin }));
     const data = await res.json();
     if (data.ok) {
       bookings = data.data || [];
@@ -411,7 +411,7 @@ async function loadBookings(date) {
 // ─────────────────────── SSE ──────────────────────────────────────────────────
 function connectSSE() {
   if (sse) sse.close();
-  sse = new EventSource(apiUrl('/api/notifications/stream'));
+  sse = new EventSource(apiUrl('/api/notifications/stream', { pin: currentPin }));
 
   sse.addEventListener('booking', e => {
     try {

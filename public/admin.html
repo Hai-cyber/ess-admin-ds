@@ -3684,7 +3684,7 @@
           <div class="staff-item" style="align-items:flex-start;gap:12px;">
             <div class="staff-info" style="flex:1;display:grid;gap:8px;">
               <input type="text" class="setting-value" id="staff_name_${idx}" value="${escapeHtml(s.name || '')}" placeholder="Staff name">
-              <input type="text" class="setting-value" id="staff_pin_${idx}" value="${escapeHtml(s.pin || '')}" placeholder="PIN">
+              <input type="password" class="setting-value" id="staff_pin_${idx}" value="" inputmode="numeric" maxlength="4" placeholder="${Number(s.has_pin) === 1 ? 'Leave blank to keep current PIN' : 'Set 4-digit board PIN'}">
               <label style="position:static !important;width:auto !important;height:auto !important;margin:0 !important;clip:auto !important;white-space:normal !important;overflow:visible !important;color:var(--text-muted);font-size:0.85rem;">
                 <input type="checkbox" id="staff_active_${idx}" ${Number(s.is_active) === 0 ? '' : 'checked'}>
                 Active
@@ -3716,6 +3716,7 @@
         id: '',
         name: '',
         pin: '',
+        has_pin: 0,
         role: 'staff',
         is_active: 1,
         permissions: '[]'

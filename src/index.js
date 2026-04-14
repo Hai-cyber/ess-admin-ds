@@ -19,6 +19,7 @@ import { getTenantContext, validateTenantAccess } from './utils/tenant.js';
 import { requireTenant } from './utils/tenant-guard.js';
 import { initializeDatabase } from './db/init.js';
 import { getOrganizationSecret, getOrganizationSecretStatuses } from './utils/organization-secrets.js';
+import { staffAppBookingHelpersScript } from './utils/staff-app-bookings.js';
 
 // Store for SSE clients (company_id => Set of clients)
 const sseClients = new Map();
@@ -3820,9 +3821,15 @@ async function authorizeStaffByPin(env, companyId, pinRaw) {
     return { ok: false, status: 401, error: 'Staff PIN required' };
   }
 
+  if (!/^\d{4}$/.test(pin)) {
+    return { ok: false, status: 400, error: 'Invalid PIN format' };
+  }
+
+  const pinHash = await buildBoardPinHash(companyId, pin);
+
   const staff = await env.DB.prepare(
-    `SELECT id, name, role, company_id, is_active FROM staff WHERE company_id = ? AND pin = ? LIMIT 1`
-  ).bind(companyId, pin).first();
+    `SELECT id, name, role, company_id, is_active FROM staff WHERE company_id = ? AND pin_hash = ? LIMIT 1`
+  ).bind(companyId, pinHash).first();
 
   if (!staff) {
     return { ok: false, status: 401, error: 'Invalid PIN' };
@@ -4018,6 +4025,16 @@ function generateOpaqueAuthToken() {
 async function sha256Hex(value) {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(value || '')));
   return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+const STAFF_PIN_TOMBSTONE_PREFIX = '__hashed_pin__:';
+
+async function buildBoardPinHash(companyId, pin) {
+  return sha256Hex(`board-pin:${Number(companyId || 0)}:${String(pin || '').trim()}`);
+}
+
+function buildStaffPinTombstone(staffId) {
+  return `${STAFF_PIN_TOMBSTONE_PREFIX}${String(staffId || crypto.randomUUID()).trim()}`;
 }
 
 function isPreviewCapableAuthHost(url) {
@@ -5102,7 +5119,7 @@ export default {
 
     // ==================== APP UI (STAFF APP) ====================
     if (url.pathname === "/app" || url.pathname === "/app/") {
-      return new Response(appUI, {
+      return new Response(appUI.replace('/*__STAFF_APP_BOOKING_HELPERS__*/', staffAppBookingHelpersScript), {
         headers: { "Content-Type": "text/html; charset=utf-8" }
       });
     }
@@ -6438,14 +6455,16 @@ export default {
         await upsertSubdomainReservation(env, requestedSlug, companyId, 'reserved', 'active_company_slug', 'platform-signup');
 
         signupStage = 'insert_admin_staff';
+        const boardPinHash = await buildBoardPinHash(companyId, boardPin);
         await env.DB.prepare(`
-          INSERT INTO staff (id, company_id, name, pin, role, is_active, permissions, created_at, updated_at, created_by, updated_by)
-          VALUES (?, ?, ?, ?, 'admin', 1, ?, ?, ?, ?, ?)
+          INSERT INTO staff (id, company_id, name, pin, pin_hash, role, is_active, permissions, created_at, updated_at, created_by, updated_by)
+          VALUES (?, ?, ?, ?, ?, 'admin', 1, ?, ?, ?, ?, ?)
         `).bind(
           crypto.randomUUID(),
           companyId,
           adminName,
-            boardPin,
+          buildStaffPinTombstone(`signup-${companyId}`),
+          boardPinHash,
           JSON.stringify(['*']),
           now,
           now,
@@ -8111,7 +8130,8 @@ export default {
         }
 
         const result = await env.DB.prepare(`
-          SELECT id, name, pin, role, is_active, permissions, last_login, updated_at
+          SELECT id, name, role, is_active, permissions, last_login, updated_at,
+                 CASE WHEN pin_hash IS NOT NULL AND trim(pin_hash) != '' THEN 1 ELSE 0 END AS has_pin
           FROM staff
           WHERE company_id = ?
           ORDER BY name ASC
@@ -8142,37 +8162,58 @@ export default {
 
         const name = String(item.name || '').trim();
         const staffPin = String(item.pin || '').trim();
+        const staffId = String(item.id || `staff_${companyId}_${Date.now()}`);
         const role = String(item.role || '').trim().toLowerCase();
         const isActive = item.is_active === false || item.is_active === 0 || item.is_active === '0' ? 0 : 1;
         const allowedRoles = new Set(['hostess', 'manager', 'admin', 'staff', 'supervisor']);
 
-        if (!name || staffPin.length < 4) {
-          return Response.json({ success: false, error: 'Staff name and PIN are required' }, { status: 400 });
+        const existingStaff = await env.DB.prepare(
+          `SELECT id, pin_hash FROM staff WHERE company_id = ? AND id = ? LIMIT 1`
+        ).bind(companyId, staffId).first();
+
+        if (!name) {
+          return Response.json({ success: false, error: 'Staff name is required' }, { status: 400 });
+        }
+
+        if (!existingStaff?.id && !/^\d{4}$/.test(staffPin)) {
+          return Response.json({ success: false, error: 'New staff members require a 4-digit board PIN' }, { status: 400 });
+        }
+
+        if (staffPin && !/^\d{4}$/.test(staffPin)) {
+          return Response.json({ success: false, error: 'Board PIN must be 4 digits' }, { status: 400 });
         }
 
         if (!allowedRoles.has(role)) {
           return Response.json({ success: false, error: 'Invalid staff role' }, { status: 400 });
         }
 
+        const nextPinHash = staffPin
+          ? await buildBoardPinHash(companyId, staffPin)
+          : String(existingStaff?.pin_hash || '').trim();
+
+        if (!nextPinHash) {
+          return Response.json({ success: false, error: 'A board PIN is required before saving this staff member' }, { status: 400 });
+        }
+
         const existingConflict = await env.DB.prepare(
-          `SELECT id FROM staff WHERE company_id = ? AND pin = ? AND id != ? LIMIT 1`
-        ).bind(companyId, staffPin, String(item.id || '')).first();
+          `SELECT id FROM staff WHERE company_id = ? AND pin_hash = ? AND id != ? LIMIT 1`
+        ).bind(companyId, nextPinHash, staffId).first();
 
         if (existingConflict) {
           return Response.json({ success: false, error: 'PIN already used by another staff member' }, { status: 409 });
         }
 
-        const staffId = String(item.id || `staff_${companyId}_${Date.now()}`);
         const now = new Date().toISOString();
         const updatedBy = String(auth.staff.name || auth.staff.id || 'admin');
         const permissions = String(item.permissions || (role === 'admin' ? '["*"]' : '[]'));
 
         await env.DB.prepare(`
-          INSERT INTO staff (id, company_id, name, pin, role, is_active, permissions, created_at, updated_at, created_by, updated_by)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO staff (id, company_id, name, pin, pin_hash, role, is_active, permissions, created_at, updated_at, created_by, updated_by)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(id) DO UPDATE SET
             name = excluded.name,
             pin = excluded.pin,
+            pin_hash = excluded.pin_hash,
             role = excluded.role,
             is_active = excluded.is_active,
             permissions = excluded.permissions,
@@ -8182,7 +8223,8 @@ export default {
           staffId,
           companyId,
           name,
-          staffPin,
+          buildStaffPinTombstone(staffId),
+          nextPinHash,
           role,
           isActive,
           permissions,
@@ -8392,6 +8434,21 @@ export default {
           }
         }
 
+        const auth = await authorizeSessionOrStaffPinRequest(
+          env,
+          request,
+          effectiveCompanyId,
+          { pin: url.searchParams.get('pin') || '' },
+          url,
+          { allowManager: true }
+        );
+        if (!auth.ok) {
+          return Response.json(
+            { ok: false, error: auth.error },
+            { status: auth.status }
+          );
+        }
+
         // Create SSE response
         let clientId = `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -8573,14 +8630,12 @@ export default {
           }
         }
 
-        if (!canOverrideCompanyIdForHost(tenant, url) && reqCompanyId > 0) {
-          const auth = await authorizeSessionOrStaffPinRequest(env, request, effectiveCompanyId, body, url, { allowManager: true });
-          if (!auth.ok) {
-            return Response.json(
-              { ok: false, error: auth.error },
-              { status: auth.status }
-            );
-          }
+        const auth = await authorizeSessionOrStaffPinRequest(env, request, effectiveCompanyId, body, url, { allowManager: true });
+        if (!auth.ok) {
+          return Response.json(
+            { ok: false, error: auth.error },
+            { status: auth.status }
+          );
         }
 
         if (!bookingId || !newStage) {
@@ -8663,11 +8718,16 @@ export default {
       return runTenantRoute(async ({ companyId }) => {
         try {
         const requestedCompanyId = Number(url.searchParams.get('company_id') || 0);
-        if (!canOverrideCompanyIdForHost(tenant, url) && requestedCompanyId > 0) {
-          const auth = await authorizeSessionOrStaffPinRequest(env, request, companyId, null, url, { allowManager: true });
-          if (!auth.ok) {
-            return Response.json({ ok: false, error: auth.error }, { status: auth.status });
-          }
+        const auth = await authorizeSessionOrStaffPinRequest(
+          env,
+          request,
+          companyId,
+          { pin: url.searchParams.get('pin') || '' },
+          url,
+          { allowManager: true }
+        );
+        if (!auth.ok) {
+          return Response.json({ ok: false, error: auth.error }, { status: auth.status });
         }
 
         const date = url.searchParams.get("date");
